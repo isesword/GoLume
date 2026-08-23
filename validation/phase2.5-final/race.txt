@@ -1,0 +1,9 @@
+ok  	gocolumn/lazy	4.597s
+ok  	gocolumn/physical	1.014s
+ok  	gocolumn/optimizer	1.014s
+ok  	gocolumn/engine	7.376s
+ok  	gocolumn/join	1.025s
+ok  	gocolumn/radix	1.040s
+ok  	gocolumn/scheduler	1.022s
+ok  	gocolumn/expr	1.011s
+ok  	gocolumn/memory	1.024s

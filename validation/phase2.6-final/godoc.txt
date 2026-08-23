@@ -1,0 +1,1 @@
+GoDoc check: PASS (package docs and exported API comments follow naming conventions)

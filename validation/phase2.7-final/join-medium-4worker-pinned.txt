@@ -1,0 +1,12 @@
+goos: linux
+goarch: amd64
+pkg: gocolumn/join
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkFixedJoinProbeWithPairs/single-table-4         	      10	  32082954 ns/op	       0 B/op	       0 allocs/op
+BenchmarkFixedJoinProbeWithPairs/single-table-4         	      10	  31141412 ns/op	       0 B/op	       0 allocs/op
+BenchmarkFixedJoinProbeWithPairs/single-table-4         	      10	  31132365 ns/op	       0 B/op	       0 allocs/op
+BenchmarkFixedJoinProbeWithPairs/parallel-radix-4-4     	      10	  31673041 ns/op	     297 B/op	       7 allocs/op
+BenchmarkFixedJoinProbeWithPairs/parallel-radix-4-4     	      10	  30491618 ns/op	     297 B/op	       7 allocs/op
+BenchmarkFixedJoinProbeWithPairs/parallel-radix-4-4     	      10	  31618256 ns/op	     297 B/op	       7 allocs/op
+PASS
+ok  	gocolumn/join	2.461s

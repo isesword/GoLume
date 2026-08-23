@@ -1,0 +1,6 @@
+ok  	gocolumn/lazy	3.878s
+ok  	gocolumn/physical	1.029s
+ok  	gocolumn/engine	7.284s
+ok  	gocolumn/optimizer	1.017s
+ok  	gocolumn/memory	1.011s
+ok  	gocolumn/source/arrowrecord	1.009s

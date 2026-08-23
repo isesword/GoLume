@@ -1,0 +1,23 @@
+ok  	gocolumn/aggregate	(cached)
+?   	gocolumn/cmd/demo	[no test files]
+?   	gocolumn/cmd/lazy-demo	[no test files]
+?   	gocolumn/costmodel	[no test files]
+ok  	gocolumn/engine	(cached)
+ok  	gocolumn/expr	(cached)
+ok  	gocolumn/hashagg	(cached)
+ok  	gocolumn/join	0.006s
+ok  	gocolumn/kernel	(cached)
+ok  	gocolumn/lazy	(cached)
+?   	gocolumn/logical	[no test files]
+ok  	gocolumn/memory	(cached)
+?   	gocolumn/observer	[no test files]
+ok  	gocolumn/optimizer	(cached)
+ok  	gocolumn/physical	(cached)
+ok  	gocolumn/planner	(cached)
+ok  	gocolumn/radix	(cached)
+ok  	gocolumn/scheduler	(cached)
+?   	gocolumn/source	[no test files]
+ok  	gocolumn/source/arrowrecord	(cached)
+?   	gocolumn/source/inmemory	[no test files]
+ok  	gocolumn/source/parquet	(cached)
+?   	gocolumn/tools/checkgodoc	[no test files]

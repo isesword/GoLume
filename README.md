@@ -1,0 +1,190 @@
+# Go Columnar Engine — Phase 2.8 Ordering + Runtime Feedback
+
+Go Columnar Engine 是一个面向 Go 原生服务、CLI 和嵌入式分析场景的 Polars-like 列式分析引擎。核心路线保持：
+
+```text
+Arrow / Parquet columnar memory
+        ↓
+Immutable Lazy LogicalPlan
+        ↓
+Rule optimizer + runtime estimates
+        ↓
+Projection / Predicate Pushdown
+        ↓
+Typed expression program / CSE
+        ↓
+Prepared physical Source DAG
+        ↓
+SIMD / hash / radix / scheduler
+```
+
+Phase 2.8 在 Phase 2.7 的 Lazy/Join/Analyze 基础上补齐三个面向真实分析查询的重要能力：**Limit / Sort / Top-K**、**opaque Arrow Take/materialization**、以及 **runtime feedback → aggregate CostModel**。
+
+## Lazy ordering API
+
+```go
+lf := session.ScanParquet("events.parquet")
+
+result := lf.
+    Filter(lazy.Col("score").Gt(lazy.Lit(0))).
+    Sort(lazy.Desc("score")).
+    Limit(100)
+```
+
+`Sort(...).Limit(K)` 会在语义允许时优化成：
+
+```text
+TOPK k=K
+```
+
+也可以直接写：
+
+```go
+lf.TopK(100,
+    lazy.Desc("score"),
+    lazy.AscNullsFirst("timestamp"),
+)
+```
+
+所有这些仍然只构造 LogicalPlan；真正执行发生在 `CollectFrame` / `PrepareFrame`，聚合终点仍使用 `Collect` / `Prepare`。
+
+## Sort 和 Top-K 的执行差异
+
+```text
+Sort
+  -> 全量 columnar materialize
+  -> stable sort row indices
+  -> gather output
+  -> O(N) memory, MemoryManager 计费
+
+Top-K
+  -> 扫描排序键
+  -> bounded worst-first heap
+  -> 只保留 K 个候选
+  -> 重读 winner partitions
+  -> 只 materialize K 行 payload
+  -> O(K) retained state, MemoryManager 计费
+```
+
+262,144 行、Top100、单核验证机 benchmark 中位数：
+
+```text
+Global Sort : 671.099 ms/op, 40.09 MB/op
+Top-K 100   :  14.129 ms/op, 49.3 KB/op
+ratio       : ~47.5x
+```
+
+这是当前验证机上的算法选择证据，不是跨机器性能承诺。
+
+## Opaque Arrow payload
+
+未拥有专用算术 kernel 的 Arrow nested/decimal/extension 等列不再因为 Filter/Take/Top-K 而失败。
+
+选择行通过 Arrow-native slice/concatenate 完成，并使用显式 retained-array ownership：
+
+```text
+OpaqueVector.Owned
+Batch.ReleaseOwned()
+Frame.Close()
+```
+
+因此“暂时不能计算某类型”和“不能保留/筛选该类型”已经解耦。
+
+## Aggregate → Sort / Top-K
+
+常见查询现在可以继续组成一个 Lazy DAG：
+
+```text
+Scan
+ -> Filter
+ -> GroupBy
+ -> Agg
+ -> Sort
+ -> Limit
+```
+
+当 Aggregate 后还有行级 operator 时，现有 `PreparedQuery` 会被包装成内部 columnar Source；普通 terminal Aggregate 快路径保持不变。
+
+## Runtime feedback
+
+第一次 Prepare 仍使用静态估算。成功 Execute 后记录实际：
+
+```text
+rows
+selected rows
+output groups
+```
+
+下一次 Prepare 在没有显式 Hint 时使用 EWMA：
+
+```text
+new = old * 0.75 + observed * 0.25
+```
+
+feedback cache 最多保留 1024 个 plan signature。用户显式 `WithHints` 永远优先。
+
+已经有回归测试证明：一个默认估算会选择 radix 的 300K-row/4-partition 聚合，在观察到实际 cardinality=2 后，下一次 Prepare 自动切换到非 radix strategy。
+
+## Existing execution capabilities
+
+Phase 2.8 继续保留并回归：
+
+- Go 1.27 scalar / portable SIMD / arch hotspot dispatch；
+- Projection/Predicate Pushdown 与 Parquet row-group pruning；
+- Arrow RecordBatch typed/opaque source；
+- typed scalar expressions、Cast、CSE；
+- PreparedQuery / PreparedFrame；
+- adaptive hash aggregation、nullable/composite/dictionary keys；
+- columnar JoinSource；
+- benchmark-gated parallel radix large join；
+- operator-level `ExplainAnalyze`。
+
+## Reference regression
+
+`testdata/bench-1m.parquet`：1,048,576 rows。
+
+固定结果：
+
+```text
+groups   = 219196
+selected = 472475
+checksum = 236716301
+```
+
+## Build and validate
+
+需要 Go 1.27：
+
+```bash
+go mod download
+go test ./...
+GOEXPERIMENT=simd go test ./...
+go test -race ./...
+go vet ./...
+go run ./tools/checkgodoc .
+```
+
+推荐：
+
+```bash
+./scripts/validate.sh
+./scripts/bench.sh
+```
+
+Parquet Lazy demo：
+
+```bash
+GOEXPERIMENT=simd go run ./cmd/lazy-demo \
+  -parquet ./testdata/bench-1m.parquet \
+  -workers 4 -repeat 3 -analyze
+```
+
+## Documentation
+
+- `docs/PHASE2_8_ORDERING_TAKE_RUNTIME_FEEDBACK.md`
+- `docs/PHASE2_7_OPERATOR_ANALYZE_PARALLEL_RADIX_JOIN.md`
+- `docs/ARCHITECTURE.md`
+- `docs/JOIN.md`
+- `docs/LAZY_OPTIMIZER.md`
+- `docs/ROADMAP.md`
+- `VALIDATION.md`

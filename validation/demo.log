@@ -1,0 +1,5 @@
+kernel={Mode:0 Arch:amd64 HardwareSIMD:true Emulated:false VectorBits:512 Backend:portable-simd}
+plan={Strategy:{Kind:radix Workers:4 RadixBits:8 Reason:parallel high-cardinality aggregation} Rows:1048576 Partitions:8 KeyWidthBytes:4 PredicateOps:1 GroupColumns:1 WorkspacePool:1}
+run=1 strategy=radix workers=4 groups=219196 selected=472475 checksum=236716301 elapsed=55.993353ms retained_memory=65226856
+run=2 strategy=radix workers=4 groups=219196 selected=472475 checksum=236716301 elapsed=24.760967ms retained_memory=65226856
+run=3 strategy=radix workers=4 groups=219196 selected=472475 checksum=236716301 elapsed=19.344912ms retained_memory=65226856

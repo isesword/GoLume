@@ -1,0 +1,22 @@
+=== RUN   TestOpaqueArrowSurvivesFilterTopKAndMaterialization
+--- PASS: TestOpaqueArrowSurvivesFilterTopKAndMaterialization (0.00s)
+=== RUN   TestAggregateCanFeedTopKAndLimit
+--- PASS: TestAggregateCanFeedTopKAndLimit (0.00s)
+=== RUN   TestRuntimeFeedbackChangesCostModelStrategy
+--- PASS: TestRuntimeFeedbackChangesCostModelStrategy (0.01s)
+=== RUN   TestExplicitHintsOverrideRuntimeFeedback
+--- PASS: TestExplicitHintsOverrideRuntimeFeedback (0.00s)
+PASS
+ok  	gocolumn/lazy	0.013s
+=== RUN   TestSortHonorsMemoryBudget
+--- PASS: TestSortHonorsMemoryBudget (0.00s)
+=== RUN   TestTopKHonorsMemoryBudget
+--- PASS: TestTopKHonorsMemoryBudget (0.00s)
+=== RUN   TestTopKReleasesMemoryReservationOnClose
+--- PASS: TestTopKReleasesMemoryReservationOnClose (0.00s)
+PASS
+ok  	gocolumn/physical	0.002s
+=== RUN   TestFeedbackStoreIsBoundedAndUsesEWMA
+--- PASS: TestFeedbackStoreIsBoundedAndUsesEWMA (0.00s)
+PASS
+ok  	gocolumn/engine	0.004s

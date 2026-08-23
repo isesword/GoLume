@@ -1,0 +1,12 @@
+goos: linux
+goarch: amd64
+pkg: gocolumn/physical
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkGlobalSort262K 	       3	 671098606 ns/op	40085936 B/op	     147 allocs/op
+BenchmarkGlobalSort262K 	       3	 653669974 ns/op	40085936 B/op	     147 allocs/op
+BenchmarkGlobalSort262K 	       3	 700708016 ns/op	40085936 B/op	     147 allocs/op
+BenchmarkTopK100Of262K  	       3	  14320250 ns/op	   49288 B/op	     306 allocs/op
+BenchmarkTopK100Of262K  	       3	  13760825 ns/op	   49288 B/op	     306 allocs/op
+BenchmarkTopK100Of262K  	       3	  14129496 ns/op	   49288 B/op	     306 allocs/op
+PASS
+ok  	gocolumn/physical	8.194s

@@ -1,0 +1,270 @@
+package physical
+
+import (
+	"context"
+	"fmt"
+	"gocolumn/expr"
+	"gocolumn/memory"
+	"gocolumn/source"
+)
+
+// ProjectSource computes typed scalar projection expressions over an immutable
+// child source. Phase 2.6 compiles every computed output into one fused
+// ProjectionProgram so common subexpressions are evaluated once per batch.
+type ProjectSource struct {
+	input        source.Source
+	schema       memory.Schema
+	named        []expr.NamedExpr
+	program      expr.ProjectionProgram
+	includeInput bool
+}
+
+// NewProjectSource compiles named scalar expressions against input. When
+// includeInput is true, input fields are retained and aliases replace matching
+// columns; otherwise only the named expressions are exposed.
+func NewProjectSource(input source.Source, named []expr.NamedExpr, includeInput bool) (*ProjectSource, error) {
+	if input == nil {
+		return nil, fmt.Errorf("physical projection input is nil")
+	}
+	if len(named) == 0 {
+		return nil, fmt.Errorf("physical projection requires expressions")
+	}
+	in := input.Schema()
+	fields := make([]memory.Field, 0, len(in.Fields)+len(named))
+	positions := make(map[string]int)
+	if includeInput {
+		fields = append(fields, in.Fields...)
+		for i, f := range fields {
+			positions[f.Name] = i
+		}
+	}
+	produced := make(map[string]struct{}, len(named))
+	for _, n := range named {
+		name, err := n.Name()
+		if err != nil {
+			return nil, err
+		}
+		if _, dup := produced[name]; dup {
+			return nil, fmt.Errorf("physical projection contains duplicate output %q", name)
+		}
+		produced[name] = struct{}{}
+		var field memory.Field
+		if c, ok := n.Expr.(expr.Column); ok {
+			f, exists := in.Field(c.Name)
+			if !exists {
+				return nil, fmt.Errorf("projection column %q not found", c.Name)
+			}
+			f.Name = name
+			field = f
+		} else {
+			info, err := expr.InferScalarType(in, n.Expr)
+			if err != nil {
+				return nil, fmt.Errorf("projection %q: %w", name, err)
+			}
+			field = memory.Field{Name: name, Type: info.Type, Nullable: info.Nullable, Encoding: memory.EncodingPlain}
+			if info.Type == memory.TypeString || info.Type == memory.TypeBinary {
+				field.Encoding = memory.EncodingView
+			}
+		}
+		if pos, exists := positions[name]; exists {
+			fields[pos] = field
+		} else {
+			positions[name] = len(fields)
+			fields = append(fields, field)
+		}
+	}
+	program, err := expr.CompileProjection(in, named)
+	if err != nil {
+		return nil, err
+	}
+	return &ProjectSource{
+		input:        input,
+		schema:       memory.NewSchema(fields...),
+		named:        append([]expr.NamedExpr(nil), named...),
+		program:      program,
+		includeInput: includeInput,
+	}, nil
+}
+
+// Schema returns the projected output schema.
+func (s *ProjectSource) Schema() memory.Schema { return s.schema }
+
+// Stats preserves child row and partition statistics.
+func (s *ProjectSource) Stats(ctx context.Context) (source.Stats, error) { return s.input.Stats(ctx) }
+
+// Partitions preserves child partition boundaries.
+func (s *ProjectSource) Partitions(ctx context.Context) ([]source.Partition, error) {
+	return s.input.Partitions(ctx)
+}
+
+// NewReader creates an independent projection reader.
+func (s *ProjectSource) NewReader(ctx context.Context) (source.Reader, error) {
+	r, err := s.input.NewReader(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &projectReader{owner: s, child: r, input: memory.NewBatch()}, nil
+}
+
+type projectReader struct {
+	owner     *ProjectSource
+	child     source.Reader
+	input     *memory.Batch
+	workspace expr.ScalarWorkspace
+}
+
+// Close releases the child reader.
+func (r *projectReader) Close() error { return r.child.Close() }
+
+// ReadPartition evaluates the fused projection program for one child partition.
+func (r *projectReader) ReadPartition(ctx context.Context, p source.Partition, dst *memory.Batch) error {
+	if err := r.child.ReadPartition(ctx, p, r.input); err != nil {
+		return err
+	}
+	values, err := r.owner.program.Evaluate(r.input, &r.workspace)
+	if err != nil {
+		return err
+	}
+	if len(values) != len(r.owner.program.Outputs) {
+		return fmt.Errorf("projection output count mismatch")
+	}
+	dst.ClearColumns()
+	if r.owner.includeInput {
+		bindAll(dst, r.input)
+	}
+	for i, out := range r.owner.program.Outputs {
+		removeColumn(dst, out.Name)
+		if err := bindScalarValue(dst, out.Name, values[i]); err != nil {
+			return err
+		}
+	}
+	dst.Reset(r.input.Rows)
+	return nil
+}
+
+func bindScalarValue(dst *memory.Batch, name string, v expr.ScalarValue) error {
+	switch {
+	case v.Int32 != nil:
+		dst.Int32s[name] = v.Int32
+	case v.Int64 != nil:
+		dst.Int64s[name] = v.Int64
+	case v.Uint32 != nil:
+		dst.Uint32s[name] = v.Uint32
+	case v.Uint64 != nil:
+		dst.Uint64s[name] = v.Uint64
+	case v.Float64 != nil:
+		dst.Float64s[name] = v.Float64
+	case v.DictionaryString != nil:
+		dst.DictStrings[name] = v.DictionaryString
+	case v.String != nil:
+		dst.Strings[name] = v.String
+	default:
+		return fmt.Errorf("projection %q type %s has no physical vector", name, v.Type)
+	}
+	return nil
+}
+
+func bindAll(dst, src *memory.Batch) {
+	for k, v := range src.Int64s {
+		dst.Int64s[k] = v
+	}
+	for k, v := range src.Int32s {
+		dst.Int32s[k] = v
+	}
+	for k, v := range src.Uint32s {
+		dst.Uint32s[k] = v
+	}
+	for k, v := range src.Uint64s {
+		dst.Uint64s[k] = v
+	}
+	for k, v := range src.Float64s {
+		dst.Float64s[k] = v
+	}
+	for k, v := range src.Strings {
+		dst.Strings[k] = v
+	}
+	for k, v := range src.DictStrings {
+		dst.DictStrings[k] = v
+	}
+	for k, v := range src.Opaque {
+		dst.Opaque[k] = v
+	}
+}
+
+func bindNamed(dst *memory.Batch, out string, src *memory.Batch, in string) error {
+	if v, ok := src.Int64s[in]; ok {
+		dst.Int64s[out] = v
+		return nil
+	}
+	if v, ok := src.Int32s[in]; ok {
+		dst.Int32s[out] = v
+		return nil
+	}
+	if v, ok := src.Uint32s[in]; ok {
+		dst.Uint32s[out] = v
+		return nil
+	}
+	if v, ok := src.Uint64s[in]; ok {
+		dst.Uint64s[out] = v
+		return nil
+	}
+	if v, ok := src.Float64s[in]; ok {
+		dst.Float64s[out] = v
+		return nil
+	}
+	if v, ok := src.Strings[in]; ok {
+		dst.Strings[out] = v
+		return nil
+	}
+	if v, ok := src.DictStrings[in]; ok {
+		dst.DictStrings[out] = v
+		return nil
+	}
+	if v, ok := src.Opaque[in]; ok {
+		dst.Opaque[out] = v
+		return nil
+	}
+	return fmt.Errorf("projection input column %q not present in batch", in)
+}
+
+func removeColumn(dst *memory.Batch, name string) {
+	delete(dst.Int64s, name)
+	delete(dst.Int32s, name)
+	delete(dst.Uint32s, name)
+	delete(dst.Uint64s, name)
+	delete(dst.Float64s, name)
+	delete(dst.Strings, name)
+	delete(dst.DictStrings, name)
+	delete(dst.Opaque, name)
+}
+
+// Dictionary forwards stable dictionary metadata for passthrough dictionary
+// columns, including aliases. Computed expressions never expose dictionary
+// encoding unless they are a direct passthrough column.
+func (s *ProjectSource) Dictionary(ctx context.Context, column string) (source.Dictionary, error) {
+	for _, n := range s.named {
+		name, err := n.Name()
+		if err != nil || name != column {
+			continue
+		}
+		c, ok := n.Expr.(expr.Column)
+		if !ok {
+			return source.Dictionary{}, fmt.Errorf("projection column %q has no dictionary", column)
+		}
+		dp, ok := s.input.(source.DictionaryProvider)
+		if !ok {
+			return source.Dictionary{}, fmt.Errorf("projection input has no dictionary provider")
+		}
+		return dp.Dictionary(ctx, c.Name)
+	}
+	if s.includeInput {
+		if _, ok := s.input.Schema().Field(column); ok {
+			dp, ok := s.input.(source.DictionaryProvider)
+			if !ok {
+				return source.Dictionary{}, fmt.Errorf("projection input has no dictionary provider")
+			}
+			return dp.Dictionary(ctx, column)
+		}
+	}
+	return source.Dictionary{}, fmt.Errorf("projection column %q has no dictionary", column)
+}

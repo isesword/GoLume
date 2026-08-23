@@ -1,0 +1,21 @@
+--- logical ---
+AGGREGATE keys=[key] aggs=[sum(value) AS sum, count(*) AS count]
+  PROJECTION [key, value]
+    FILTER (pred > 32767)
+      SCAN source=parquet(testdata/bench-1m.parquet) columns=ALL
+--- optimized ---
+rules=[predicate-pushdown]
+AGGREGATE keys=[key] aggs=[sum(value) AS sum, count(*) AS count]
+  PROJECTION [key, value]
+    FILTER (pred > 32767)
+      SCAN source=parquet(testdata/bench-1m.parquet) columns=[pred, key, value] pushed_predicate=(pred > 32767)
+--- physical ---
+AGGREGATE keys=[key] aggs=[sum(value) AS sum, count(*) AS count]
+  PROJECTION [key, value]
+    FILTER (pred > 32767)
+      SCAN source=parquet(testdata/bench-1m.parquet) columns=[pred, key, value] pushed_predicate=(pred > 32767) partitions=8/8 rows=1048576/1048576
+PHYSICAL strategy=radix workers=4 radix_bits=8 key_width=4 predicate_ops=1
+PUSHDOWN columns=[pred, key, value] partitions=8/8 row_groups=8/8 pruned=0 rows=1048576/1048576 source_bytes=11149665/11149665
+run=1 groups=219196 selected=472475 checksum=236716301 strategy=radix workers=4 elapsed=45.99833ms
+run=2 groups=219196 selected=472475 checksum=236716301 strategy=radix workers=4 elapsed=24.778343ms
+run=3 groups=219196 selected=472475 checksum=236716301 strategy=radix workers=4 elapsed=26.861531ms

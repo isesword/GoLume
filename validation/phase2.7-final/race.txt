@@ -1,0 +1,8 @@
+?   	gocolumn/observer	[no test files]
+ok  	gocolumn/join	(cached)
+ok  	gocolumn/physical	(cached)
+ok  	gocolumn/lazy	8.199s
+ok  	gocolumn/engine	11.946s
+ok  	gocolumn/source/arrowrecord	1.014s
+ok  	gocolumn/scheduler	(cached)
+ok  	gocolumn/radix	(cached)

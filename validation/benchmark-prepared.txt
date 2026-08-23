@@ -1,0 +1,16 @@
+goos: linux
+goarch: amd64
+pkg: gocolumn/engine
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkRadixW4-4           	       5	  28943530 ns/op	118029166 B/op	   41043 allocs/op
+BenchmarkRadixW4-4           	       5	  31839418 ns/op	118026408 B/op	   41043 allocs/op
+BenchmarkRadixW4-4           	       5	  31301893 ns/op	118026758 B/op	   41041 allocs/op
+BenchmarkRadixW4-4           	       5	  42371037 ns/op	118027100 B/op	   41042 allocs/op
+BenchmarkRadixW4-4           	       5	  27229518 ns/op	118026702 B/op	   41042 allocs/op
+BenchmarkPreparedRadixW4-4   	       5	  23269733 ns/op	36859467 B/op	   31914 allocs/op
+BenchmarkPreparedRadixW4-4   	       5	  17344196 ns/op	36857660 B/op	   31910 allocs/op
+BenchmarkPreparedRadixW4-4   	       5	  21010449 ns/op	36857558 B/op	   31910 allocs/op
+BenchmarkPreparedRadixW4-4   	       5	  16316387 ns/op	36856838 B/op	   31909 allocs/op
+BenchmarkPreparedRadixW4-4   	       5	  18068980 ns/op	36856812 B/op	   31908 allocs/op
+PASS
+ok  	gocolumn/engine	1.953s

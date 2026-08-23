@@ -1,0 +1,12 @@
+goos: linux
+goarch: amd64
+pkg: gocolumn/lazy
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkJoinFramePreparationComparison/one-shot-collect-frame-4         	       3	  12430610 ns/op	15314728 B/op	     408 allocs/op
+BenchmarkJoinFramePreparationComparison/one-shot-collect-frame-4         	       3	  12916210 ns/op	15316378 B/op	     408 allocs/op
+BenchmarkJoinFramePreparationComparison/one-shot-collect-frame-4         	       3	  13333304 ns/op	15314642 B/op	     406 allocs/op
+BenchmarkJoinFramePreparationComparison/prepared-frame-4                 	       3	   8563985 ns/op	10643936 B/op	     113 allocs/op
+BenchmarkJoinFramePreparationComparison/prepared-frame-4                 	       3	   8618844 ns/op	10644010 B/op	     113 allocs/op
+BenchmarkJoinFramePreparationComparison/prepared-frame-4                 	       3	   6610592 ns/op	10643936 B/op	     113 allocs/op
+PASS
+ok  	gocolumn/lazy	0.348s

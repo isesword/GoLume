@@ -1,0 +1,14 @@
+=== RUN   TestLazyParquetAggregateEndToEnd
+--- PASS: TestLazyParquetAggregateEndToEnd (0.22s)
+=== RUN   TestLazyWithColumnsComputedFilterAggregate
+--- PASS: TestLazyWithColumnsComputedFilterAggregate (0.00s)
+=== RUN   TestLazyJoinThenFilterProjectionAggregate
+--- PASS: TestLazyJoinThenFilterProjectionAggregate (0.00s)
+=== RUN   TestPreparedFrameReusesJoinBuildAndReleasesMemory
+--- PASS: TestPreparedFrameReusesJoinBuildAndReleasesMemory (0.00s)
+=== RUN   TestPreparedFrameConcurrentExecute
+--- PASS: TestPreparedFrameConcurrentExecute (0.00s)
+=== RUN   TestPhysicalScanProjectionFallbackForGenericSource
+--- PASS: TestPhysicalScanProjectionFallbackForGenericSource (0.00s)
+PASS
+ok  	gocolumn/lazy	0.227s

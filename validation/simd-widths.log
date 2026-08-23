@@ -1,0 +1,15 @@
+=== +128 ===
+ok  	gocolumn/engine	0.772s
+ok  	gocolumn/kernel	0.003s
+ok  	gocolumn/hashagg	0.014s
+ok  	gocolumn/radix	0.003s
+=== +256 ===
+ok  	gocolumn/engine	0.693s
+ok  	gocolumn/kernel	0.004s
+ok  	gocolumn/hashagg	0.010s
+ok  	gocolumn/radix	0.003s
+=== +512 ===
+ok  	gocolumn/engine	0.570s
+ok  	gocolumn/kernel	0.004s
+ok  	gocolumn/hashagg	0.009s
+ok  	gocolumn/radix	0.005s

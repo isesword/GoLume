@@ -1,0 +1,17 @@
+ok  	gocolumn/aggregate	0.013s
+?   	gocolumn/cmd/demo	[no test files]
+?   	gocolumn/costmodel	[no test files]
+ok  	gocolumn/engine	0.795s
+ok  	gocolumn/expr	0.002s
+ok  	gocolumn/hashagg	0.014s
+ok  	gocolumn/join	0.009s
+ok  	gocolumn/kernel	0.005s
+ok  	gocolumn/memory	0.002s
+?   	gocolumn/observer	[no test files]
+ok  	gocolumn/planner	0.006s
+ok  	gocolumn/radix	0.006s
+ok  	gocolumn/scheduler	0.003s
+?   	gocolumn/source	[no test files]
+?   	gocolumn/source/inmemory	[no test files]
+?   	gocolumn/source/parquet	[no test files]
+?   	gocolumn/tools/checkgodoc	[no test files]

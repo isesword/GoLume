@@ -1,0 +1,5 @@
+ok  	gocolumn/engine	8.502s
+ok  	gocolumn/hashagg	1.043s
+ok  	gocolumn/join	1.015s
+ok  	gocolumn/radix	1.020s
+ok  	gocolumn/scheduler	1.018s

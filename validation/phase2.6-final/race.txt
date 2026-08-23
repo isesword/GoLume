@@ -1,0 +1,16 @@
+== race ./expr ==
+ok  	gocolumn/expr	(cached)
+== race ./join ==
+ok  	gocolumn/join	1.013s
+== race ./physical ==
+ok  	gocolumn/physical	(cached)
+== race ./lazy ==
+ok  	gocolumn/lazy	5.314s
+== race ./engine ==
+ok  	gocolumn/engine	(cached)
+== race ./source/arrowrecord ==
+ok  	gocolumn/source/arrowrecord	(cached)
+== race ./scheduler ==
+ok  	gocolumn/scheduler	(cached)
+== race ./radix ==
+ok  	gocolumn/radix	(cached)
