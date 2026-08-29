@@ -69,6 +69,7 @@ func TestJSONStructSurvivesLazyPipelineAndSeries(t *testing.T) {
 			t.Fatalf("display missing %q:\n%s", want, text)
 		}
 	}
+	t.Log("\n" + text)
 }
 
 func TestStructPayloadSurvivesLeftJoinMaterialization(t *testing.T) {
