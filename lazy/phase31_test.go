@@ -28,8 +28,8 @@ func TestLazySortByExpressionsIsStableAndHidesTemporaryKeys(t *testing.T) {
 	if got, want := frameInt64Column(t, frame, "id"), []int64{4, 6, 2, 5, 1, 3}; !equalI64(got, want) {
 		t.Fatalf("expression sort IDs=%v want=%v", got, want)
 	}
-	if len(frame.Schema.Fields) != 1 || frame.Schema.Fields[0].Name != "id" {
-		t.Fatalf("temporary ordering columns leaked into output schema: %+v", frame.Schema.Fields)
+	if len(frame.Schema().Fields) != 1 || frame.Schema().Fields[0].Name != "id" {
+		t.Fatalf("temporary ordering columns leaked into output schema: %+v", frame.Schema().Fields)
 	}
 
 	explain := session.FromSource(src).SortBy(DescExpr(Length(Col("s"))), AscExpr(Year(Col("ts")))).Explain()

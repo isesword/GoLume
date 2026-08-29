@@ -43,11 +43,11 @@ func TestLazyStringAndCalendarExpressions(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer frame.Close()
-	if frame.Rows != 1 {
-		t.Fatalf("rows=%d", frame.Rows)
+	if frame.Height() != 1 {
+		t.Fatalf("rows=%d", frame.Height())
 	}
-	chars, _ := frame.Batches[0].Int64("chars")
-	hour, _ := frame.Batches[0].Int64("hour")
+	chars, _ := frame.batches()[0].Int64("chars")
+	hour, _ := frame.batches()[0].Int64("hour")
 	if chars.Values[0] != 4 || hour.Values[0] != 23 {
 		t.Fatalf("chars=%v hour=%v", chars.Values, hour.Values)
 	}

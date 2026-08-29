@@ -18,30 +18,69 @@ import (
 // after Close.
 var ErrPreparedFrameClosed = errors.New("prepared frame closed")
 
-// Frame is an owned materialized columnar result produced by CollectFrame.
-// Batches contain deep-copied specialized vectors and remain valid after the
-// source reader and lazy session are closed.
-type Frame struct {
-	Schema  memory.Schema
-	Batches []*memory.Batch
-	Rows    int64
+// ErrDataFrameClosed is returned when a borrowed view is used after its owning
+// DataFrame has been closed.
+var ErrDataFrameClosed = errors.New("data frame closed")
+
+type dataFrameState struct {
+	mu           sync.RWMutex
+	schema       memory.Schema
+	batches      []*memory.Batch
+	rows         int64
+	reservations []memory.Reservation
+	closed       bool
+}
+
+// DataFrame is an owned materialized columnar result. Its private shared state
+// makes value copies safe and allows borrowed FrameView and Series values to
+// observe Close reliably.
+type DataFrame struct{ state *dataFrameState }
+
+// Frame is retained as a compatibility alias for DataFrame.
+type Frame = DataFrame
+
+func newDataFrame(schema memory.Schema) DataFrame {
+	return DataFrame{state: &dataFrameState{schema: schema}}
 }
 
 // Close releases owned source-native arrays retained by materialized batches.
 // It is safe to call Close more than once. Specialized Go vectors require no
 // explicit release.
-func (f *Frame) Close() error {
-	if f == nil {
+func (f *DataFrame) Close() error {
+	if f == nil || f.state == nil {
 		return nil
 	}
-	for _, batch := range f.Batches {
+	s := f.state
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.closed {
+		return nil
+	}
+	s.closed = true
+	for _, batch := range s.batches {
 		if batch != nil {
 			batch.ReleaseOwned()
 		}
 	}
-	f.Batches = nil
-	f.Rows = 0
+	for i := len(s.reservations) - 1; i >= 0; i-- {
+		s.reservations[i].Release()
+	}
+	s.reservations = nil
+	s.batches = nil
+	s.rows = 0
 	return nil
+}
+
+func (f DataFrame) batches() []*memory.Batch {
+	if f.state == nil {
+		return nil
+	}
+	f.state.mu.RLock()
+	defer f.state.mu.RUnlock()
+	if f.state.closed {
+		return nil
+	}
+	return f.state.batches
 }
 
 // PreparedFrame is a reusable row-producing physical pipeline. Join build
@@ -52,6 +91,7 @@ type PreparedFrame struct {
 	parts   []source.Partition
 	schema  memory.Schema
 	kernels kernel.Set
+	manager memory.Manager
 	closers []io.Closer
 	lifeMu  sync.Mutex
 	active  sync.WaitGroup
@@ -107,7 +147,7 @@ func (f LazyFrame) prepareFrame(ctx context.Context) (*PreparedFrame, logical.Pl
 		cleanup()
 		return nil, nil, source.PushdownReport{}, err
 	}
-	return &PreparedFrame{src: src, parts: parts, schema: src.Schema(), kernels: f.session.engine.KernelSet(), closers: closers}, physicalPlan, report, nil
+	return &PreparedFrame{src: src, parts: parts, schema: src.Schema(), kernels: f.session.engine.KernelSet(), manager: f.session.engine.Memory(), closers: closers}, physicalPlan, report, nil
 }
 
 // CollectFrame prepares and executes a row-producing lazy plan once.
@@ -149,20 +189,28 @@ func (p *PreparedFrame) Execute(ctx context.Context) (Frame, error) {
 		return Frame{}, err
 	}
 	defer r.Close()
-	out := Frame{Schema: p.schema}
+	out := newDataFrame(p.schema)
 	scratch := memory.NewBatch()
 	defer scratch.ReleaseOwned()
 	for _, part := range p.parts {
 		if err := r.ReadPartition(ctx, part, scratch); err != nil {
+			_ = out.Close()
 			return Frame{}, err
 		}
-		owned, err := memory.CloneBatch(scratch)
+		reservation, err := p.manager.Reserve(ctx, memory.BatchBytes(scratch))
 		if err != nil {
 			_ = out.Close()
 			return Frame{}, err
 		}
-		out.Batches = append(out.Batches, owned)
-		out.Rows += int64(owned.Rows)
+		owned, err := memory.CloneBatch(scratch)
+		if err != nil {
+			reservation.Release()
+			_ = out.Close()
+			return Frame{}, err
+		}
+		out.state.batches = append(out.state.batches, owned)
+		out.state.reservations = append(out.state.reservations, reservation)
+		out.state.rows += int64(owned.Rows)
 	}
 	return out, nil
 }

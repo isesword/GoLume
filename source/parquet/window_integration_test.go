@@ -28,18 +28,26 @@ func TestLazyParquetWindowTimestampOrdering(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer result.Close()
-	rn, err := result.Batches[0].Int64("rn")
+	rnSeries, err := result.Column("rn")
 	if err != nil {
 		t.Fatal(err)
 	}
-	seen, err := result.Batches[0].Int64("seen")
+	seenSeries, err := result.Column("seen")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := rn.Values; len(got) != 2 || got[0] != 2 || got[1] != 1 {
+	rn, _, err := rnSeries.CopyInt64()
+	if err != nil {
+		t.Fatal(err)
+	}
+	seen, _, err := seenSeries.CopyInt64()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := rn; len(got) != 2 || got[0] != 2 || got[1] != 1 {
 		t.Fatalf("row number=%v", got)
 	}
-	if got := seen.Values; len(got) != 2 || got[0] != 2 || got[1] != 1 {
+	if got := seen; len(got) != 2 || got[0] != 2 || got[1] != 1 {
 		t.Fatalf("rolling count=%v", got)
 	}
 }

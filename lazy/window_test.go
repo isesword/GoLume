@@ -71,7 +71,7 @@ func TestWindowsRankAndRollingKeepInputOrderAcrossPartitions(t *testing.T) {
 	if !equalI64(values, []int64{6, 0, 3, 4, 8, 10}) || !equalBools(valid, []bool{true, false, true, true, true, true}) {
 		t.Fatalf("rolling sum values=%v valid=%v", values, valid)
 	}
-	field, ok := frame.Schema.Field("sum")
+	field, ok := frame.Schema().Field("sum")
 	if !ok || field.Type != memory.TypeInt64 || !field.Nullable {
 		t.Fatalf("sum field=%+v present=%v", field, ok)
 	}
@@ -129,7 +129,7 @@ func TestWindowExpressionOrderAndFloatMinMax(t *testing.T) {
 	if got := frameInt64Column(t, frame, "rn"); !equalI64(got, []int64{3, 1, 2}) {
 		t.Fatalf("expression order row numbers=%v", got)
 	}
-	if _, ok := frame.Schema.Field("__gocolumn_order_key_0"); ok {
+	if _, ok := frame.Schema().Field("__gocolumn_order_key_0"); ok {
 		t.Fatal("internal ordering expression leaked to output schema")
 	}
 	min := frameFloat64Column(t, frame, "min")
@@ -212,13 +212,13 @@ func TestWindowProjectionEliminationAndEmptyInput(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer emptyFrame.Close()
-	if emptyFrame.Rows != 0 || len(emptyFrame.Batches) != 1 {
-		t.Fatalf("empty window rows=%d batches=%d", emptyFrame.Rows, len(emptyFrame.Batches))
+	if emptyFrame.Height() != 0 || len(emptyFrame.batches()) != 1 {
+		t.Fatalf("empty window rows=%d batches=%d", emptyFrame.Height(), len(emptyFrame.batches()))
 	}
-	if _, err := emptyFrame.Batches[0].Int64("rn"); err != nil {
+	if _, err := emptyFrame.batches()[0].Int64("rn"); err != nil {
 		t.Fatalf("empty rank output missing: %v", err)
 	}
-	if _, err := emptyFrame.Batches[0].Int64("count"); err != nil {
+	if _, err := emptyFrame.batches()[0].Int64("count"); err != nil {
 		t.Fatalf("empty count output missing: %v", err)
 	}
 }
@@ -265,7 +265,7 @@ func TestWindowNumericResultTypesAndCancellation(t *testing.T) {
 		t.Fatalf("float avg=%v", got)
 	}
 	for _, name := range []string{"isum", "usum", "imin", "umax", "favg"} {
-		field, ok := frame.Schema.Field(name)
+		field, ok := frame.Schema().Field(name)
 		if !ok {
 			t.Fatalf("missing output field %q", name)
 		}
@@ -292,7 +292,7 @@ func frameInt64WithValidity(t *testing.T, frame Frame, name string) ([]int64, []
 	t.Helper()
 	var values []int64
 	var valid []bool
-	for _, batch := range frame.Batches {
+	for _, batch := range frame.batches() {
 		vector, err := batch.Int64(name)
 		if err != nil {
 			t.Fatal(err)
@@ -308,7 +308,7 @@ func frameInt64WithValidity(t *testing.T, frame Frame, name string) ([]int64, []
 func frameFloat64Column(t *testing.T, frame Frame, name string) []float64 {
 	t.Helper()
 	var out []float64
-	for _, batch := range frame.Batches {
+	for _, batch := range frame.batches() {
 		vector, err := batch.Float64(name)
 		if err != nil {
 			t.Fatal(err)
@@ -321,7 +321,7 @@ func frameFloat64Column(t *testing.T, frame Frame, name string) []float64 {
 func frameUint64Column(t *testing.T, frame Frame, name string) []uint64 {
 	t.Helper()
 	var out []uint64
-	for _, batch := range frame.Batches {
+	for _, batch := range frame.batches() {
 		vector, err := batch.Uint64(name)
 		if err != nil {
 			t.Fatal(err)
@@ -334,7 +334,7 @@ func frameUint64Column(t *testing.T, frame Frame, name string) []uint64 {
 func frameUint32Column(t *testing.T, frame Frame, name string) []uint32 {
 	t.Helper()
 	var out []uint32
-	for _, batch := range frame.Batches {
+	for _, batch := range frame.batches() {
 		vector, err := batch.Uint32(name)
 		if err != nil {
 			t.Fatal(err)

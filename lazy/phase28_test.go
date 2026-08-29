@@ -193,10 +193,10 @@ func TestOpaqueArrowSurvivesFilterTopKAndMaterialization(t *testing.T) {
 	if got := frameInt64Column(t, frame, "x"); !equalI64(got, []int64{4, 3}) {
 		t.Fatalf("x=%v", got)
 	}
-	if len(frame.Batches) != 1 {
-		t.Fatalf("batches=%d", len(frame.Batches))
+	if len(frame.batches()) != 1 {
+		t.Fatalf("batches=%d", len(frame.batches()))
 	}
-	o := frame.Batches[0].Opaque["nested"]
+	o := frame.batches()[0].Opaque["nested"]
 	if o == nil || !o.Owned {
 		t.Fatalf("nested opaque ownership=%+v", o)
 	}
@@ -222,7 +222,7 @@ func TestOpaqueArrowSurvivesFilterTopKAndMaterialization(t *testing.T) {
 func frameInt64Column(t *testing.T, f Frame, name string) []int64 {
 	t.Helper()
 	var out []int64
-	for _, b := range f.Batches {
+	for _, b := range f.batches() {
 		v, err := b.Int64(name)
 		if err != nil {
 			t.Fatal(err)
@@ -338,7 +338,7 @@ func TestAggregateCanFeedTopKAndLimit(t *testing.T) {
 func frameInt32Column(t *testing.T, f Frame, name string) []int32 {
 	t.Helper()
 	var out []int32
-	for _, b := range f.Batches {
+	for _, b := range f.batches() {
 		v, err := b.Int32(name)
 		if err != nil {
 			t.Fatal(err)

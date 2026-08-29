@@ -104,7 +104,7 @@ func TestLazyParallelRadixJoinExecutes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if frame.Rows != 3 {
-		t.Fatalf("rows=%d want=3", frame.Rows)
+	if frame.Height() != 3 {
+		t.Fatalf("rows=%d want=3", frame.Height())
 	}
 }

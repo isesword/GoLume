@@ -112,8 +112,8 @@ func BenchmarkPreparedRadixJoinKernelMode(b *testing.B) {
 				if err != nil {
 					b.Fatal(err)
 				}
-				if got.Rows != leftRows {
-					b.Fatalf("rows=%d want=%d", got.Rows, leftRows)
+				if got.Height() != leftRows {
+					b.Fatalf("rows=%d want=%d", got.Height(), leftRows)
 				}
 				_ = got.Close()
 			}
@@ -250,8 +250,8 @@ func BenchmarkJoinFramePreparationComparison(b *testing.B) {
 			if err != nil {
 				b.Fatal(err)
 			}
-			if frame.Rows != leftRows {
-				b.Fatalf("rows=%d want=%d", frame.Rows, leftRows)
+			if frame.Height() != leftRows {
+				b.Fatalf("rows=%d want=%d", frame.Height(), leftRows)
 			}
 		}
 	})
@@ -272,8 +272,8 @@ func BenchmarkJoinFramePreparationComparison(b *testing.B) {
 			if err != nil {
 				b.Fatal(err)
 			}
-			if frame.Rows != leftRows {
-				b.Fatalf("rows=%d want=%d", frame.Rows, leftRows)
+			if frame.Height() != leftRows {
+				b.Fatalf("rows=%d want=%d", frame.Height(), leftRows)
 			}
 		}
 	})

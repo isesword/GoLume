@@ -33,9 +33,9 @@ func TestLazyRegexFilterAndProjection(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer frame.Close()
-	if frame.Rows != 2 || len(frame.Batches) != 1 {
-		t.Fatalf("rows=%d batches=%d", frame.Rows, len(frame.Batches))
+	if frame.Height() != 2 || len(frame.batches()) != 1 {
+		t.Fatalf("rows=%d batches=%d", frame.Height(), len(frame.batches()))
 	}
-	phase33LazyRequireStrings(t, frame.Batches[0], "name", []string{"user", "语言"})
-	phase33LazyRequireStrings(t, frame.Batches[0], "id", []string{"42", "7"})
+	phase33LazyRequireStrings(t, frame.batches()[0], "name", []string{"user", "语言"})
+	phase33LazyRequireStrings(t, frame.batches()[0], "id", []string{"42", "7"})
 }

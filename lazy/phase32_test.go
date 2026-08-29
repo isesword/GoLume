@@ -55,8 +55,8 @@ func TestLazyStringTimestampAndDurationPipeline(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer frame.Close()
-	if frame.Rows != 1 {
-		t.Fatalf("rows=%d want 1", frame.Rows)
+	if frame.Height() != 1 {
+		t.Fatalf("rows=%d want 1", frame.Height())
 	}
 	for _, tt := range []struct {
 		name string
@@ -66,7 +66,7 @@ func TestLazyStringTimestampAndDurationPipeline(t *testing.T) {
 		{name: "duration", want: int64(time.Second)},
 		{name: "elapsed", want: 0},
 	} {
-		column, err := frame.Batches[0].Int64(tt.name)
+		column, err := frame.batches()[0].Int64(tt.name)
 		if err != nil {
 			t.Fatal(err)
 		}

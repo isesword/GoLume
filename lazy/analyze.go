@@ -153,8 +153,8 @@ func (f LazyFrame) Analyze(ctx context.Context) (AnalyzeReport, error) {
 	if err != nil {
 		return AnalyzeReport{}, err
 	}
-	report.OutputRows = frame.Rows
-	for _, batch := range frame.Batches {
+	report.OutputRows = frame.Height()
+	for _, batch := range frame.batches() {
 		report.MaterializedRows += batch.Rows
 	}
 	report.PrepareOperators = trace.Stats(observer.PhasePrepare)

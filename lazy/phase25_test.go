@@ -41,10 +41,10 @@ func TestLazySelectExprsCollectFrame(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if frame.Rows != 3 || len(frame.Schema.Fields) != 2 {
-		t.Fatalf("frame rows=%d schema=%v", frame.Rows, frame.Schema.Fields)
+	if frame.Height() != 3 || len(frame.Schema().Fields) != 2 {
+		t.Fatalf("frame rows=%d schema=%v", frame.Height(), frame.Schema().Fields)
 	}
-	v, _ := frame.Batches[0].Int64("total")
+	v, _ := frame.batches()[0].Int64("total")
 	if v.Values[0] != 11 || v.Values[2] != 33 {
 		t.Fatalf("total=%v", v.Values)
 	}
@@ -85,8 +85,8 @@ func TestLazyJoinCollectFrame(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if frame.Rows != 2 {
-		t.Fatalf("rows=%d", frame.Rows)
+	if frame.Height() != 2 {
+		t.Fatalf("rows=%d", frame.Height())
 	}
 }
 
@@ -115,8 +115,11 @@ func TestPreparedFrameReusesJoinBuildAndReleasesMemory(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if frame.Rows != 3 {
-			t.Fatalf("run %d rows=%d want=3", i, frame.Rows)
+		if frame.Height() != 3 {
+			t.Fatalf("run %d rows=%d want=3", i, frame.Height())
+		}
+		if err := frame.Close(); err != nil {
+			t.Fatal(err)
 		}
 	}
 	if err := prepared.Close(); err != nil {
@@ -148,8 +151,8 @@ func TestPreparedFrameConcurrentExecute(t *testing.T) {
 	for i := 0; i < 4; i++ {
 		go func() {
 			frame, err := prepared.Execute(context.Background())
-			if err == nil && frame.Rows != 3 {
-				err = fmt.Errorf("rows=%d want=3", frame.Rows)
+			if err == nil && frame.Height() != 3 {
+				err = fmt.Errorf("rows=%d want=3", frame.Height())
 			}
 			errCh <- err
 		}()
@@ -201,7 +204,7 @@ func TestPhysicalScanProjectionFallbackForGenericSource(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(frame.Batches) != 1 || len(frame.Batches[0].Int64s) != 1 || frame.Batches[0].Int64s["a"] == nil {
+	if len(frame.batches()) != 1 || len(frame.batches()[0].Int64s) != 1 || frame.batches()[0].Int64s["a"] == nil {
 		t.Fatalf("unexpected projected frame: %+v", frame)
 	}
 }
@@ -235,22 +238,22 @@ func TestLazyTypedExpressionsFloatStringDateTimestamp(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if frame.Rows != 2 {
-		t.Fatalf("rows=%d", frame.Rows)
+	if frame.Height() != 2 {
+		t.Fatalf("rows=%d", frame.Height())
 	}
-	fv, _ := frame.Batches[0].Float64("f2")
+	fv, _ := frame.batches()[0].Float64("f2")
 	if fv.Values[0] != 3 || fv.Values[1] != 4 {
 		t.Fatalf("f2=%v", fv.Values)
 	}
-	label, _ := frame.Batches[0].String("label")
+	label, _ := frame.batches()[0].String("label")
 	if string(label.ValueBytes(0)) != "b!" || string(label.ValueBytes(1)) != "c!" {
 		t.Fatalf("labels=%q,%q", label.ValueBytes(0), label.ValueBytes(1))
 	}
-	day, _ := frame.Batches[0].String("day_text")
+	day, _ := frame.batches()[0].String("day_text")
 	if string(day.ValueBytes(0)) != "20" || string(day.ValueBytes(1)) != "30" {
 		t.Fatalf("days=%q,%q", day.ValueBytes(0), day.ValueBytes(1))
 	}
-	ts, _ := frame.Batches[0].Int64("ts")
+	ts, _ := frame.batches()[0].Int64("ts")
 	if ts.Values[0] != 200 || ts.Values[1] != 300 {
 		t.Fatalf("ts=%v", ts.Values)
 	}

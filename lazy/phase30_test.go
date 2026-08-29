@@ -37,14 +37,14 @@ func TestLazyTimestampUnitsAndTemporalArithmetic(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer frame.Close()
-	if frame.Rows != 1 {
-		t.Fatalf("rows=%d", frame.Rows)
+	if frame.Height() != 1 {
+		t.Fatalf("rows=%d", frame.Height())
 	}
-	tomorrow, err := frame.Batches[0].Int32("tomorrow")
+	tomorrow, err := frame.batches()[0].Int32("tomorrow")
 	if err != nil {
 		t.Fatal(err)
 	}
-	previous, err := frame.Batches[0].Int64("previous_second")
+	previous, err := frame.batches()[0].Int64("previous_second")
 	if err != nil {
 		t.Fatal(err)
 	}

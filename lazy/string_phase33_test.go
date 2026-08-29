@@ -42,11 +42,11 @@ func TestLazyStringTransformsProjectAndFilter(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer frame.Close()
-	if frame.Rows != 2 || len(frame.Batches) != 1 {
-		t.Fatalf("rows=%d batches=%d", frame.Rows, len(frame.Batches))
+	if frame.Height() != 2 || len(frame.batches()) != 1 {
+		t.Fatalf("rows=%d batches=%d", frame.Height(), len(frame.batches()))
 	}
-	phase33LazyRequireStrings(t, frame.Batches[0], "replaced", []string{"Go文言", "Go文"})
-	phase33LazyRequireStrings(t, frame.Batches[0], "suffix", []string{"语言", "o语"})
+	phase33LazyRequireStrings(t, frame.batches()[0], "replaced", []string{"Go文言", "Go文"})
+	phase33LazyRequireStrings(t, frame.batches()[0], "suffix", []string{"语言", "o语"})
 	for _, column := range []struct {
 		name string
 		want []int64
@@ -54,7 +54,7 @@ func TestLazyStringTransformsProjectAndFilter(t *testing.T) {
 		{name: "position", want: []int64{2, 2}},
 		{name: "bytes", want: []int64{8, 5}},
 	} {
-		v, err := frame.Batches[0].Int64(column.name)
+		v, err := frame.batches()[0].Int64(column.name)
 		if err != nil {
 			t.Fatal(err)
 		}

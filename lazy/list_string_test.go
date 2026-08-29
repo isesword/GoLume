@@ -34,10 +34,10 @@ func TestLazyListStringSurvivesFilterSortLimitAndProjection(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer frame.Close()
-	if frame.Rows != 3 || len(frame.Batches) != 1 || frame.Schema.Fields[0].Type != memory.TypeList {
-		t.Fatalf("frame rows=%d batches=%d schema=%+v", frame.Rows, len(frame.Batches), frame.Schema.Fields)
+	if frame.Height() != 3 || len(frame.batches()) != 1 || frame.Schema().Fields[0].Type != memory.TypeList {
+		t.Fatalf("frame rows=%d batches=%d schema=%+v", frame.Height(), len(frame.batches()), frame.Schema().Fields)
 	}
-	v, err := frame.Batches[0].StringList("result")
+	v, err := frame.batches()[0].StringList("result")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -79,17 +79,17 @@ func TestLazyLeftJoinMaterializesListStringPayload(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer frame.Close()
-	if frame.Rows != 3 || len(frame.Batches) != 1 {
-		t.Fatalf("rows=%d batches=%d", frame.Rows, len(frame.Batches))
+	if frame.Height() != 3 || len(frame.batches()) != 1 {
+		t.Fatalf("rows=%d batches=%d", frame.Height(), len(frame.batches()))
 	}
-	if field, ok := frame.Schema.Field("tags"); !ok || !field.Nullable {
-		t.Fatalf("left-join list payload must become nullable: %+v", frame.Schema.Fields)
+	if field, ok := frame.Schema().Field("tags"); !ok || !field.Nullable {
+		t.Fatalf("left-join list payload must become nullable: %+v", frame.Schema().Fields)
 	}
-	keys, err := frame.Batches[0].Int32("k")
+	keys, err := frame.batches()[0].Int32("k")
 	if err != nil {
 		t.Fatal(err)
 	}
-	tags, err := frame.Batches[0].StringList("tags")
+	tags, err := frame.batches()[0].StringList("tags")
 	if err != nil {
 		t.Fatal(err)
 	}

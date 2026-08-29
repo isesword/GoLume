@@ -32,17 +32,17 @@ func TestPhase218ListExpressionsFlowThroughLazyFrame(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer frame.Close()
-	if frame.Rows != 2 || len(frame.Batches) != 1 {
-		t.Fatalf("frame rows=%d batches=%d", frame.Rows, len(frame.Batches))
+	if frame.Height() != 2 || len(frame.batches()) != 1 {
+		t.Fatalf("frame rows=%d batches=%d", frame.Height(), len(frame.batches()))
 	}
-	parts, err := frame.Batches[0].StringList("parts")
+	parts, err := frame.batches()[0].StringList("parts")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if start, end, ok := parts.ValueRange(0); !ok || end-start != 3 {
 		t.Fatalf("parts row 0 range=(%d,%d,%v)", start, end, ok)
 	}
-	words, err := frame.Batches[0].StringList("words")
+	words, err := frame.batches()[0].StringList("words")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -189,6 +189,16 @@
   admitted because `bytes.IndexByte` did not beat the scalar baseline by a
   stable margin on the validation host.
 
+### Phase 2.19 — DataFrame ergonomics
+
+- private owned `DataFrame` state with a compatibility `Frame` alias, safe
+  value copies, idempotent Close, and result memory charged until closure;
+- zero-copy borrowed Head/Tail/Slice views and typed chunked Series spanning
+  multiple physical batches;
+- explicit flattening APIs and a clearly slow `ToAnySlice` escape hatch;
+- bounded grapheme-aware display with stable NULL, empty string, empty list,
+  and nested NULL formatting.
+
 ## Next — richer analytical operators and calibrated planning
 
 Priority order:

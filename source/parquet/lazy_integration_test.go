@@ -42,14 +42,17 @@ func TestLazyParquetStringAndTemporalExpressions(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer result.Close()
-	if result.Rows != 1 {
-		t.Fatalf("rows=%d", result.Rows)
+	if result.Height() != 1 {
+		t.Fatalf("rows=%d", result.Height())
 	}
-	chars, _ := result.Batches[0].Int64("characters")
-	day, _ := result.Batches[0].Int64("day")
-	hour, _ := result.Batches[0].Int64("hour")
-	if chars.Values[0] != 4 || day.Values[0] != 29 || hour.Values[0] != 23 {
-		t.Fatalf("characters=%v day=%v hour=%v", chars.Values, day.Values, hour.Values)
+	characters, _ := result.Column("characters")
+	days, _ := result.Column("day")
+	hours, _ := result.Column("hour")
+	chars, _, _ := characters.CopyInt64()
+	day, _, _ := days.CopyInt64()
+	hour, _, _ := hours.CopyInt64()
+	if chars[0] != 4 || day[0] != 29 || hour[0] != 23 {
+		t.Fatalf("characters=%v day=%v hour=%v", chars, day, hour)
 	}
 }
 

@@ -2,7 +2,10 @@ module gocolumn
 
 go 1.27.0
 
-require github.com/apache/arrow-go/v18 v18.7.0
+require (
+	github.com/apache/arrow-go/v18 v18.7.0
+	github.com/rivo/uniseg v0.4.7
+)
 
 tool golang.org/x/perf/cmd/benchstat
 
