@@ -98,9 +98,29 @@ type PreparedFrame struct {
 	closed  bool
 }
 
-// PrepareFrame optimizes and lowers a row-producing LazyFrame. Aggregate plans
-// use Prepare instead because they terminate in the specialized hash aggregate
-// engine.
+// PreparedDataFrame is the primary name for a reusable DataFrame-producing
+// physical pipeline.
+type PreparedDataFrame = PreparedFrame
+
+// Prepare optimizes and lowers any row-producing plan, including a terminal
+// Aggregate, into a reusable DataFrame pipeline.
+func (f LazyFrame) Prepare(ctx context.Context) (*PreparedDataFrame, error) {
+	return f.PrepareFrame(ctx)
+}
+
+// Collect executes the lazy plan once and returns an owned DataFrame.
+func (f LazyFrame) Collect(ctx context.Context) (DataFrame, error) {
+	p, err := f.Prepare(ctx)
+	if err != nil {
+		return DataFrame{}, err
+	}
+	defer p.Close()
+	return p.Execute(ctx)
+}
+
+// PrepareFrame is a compatibility spelling of Prepare.
+//
+// Deprecated: use Prepare.
 func (f LazyFrame) PrepareFrame(ctx context.Context) (*PreparedFrame, error) {
 	prepared, _, _, err := f.prepareFrame(ctx)
 	return prepared, err
@@ -120,9 +140,6 @@ func (f LazyFrame) prepareFrame(ctx context.Context) (*PreparedFrame, logical.Pl
 	physicalPlan, report, err := applyPushdown(ctx, optimized.Plan)
 	if err != nil {
 		return nil, nil, source.PushdownReport{}, err
-	}
-	if _, ok := physicalPlan.(*logical.Aggregate); ok {
-		return nil, nil, source.PushdownReport{}, fmt.Errorf("aggregate plans use Prepare, not PrepareFrame")
 	}
 	src, pending, closers, err := lowerSourcePipeline(ctx, physicalPlan, f.session.engine.Memory(), f.session.engine.KernelSet(), f.session.engine)
 	if err != nil {
@@ -150,7 +167,9 @@ func (f LazyFrame) prepareFrame(ctx context.Context) (*PreparedFrame, logical.Pl
 	return &PreparedFrame{src: src, parts: parts, schema: src.Schema(), kernels: f.session.engine.KernelSet(), manager: f.session.engine.Memory(), closers: closers}, physicalPlan, report, nil
 }
 
-// CollectFrame prepares and executes a row-producing lazy plan once.
+// CollectFrame is a compatibility spelling of Collect.
+//
+// Deprecated: use Collect.
 func (f LazyFrame) CollectFrame(ctx context.Context) (Frame, error) {
 	p, err := f.PrepareFrame(ctx)
 	if err != nil {

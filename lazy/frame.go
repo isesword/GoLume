@@ -165,11 +165,15 @@ func DescExprNullsFirst(value expr.Expr) SortExpr {
 	return SortExpr{Expr: value, Descending: true}
 }
 
-// Prepared is a lazily compiled physical query with reusable engine workspaces.
-type Prepared struct {
+// PreparedResult is a specialized aggregate query with reusable engine
+// workspaces and execution diagnostics.
+type PreparedResult struct {
 	query   *engine.PreparedQuery
 	closers []io.Closer
 }
+
+// Prepared is a deprecated compatibility alias for PreparedResult.
+type Prepared = PreparedResult
 
 // Col constructs a logical column reference for fluent lazy expressions.
 func Col(name string) expr.Column { return expr.Col(name) }
@@ -592,20 +596,20 @@ func closeClosers(closers []io.Closer) {
 	}
 }
 
-// Prepare optimizes the logical plan, applies source pushdown, and creates a
-// reusable physical query. The caller must close the returned Prepared value.
-func (f LazyFrame) Prepare(ctx context.Context, opts engine.PrepareOptions) (*Prepared, error) {
+// PrepareResult creates the legacy specialized aggregate query. New code that
+// needs a DataFrame should use Prepare.
+func (f LazyFrame) PrepareResult(ctx context.Context, opts engine.PrepareOptions) (*PreparedResult, error) {
 	query, _, _, closers, err := f.prepare(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	return &Prepared{query: query, closers: closers}, nil
+	return &PreparedResult{query: query, closers: closers}, nil
 }
 
-// Collect optimizes and executes the lazy plan once, materializing grouped
-// output rows. Repeated workloads should use Prepare instead.
-func (f LazyFrame) Collect(ctx context.Context) (engine.Result, error) {
-	prepared, err := f.Prepare(ctx, engine.PrepareOptions{})
+// CollectResult executes the legacy specialized aggregate path and returns
+// engine diagnostics. New code should use Collect for ordinary DataFrames.
+func (f LazyFrame) CollectResult(ctx context.Context) (engine.Result, error) {
+	prepared, err := f.PrepareResult(ctx, engine.PrepareOptions{})
 	if err != nil {
 		return engine.Result{}, err
 	}
@@ -614,7 +618,7 @@ func (f LazyFrame) Collect(ctx context.Context) (engine.Result, error) {
 }
 
 // Execute runs the prepared physical plan with caller-selected materialization.
-func (p *Prepared) Execute(ctx context.Context, opts engine.ExecuteOptions) (engine.Result, error) {
+func (p *PreparedResult) Execute(ctx context.Context, opts engine.ExecuteOptions) (engine.Result, error) {
 	if p == nil || p.query == nil {
 		return engine.Result{}, fmt.Errorf("lazy prepared query is nil")
 	}
@@ -622,7 +626,7 @@ func (p *Prepared) Execute(ctx context.Context, opts engine.ExecuteOptions) (eng
 }
 
 // Plan returns diagnostics from the underlying physical prepared query.
-func (p *Prepared) Plan() engine.PlanInfo {
+func (p *PreparedResult) Plan() engine.PlanInfo {
 	if p == nil || p.query == nil {
 		return engine.PlanInfo{}
 	}
@@ -630,7 +634,7 @@ func (p *Prepared) Plan() engine.PlanInfo {
 }
 
 // Close releases retained workspaces owned by the prepared query.
-func (p *Prepared) Close() error {
+func (p *PreparedResult) Close() error {
 	if p == nil {
 		return nil
 	}

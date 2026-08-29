@@ -39,7 +39,7 @@ func TestLazyArrowRecordBatchAggregatePushdown(t *testing.T) {
 	if !strings.Contains(physical, "row_groups=1/2") && !strings.Contains(physical, "partitions=1/2") {
 		t.Fatalf("expected Arrow RecordBatch pruning in physical explain:\n%s", physical)
 	}
-	res, err := lf.Collect(context.Background())
+	res, err := lf.CollectResult(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}

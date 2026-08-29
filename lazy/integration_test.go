@@ -52,7 +52,7 @@ func TestLazyParquetAggregateEndToEnd(t *testing.T) {
 		t.Fatalf("physical explain missing projection report:\n%s", physical)
 	}
 
-	result, err := frame.Collect(context.Background())
+	result, err := frame.CollectResult(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -74,7 +74,7 @@ func TestLazyPreparedRepeatedExecution(t *testing.T) {
 		Filter(Col("pred").Gt(Lit(32767))).
 		GroupBy("key").
 		Agg(Sum("value", "sum"), Count("count"))
-	prepared, err := frame.Prepare(context.Background(), engine.PrepareOptions{MaxConcurrency: 2})
+	prepared, err := frame.PrepareResult(context.Background(), engine.PrepareOptions{MaxConcurrency: 2})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -117,7 +117,7 @@ func TestLazyRowGroupPruningEndToEnd(t *testing.T) {
 	if strings.Contains(physical, "columns=[pred, key, value, unused]") {
 		t.Fatalf("unused column survived physical projection:\n%s", physical)
 	}
-	result, err := frame.Collect(context.Background())
+	result, err := frame.CollectResult(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -215,7 +215,7 @@ func TestLazyAggregateWithoutFilter(t *testing.T) {
 	session := NewSession(opts)
 	defer session.Close()
 	frame := session.FromSource(src).GroupBy("key").Agg(Count("rows"))
-	result, err := frame.Collect(context.Background())
+	result, err := frame.CollectResult(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}

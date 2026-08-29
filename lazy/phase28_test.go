@@ -270,7 +270,7 @@ func TestRuntimeFeedbackRefinesSubsequentPrepare(t *testing.T) {
 	s := NewSession(engine.DefaultOptions())
 	defer s.Close()
 	lf := s.FromSource(src).Filter(Col("pred").Gt(Lit(9))).GroupBy("key").Agg(Sum("value", "sum"), Count("count"))
-	p1, err := lf.Prepare(context.Background(), engine.PrepareOptions{})
+	p1, err := lf.PrepareResult(context.Background(), engine.PrepareOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -286,7 +286,7 @@ func TestRuntimeFeedbackRefinesSubsequentPrepare(t *testing.T) {
 	}
 	p1.Close()
 
-	p2, err := lf.Prepare(context.Background(), engine.PrepareOptions{})
+	p2, err := lf.PrepareResult(context.Background(), engine.PrepareOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -387,7 +387,7 @@ func TestRuntimeFeedbackChangesCostModelStrategy(t *testing.T) {
 	defer s.Close()
 	lf := s.FromSource(src).GroupBy("key").Agg(Sum("value", "sum"), Count("count"))
 
-	p1, err := lf.Prepare(context.Background(), engine.PrepareOptions{})
+	p1, err := lf.PrepareResult(context.Background(), engine.PrepareOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -406,7 +406,7 @@ func TestRuntimeFeedbackChangesCostModelStrategy(t *testing.T) {
 	}
 	p1.Close()
 
-	p2, err := lf.Prepare(context.Background(), engine.PrepareOptions{})
+	p2, err := lf.PrepareResult(context.Background(), engine.PrepareOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -437,7 +437,7 @@ func TestExplicitHintsOverrideRuntimeFeedback(t *testing.T) {
 	defer s.Close()
 	base := s.FromSource(src).Filter(Col("pred").Gt(Lit(3)))
 	lf := base.GroupBy("key").Agg(Count("count"))
-	p1, err := lf.Prepare(context.Background(), engine.PrepareOptions{})
+	p1, err := lf.PrepareResult(context.Background(), engine.PrepareOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -448,7 +448,7 @@ func TestExplicitHintsOverrideRuntimeFeedback(t *testing.T) {
 	p1.Close()
 
 	hinted := base.WithHints(expr.Hints{Selectivity: 0.25, Cardinality: 50000}).GroupBy("key").Agg(Count("count"))
-	p2, err := hinted.Prepare(context.Background(), engine.PrepareOptions{})
+	p2, err := hinted.PrepareResult(context.Background(), engine.PrepareOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}

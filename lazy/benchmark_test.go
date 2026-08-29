@@ -41,7 +41,7 @@ func benchmarkPreparedLazyParquet(b *testing.B, mode kernel.Mode) {
 		WithHints(expr.Hints{Selectivity: .451, Cardinality: 1 << 18, ForceStrategy: "radix", ForceWorkerCount: 4}).
 		GroupBy("key").
 		Agg(Sum("value", "sum"), Count("count"))
-	prepared, err := frame.Prepare(context.Background(), engine.PrepareOptions{MaxConcurrency: 1})
+	prepared, err := frame.PrepareResult(context.Background(), engine.PrepareOptions{MaxConcurrency: 1})
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -174,7 +174,7 @@ func BenchmarkPreparedExecutionLayerComparison(b *testing.B) {
 			b.Fatal(err)
 		}
 		frame = frame.Filter(Col("pred").Gt(Lit(32767))).WithHints(query.Hints).GroupBy("key").Agg(Sum("value", "sum"), Count("count"))
-		prepared, err := frame.Prepare(ctx, engine.PrepareOptions{})
+		prepared, err := frame.PrepareResult(ctx, engine.PrepareOptions{})
 		if err != nil {
 			b.Fatal(err)
 		}

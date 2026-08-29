@@ -20,7 +20,7 @@ func TestLazyWithColumnsComputedFilterAggregate(t *testing.T) {
 	s := NewSession(engine.DefaultOptions())
 	defer s.Close()
 	lf := s.FromSource(src).WithColumns(Col("a").Mul(Lit(2)).Add(Col("b")).Alias("score")).Filter(Col("score").Gt(Lit(8))).GroupBy("k").Agg(Sum("score", "sum"), Count("count"))
-	res, err := lf.Collect(context.Background())
+	res, err := lf.CollectResult(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -67,7 +67,7 @@ func TestLazyJoinThenFilterProjectionAggregate(t *testing.T) {
 	defer s.Close()
 	lf := s.FromSource(left).Join(s.FromSource(right), JoinOptions{Type: InnerJoin, LeftOn: []string{"id"}, RightOn: []string{"id"}}).
 		WithColumns(Col("amount").Add(Col("bonus")).Alias("total")).Filter(Col("total").Gt(Lit(25))).GroupBy("id").Agg(Sum("total", "sum"), Count("count"))
-	res, err := lf.Collect(context.Background())
+	res, err := lf.CollectResult(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -61,7 +61,7 @@ func main() {
 	fmt.Println("--- physical ---")
 	fmt.Println(physical)
 
-	prepared, err := frame.Prepare(ctx, engine.PrepareOptions{MaxConcurrency: 1})
+	prepared, err := frame.PrepareResult(ctx, engine.PrepareOptions{MaxConcurrency: 1})
 	if err != nil {
 		log.Fatal(err)
 	}

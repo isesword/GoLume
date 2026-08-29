@@ -199,6 +199,15 @@
 - bounded grapheme-aware display with stable NULL, empty string, empty list,
   and nested NULL formatting.
 
+### Phase 2.20 — unified DataFrame collection
+
+- `Collect` and `Prepare` now produce DataFrame results for row and terminal
+  aggregate plans through one columnar source pipeline;
+- the specialized aggregate diagnostic API remains available as
+  `CollectResult` and `PrepareResult`;
+- deprecated `CollectFrame` and `PrepareFrame` spellings preserve a migration
+  window while the old `Collect` return type intentionally changes.
+
 ## Next — richer analytical operators and calibrated planning
 
 Priority order:
