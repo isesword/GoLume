@@ -177,13 +177,27 @@
 - no new Auto-SIMD kernel for source-time offset validation or irregular
   variable-length gather; single-byte Split scanning remains benchmark-gated.
 
+### Phase 2.18 — list-producing string expressions
+
+- row-dependent UTF-8 `Split`, including NULL propagation, empty-element
+  preservation, and Unicode code-point behavior for an empty delimiter;
+- literal-pattern, capture-aware `RegexExtractAll`, preserving NULL optional
+  captures and distinguishing no matches from a NULL input;
+- fused `StringListVector` output with projection CSE, checked uint32 bounds,
+  and session-budgeted workspace growth;
+- a reproducible single-byte scanner benchmark; no custom Auto-SIMD kernel was
+  admitted because `bytes.IndexByte` did not beat the scalar baseline by a
+  stable margin on the validation host.
+
 ## Next — richer analytical operators and calibrated planning
 
 Priority order:
 
-1. **String advanced layer**
-   - Phase 2.18: literal `Split` and capture-aware `RegexExtractAll` returning
-     `List<String>`;
+1. **DataFrame result layer**
+   - Phase 2.19: owned `DataFrame`, borrowed views, typed chunked `Series`, and
+     bounded display;
+   - Phase 2.20: unified DataFrame `Collect` and aggregate-result compatibility;
+   - Phase 2.21: bounded Struct vectors and explicit-schema JSON decoding;
    - JSON only after Struct/Map vectors and output schema contracts exist;
    - normalization, case-folding, and collation only with a coherent
      equality/grouping/sorting policy.

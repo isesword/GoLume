@@ -1,6 +1,8 @@
 package expr
 
 import (
+	"bytes"
+	"context"
 	"fmt"
 	"gocolumn/kernel"
 	"gocolumn/memory"
@@ -89,12 +91,53 @@ type scalarRegister struct {
 	i64lit   int64
 	f64lit   float64
 	strlit   string
+	charged  int64
+	reserve  func(int64) error
 }
 
 // ScalarWorkspace retains typed scalar registers across source reads. Column
 // registers borrow input slices; computed registers retain their own buffers.
 type ScalarWorkspace struct {
-	regs []scalarRegister
+	regs         []scalarRegister
+	ctx          context.Context
+	manager      memory.Manager
+	reservations []memory.Reservation
+}
+
+// SetMemoryManager configures memory accounting for subsequently grown
+// computed registers. Existing reservations remain charged until Close.
+func (w *ScalarWorkspace) SetMemoryManager(ctx context.Context, manager memory.Manager) {
+	w.ctx = ctx
+	w.manager = manager
+}
+
+// Close releases every memory reservation retained by the workspace.
+func (w *ScalarWorkspace) Close() error {
+	for i := len(w.reservations) - 1; i >= 0; i-- {
+		w.reservations[i].Release()
+	}
+	w.reservations = nil
+	for i := range w.regs {
+		w.regs[i].charged = 0
+		w.regs[i].reserve = nil
+	}
+	return nil
+}
+
+func (w *ScalarWorkspace) reserve(bytes int64) error {
+	if bytes <= 0 || w.manager == nil {
+		return nil
+	}
+	ctx := w.ctx
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	r, err := w.manager.Reserve(ctx, bytes)
+	if err != nil {
+		return err
+	}
+	w.reservations = append(w.reservations, r)
+	return nil
 }
 
 // Ensure sizes scalar registers for one execution while retaining computed
@@ -110,9 +153,9 @@ func (w *ScalarWorkspace) Ensure(_ int, regs int) {
 		r.typ = memory.TypeInvalid
 		r.strView = nil
 		r.strDict = nil
-		r.strList = nil
 		r.constant = false
 		r.strlit = ""
+		r.reserve = w.reserve
 	}
 }
 
@@ -215,7 +258,7 @@ func (c *scalarCompiler) compile(e Expr) (int, TypeInfo, error) {
 		if err != nil {
 			return 0, TypeInfo{}, err
 		}
-		if n.Op == OpRegexExtract {
+		if n.Op == OpRegexExtract || n.Op == OpRegexExtractAll {
 			pattern := n.First.(StringLiteral)
 			group := n.Second.(Int64Literal)
 			in = ScalarInstruction{Code: scalarTernary, Op: n.Op, Type: info.Type, A: a, B: -1, C: -1}
@@ -646,6 +689,9 @@ func ensureOffsets(r *scalarRegister, rows int) []uint32 {
 
 func evalBinary(out, a, b *scalarRegister, op Op, result memory.DataType, rows int, kernels kernel.Set) error {
 	combineValidity(out, a, b, rows)
+	if op == OpSplit {
+		return evalStringSplit(out, a, b, rows)
+	}
 	if op == OpFind {
 		return evalStringFind(out, a, b, rows)
 	}
@@ -1093,6 +1139,9 @@ func evalStringFind(out, value, needle *scalarRegister, rows int) error {
 
 func evalTernary(out, value, first, second *scalarRegister, in ScalarInstruction, rows int) error {
 	op := in.Op
+	if op == OpRegexExtractAll {
+		return evalRegexExtractAll(out, value, in, rows)
+	}
 	if out.typ != memory.TypeString {
 		return fmt.Errorf("%s result type %s is not string", op, out.typ)
 	}
@@ -1168,6 +1217,234 @@ func evalTernary(out, value, first, second *scalarRegister, in ScalarInstruction
 			}
 		}
 		offsets[row+1] = uint32(len(out.data))
+	}
+	return nil
+}
+
+func resetStringListResult(out *scalarRegister, rows, children, dataBytes int, childNullable bool) (*memory.StringListVector, error) {
+	bytesNeeded := int64(rows+1)*4 + int64(children+1)*4 + int64(dataBytes)
+	bytesNeeded += int64(memory.WordsFor(rows)) * 8
+	if childNullable {
+		bytesNeeded += int64(memory.WordsFor(children)) * 8
+	}
+	if bytesNeeded > out.charged && out.reserve != nil {
+		if err := out.reserve(bytesNeeded - out.charged); err != nil {
+			return nil, err
+		}
+		out.charged = bytesNeeded
+	}
+	list := out.strList
+	if list == nil {
+		list = &memory.StringListVector{}
+		out.strList = list
+	}
+	if cap(list.Offsets) < rows+1 {
+		list.Offsets = make([]uint32, rows+1)
+	} else {
+		list.Offsets = list.Offsets[:rows+1]
+		clear(list.Offsets)
+	}
+	list.Validity = out.validity
+	list.Encoding = memory.EncodingView
+	if list.Values == nil {
+		list.Values = &memory.StringViewVector{}
+	}
+	child := list.Values
+	if cap(child.Offsets) == 0 {
+		child.Offsets = make([]uint32, 1, children+1)
+	} else {
+		if cap(child.Offsets) < children+1 {
+			child.Offsets = make([]uint32, 1, children+1)
+		} else {
+			child.Offsets = child.Offsets[:1]
+		}
+		child.Offsets[0] = 0
+	}
+	if cap(child.Data) < dataBytes {
+		child.Data = make([]byte, 0, dataBytes)
+	} else {
+		child.Data = child.Data[:0]
+	}
+	if childNullable {
+		child.Validity = memory.EnsureBitmap(child.Validity, children)
+	} else {
+		child.Validity = child.Validity[:0]
+	}
+	child.Encoding = memory.EncodingView
+	return list, nil
+}
+
+func appendStringListElement(list *memory.StringListVector, value []byte, valid bool, op Op, row int) error {
+	child := list.Values
+	childRow := len(child.Offsets) - 1
+	if childRow >= math.MaxUint32 {
+		return fmt.Errorf("%s list result exceeds uint32 elements at row %d", op, row)
+	}
+	if !valid {
+		if len(child.Validity) == 0 {
+			child.Validity = memory.EnsureBitmap(child.Validity, childRow+1)
+			for i := 0; i < childRow; i++ {
+				memory.Set(child.Validity, i)
+			}
+		} else if memory.WordsFor(childRow+1) > len(child.Validity) {
+			grown := make(memory.Bitmap, memory.WordsFor(childRow+1))
+			copy(grown, child.Validity)
+			child.Validity = grown
+		}
+	} else {
+		if len(child.Validity) != 0 {
+			if memory.WordsFor(childRow+1) > len(child.Validity) {
+				grown := make(memory.Bitmap, memory.WordsFor(childRow+1))
+				copy(grown, child.Validity)
+				child.Validity = grown
+			}
+			memory.Set(child.Validity, childRow)
+		}
+		if err := appendStringResult(&child.Data, value, op, row); err != nil {
+			return err
+		}
+	}
+	child.Offsets = append(child.Offsets, uint32(len(child.Data)))
+	return nil
+}
+
+func evalStringSplit(out, value, delimiter *scalarRegister, rows int) error {
+	if out.typ != memory.TypeList {
+		return fmt.Errorf("SPLIT result type %s is not list", out.typ)
+	}
+	children, dataBytes := 0, 0
+	for row := 0; row < rows; row++ {
+		if !isValidRegister(out, row) {
+			continue
+		}
+		input, err := registerString(value, row)
+		if err != nil {
+			return err
+		}
+		sep, err := registerString(delimiter, row)
+		if err != nil {
+			return err
+		}
+		dataBytes += len(input)
+		if dataBytes < 0 || uint64(dataBytes) > math.MaxUint32 {
+			return fmt.Errorf("SPLIT string result exceeds 4 GiB at row %d", row)
+		}
+		if len(sep) == 0 {
+			children += utf8.RuneCount(input)
+		} else {
+			children += bytes.Count(input, sep) + 1
+			dataBytes -= bytes.Count(input, sep) * len(sep)
+		}
+		if uint64(children) > math.MaxUint32 {
+			return fmt.Errorf("SPLIT list result exceeds uint32 elements at row %d", row)
+		}
+	}
+	list, err := resetStringListResult(out, rows, children, dataBytes, false)
+	if err != nil {
+		return err
+	}
+	for row := 0; row < rows; row++ {
+		if !isValidRegister(out, row) {
+			list.Offsets[row+1] = uint32(list.Values.Len())
+			continue
+		}
+		input, err := registerString(value, row)
+		if err != nil {
+			return err
+		}
+		sep, err := registerString(delimiter, row)
+		if err != nil {
+			return err
+		}
+		if len(sep) == 0 {
+			for len(input) > 0 {
+				_, width := utf8.DecodeRune(input)
+				if err := appendStringListElement(list, input[:width], true, OpSplit, row); err != nil {
+					return err
+				}
+				input = input[width:]
+			}
+		} else {
+			for {
+				at := indexSplitDelimiter(input, sep)
+				if at < 0 {
+					if err := appendStringListElement(list, input, true, OpSplit, row); err != nil {
+						return err
+					}
+					break
+				}
+				if err := appendStringListElement(list, input[:at], true, OpSplit, row); err != nil {
+					return err
+				}
+				input = input[at+len(sep):]
+			}
+		}
+		list.Offsets[row+1] = uint32(list.Values.Len())
+	}
+	return nil
+}
+
+func indexSplitDelimiter(value, delimiter []byte) int {
+	if len(delimiter) == 1 {
+		return bytes.IndexByte(value, delimiter[0])
+	}
+	return bytes.Index(value, delimiter)
+}
+
+func evalRegexExtractAll(out, value *scalarRegister, in ScalarInstruction, rows int) error {
+	if out.typ != memory.TypeList || in.Regex == nil {
+		return fmt.Errorf("REGEX_EXTRACT_ALL has invalid compiled result")
+	}
+	copyRegisterValidity(out, value, rows)
+	children, dataBytes := 0, 0
+	childNullable := false
+	for row := 0; row < rows; row++ {
+		if !isValidRegister(out, row) {
+			continue
+		}
+		input, err := registerString(value, row)
+		if err != nil {
+			return err
+		}
+		capture := in.RegexGroup * 2
+		for _, match := range in.Regex.FindAllSubmatchIndex(input, -1) {
+			children++
+			if capture+1 >= len(match) || match[capture] < 0 {
+				childNullable = true
+				continue
+			}
+			dataBytes += match[capture+1] - match[capture]
+		}
+		if uint64(children) > math.MaxUint32 || uint64(dataBytes) > math.MaxUint32 {
+			return fmt.Errorf("REGEX_EXTRACT_ALL result exceeds uint32 bounds at row %d", row)
+		}
+	}
+	list, err := resetStringListResult(out, rows, children, dataBytes, childNullable)
+	if err != nil {
+		return err
+	}
+	for row := 0; row < rows; row++ {
+		if !isValidRegister(out, row) {
+			list.Offsets[row+1] = uint32(list.Values.Len())
+			continue
+		}
+		input, err := registerString(value, row)
+		if err != nil {
+			return err
+		}
+		matches := in.Regex.FindAllSubmatchIndex(input, -1)
+		capture := in.RegexGroup * 2
+		for _, match := range matches {
+			valid := capture+1 < len(match) && match[capture] >= 0
+			var captured []byte
+			if valid {
+				captured = input[match[capture]:match[capture+1]]
+			}
+			if err := appendStringListElement(list, captured, valid, OpRegexExtractAll, row); err != nil {
+				return err
+			}
+		}
+		list.Offsets[row+1] = uint32(list.Values.Len())
 	}
 	return nil
 }

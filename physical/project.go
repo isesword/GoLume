@@ -18,6 +18,7 @@ type ProjectSource struct {
 	named        []expr.NamedExpr
 	program      expr.ProjectionProgram
 	includeInput bool
+	manager      memory.Manager
 }
 
 // DropColumnsSource removes internal columns without evaluating or copying the
@@ -120,7 +121,7 @@ func (s *DropColumnsSource) Dictionary(ctx context.Context, column string) (sour
 // NewProjectSource compiles named scalar expressions against input. When
 // includeInput is true, input fields are retained and aliases replace matching
 // columns; otherwise only the named expressions are exposed.
-func NewProjectSource(input source.Source, named []expr.NamedExpr, includeInput bool) (*ProjectSource, error) {
+func NewProjectSource(input source.Source, named []expr.NamedExpr, includeInput bool, managers ...memory.Manager) (*ProjectSource, error) {
 	if input == nil {
 		return nil, fmt.Errorf("physical projection input is nil")
 	}
@@ -162,6 +163,12 @@ func NewProjectSource(input source.Source, named []expr.NamedExpr, includeInput 
 			field = memory.Field{Name: name, Type: info.Type, Nullable: info.Nullable, Encoding: memory.EncodingPlain}
 			if info.Type == memory.TypeString || info.Type == memory.TypeBinary {
 				field.Encoding = memory.EncodingView
+			} else if info.Type == memory.TypeList {
+				elementNullable := false
+				if ternary, ok := n.Expr.(expr.Ternary); ok && ternary.Op == expr.OpRegexExtractAll {
+					elementNullable = true
+				}
+				field = memory.ListStringField(name, info.Nullable, elementNullable)
 			}
 		}
 		if pos, exists := positions[name]; exists {
@@ -175,12 +182,17 @@ func NewProjectSource(input source.Source, named []expr.NamedExpr, includeInput 
 	if err != nil {
 		return nil, err
 	}
+	var manager memory.Manager
+	if len(managers) != 0 {
+		manager = managers[0]
+	}
 	return &ProjectSource{
 		input:        input,
 		schema:       memory.NewSchema(fields...),
 		named:        append([]expr.NamedExpr(nil), named...),
 		program:      program,
 		includeInput: includeInput,
+		manager:      manager,
 	}, nil
 }
 
@@ -216,13 +228,17 @@ type projectReader struct {
 }
 
 // Close releases the child reader.
-func (r *projectReader) Close() error { return r.child.Close() }
+func (r *projectReader) Close() error {
+	_ = r.workspace.Close()
+	return r.child.Close()
+}
 
 // ReadPartition evaluates the fused projection program for one child partition.
 func (r *projectReader) ReadPartition(ctx context.Context, p source.Partition, dst *memory.Batch) error {
 	if err := r.child.ReadPartition(ctx, p, r.input); err != nil {
 		return err
 	}
+	r.workspace.SetMemoryManager(ctx, r.owner.manager)
 	values, err := r.owner.program.Evaluate(r.input, &r.workspace, r.kernels)
 	if err != nil {
 		return err

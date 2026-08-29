@@ -259,6 +259,14 @@ func RegexExtract(value, pattern, group expr.Expr) expr.Ternary {
 	return expr.RegexExtract(value, pattern, group)
 }
 
+// Split separates value using a possibly row-dependent delimiter.
+func Split(value, delimiter expr.Expr) expr.Binary { return expr.Split(value, delimiter) }
+
+// RegexExtractAll returns one capture per regular-expression match.
+func RegexExtractAll(value, pattern, group expr.Expr) expr.Ternary {
+	return expr.RegexExtractAll(value, pattern, group)
+}
+
 // Year extracts the UTC calendar year from a date or timestamp.
 func Year(value expr.Expr) expr.Unary { return expr.Year(value) }
 
@@ -1000,7 +1008,7 @@ func lowerSourcePipeline(ctx context.Context, plan logical.Plan, manager memory.
 			named = append(named, expr.Named(expr.Col(name), name))
 		}
 		childID := profileSourceID(src)
-		projected, err := physical.NewProjectSource(src, named, false)
+		projected, err := physical.NewProjectSource(src, named, false, manager)
 		if err != nil {
 			return nil, nil, closers, err
 		}
@@ -1019,7 +1027,7 @@ func lowerSourcePipeline(ctx context.Context, plan logical.Plan, manager memory.
 			src = profileSource(ctx, src, "filter", "residual filter", childID)
 		}
 		childID := profileSourceID(src)
-		projected, err := physical.NewProjectSource(src, n.Exprs, n.IncludeInput)
+		projected, err := physical.NewProjectSource(src, n.Exprs, n.IncludeInput, manager)
 		if err != nil {
 			return nil, nil, closers, err
 		}

@@ -52,6 +52,8 @@ const (
 	OpSlice
 	OpRegexMatch
 	OpRegexExtract
+	OpSplit
+	OpRegexExtractAll
 )
 
 // Expr is a logical scalar expression node.
@@ -290,6 +292,10 @@ func (o Op) String() string {
 		return "REGEX_MATCH"
 	case OpRegexExtract:
 		return "REGEX_EXTRACT"
+	case OpSplit:
+		return "SPLIT"
+	case OpRegexExtractAll:
+		return "REGEX_EXTRACT_ALL"
 	default:
 		return "?"
 	}
@@ -486,6 +492,20 @@ func RegexExtract(value, pattern, group Expr) Ternary {
 	return Ternary{Op: OpRegexExtract, Value: value, First: pattern, Second: group}
 }
 
+// Split separates value using a possibly row-dependent literal delimiter and
+// returns List<String>. NULL propagates from either operand. An empty delimiter
+// splits a non-empty value into Unicode code points.
+func Split(value, delimiter Expr) Binary {
+	return Binary{Op: OpSplit, Left: value, Right: delimiter}
+}
+
+// RegexExtractAll returns one element for every regular-expression match.
+// Pattern and group must be literals. An unmatched optional capture produces
+// a NULL child element while no matches produce a valid empty list.
+func RegexExtractAll(value, pattern, group Expr) Ternary {
+	return Ternary{Op: OpRegexExtractAll, Value: value, First: pattern, Second: group}
+}
+
 // Year extracts the UTC calendar year from a date or timestamp.
 func Year(value Expr) Unary { return Unary{Op: OpYear, Value: value} }
 
@@ -570,6 +590,14 @@ func (c Column) Slice(offset, length Expr) Ternary { return Slice(c, offset, len
 // RegexExtract returns a capture from the first regular-expression match.
 func (c Column) RegexExtract(pattern, group Expr) Ternary {
 	return RegexExtract(c, pattern, group)
+}
+
+// Split separates c using delimiter and returns List<String>.
+func (c Column) Split(delimiter Expr) Binary { return Split(c, delimiter) }
+
+// RegexExtractAll returns all captures of group from c.
+func (c Column) RegexExtractAll(pattern, group Expr) Ternary {
+	return RegexExtractAll(c, pattern, group)
 }
 
 // Year extracts the UTC calendar year from a date or timestamp.

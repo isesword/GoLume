@@ -96,6 +96,11 @@ func InferScalarType(schema memory.Schema, e Expr) (TypeInfo, error) {
 				return TypeInfo{}, fmt.Errorf("FIND requires string operands, got %s and %s", left.Type, right.Type)
 			}
 			return TypeInfo{Type: memory.TypeInt64, Nullable: nullable}, nil
+		case OpSplit:
+			if left.Type != memory.TypeString || right.Type != memory.TypeString {
+				return TypeInfo{}, fmt.Errorf("SPLIT requires string value and delimiter, got %s and %s", left.Type, right.Type)
+			}
+			return TypeInfo{Type: memory.TypeList, Nullable: nullable}, nil
 		case OpContains, OpStartsWith, OpEndsWith, OpRegexMatch:
 			return TypeInfo{}, fmt.Errorf("operator %s is a filter predicate and cannot be projected", n.Op)
 		default:
@@ -154,20 +159,23 @@ func InferScalarType(schema memory.Schema, e Expr) (TypeInfo, error) {
 				return TypeInfo{}, fmt.Errorf("SLICE requires string value and signed integer offset/length, got %s, %s, and %s", value.Type, first.Type, second.Type)
 			}
 			return TypeInfo{Type: memory.TypeString, Nullable: nullable}, nil
-		case OpRegexExtract:
+		case OpRegexExtract, OpRegexExtractAll:
 			if value.Type != memory.TypeString || first.Type != memory.TypeString || !isSignedInteger(second.Type) {
-				return TypeInfo{}, fmt.Errorf("REGEX_EXTRACT requires string value, string-literal pattern, and int64-literal group; got %s, %s, and %s", value.Type, first.Type, second.Type)
+				return TypeInfo{}, fmt.Errorf("%s requires string value, string-literal pattern, and int64-literal group; got %s, %s, and %s", n.Op, value.Type, first.Type, second.Type)
 			}
 			pattern, ok := n.First.(StringLiteral)
 			if !ok {
-				return TypeInfo{}, fmt.Errorf("REGEX_EXTRACT pattern must be a string literal")
+				return TypeInfo{}, fmt.Errorf("%s pattern must be a string literal", n.Op)
 			}
 			group, ok := n.Second.(Int64Literal)
 			if !ok {
-				return TypeInfo{}, fmt.Errorf("REGEX_EXTRACT group must be an int64 literal")
+				return TypeInfo{}, fmt.Errorf("%s group must be an int64 literal", n.Op)
 			}
 			if _, _, err := compileRegexExtract(pattern.Value, group.Value); err != nil {
 				return TypeInfo{}, err
+			}
+			if n.Op == OpRegexExtractAll {
+				return TypeInfo{Type: memory.TypeList, Nullable: value.Nullable}, nil
 			}
 			return TypeInfo{Type: memory.TypeString, Nullable: true}, nil
 		default:
