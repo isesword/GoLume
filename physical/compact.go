@@ -8,6 +8,9 @@ import (
 )
 
 func compactSelected(ctx context.Context, dst, src *memory.Batch, rows []int, selection memory.Bitmap, kernels kernel.Set) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	n := len(rows)
 	for name, v := range src.Int64s {
 		out := ensureI64(dst.Int64s[name], n)
@@ -84,6 +87,15 @@ func compactSelected(ctx context.Context, dst, src *memory.Batch, rows []int, se
 		out.Encoding = memory.EncodingView
 		dst.Strings[name] = out
 	}
+	for name, v := range src.StringLists {
+		out := resetStringList(dst.StringLists[name])
+		for _, row := range rows {
+			if err := memory.AppendStringListRow(out, v, row); err != nil {
+				return fmt.Errorf("compact list<string> column %q: %w", name, err)
+			}
+		}
+		dst.StringLists[name] = out
+	}
 	for name, v := range src.Opaque {
 		tmpSrc := memory.NewBatch()
 		tmpSrc.Opaque[name] = v
@@ -97,6 +109,34 @@ func compactSelected(ctx context.Context, dst, src *memory.Batch, rows []int, se
 	}
 	dst.Reset(n)
 	return nil
+}
+
+func resetStringList(v *memory.StringListVector) *memory.StringListVector {
+	if v == nil {
+		return &memory.StringListVector{Offsets: []uint32{0}, Values: &memory.StringViewVector{Offsets: []uint32{0}, Encoding: memory.EncodingView}, Encoding: memory.EncodingView}
+	}
+	if cap(v.Offsets) == 0 {
+		v.Offsets = []uint32{0}
+	} else {
+		v.Offsets = v.Offsets[:1]
+		v.Offsets[0] = 0
+	}
+	v.Validity = nil
+	if v.Values == nil {
+		v.Values = &memory.StringViewVector{Offsets: []uint32{0}, Encoding: memory.EncodingView}
+	} else {
+		if cap(v.Values.Offsets) == 0 {
+			v.Values.Offsets = []uint32{0}
+		} else {
+			v.Values.Offsets = v.Values.Offsets[:1]
+			v.Values.Offsets[0] = 0
+		}
+		v.Values.Data = v.Values.Data[:0]
+		v.Values.Validity = nil
+		v.Values.Encoding = memory.EncodingView
+	}
+	v.Encoding = memory.EncodingView
+	return v
 }
 
 func compactValidity(dst, src memory.Bitmap, rows []int) memory.Bitmap {

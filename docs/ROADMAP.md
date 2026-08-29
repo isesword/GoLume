@@ -162,13 +162,29 @@
 - SQL three-valued predicate behavior plus Unicode, empty-match, invalid
   pattern/group, long-input, and Lazy pipeline coverage.
 
+### Phase 2.17 — List<String> foundation
+
+- Arrow-shaped `TypeList` fields with one explicit nullable/non-nullable string
+  child and canonical uint32 parent/child offsets;
+- specialized `StringListVector` preserving NULL parent, valid empty list,
+  NULL element, and valid empty-string semantics;
+- clone, filter/compact, Take, stable Sort/Top-K/Limit materialization,
+  projection passthrough, window payload, and inner/outer join support;
+- specialized Arrow `List<String>` and validated InMemory ingestion, while
+  unsupported nested types remain opaque;
+- nested byte accounting, strict malformed-offset/nullability rejection, and
+  scalar/SIMD/Lazy/Arrow/race regression coverage;
+- no new Auto-SIMD kernel for source-time offset validation or irregular
+  variable-length gather; single-byte Split scanning remains benchmark-gated.
+
 ## Next — richer analytical operators and calibrated planning
 
 Priority order:
 
 1. **String advanced layer**
-   - split/extract-all/JSON only after List/Struct vectors and output schema
-     contracts exist;
+   - Phase 2.18: literal `Split` and capture-aware `RegexExtractAll` returning
+     `List<String>`;
+   - JSON only after Struct/Map vectors and output schema contracts exist;
    - normalization, case-folding, and collation only with a coherent
      equality/grouping/sorting policy.
 

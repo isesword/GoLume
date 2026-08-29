@@ -41,16 +41,17 @@ type dictionaryInfo struct {
 }
 
 type binding struct {
-	name       string
-	index      int
-	field      memory.Field
-	dict       *dictionaryInfo
-	validities []memory.Bitmap
-	offsets    [][]uint32
-	i32        [][]int32
-	i64        [][]int64
-	u32        [][]uint32
-	f64        [][]float64
+	name        string
+	index       int
+	field       memory.Field
+	dict        *dictionaryInfo
+	validities  []memory.Bitmap
+	offsets     [][]uint32
+	i32         [][]int32
+	i64         [][]int64
+	u32         [][]uint32
+	f64         [][]float64
+	stringLists []*memory.StringListVector
 }
 
 // Source exposes retained Arrow RecordBatches as independent source
@@ -106,6 +107,7 @@ func NewSource(records ...arrow.RecordBatch) (*Source, error) {
 		bindings[i].i64 = make([][]int64, len(owner.records))
 		bindings[i].u32 = make([][]uint32, len(owner.records))
 		bindings[i].f64 = make([][]float64, len(owner.records))
+		bindings[i].stringLists = make([]*memory.StringListVector, len(owner.records))
 		for ri, rec := range owner.records {
 			arr := rec.Column(bindings[i].index)
 			bindings[i].validities[ri] = validityBitmap(arr)
@@ -118,6 +120,23 @@ func NewSource(records ...arrow.RecordBatch) (*Source, error) {
 				bindings[i].offsets[ri] = offsets32(a.ValueOffsets())
 			case *array.Binary:
 				bindings[i].offsets[ri] = offsets32(a.ValueOffsets())
+			case *array.List:
+				if bindings[i].field.Type == memory.TypeList {
+					v, err := arrowStringListVector(a, bindings[i].validities[ri])
+					if err != nil {
+						owner.close()
+						return nil, fmt.Errorf("arrowrecord: column %q: %w", bindings[i].name, err)
+					}
+					if !bindings[i].field.Nullable && memory.HasNulls(v.Validity, v.Len()) {
+						owner.close()
+						return nil, fmt.Errorf("arrowrecord: non-nullable list<string> column %q contains NULL", bindings[i].name)
+					}
+					if !bindings[i].field.Children[0].Nullable && memory.HasNulls(v.Values.Validity, v.Values.Len()) {
+						owner.close()
+						return nil, fmt.Errorf("arrowrecord: list<string> column %q has NULL in non-nullable child", bindings[i].name)
+					}
+					bindings[i].stringLists[ri] = v
+				}
 			}
 		}
 		if bindings[i].field.Encoding != memory.EncodingDictionary || bindings[i].field.Type != memory.TypeString {
@@ -459,12 +478,93 @@ func memoryField(f arrow.Field) memory.Field {
 		out.Type = memory.TypeTime64
 	case arrow.DURATION:
 		out.Type = memory.TypeDuration
+	case arrow.LIST:
+		list, ok := dt.(*arrow.ListType)
+		if !ok || list.Elem().ID() != arrow.STRING {
+			out.Type = memory.TypeArrow
+			break
+		}
+		out.Type = memory.TypeList
+		out.Encoding = memory.EncodingView
+		elem := list.ElemField()
+		out.Children = []memory.Field{{Name: "item", Type: memory.TypeString, Nullable: elem.Nullable, Encoding: memory.EncodingView, ArrowType: elem.Type.String()}}
 	case arrow.DECIMAL32, arrow.DECIMAL64, arrow.DECIMAL128, arrow.DECIMAL256:
 		out.Type = memory.TypeDecimal
 	default:
 		out.Type = memory.TypeArrow
 	}
 	return out
+}
+
+func arrowStringListVector(a *array.List, parentValidity memory.Bitmap) (*memory.StringListVector, error) {
+	values, ok := a.ListValues().(*array.String)
+	if !ok {
+		return nil, fmt.Errorf("list child array is %T, want *array.String", a.ListValues())
+	}
+	rows := a.Len()
+	base, terminal := int64(0), int64(0)
+	if rows > 0 {
+		base, _ = a.ValueOffsets(0)
+		_, terminal = a.ValueOffsets(rows - 1)
+	}
+	if base < 0 || terminal < base || terminal > int64(values.Len()) {
+		return nil, fmt.Errorf("list child range [%d,%d) exceeds %d values", base, terminal, values.Len())
+	}
+	listOffsets := make([]uint32, rows+1)
+	for row := 0; row < rows; row++ {
+		start, end := a.ValueOffsets(row)
+		if start < base || end < start || end > terminal {
+			return nil, fmt.Errorf("list row %d offsets [%d,%d) outside [%d,%d)", row, start, end, base, terminal)
+		}
+		listOffsets[row] = uint32(start - base)
+		listOffsets[row+1] = uint32(end - base)
+	}
+	childRows := int(terminal - base)
+	rawOffsets := values.ValueOffsets()
+	if int(terminal) >= len(rawOffsets) {
+		return nil, fmt.Errorf("list child terminal %d exceeds string offsets", terminal)
+	}
+	bufferBase := rawOffsets[0]
+	byteBase, byteEnd := rawOffsets[base], rawOffsets[terminal]
+	data := values.ValueBytes()
+	lo, hi := int(byteBase-bufferBase), int(byteEnd-bufferBase)
+	if lo < 0 || hi < lo || hi > len(data) {
+		return nil, fmt.Errorf("list child byte range [%d,%d) exceeds %d bytes", lo, hi, len(data))
+	}
+	childOffsets := make([]uint32, childRows+1)
+	for i := 0; i <= childRows; i++ {
+		childOffsets[i] = uint32(rawOffsets[int(base)+i] - byteBase)
+	}
+	var childValidity memory.Bitmap
+	for i := 0; i < childRows; i++ {
+		if !values.IsValid(int(base) + i) {
+			if childValidity == nil {
+				childValidity = memory.EnsureBitmap(nil, childRows)
+				for j := 0; j < i; j++ {
+					memory.Set(childValidity, j)
+				}
+			}
+			continue
+		}
+		if childValidity != nil {
+			memory.Set(childValidity, i)
+		}
+	}
+	v := &memory.StringListVector{
+		Offsets: listOffsets,
+		Values: &memory.StringViewVector{
+			Offsets:  childOffsets,
+			Data:     data[lo:hi],
+			Validity: childValidity,
+			Encoding: memory.EncodingView,
+		},
+		Validity: parentValidity,
+		Encoding: memory.EncodingView,
+	}
+	if err := v.Validate(rows); err != nil {
+		return nil, err
+	}
+	return v, nil
 }
 
 func schemaNames(schema memory.Schema) []string {

@@ -32,6 +32,19 @@ func CloneBatch(src *Batch) (*Batch, error) {
 	for k, v := range src.DictStrings {
 		dst.DictStrings[k] = &DictionaryStringVector{Indices: append([]uint32(nil), v.Indices...), Validity: append(Bitmap(nil), v.Validity...), Offsets: append([]uint32(nil), v.Offsets...), Data: append([]byte(nil), v.Data...), DictionaryDomain: v.DictionaryDomain, Encoding: v.Encoding}
 	}
+	for k, v := range src.StringLists {
+		dst.StringLists[k] = &StringListVector{
+			Offsets:  append([]uint32(nil), v.Offsets...),
+			Validity: append(Bitmap(nil), v.Validity...),
+			Encoding: v.Encoding,
+			Values: &StringViewVector{
+				Offsets:  append([]uint32(nil), v.Values.Offsets...),
+				Data:     append([]byte(nil), v.Values.Data...),
+				Validity: append(Bitmap(nil), v.Values.Validity...),
+				Encoding: v.Values.Encoding,
+			},
+		}
+	}
 	for k, v := range src.Opaque {
 		if v == nil {
 			continue

@@ -52,6 +52,9 @@ const (
 	// TypeArrow identifies an Arrow logical type that is preserved by an Arrow
 	// RecordBatch source but does not yet have a specialized execution vector.
 	TypeArrow
+	// TypeList identifies a variable-length nested list. Phase 2.17 specializes
+	// one string child field while retaining an Arrow-compatible schema shape.
+	TypeList
 )
 
 // String returns the stable textual name of the data type.
@@ -99,6 +102,8 @@ func (t DataType) String() string {
 		return "decimal"
 	case TypeArrow:
 		return "arrow"
+	case TypeList:
+		return "list"
 	default:
 		return "invalid"
 	}
@@ -147,6 +152,9 @@ type Field struct {
 	// sources, including nested, extension, decimal, timezone, and other type
 	// metadata that is intentionally not collapsed into DataType.
 	ArrowType string
+	// Children describes nested logical fields. TypeList currently requires
+	// exactly one TypeString child named "item".
+	Children []Field
 }
 
 // Schema is an immutable logical field list with name lookup support.
@@ -157,11 +165,52 @@ type Schema struct {
 
 // NewSchema constructs a schema and indexes fields by name.
 func NewSchema(fields ...Field) Schema {
-	s := Schema{Fields: append([]Field(nil), fields...), index: make(map[string]int, len(fields))}
+	cloned := make([]Field, len(fields))
+	for i := range fields {
+		cloned[i] = cloneField(fields[i])
+	}
+	s := Schema{Fields: cloned, index: make(map[string]int, len(fields))}
 	for i, f := range fields {
 		s.index[f.Name] = i
 	}
 	return s
+}
+
+// ListStringField constructs the Phase 2.17 list<string> schema contract.
+func ListStringField(name string, nullable, elementNullable bool) Field {
+	return Field{
+		Name:     name,
+		Type:     TypeList,
+		Nullable: nullable,
+		Encoding: EncodingView,
+		Children: []Field{{Name: "item", Type: TypeString, Nullable: elementNullable, Encoding: EncodingView}},
+	}
+}
+
+// ValidateListString validates that f is the supported list<string> shape.
+func (f Field) ValidateListString() error {
+	if f.Type != TypeList {
+		return fmt.Errorf("field %q: expected list, got %s", f.Name, f.Type)
+	}
+	if len(f.Children) != 1 {
+		return fmt.Errorf("list field %q requires exactly one child, got %d", f.Name, len(f.Children))
+	}
+	child := f.Children[0]
+	if child.Name != "item" || child.Type != TypeString {
+		return fmt.Errorf("list field %q requires string child %q, got %q:%s", f.Name, "item", child.Name, child.Type)
+	}
+	return nil
+}
+
+func cloneField(f Field) Field {
+	out := f
+	if len(f.Children) != 0 {
+		out.Children = make([]Field, len(f.Children))
+		for i := range f.Children {
+			out.Children[i] = cloneField(f.Children[i])
+		}
+	}
+	return out
 }
 
 // Field returns the field named name and whether it exists.

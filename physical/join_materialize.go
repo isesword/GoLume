@@ -29,6 +29,12 @@ func estimateBatchBytes(b *memory.Batch) int64 {
 	for _, v := range b.DictStrings {
 		n += int64(len(v.Indices))*4 + int64(len(v.Validity))*8
 	}
+	for _, v := range b.StringLists {
+		n += int64(len(v.Offsets))*4 + int64(len(v.Validity))*8
+		if v.Values != nil {
+			n += int64(len(v.Values.Offsets))*4 + int64(len(v.Values.Data)) + int64(len(v.Values.Validity))*8
+		}
+	}
 	return n
 }
 
@@ -65,6 +71,15 @@ func cloneBatch(src *memory.Batch) (*memory.Batch, error) {
 	for k, v := range src.DictStrings {
 		x := &memory.DictionaryStringVector{Indices: append([]uint32(nil), v.Indices...), Validity: append(memory.Bitmap(nil), v.Validity...), Offsets: v.Offsets, Data: v.Data, DictionaryDomain: v.DictionaryDomain, Encoding: v.Encoding}
 		dst.DictStrings[k] = x
+	}
+	for k, v := range src.StringLists {
+		x := &memory.StringListVector{
+			Offsets:  append([]uint32(nil), v.Offsets...),
+			Validity: append(memory.Bitmap(nil), v.Validity...),
+			Encoding: v.Encoding,
+			Values:   &memory.StringViewVector{Offsets: append([]uint32(nil), v.Values.Offsets...), Data: append([]byte(nil), v.Values.Data...), Validity: append(memory.Bitmap(nil), v.Values.Validity...), Encoding: v.Values.Encoding},
+		}
+		dst.StringLists[k] = x
 	}
 	return dst, nil
 }
@@ -220,6 +235,25 @@ func materializeJoinBatch(dst *memory.Batch, s *JoinSource, left *memory.Batch, 
 				out.Offsets[i+1] = uint32(len(out.Data))
 			}
 			dst.Strings[b.out] = out
+		case memory.TypeList:
+			out := resetStringList(dst.StringLists[b.out])
+			for _, p := range pairs {
+				src, row, ok := joinSourceRow(s, left, b, p)
+				if !ok {
+					if err := memory.AppendNullStringList(out); err != nil {
+						return err
+					}
+					continue
+				}
+				v, err := src.StringList(b.in)
+				if err != nil {
+					return err
+				}
+				if err := memory.AppendStringListRow(out, v, row); err != nil {
+					return err
+				}
+			}
+			dst.StringLists[b.out] = out
 		default:
 			return fmt.Errorf("joined payload type %s for %q has no Phase 2.6 materializer", b.field.Type, b.out)
 		}

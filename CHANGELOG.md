@@ -1,5 +1,23 @@
 # Changelog
 
+## Phase 2.17
+
+- Added an Arrow-shaped `TypeList` schema contract with one specialized
+  `item:string` child field and a canonical `StringListVector` representation.
+- Preserved parent NULL, valid empty list, NULL child, and valid empty string as
+  distinct states through clone, filter, sort, Top-K/Limit Take, projection,
+  window materialization, and joins.
+- Specialized Arrow `List<String>` ingestion while retaining other nested
+  Arrow types as opaque values; InMemory sources now reject malformed offsets
+  and schema-nullability violations before execution.
+- Added nested byte accounting and scalar-register passthrough so Lazy
+  pipelines can own and return list<string> columns safely.
+- Kept offset validation and variable-length gather scalar: both are
+  dependency/indirection bound and not Auto-SIMD candidates. Existing
+  fixed-width companion columns continue through the approved SIMD compact
+  kernels; single-byte Split scanning remains a benchmark-gated Phase 2.18
+  SIMD candidate.
+
 ## Phase 2.16
 
 - Added literal-pattern `RegexMatch` predicates and capture-aware

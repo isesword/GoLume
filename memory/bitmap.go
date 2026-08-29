@@ -33,6 +33,28 @@ func CountBitmap(b Bitmap) int {
 	return n
 }
 
+// HasNulls reports whether validity contains any clear logical row bit. A nil
+// bitmap means all rows are valid; tail bits outside rows are ignored.
+func HasNulls(validity Bitmap, rows int) bool {
+	if validity == nil || rows <= 0 {
+		return false
+	}
+	words := WordsFor(rows)
+	if len(validity) < words {
+		return true
+	}
+	for i := 0; i < words; i++ {
+		want := ^uint64(0)
+		if i == words-1 {
+			want = TailMask(rows)
+		}
+		if validity[i]&want != want {
+			return true
+		}
+	}
+	return false
+}
+
 // TailMask returns a word mask that keeps only valid bits in the final bitmap word.
 func TailMask(rows int) uint64 {
 	if rows <= 0 {

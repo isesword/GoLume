@@ -18,6 +18,9 @@ func takeRows(ctx context.Context, dst, src *gomemory.Batch, rows []int) error {
 	if dst == nil || src == nil {
 		return fmt.Errorf("physical take requires non-nil source and destination batches")
 	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	dst.ClearColumns()
 	n := len(rows)
 	for name, v := range src.Int64s {
@@ -86,6 +89,15 @@ func takeRows(ctx context.Context, dst, src *gomemory.Batch, rows []int) error {
 			out.Offsets[i+1] = uint32(len(out.Data))
 		}
 		dst.Strings[name] = out
+	}
+	for name, v := range src.StringLists {
+		out := &gomemory.StringListVector{Offsets: []uint32{0}, Values: &gomemory.StringViewVector{Offsets: []uint32{0}, Encoding: gomemory.EncodingView}, Encoding: gomemory.EncodingView}
+		for _, row := range rows {
+			if err := gomemory.AppendStringListRow(out, v, row); err != nil {
+				return fmt.Errorf("take list<string> column %q: %w", name, err)
+			}
+		}
+		dst.StringLists[name] = out
 	}
 	for name, v := range src.Opaque {
 		arr, ok := v.Value.(arrow.Array)

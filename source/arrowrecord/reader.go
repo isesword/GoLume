@@ -104,6 +104,11 @@ func bindTyped(dst *memory.Batch, b binding, arr arrow.Array, partition int, val
 			DictionaryDomain: b.dict.domain,
 			Encoding:         memory.EncodingDictionary,
 		}
+	case *array.List:
+		if b.field.Type != memory.TypeList || partition < 0 || partition >= len(b.stringLists) || b.stringLists[partition] == nil {
+			return false, nil
+		}
+		dst.StringLists[b.name] = b.stringLists[partition]
 	default:
 		return false, nil
 	}

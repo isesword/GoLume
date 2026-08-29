@@ -1019,6 +1019,19 @@ func (a *batchAccumulator) appendRow(src *memory.Batch, row int) error {
 			out.Offsets = append(out.Offsets, uint32(len(out.Data)))
 			out.Validity = appendOneValidity(out.Validity, v.Validity, row, len(out.Offsets)-2)
 			a.batch.Strings[f.Name] = out
+		case memory.TypeList:
+			v := src.StringLists[f.Name]
+			if v == nil {
+				return fmt.Errorf("list<string> column %q missing", f.Name)
+			}
+			out := a.batch.StringLists[f.Name]
+			if out == nil {
+				out = resetStringList(nil)
+			}
+			if err := memory.AppendStringListRow(out, v, row); err != nil {
+				return fmt.Errorf("append list<string> column %q: %w", f.Name, err)
+			}
+			a.batch.StringLists[f.Name] = out
 		default:
 			o := src.Opaque[f.Name]
 			if o == nil {

@@ -25,6 +25,27 @@ func New(schema memory.Schema, batches ...*memory.Batch) (*Source, error) {
 		if b == nil {
 			return nil, fmt.Errorf("batch %d is nil", i)
 		}
+		for _, field := range schema.Fields {
+			if field.Type != memory.TypeList {
+				continue
+			}
+			if err := field.ValidateListString(); err != nil {
+				return nil, err
+			}
+			v, ok := b.StringLists[field.Name]
+			if !ok {
+				return nil, fmt.Errorf("batch %d list<string> column %q is missing", i, field.Name)
+			}
+			if err := v.Validate(b.Rows); err != nil {
+				return nil, fmt.Errorf("batch %d column %q: %w", i, field.Name, err)
+			}
+			if !field.Nullable && memory.HasNulls(v.Validity, b.Rows) {
+				return nil, fmt.Errorf("batch %d non-nullable list<string> column %q contains NULL", i, field.Name)
+			}
+			if !field.Children[0].Nullable && memory.HasNulls(v.Values.Validity, v.Values.Len()) {
+				return nil, fmt.Errorf("batch %d list<string> column %q has NULL in non-nullable child", i, field.Name)
+			}
+		}
 		s.parts = append(s.parts, source.Partition{ID: i, Rows: int64(b.Rows)})
 		s.stats.Rows += int64(b.Rows)
 	}
@@ -132,6 +153,9 @@ func (r *reader) ReadPartition(ctx context.Context, p source.Partition, dst *mem
 		for k, v := range src.DictStrings {
 			dst.DictStrings[k] = v
 		}
+		for k, v := range src.StringLists {
+			dst.StringLists[k] = v
+		}
 		for k, v := range src.Opaque {
 			dst.Opaque[k] = v
 		}
@@ -164,6 +188,10 @@ func (r *reader) ReadPartition(ctx context.Context, p source.Partition, dst *mem
 		}
 		if v, ok := src.DictStrings[k]; ok {
 			dst.DictStrings[k] = v
+			continue
+		}
+		if v, ok := src.StringLists[k]; ok {
+			dst.StringLists[k] = v
 			continue
 		}
 		if v, ok := src.Opaque[k]; ok {

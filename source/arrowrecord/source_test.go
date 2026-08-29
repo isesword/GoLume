@@ -83,6 +83,61 @@ func TestSourceProjectionOpaqueAndDictionaryNormalization(t *testing.T) {
 	}
 }
 
+func TestArrowListStringUsesSpecializedNestedVector(t *testing.T) {
+	alloc := arrowmem.NewGoAllocator()
+	builder := array.NewListBuilderWithField(alloc, arrow.Field{Name: "item", Type: arrow.BinaryTypes.String, Nullable: true})
+	values := builder.ValueBuilder().(*array.StringBuilder)
+	builder.Append(true)
+	values.Append("a")
+	values.AppendNull()
+	values.Append("中")
+	builder.AppendNull()
+	builder.Append(true)
+	builder.Append(true)
+	values.Append("")
+	list := builder.NewArray()
+	builder.Release()
+	defer list.Release()
+	schema := arrow.NewSchema([]arrow.Field{{Name: "tags", Type: list.DataType(), Nullable: true}}, nil)
+	record := array.NewRecordBatch(schema, []arrow.Array{list}, 4)
+	defer record.Release()
+
+	src, err := NewSource(record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer src.Close()
+	field := src.Schema().Fields[0]
+	if field.Type != memory.TypeList || len(field.Children) != 1 || field.Children[0].Type != memory.TypeString || !field.Children[0].Nullable {
+		t.Fatalf("list field=%+v", field)
+	}
+	reader, err := src.NewReader(context.Background(), testReadOptions())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer reader.Close()
+	batch := memory.NewBatch()
+	if err := reader.ReadPartition(context.Background(), source.Partition{ID: 0, Rows: 4}, batch); err != nil {
+		t.Fatal(err)
+	}
+	if _, opaque := batch.Opaque["tags"]; opaque {
+		t.Fatal("list<string> should not remain opaque")
+	}
+	v, err := batch.StringList("tags")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := v.Validate(4); err != nil {
+		t.Fatal(err)
+	}
+	if start, end, ok := v.ValueRange(0); !ok || end-start != 3 || string(v.Values.ValueBytes(start)) != "a" || v.Values.IsValid(start+1) || string(v.Values.ValueBytes(start+2)) != "中" {
+		t.Fatalf("row 0 range=(%d,%d,%v) child=%+v", start, end, ok, v.Values)
+	}
+	if v.IsValid(1) || !v.IsValid(2) || !v.IsValid(3) {
+		t.Fatalf("parent validity=%v", v.Validity)
+	}
+}
+
 func sourceRequest(projection []string, predicate expr.Expr) source.PushdownRequest {
 	return source.PushdownRequest{Projection: projection, Predicate: predicate}
 }

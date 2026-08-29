@@ -1,4 +1,4 @@
-# Go Columnar Engine — Phase 2.16 Regex Expressions
+# Go Columnar Engine — Phase 2.17 List<String> Foundation
 
 Go Columnar Engine 是一个面向 Go 原生服务、CLI 和嵌入式分析场景的 Polars-like 列式分析引擎。核心路线保持：
 
@@ -34,6 +34,11 @@ result := lf.
         lazy.RegexExtract(lazy.Col("event"), pattern, lazy.Lit(2)).Alias("id"),
     )
 ```
+
+Phase 2.17 新增专用 `List<String>` 列：父列表 offsets/validity 与字符串子向量
+分别保存，因此 NULL List、空 List、NULL 元素和空字符串不会混淆。该类型可从
+Arrow `List<String>` 零拷贝/轻量规范化接入，并能穿过 Filter、Sort、Limit、
+Join、窗口物化、投影和 `CollectFrame`。
 
 ## Lazy ordering API
 
@@ -149,6 +154,7 @@ Phase 2.8 继续保留并回归：
 - Arrow RecordBatch typed/opaque source；
 - typed scalar expressions、Cast、CSE；
 - bounded literal-pattern RegexMatch / RegexExtract；
+- specialized Arrow-compatible List<String> vectors and Lazy passthrough；
 - PreparedQuery / PreparedFrame；
 - adaptive hash aggregation、nullable/composite/dictionary keys；
 - columnar JoinSource；

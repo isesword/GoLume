@@ -13,6 +13,7 @@ type Batch struct {
 	Float64s    map[string]*Float64Vector
 	Strings     map[string]*StringViewVector
 	DictStrings map[string]*DictionaryStringVector
+	StringLists map[string]*StringListVector
 	Opaque      map[string]*OpaqueVector
 }
 
@@ -26,6 +27,7 @@ func NewBatch() *Batch {
 		Float64s:    make(map[string]*Float64Vector),
 		Strings:     make(map[string]*StringViewVector),
 		DictStrings: make(map[string]*DictionaryStringVector),
+		StringLists: make(map[string]*StringListVector),
 		Opaque:      make(map[string]*OpaqueVector),
 	}
 }
@@ -62,6 +64,7 @@ func (b *Batch) ClearColumns() {
 	clear(b.Float64s)
 	clear(b.Strings)
 	clear(b.DictStrings)
+	clear(b.StringLists)
 	clear(b.Opaque)
 	b.Rows = 0
 }
@@ -107,6 +110,15 @@ func (b *Batch) DictionaryString(name string) (*DictionaryStringVector, error) {
 	v, ok := b.DictStrings[name]
 	if !ok {
 		return nil, fmt.Errorf("dictionary-string column %q not present in batch", name)
+	}
+	return v, nil
+}
+
+// StringList returns the named specialized list<string> vector.
+func (b *Batch) StringList(name string) (*StringListVector, error) {
+	v, ok := b.StringLists[name]
+	if !ok {
+		return nil, fmt.Errorf("list<string> column %q not present in batch", name)
 	}
 	return v, nil
 }

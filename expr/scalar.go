@@ -81,6 +81,7 @@ type scalarRegister struct {
 
 	strView *memory.StringViewVector
 	strDict *memory.DictionaryStringVector
+	strList *memory.StringListVector
 	offsets []uint32
 	data    []byte
 
@@ -109,6 +110,7 @@ func (w *ScalarWorkspace) Ensure(_ int, regs int) {
 		r.typ = memory.TypeInvalid
 		r.strView = nil
 		r.strDict = nil
+		r.strList = nil
 		r.constant = false
 		r.strlit = ""
 	}
@@ -335,6 +337,7 @@ type ScalarValue struct {
 	Float64          *memory.Float64Vector
 	String           *memory.StringViewVector
 	DictionaryString *memory.DictionaryStringVector
+	StringList       *memory.StringListVector
 }
 
 func scalarValue(r *scalarRegister, rows int) ScalarValue {
@@ -358,6 +361,8 @@ func scalarValue(r *scalarRegister, rows int) ScalarValue {
 		} else {
 			v.String = &memory.StringViewVector{Offsets: r.offsets[:rows+1], Data: r.data, Validity: r.validity, Encoding: memory.EncodingView}
 		}
+	case familyListString:
+		v.StringList = r.strList
 	}
 	return v
 }
@@ -372,6 +377,7 @@ const (
 	familyU64
 	familyF64
 	familyString
+	familyListString
 )
 
 func familyOf(t memory.DataType) physicalFamily {
@@ -388,6 +394,8 @@ func familyOf(t memory.DataType) physicalFamily {
 		return familyF64
 	case memory.TypeString, memory.TypeBinary:
 		return familyString
+	case memory.TypeList:
+		return familyListString
 	default:
 		return familyInvalid
 	}
@@ -507,6 +515,13 @@ func bindScalarColumn(r *scalarRegister, batch *memory.Batch, name string, typ m
 			return nil
 		}
 		return fmt.Errorf("string column %q not present in batch", name)
+	case familyListString:
+		v, err := batch.StringList(name)
+		if err != nil {
+			return err
+		}
+		r.strList = v
+		r.validity = v.Validity
 	default:
 		return fmt.Errorf("scalar column %q type %s has no specialized vector", name, typ)
 	}

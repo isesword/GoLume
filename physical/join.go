@@ -593,7 +593,7 @@ func joinMaterializableField(f memory.Field) bool {
 	case memory.TypeInt8, memory.TypeInt16, memory.TypeInt32, memory.TypeDate32, memory.TypeTime32,
 		memory.TypeInt64, memory.TypeDate64, memory.TypeTimestamp, memory.TypeTime64, memory.TypeDuration,
 		memory.TypeUint8, memory.TypeUint16, memory.TypeUint32, memory.TypeUint64,
-		memory.TypeFloat32, memory.TypeFloat64, memory.TypeString, memory.TypeBinary:
+		memory.TypeFloat32, memory.TypeFloat64, memory.TypeString, memory.TypeBinary, memory.TypeList:
 		return true
 	default:
 		return false

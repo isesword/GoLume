@@ -152,6 +152,9 @@ func InferSchema(plan Plan) (memory.Schema, error) {
 		}
 		for _, f := range right.Fields {
 			out := f
+			if n.Type == join.Left {
+				out.Nullable = true
+			}
 			if _, exists := seen[out.Name]; exists {
 				out.Name += suffix
 			}
