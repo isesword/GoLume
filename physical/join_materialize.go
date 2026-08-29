@@ -53,6 +53,17 @@ func cloneBatch(src *memory.Batch) (*memory.Batch, error) {
 		}
 		dst.StringLists[k] = x
 	}
+	for k, v := range src.Structs {
+		rows := make([]int, v.Rows)
+		for i := range rows {
+			rows[i] = i
+		}
+		x, err := memory.TakeStructRows(v, rows)
+		if err != nil {
+			return nil, err
+		}
+		dst.Structs[k] = x
+	}
 	return dst, nil
 }
 
@@ -226,6 +237,52 @@ func materializeJoinBatch(dst *memory.Batch, s *JoinSource, left *memory.Batch, 
 				}
 			}
 			dst.StringLists[b.out] = out
+		case memory.TypeStruct:
+			var out *memory.StructVector
+			for _, p := range pairs {
+				src, row, ok := joinSourceRow(s, left, b, p)
+				if !ok {
+					if out == nil {
+						out = &memory.StructVector{Fields: append([]memory.Field(nil), b.field.Children...), Values: memory.NewBatch(), Encoding: memory.EncodingView}
+					}
+					template := &memory.StructVector{Fields: append([]memory.Field(nil), b.field.Children...), Values: memory.NewBatch()}
+					for _, child := range b.field.Children {
+						switch child.Type {
+						case memory.TypeInt8, memory.TypeInt16, memory.TypeInt32, memory.TypeDate32, memory.TypeTime32:
+							template.Values.Int32s[child.Name] = &memory.Int32Vector{Values: []int32{0}, Validity: memory.EnsureBitmap(nil, 1)}
+						case memory.TypeInt64, memory.TypeDate64, memory.TypeTimestamp, memory.TypeTime64, memory.TypeDuration:
+							template.Values.Int64s[child.Name] = &memory.Int64Vector{Values: []int64{0}, Validity: memory.EnsureBitmap(nil, 1)}
+						case memory.TypeUint8, memory.TypeUint16, memory.TypeUint32, memory.TypeBool:
+							template.Values.Uint32s[child.Name] = &memory.Uint32Vector{Values: []uint32{0}, Validity: memory.EnsureBitmap(nil, 1)}
+						case memory.TypeUint64:
+							template.Values.Uint64s[child.Name] = &memory.Uint64Vector{Values: []uint64{0}, Validity: memory.EnsureBitmap(nil, 1)}
+						case memory.TypeFloat32, memory.TypeFloat64:
+							template.Values.Float64s[child.Name] = &memory.Float64Vector{Values: []float64{0}, Validity: memory.EnsureBitmap(nil, 1)}
+						case memory.TypeString:
+							template.Values.Strings[child.Name] = &memory.StringViewVector{Offsets: []uint32{0, 0}, Validity: memory.EnsureBitmap(nil, 1), Encoding: memory.EncodingView}
+						case memory.TypeList:
+							template.Values.StringLists[child.Name] = &memory.StringListVector{Offsets: []uint32{0, 0}, Validity: memory.EnsureBitmap(nil, 1), Values: &memory.StringViewVector{Offsets: []uint32{0}, Encoding: memory.EncodingView}, Encoding: memory.EncodingView}
+						}
+					}
+					template.Rows = 1
+					template.Values.Rows = 1
+					if err := memory.AppendStructRow(out, template, 0, false); err != nil {
+						return err
+					}
+					continue
+				}
+				v, err := src.Struct(b.in)
+				if err != nil {
+					return err
+				}
+				if out == nil {
+					out = &memory.StructVector{Fields: append([]memory.Field(nil), v.Fields...), Values: memory.NewBatch(), Encoding: memory.EncodingView}
+				}
+				if err := memory.AppendStructRow(out, v, row, v.IsValid(row)); err != nil {
+					return err
+				}
+			}
+			dst.Structs[b.out] = out
 		default:
 			return fmt.Errorf("joined payload type %s for %q has no Phase 2.6 materializer", b.field.Type, b.out)
 		}

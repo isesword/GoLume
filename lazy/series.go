@@ -201,6 +201,52 @@ type StringListChunk struct {
 	vector *memory.StringListVector
 }
 
+// StructChunk is a borrowed chunk for a fixed-schema Struct column.
+type StructChunk struct {
+	chunkBase
+	vector *memory.StructVector
+}
+
+// Len returns the chunk row count.
+func (c StructChunk) Len() int { return c.chunkBase.length() }
+
+// StructValue is a borrowed view of one valid Struct row.
+type StructValue struct {
+	state  *dataFrameState
+	vector *memory.StructVector
+	row    int
+}
+
+// Fields returns a copy of the fixed child schema.
+func (v StructValue) Fields() []memory.Field {
+	return append([]memory.Field(nil), v.vector.Fields...)
+}
+
+// Field returns one copied scalar or List<String> child value and its validity.
+func (v StructValue) Field(name string) (any, bool, error) {
+	base := chunkBase{state: v.state, start: v.row, end: v.row + 1}
+	if err := base.check(0); err != nil {
+		return nil, false, err
+	}
+	field, ok := memory.NewSchema(v.vector.Fields...).Field(name)
+	if !ok {
+		return nil, false, fmt.Errorf("struct field %q not found", name)
+	}
+	return structChildValue(v.vector.Values, field, v.row)
+}
+
+// Value returns a borrowed Struct row and parent validity.
+func (c StructChunk) Value(i int) (StructValue, bool, error) {
+	if err := c.check(i); err != nil {
+		return StructValue{}, false, err
+	}
+	row := c.start + i
+	if !c.vector.IsValid(row) {
+		return StructValue{}, false, nil
+	}
+	return StructValue{state: c.state, vector: c.vector, row: row}, true, nil
+}
+
 // Len returns the chunk row count.
 func (c StringListChunk) Len() int { return c.chunkBase.length() }
 
@@ -465,6 +511,31 @@ func (s Series) StringListChunks() ([]StringListChunk, error) {
 	return out, nil
 }
 
+// StructChunks returns zero-copy chunks for fixed-schema Struct columns.
+func (s Series) StructChunks() ([]StructChunk, error) {
+	if s.field.Type != memory.TypeStruct {
+		return nil, seriesTypeError(s, "struct")
+	}
+	if err := s.field.ValidateStruct(); err != nil {
+		return nil, err
+	}
+	s.state.mu.RLock()
+	defer s.state.mu.RUnlock()
+	spans, err := s.lockedSpans()
+	if err != nil {
+		return nil, err
+	}
+	out := make([]StructChunk, 0, len(spans))
+	for _, span := range spans {
+		v, e := span.batch.Struct(s.field.Name)
+		if e != nil {
+			return nil, e
+		}
+		out = append(out, StructChunk{chunkBase: chunkBase{s.state, span.start, span.end}, vector: v})
+	}
+	return out, nil
+}
+
 // CopyFloat64 flattens a float Series and returns copied values plus validity.
 func (s Series) CopyFloat64() ([]float64, memory.Bitmap, error) {
 	chunks, err := s.Float64Chunks()
@@ -716,6 +787,36 @@ func (s Series) ToAnySlice() ([]any, error) {
 				out = append(out, items)
 			}
 		}
+	case s.field.Type == memory.TypeStruct:
+		chunks, e := s.StructChunks()
+		if e != nil {
+			return nil, e
+		}
+		for _, c := range chunks {
+			for i := 0; i < c.Len(); i++ {
+				v, ok, e := c.Value(i)
+				if e != nil {
+					return nil, e
+				}
+				if !ok {
+					out = append(out, nil)
+					continue
+				}
+				row := make(map[string]any, len(v.vector.Fields))
+				for _, field := range v.vector.Fields {
+					x, valid, e := v.Field(field.Name)
+					if e != nil {
+						return nil, e
+					}
+					if valid {
+						row[field.Name] = x
+					} else {
+						row[field.Name] = nil
+					}
+				}
+				out = append(out, row)
+			}
+		}
 	default:
 		return nil, fmt.Errorf("series type %s does not support ToAnySlice", s.field.Type)
 	}
@@ -741,7 +842,7 @@ func isI64Type(t memory.DataType) bool {
 }
 func isU32Type(t memory.DataType) bool {
 	switch t {
-	case memory.TypeUint8, memory.TypeUint16, memory.TypeUint32:
+	case memory.TypeBool, memory.TypeUint8, memory.TypeUint16, memory.TypeUint32:
 		return true
 	}
 	return false
@@ -766,6 +867,73 @@ func seriesRowValid(batch *memory.Batch, field memory.Field, row int) bool {
 		return batch.DictStrings[field.Name].IsValid(row)
 	case field.Type == memory.TypeList:
 		return batch.StringLists[field.Name].IsValid(row)
+	case field.Type == memory.TypeStruct:
+		return batch.Structs[field.Name].IsValid(row)
 	}
 	return false
+}
+
+func structChildValue(batch *memory.Batch, field memory.Field, row int) (any, bool, error) {
+	switch {
+	case isI32Type(field.Type):
+		v, err := batch.Int32(field.Name)
+		if err != nil {
+			return nil, false, err
+		}
+		return v.Values[row], v.IsValid(row), nil
+	case isI64Type(field.Type):
+		v, err := batch.Int64(field.Name)
+		if err != nil {
+			return nil, false, err
+		}
+		return v.Values[row], v.IsValid(row), nil
+	case isU32Type(field.Type):
+		v, err := batch.Uint32(field.Name)
+		if err != nil {
+			return nil, false, err
+		}
+		if field.Type == memory.TypeBool {
+			return v.Values[row] != 0, v.IsValid(row), nil
+		}
+		return v.Values[row], v.IsValid(row), nil
+	case field.Type == memory.TypeUint64:
+		v, err := batch.Uint64(field.Name)
+		if err != nil {
+			return nil, false, err
+		}
+		return v.Values[row], v.IsValid(row), nil
+	case field.Type == memory.TypeFloat32 || field.Type == memory.TypeFloat64:
+		v, err := batch.Float64(field.Name)
+		if err != nil {
+			return nil, false, err
+		}
+		return v.Values[row], v.IsValid(row), nil
+	case field.Type == memory.TypeString:
+		if v := batch.Strings[field.Name]; v != nil {
+			return string(v.ValueBytes(row)), v.IsValid(row), nil
+		}
+		v := batch.DictStrings[field.Name]
+		if v == nil || !v.IsValid(row) {
+			return nil, false, nil
+		}
+		return string(v.DictionaryValue(v.Indices[row])), true, nil
+	case field.Type == memory.TypeList:
+		v, err := batch.StringList(field.Name)
+		if err != nil {
+			return nil, false, err
+		}
+		start, end, ok := v.ValueRange(row)
+		if !ok {
+			return nil, false, nil
+		}
+		out := make([]any, end-start)
+		for i := start; i < end; i++ {
+			if v.Values.IsValid(i) {
+				out[i-start] = string(v.Values.ValueBytes(i))
+			}
+		}
+		return out, true, nil
+	default:
+		return nil, false, fmt.Errorf("unsupported struct child type %s", field.Type)
+	}
 }

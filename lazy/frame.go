@@ -271,6 +271,11 @@ func RegexExtractAll(value, pattern, group expr.Expr) expr.Ternary {
 	return expr.RegexExtractAll(value, pattern, group)
 }
 
+// JSONDecode decodes a JSON object using an explicit Struct child schema.
+func JSONDecode(value expr.Expr, target memory.Schema) expr.JSONDecodeExpr {
+	return expr.JSONDecode(value, target)
+}
+
 // Year extracts the UTC calendar year from a date or timestamp.
 func Year(value expr.Expr) expr.Unary { return expr.Year(value) }
 

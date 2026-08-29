@@ -99,6 +99,13 @@ func takeRows(ctx context.Context, dst, src *gomemory.Batch, rows []int) error {
 		}
 		dst.StringLists[name] = out
 	}
+	for name, v := range src.Structs {
+		out, err := gomemory.TakeStructRows(v, rows)
+		if err != nil {
+			return fmt.Errorf("take struct column %q: %w", name, err)
+		}
+		dst.Structs[name] = out
+	}
 	for name, v := range src.Opaque {
 		arr, ok := v.Value.(arrow.Array)
 		if !ok {

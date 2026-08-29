@@ -138,6 +138,93 @@ func TestArrowListStringUsesSpecializedNestedVector(t *testing.T) {
 	}
 }
 
+func TestArrowStructUsesSpecializedNestedVector(t *testing.T) {
+	alloc := arrowmem.NewGoAllocator()
+	structType := arrow.StructOf(
+		arrow.Field{Name: "id", Type: arrow.PrimitiveTypes.Int64},
+		arrow.Field{Name: "name", Type: arrow.BinaryTypes.String, Nullable: true},
+		arrow.Field{Name: "tags", Type: arrow.ListOfField(arrow.Field{Name: "item", Type: arrow.BinaryTypes.String, Nullable: true}), Nullable: true},
+	)
+	builder := array.NewStructBuilder(alloc, structType)
+	id := builder.FieldBuilder(0).(*array.Int64Builder)
+	name := builder.FieldBuilder(1).(*array.StringBuilder)
+	tags := builder.FieldBuilder(2).(*array.ListBuilder)
+	tagValues := tags.ValueBuilder().(*array.StringBuilder)
+	id.Append(1)
+	name.Append("one")
+	tags.Append(true)
+	tagValues.Append("go")
+	tagValues.AppendNull()
+	builder.Append(true)
+	builder.AppendNull()
+	id.Append(3)
+	name.AppendNull()
+	tags.Append(true)
+	builder.Append(true)
+	structArray := builder.NewArray().(*array.Struct)
+	builder.Release()
+	defer structArray.Release()
+	schema := arrow.NewSchema([]arrow.Field{{Name: "payload", Type: structType, Nullable: true}}, nil)
+	record := array.NewRecordBatch(schema, []arrow.Array{structArray}, 3)
+	defer record.Release()
+
+	src, err := NewSource(record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer src.Close()
+	field := src.Schema().Fields[0]
+	if field.Type != memory.TypeStruct || len(field.Children) != 3 || field.Children[2].Type != memory.TypeList {
+		t.Fatalf("struct field=%+v", field)
+	}
+	reader, err := src.NewReader(context.Background(), testReadOptions())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer reader.Close()
+	batch := memory.NewBatch()
+	if err := reader.ReadPartition(context.Background(), source.Partition{ID: 0, Rows: 3}, batch); err != nil {
+		t.Fatal(err)
+	}
+	if _, opaque := batch.Opaque["payload"]; opaque {
+		t.Fatal("supported Struct must not remain opaque")
+	}
+	v, err := batch.Struct("payload")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := v.Validate(field, 3); err != nil {
+		t.Fatal(err)
+	}
+	if !v.IsValid(0) || v.IsValid(1) || !v.IsValid(2) || v.Values.Strings["name"].IsValid(2) {
+		t.Fatalf("struct validity parent=%v name=%v", v.Validity, v.Values.Strings["name"].Validity)
+	}
+	list := v.Values.StringLists["tags"]
+	if start, end, ok := list.ValueRange(0); !ok || end-start != 2 || list.Values.IsValid(start+1) {
+		t.Fatalf("list child=%+v range=(%d,%d,%v)", list, start, end, ok)
+	}
+}
+
+func TestArrowStructRejectsRecursiveChild(t *testing.T) {
+	alloc := arrowmem.NewGoAllocator()
+	inner := arrow.StructOf(arrow.Field{Name: "x", Type: arrow.PrimitiveTypes.Int64})
+	outer := arrow.StructOf(arrow.Field{Name: "nested", Type: inner})
+	builder := array.NewStructBuilder(alloc, outer)
+	nested := builder.FieldBuilder(0).(*array.StructBuilder)
+	nested.FieldBuilder(0).(*array.Int64Builder).Append(1)
+	nested.Append(true)
+	builder.Append(true)
+	arr := builder.NewArray().(*array.Struct)
+	builder.Release()
+	defer arr.Release()
+	record := array.NewRecordBatch(arrow.NewSchema([]arrow.Field{{Name: "payload", Type: outer}}, nil), []arrow.Array{arr}, 1)
+	defer record.Release()
+	if src, err := NewSource(record); err == nil {
+		src.Close()
+		t.Fatal("recursive Struct was accepted")
+	}
+}
+
 func sourceRequest(projection []string, predicate expr.Expr) source.PushdownRequest {
 	return source.PushdownRequest{Projection: projection, Predicate: predicate}
 }

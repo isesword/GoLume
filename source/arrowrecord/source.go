@@ -52,6 +52,7 @@ type binding struct {
 	u32         [][]uint32
 	f64         [][]float64
 	stringLists []*memory.StringListVector
+	structs     []*memory.StructVector
 }
 
 // Source exposes retained Arrow RecordBatches as independent source
@@ -108,6 +109,7 @@ func NewSource(records ...arrow.RecordBatch) (*Source, error) {
 		bindings[i].u32 = make([][]uint32, len(owner.records))
 		bindings[i].f64 = make([][]float64, len(owner.records))
 		bindings[i].stringLists = make([]*memory.StringListVector, len(owner.records))
+		bindings[i].structs = make([]*memory.StructVector, len(owner.records))
 		for ri, rec := range owner.records {
 			arr := rec.Column(bindings[i].index)
 			bindings[i].validities[ri] = validityBitmap(arr)
@@ -136,6 +138,15 @@ func NewSource(records ...arrow.RecordBatch) (*Source, error) {
 						return nil, fmt.Errorf("arrowrecord: list<string> column %q has NULL in non-nullable child", bindings[i].name)
 					}
 					bindings[i].stringLists[ri] = v
+				}
+			case *array.Struct:
+				if bindings[i].field.Type == memory.TypeStruct {
+					v, err := arrowStructVector(a, bindings[i].field, bindings[i].validities[ri])
+					if err != nil {
+						owner.close()
+						return nil, fmt.Errorf("arrowrecord: column %q: %w", bindings[i].name, err)
+					}
+					bindings[i].structs[ri] = v
 				}
 			}
 		}
@@ -488,6 +499,19 @@ func memoryField(f arrow.Field) memory.Field {
 		out.Encoding = memory.EncodingView
 		elem := list.ElemField()
 		out.Children = []memory.Field{{Name: "item", Type: memory.TypeString, Nullable: elem.Nullable, Encoding: memory.EncodingView, ArrowType: elem.Type.String()}}
+	case arrow.STRUCT:
+		structType, ok := dt.(*arrow.StructType)
+		if !ok {
+			out.Type = memory.TypeArrow
+			break
+		}
+		out.Type = memory.TypeStruct
+		out.Encoding = memory.EncodingView
+		children := structType.Fields()
+		out.Children = make([]memory.Field, len(children))
+		for i, child := range children {
+			out.Children[i] = memoryField(child)
+		}
 	case arrow.DECIMAL32, arrow.DECIMAL64, arrow.DECIMAL128, arrow.DECIMAL256:
 		out.Type = memory.TypeDecimal
 	default:

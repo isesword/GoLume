@@ -363,6 +363,10 @@ func pushProjection(plan logical.Plan, required map[string]struct{}, rules *[]st
 		if err != nil {
 			return nil, err
 		}
+		if len(kept) == 0 && n.IncludeInput {
+			*rules = append(*rules, "expression-projection-elimination")
+			return child, nil
+		}
 		if len(kept) != len(n.Exprs) {
 			*rules = append(*rules, "expression-pruning")
 		}

@@ -28,22 +28,24 @@ const (
 	scalarCast
 	scalarUnary
 	scalarTernary
+	scalarJSONDecode
 )
 
 // ScalarInstruction is one operation in a compiled scalar-expression program.
 // Type is the logical result type; SourceType is populated for explicit casts.
 type ScalarInstruction struct {
-	Code       ScalarOpcode
-	Op         Op
-	Type       memory.DataType
-	SourceType memory.DataType
-	Column     string
-	I64        int64
-	F64        float64
-	String     string
-	Regex      *regexp.Regexp
-	RegexGroup int
-	A, B, C    int
+	Code         ScalarOpcode
+	Op           Op
+	Type         memory.DataType
+	SourceType   memory.DataType
+	Column       string
+	I64          int64
+	F64          float64
+	String       string
+	Regex        *regexp.Regexp
+	RegexGroup   int
+	StructFields []memory.Field
+	A, B, C      int
 }
 
 // ScalarProgram is a compact reusable typed scalar-expression program. It is
@@ -84,6 +86,7 @@ type scalarRegister struct {
 	strView *memory.StringViewVector
 	strDict *memory.DictionaryStringVector
 	strList *memory.StringListVector
+	strct   *memory.StructVector
 	offsets []uint32
 	data    []byte
 
@@ -287,6 +290,12 @@ func (c *scalarCompiler) compile(e Expr) (int, TypeInfo, error) {
 			return 0, TypeInfo{}, err
 		}
 		in = ScalarInstruction{Code: scalarBinary, Op: n.Op, Type: info.Type, A: a, B: b}
+	case JSONDecodeExpr:
+		a, _, err := c.compile(n.Value)
+		if err != nil {
+			return 0, TypeInfo{}, err
+		}
+		in = ScalarInstruction{Code: scalarJSONDecode, Type: memory.TypeStruct, A: a, StructFields: append([]memory.Field(nil), n.Schema.Fields...)}
 	default:
 		return 0, TypeInfo{}, fmt.Errorf("unsupported scalar expression node %T", e)
 	}
@@ -322,6 +331,14 @@ func scalarExprKey(e Expr) string {
 		return "u:" + n.Op.String() + ":" + scalarExprKey(n.Value)
 	case Ternary:
 		return "t:" + n.Op.String() + ":" + scalarExprKey(n.Value) + ":" + scalarExprKey(n.First) + ":" + scalarExprKey(n.Second)
+	case JSONDecodeExpr:
+		var b strings.Builder
+		b.WriteString("json:")
+		b.WriteString(scalarExprKey(n.Value))
+		for _, field := range n.Schema.Fields {
+			fmt.Fprintf(&b, ":%s:%s:%t", field.Name, field.Type, field.Nullable)
+		}
+		return b.String()
 	default:
 		return fmt.Sprintf("%T:%s", e, e.String())
 	}
@@ -381,6 +398,7 @@ type ScalarValue struct {
 	String           *memory.StringViewVector
 	DictionaryString *memory.DictionaryStringVector
 	StringList       *memory.StringListVector
+	Struct           *memory.StructVector
 }
 
 func scalarValue(r *scalarRegister, rows int) ScalarValue {
@@ -406,6 +424,10 @@ func scalarValue(r *scalarRegister, rows int) ScalarValue {
 		}
 	case familyListString:
 		v.StringList = r.strList
+	case familyInvalid:
+		if r.typ == memory.TypeStruct {
+			v.Struct = r.strct
+		}
 	}
 	return v
 }
@@ -429,7 +451,7 @@ func familyOf(t memory.DataType) physicalFamily {
 		return familyI32
 	case memory.TypeInt64, memory.TypeDate64, memory.TypeTimestamp, memory.TypeTime64, memory.TypeDuration:
 		return familyI64
-	case memory.TypeUint8, memory.TypeUint16, memory.TypeUint32:
+	case memory.TypeUint8, memory.TypeUint16, memory.TypeUint32, memory.TypeBool:
 		return familyU32
 	case memory.TypeUint64:
 		return familyU64
@@ -508,6 +530,10 @@ func evaluateInstructions(instructions []ScalarInstruction, batch *memory.Batch,
 			if err := evalTernary(r, &w.regs[in.A], first, second, in, batch.Rows); err != nil {
 				return err
 			}
+		case scalarJSONDecode:
+			if err := evalJSONDecode(r, &w.regs[in.A], in.StructFields, batch.Rows); err != nil {
+				return err
+			}
 		default:
 			return fmt.Errorf("unsupported scalar opcode %d", in.Code)
 		}
@@ -566,6 +592,14 @@ func bindScalarColumn(r *scalarRegister, batch *memory.Batch, name string, typ m
 		r.strList = v
 		r.validity = v.Validity
 	default:
+		if typ == memory.TypeStruct {
+			v, err := batch.Struct(name)
+			if err != nil {
+				return err
+			}
+			r.strct, r.validity = v, v.Validity
+			return nil
+		}
 		return fmt.Errorf("scalar column %q type %s has no specialized vector", name, typ)
 	}
 	return nil

@@ -210,6 +210,18 @@ type Cast struct {
 	Target memory.DataType
 }
 
+// JSONDecodeExpr decodes a UTF-8 JSON object into a fixed non-recursive Struct
+// schema. Runtime schema inference is intentionally unsupported.
+type JSONDecodeExpr struct {
+	Value  Expr
+	Schema memory.Schema
+}
+
+func (JSONDecodeExpr) exprNode() {}
+
+// String returns the fixed-schema JSON decode spelling used in plans.
+func (j JSONDecodeExpr) String() string { return fmt.Sprintf("JSON_DECODE(%s)", j.Value) }
+
 func (Cast) exprNode() {}
 
 // String returns a SQL-like CAST expression.
@@ -506,6 +518,11 @@ func RegexExtractAll(value, pattern, group Expr) Ternary {
 	return Ternary{Op: OpRegexExtractAll, Value: value, First: pattern, Second: group}
 }
 
+// JSONDecode decodes value using target as the Struct child schema.
+func JSONDecode(value Expr, target memory.Schema) JSONDecodeExpr {
+	return JSONDecodeExpr{Value: value, Schema: target}
+}
+
 // Year extracts the UTC calendar year from a date or timestamp.
 func Year(value Expr) Unary { return Unary{Op: OpYear, Value: value} }
 
@@ -599,6 +616,9 @@ func (c Column) Split(delimiter Expr) Binary { return Split(c, delimiter) }
 func (c Column) RegexExtractAll(pattern, group Expr) Ternary {
 	return RegexExtractAll(c, pattern, group)
 }
+
+// JSONDecode decodes c using target as the Struct child schema.
+func (c Column) JSONDecode(target memory.Schema) JSONDecodeExpr { return JSONDecode(c, target) }
 
 // Year extracts the UTC calendar year from a date or timestamp.
 func (c Column) Year() Unary { return Year(c) }
@@ -722,6 +742,9 @@ func (c Cast) Cast(target memory.DataType) Cast { return CastTo(c, target) }
 
 // Alias assigns an output name to a cast expression.
 func (c Cast) Alias(name string) NamedExpr { return Named(c, name) }
+
+// Alias assigns an output name to a fixed-schema JSON decode expression.
+func (j JSONDecodeExpr) Alias(name string) NamedExpr { return Named(j, name) }
 
 // Gt constructs a comparison with a unary scalar expression on the left.
 func (u Unary) Gt(right Expr) Binary { return GT(u, right) }

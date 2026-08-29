@@ -45,6 +45,18 @@ func CloneBatch(src *Batch) (*Batch, error) {
 			},
 		}
 	}
+	for k, v := range src.Structs {
+		rows := make([]int, v.Rows)
+		for i := range rows {
+			rows[i] = i
+		}
+		cloned, err := TakeStructRows(v, rows)
+		if err != nil {
+			dst.ReleaseOwned()
+			return nil, fmt.Errorf("clone struct column %q: %w", k, err)
+		}
+		dst.Structs[k] = cloned
+	}
 	for k, v := range src.Opaque {
 		if v == nil {
 			continue

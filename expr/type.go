@@ -43,6 +43,18 @@ func InferScalarType(schema memory.Schema, e Expr) (TypeInfo, error) {
 			return TypeInfo{}, err
 		}
 		return TypeInfo{Type: memory.TypeTimestamp}, nil
+	case JSONDecodeExpr:
+		input, err := InferScalarType(schema, n.Value)
+		if err != nil {
+			return TypeInfo{}, err
+		}
+		if input.Type != memory.TypeString {
+			return TypeInfo{}, fmt.Errorf("JSON_DECODE requires string input, got %s", input.Type)
+		}
+		if err := memory.StructField("json", true, n.Schema.Fields...).ValidateStruct(); err != nil {
+			return TypeInfo{}, err
+		}
+		return TypeInfo{Type: memory.TypeStruct, Nullable: true}, nil
 	case Cast:
 		in, err := InferScalarType(schema, n.Value)
 		if err != nil {

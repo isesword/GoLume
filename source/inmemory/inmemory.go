@@ -26,6 +26,16 @@ func New(schema memory.Schema, batches ...*memory.Batch) (*Source, error) {
 			return nil, fmt.Errorf("batch %d is nil", i)
 		}
 		for _, field := range schema.Fields {
+			if field.Type == memory.TypeStruct {
+				v, ok := b.Structs[field.Name]
+				if !ok {
+					return nil, fmt.Errorf("batch %d struct column %q is missing", i, field.Name)
+				}
+				if err := v.Validate(field, b.Rows); err != nil {
+					return nil, fmt.Errorf("batch %d column %q: %w", i, field.Name, err)
+				}
+				continue
+			}
 			if field.Type != memory.TypeList {
 				continue
 			}
@@ -156,6 +166,9 @@ func (r *reader) ReadPartition(ctx context.Context, p source.Partition, dst *mem
 		for k, v := range src.StringLists {
 			dst.StringLists[k] = v
 		}
+		for k, v := range src.Structs {
+			dst.Structs[k] = v
+		}
 		for k, v := range src.Opaque {
 			dst.Opaque[k] = v
 		}
@@ -192,6 +205,10 @@ func (r *reader) ReadPartition(ctx context.Context, p source.Partition, dst *mem
 		}
 		if v, ok := src.StringLists[k]; ok {
 			dst.StringLists[k] = v
+			continue
+		}
+		if v, ok := src.Structs[k]; ok {
+			dst.Structs[k] = v
 			continue
 		}
 		if v, ok := src.Opaque[k]; ok {

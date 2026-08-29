@@ -35,6 +35,11 @@ func BatchBytes(b *Batch) int64 {
 			n += int64(len(v.Values.Offsets))*4 + int64(len(v.Values.Data)) + int64(len(v.Values.Validity))*8
 		}
 	}
+	for _, v := range b.Structs {
+		if v != nil {
+			n += int64(len(v.Validity))*8 + BatchBytes(v.Values)
+		}
+	}
 	for _, v := range b.Opaque {
 		if v != nil {
 			n += int64(len(v.Validity)) * 8

@@ -1032,6 +1032,19 @@ func (a *batchAccumulator) appendRow(src *memory.Batch, row int) error {
 				return fmt.Errorf("append list<string> column %q: %w", f.Name, err)
 			}
 			a.batch.StringLists[f.Name] = out
+		case memory.TypeStruct:
+			v := src.Structs[f.Name]
+			if v == nil {
+				return fmt.Errorf("struct column %q missing", f.Name)
+			}
+			out := a.batch.Structs[f.Name]
+			if out == nil {
+				out = &memory.StructVector{Fields: append([]memory.Field(nil), v.Fields...), Values: memory.NewBatch(), Encoding: memory.EncodingView}
+			}
+			if err := memory.AppendStructRow(out, v, row, v.IsValid(row)); err != nil {
+				return fmt.Errorf("append struct column %q: %w", f.Name, err)
+			}
+			a.batch.Structs[f.Name] = out
 		default:
 			o := src.Opaque[f.Name]
 			if o == nil {

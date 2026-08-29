@@ -109,10 +109,75 @@ func bindTyped(dst *memory.Batch, b binding, arr arrow.Array, partition int, val
 			return false, nil
 		}
 		dst.StringLists[b.name] = b.stringLists[partition]
+	case *array.Struct:
+		if b.field.Type != memory.TypeStruct || partition < 0 || partition >= len(b.structs) || b.structs[partition] == nil {
+			return false, nil
+		}
+		dst.Structs[b.name] = b.structs[partition]
 	default:
 		return false, nil
 	}
 	return true, nil
+}
+
+func arrowStructVector(a *array.Struct, field memory.Field, parentValidity memory.Bitmap) (*memory.StructVector, error) {
+	if err := field.ValidateStruct(); err != nil {
+		return nil, err
+	}
+	if len(field.Children) != a.NumField() {
+		return nil, fmt.Errorf("struct child count %d does not match schema %d", a.NumField(), len(field.Children))
+	}
+	values := memory.NewBatch()
+	values.Rows = a.Len()
+	for i, child := range field.Children {
+		arr := a.Field(i)
+		validity := validityBitmap(arr)
+		if child.Type == memory.TypeBool {
+			bools, ok := arr.(*array.Boolean)
+			if !ok {
+				return nil, fmt.Errorf("struct child %q is %T, want boolean", child.Name, arr)
+			}
+			out := make([]uint32, bools.Len())
+			for row := range out {
+				if bools.Value(row) {
+					out[row] = 1
+				}
+			}
+			values.Uint32s[child.Name] = &memory.Uint32Vector{Values: out, Validity: validity, Encoding: child.Encoding}
+			continue
+		}
+		b := binding{
+			name: child.Name, field: child,
+			validities: []memory.Bitmap{validity}, offsets: make([][]uint32, 1),
+			i32: make([][]int32, 1), i64: make([][]int64, 1), u32: make([][]uint32, 1),
+			f64: make([][]float64, 1), stringLists: make([]*memory.StringListVector, 1),
+		}
+		if err := cachePhysicalValues(&b, 0, arr); err != nil {
+			return nil, fmt.Errorf("struct child %q: %w", child.Name, err)
+		}
+		switch x := arr.(type) {
+		case *array.String:
+			b.offsets[0] = offsets32(x.ValueOffsets())
+		case *array.List:
+			list, err := arrowStringListVector(x, validity)
+			if err != nil {
+				return nil, fmt.Errorf("struct child %q: %w", child.Name, err)
+			}
+			b.stringLists[0] = list
+		}
+		bound, err := bindTyped(values, b, arr, 0, validity)
+		if err != nil {
+			return nil, fmt.Errorf("struct child %q: %w", child.Name, err)
+		}
+		if !bound {
+			return nil, fmt.Errorf("struct child %q Arrow type %s is unsupported", child.Name, arr.DataType())
+		}
+	}
+	v := &memory.StructVector{Rows: a.Len(), Fields: append([]memory.Field(nil), field.Children...), Values: values, Validity: parentValidity, Encoding: memory.EncodingView}
+	if err := v.Validate(field, a.Len()); err != nil {
+		return nil, err
+	}
+	return v, nil
 }
 
 func cachedValidity(b binding, partition int) memory.Bitmap {

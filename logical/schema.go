@@ -476,6 +476,13 @@ func inferScalarField(schema memory.Schema, e expr.Expr, name string) (memory.Fi
 		f.Name = name
 		return f, nil
 	}
+	if decoded, ok := e.(expr.JSONDecodeExpr); ok {
+		field := memory.StructField(name, true, decoded.Schema.Fields...)
+		if err := field.ValidateStruct(); err != nil {
+			return memory.Field{}, fmt.Errorf("projection %q: %w", name, err)
+		}
+		return field, nil
+	}
 	info, err := expr.InferScalarType(schema, e)
 	if err != nil {
 		return memory.Field{}, fmt.Errorf("projection %q: %w", name, err)

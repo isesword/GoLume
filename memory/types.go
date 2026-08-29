@@ -55,6 +55,8 @@ const (
 	// TypeList identifies a variable-length nested list. Phase 2.17 specializes
 	// one string child field while retaining an Arrow-compatible schema shape.
 	TypeList
+	// TypeStruct identifies a nullable record with row-aligned child vectors.
+	TypeStruct
 )
 
 // String returns the stable textual name of the data type.
@@ -104,6 +106,8 @@ func (t DataType) String() string {
 		return "arrow"
 	case TypeList:
 		return "list"
+	case TypeStruct:
+		return "struct"
 	default:
 		return "invalid"
 	}
@@ -185,6 +189,46 @@ func ListStringField(name string, nullable, elementNullable bool) Field {
 		Encoding: EncodingView,
 		Children: []Field{{Name: "item", Type: TypeString, Nullable: elementNullable, Encoding: EncodingView}},
 	}
+}
+
+// StructField constructs the bounded Phase 2.21 struct schema contract.
+func StructField(name string, nullable bool, children ...Field) Field {
+	return Field{Name: name, Type: TypeStruct, Nullable: nullable, Encoding: EncodingView, Children: append([]Field(nil), children...)}
+}
+
+// ValidateStruct validates the non-recursive scalar/List<String> struct shape.
+func (f Field) ValidateStruct() error {
+	if f.Type != TypeStruct {
+		return fmt.Errorf("field %q: expected struct, got %s", f.Name, f.Type)
+	}
+	if len(f.Children) == 0 {
+		return fmt.Errorf("struct field %q requires at least one child", f.Name)
+	}
+	seen := make(map[string]struct{}, len(f.Children))
+	for _, child := range f.Children {
+		if child.Name == "" {
+			return fmt.Errorf("struct field %q has unnamed child", f.Name)
+		}
+		if _, ok := seen[child.Name]; ok {
+			return fmt.Errorf("struct field %q has duplicate child %q", f.Name, child.Name)
+		}
+		seen[child.Name] = struct{}{}
+		if child.Type == TypeList {
+			if err := child.ValidateListString(); err != nil {
+				return fmt.Errorf("struct field %q: %w", f.Name, err)
+			}
+			continue
+		}
+		if child.Type == TypeString && child.Encoding == EncodingDictionary {
+			return fmt.Errorf("struct field %q child %q cannot use dictionary encoding", f.Name, child.Name)
+		}
+		switch child.Type {
+		case TypeInt8, TypeInt16, TypeInt32, TypeInt64, TypeUint8, TypeUint16, TypeUint32, TypeUint64, TypeFloat32, TypeFloat64, TypeString, TypeBool, TypeDate32, TypeDate64, TypeTimestamp, TypeTime32, TypeTime64, TypeDuration:
+		default:
+			return fmt.Errorf("struct field %q child %q has unsupported type %s", f.Name, child.Name, child.Type)
+		}
+	}
+	return nil
 }
 
 // ValidateListString validates that f is the supported list<string> shape.

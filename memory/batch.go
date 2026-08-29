@@ -14,6 +14,7 @@ type Batch struct {
 	Strings     map[string]*StringViewVector
 	DictStrings map[string]*DictionaryStringVector
 	StringLists map[string]*StringListVector
+	Structs     map[string]*StructVector
 	Opaque      map[string]*OpaqueVector
 }
 
@@ -28,6 +29,7 @@ func NewBatch() *Batch {
 		Strings:     make(map[string]*StringViewVector),
 		DictStrings: make(map[string]*DictionaryStringVector),
 		StringLists: make(map[string]*StringListVector),
+		Structs:     make(map[string]*StructVector),
 		Opaque:      make(map[string]*OpaqueVector),
 	}
 }
@@ -51,6 +53,11 @@ func (b *Batch) ReleaseOwned() {
 		}
 		v.Owned = false
 	}
+	for _, v := range b.Structs {
+		if v != nil && v.Values != nil {
+			v.Values.ReleaseOwned()
+		}
+	}
 }
 
 // ClearColumns removes vector bindings but keeps the maps allocated. Any
@@ -65,6 +72,7 @@ func (b *Batch) ClearColumns() {
 	clear(b.Strings)
 	clear(b.DictStrings)
 	clear(b.StringLists)
+	clear(b.Structs)
 	clear(b.Opaque)
 	b.Rows = 0
 }
@@ -119,6 +127,15 @@ func (b *Batch) StringList(name string) (*StringListVector, error) {
 	v, ok := b.StringLists[name]
 	if !ok {
 		return nil, fmt.Errorf("list<string> column %q not present in batch", name)
+	}
+	return v, nil
+}
+
+// Struct returns the named specialized struct vector.
+func (b *Batch) Struct(name string) (*StructVector, error) {
+	v, ok := b.Structs[name]
+	if !ok {
+		return nil, fmt.Errorf("struct column %q not present in batch", name)
 	}
 	return v, nil
 }

@@ -284,6 +284,9 @@ func displayBatchValue(batch *memory.Batch, field memory.Field, row int) (string
 		if !v.IsValid(row) {
 			return "NULL", nil
 		}
+		if field.Type == memory.TypeBool {
+			return strconv.FormatBool(v.Values[row] != 0), nil
+		}
 		return strconv.FormatUint(uint64(v.Values[row]), 10), nil
 	case field.Type == memory.TypeUint64:
 		v, e := batch.Uint64(field.Name)
@@ -339,6 +342,23 @@ func displayBatchValue(batch *memory.Batch, field memory.Field, row int) (string
 			}
 		}
 		return "[" + strings.Join(items, ", ") + "]", nil
+	case field.Type == memory.TypeStruct:
+		v, e := batch.Struct(field.Name)
+		if e != nil {
+			return "", e
+		}
+		if !v.IsValid(row) {
+			return "NULL", nil
+		}
+		items := make([]string, 0, len(v.Fields))
+		for _, child := range v.Fields {
+			value, err := displayBatchValue(v.Values, child, row)
+			if err != nil {
+				return "", err
+			}
+			items = append(items, child.Name+": "+value)
+		}
+		return "{" + strings.Join(items, ", ") + "}", nil
 	default:
 		return "<" + field.Type.String() + ">", nil
 	}

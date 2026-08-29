@@ -24,6 +24,8 @@ func Columns(e Expr) []string {
 			visit(x.Value)
 			visit(x.First)
 			visit(x.Second)
+		case JSONDecodeExpr:
+			visit(x.Value)
 		}
 	}
 	visit(e)

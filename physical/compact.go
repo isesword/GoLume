@@ -96,6 +96,13 @@ func compactSelected(ctx context.Context, dst, src *memory.Batch, rows []int, se
 		}
 		dst.StringLists[name] = out
 	}
+	for name, v := range src.Structs {
+		out, err := memory.TakeStructRows(v, rows)
+		if err != nil {
+			return fmt.Errorf("compact struct column %q: %w", name, err)
+		}
+		dst.Structs[name] = out
+	}
 	for name, v := range src.Opaque {
 		tmpSrc := memory.NewBatch()
 		tmpSrc.Opaque[name] = v

@@ -1,4 +1,4 @@
-# Go Columnar Engine — Phase 2.17 List<String> Foundation
+# Go Columnar Engine — Phase 2.21 Struct and Explicit-Schema JSON
 
 Go Columnar Engine 是一个面向 Go 原生服务、CLI 和嵌入式分析场景的 Polars-like 列式分析引擎。核心路线保持：
 
@@ -38,7 +38,26 @@ result := lf.
 Phase 2.17 新增专用 `List<String>` 列：父列表 offsets/validity 与字符串子向量
 分别保存，因此 NULL List、空 List、NULL 元素和空字符串不会混淆。该类型可从
 Arrow `List<String>` 零拷贝/轻量规范化接入，并能穿过 Filter、Sort、Limit、
-Join、窗口物化、投影和 `CollectFrame`。
+Join、窗口物化、投影和 DataFrame `Collect`。
+
+Phase 2.21 在此基础上增加有界 `Struct`：父级 validity 与按行对齐的子向量
+独立保存，首个切片支持标量字段及 `List<String>` 字段。JSON 解码必须显式
+提供固定 schema，不做抽样推断：
+
+```go
+target := memory.NewSchema(
+    memory.Field{Name: "name", Type: memory.TypeString, Nullable: true},
+    memory.ListStringField("tags", true, true),
+)
+
+df, err := lf.
+    WithColumns(lazy.JSONDecode(lazy.Col("payload"), target).Alias("decoded")).
+    Collect(ctx)
+```
+
+Struct 能作为 Filter/Take/Sort/Join 的 payload，并通过分块只读 `Series` 和
+有界 DataFrame 显示访问；递归 Struct/List、Map 和 schema inference 仍明确
+留在后续阶段。
 
 ## Lazy ordering API
 
@@ -66,7 +85,8 @@ lf.TopK(100,
 )
 ```
 
-所有这些仍然只构造 LogicalPlan；真正执行发生在 `CollectFrame` / `PrepareFrame`，聚合终点仍使用 `Collect` / `Prepare`。
+所有这些仍然只构造 LogicalPlan；真正执行发生在返回 DataFrame 的 `Collect` /
+`Prepare`。需要专用聚合诊断结果时使用 `CollectResult` / `PrepareResult`。
 
 ## Sort 和 Top-K 的执行差异
 

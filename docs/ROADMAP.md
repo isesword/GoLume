@@ -208,16 +208,25 @@
 - deprecated `CollectFrame` and `PrepareFrame` spellings preserve a migration
   window while the old `Collect` return type intentionally changes.
 
+### Phase 2.21 — bounded Struct and explicit-schema JSON
+
+- specialized `TypeStruct` vectors with independent parent validity and
+  row-aligned scalar or `List<String>` child vectors;
+- `JSONDecode(value, targetSchema)` with stable schemas, SQL/JSON NULL
+  semantics, ignored unknown fields, strict required children, path-aware
+  errors, checked numeric conversion, and no inference;
+- Struct payload support across clone, Filter/Take, stable Sort, Join,
+  DataFrame/Series, bounded display, and nested memory accounting;
+- specialized Arrow Struct ingestion for the same bounded child set; recursive
+  Struct/List, Map, dictionary children, and schema evolution remain rejected.
+
 ## Next — richer analytical operators and calibrated planning
 
 Priority order:
 
-1. **DataFrame result layer**
-   - Phase 2.19: owned `DataFrame`, borrowed views, typed chunked `Series`, and
-     bounded display;
-   - Phase 2.20: unified DataFrame `Collect` and aggregate-result compatibility;
-   - Phase 2.21: bounded Struct vectors and explicit-schema JSON decoding;
-   - JSON only after Struct/Map vectors and output schema contracts exist;
+1. **Nested type breadth**
+   - generic `List<T>`, recursive Struct/List, Map, and schema inference remain
+     separate work after the bounded Phase 2.21 contract;
    - normalization, case-folding, and collation only with a coherent
      equality/grouping/sorting policy.
 

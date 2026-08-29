@@ -169,6 +169,12 @@ func NewProjectSource(input source.Source, named []expr.NamedExpr, includeInput 
 					elementNullable = true
 				}
 				field = memory.ListStringField(name, info.Nullable, elementNullable)
+			} else if info.Type == memory.TypeStruct {
+				decoded, ok := n.Expr.(expr.JSONDecodeExpr)
+				if !ok {
+					return nil, fmt.Errorf("projection %q struct expression is unsupported", name)
+				}
+				field = memory.StructField(name, true, decoded.Schema.Fields...)
 			}
 		}
 		if pos, exists := positions[name]; exists {
@@ -278,6 +284,8 @@ func bindScalarValue(dst *memory.Batch, name string, v expr.ScalarValue) error {
 		dst.Strings[name] = v.String
 	case v.StringList != nil:
 		dst.StringLists[name] = v.StringList
+	case v.Struct != nil:
+		dst.Structs[name] = v.Struct
 	default:
 		return fmt.Errorf("projection %q type %s has no physical vector", name, v.Type)
 	}
@@ -308,6 +316,9 @@ func bindAll(dst, src *memory.Batch) {
 	}
 	for k, v := range src.StringLists {
 		dst.StringLists[k] = v
+	}
+	for k, v := range src.Structs {
+		dst.Structs[k] = v
 	}
 	for k, v := range src.Opaque {
 		dst.Opaque[k] = v
@@ -347,6 +358,10 @@ func bindNamed(dst *memory.Batch, out string, src *memory.Batch, in string) erro
 		dst.StringLists[out] = v
 		return nil
 	}
+	if v, ok := src.Structs[in]; ok {
+		dst.Structs[out] = v
+		return nil
+	}
 	if v, ok := src.Opaque[in]; ok {
 		dst.Opaque[out] = v
 		return nil
@@ -363,6 +378,7 @@ func removeColumn(dst *memory.Batch, name string) {
 	delete(dst.Strings, name)
 	delete(dst.DictStrings, name)
 	delete(dst.StringLists, name)
+	delete(dst.Structs, name)
 	delete(dst.Opaque, name)
 }
 
