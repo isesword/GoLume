@@ -26,7 +26,7 @@ func query(force string, workers int) expr.Query {
 	return expr.Query{Filter: expr.GT(expr.Col("pred"), expr.I64(32767)), GroupBy: []string{"key"}, Aggregates: []expr.Aggregate{expr.Sum("value", "sum"), expr.Count("count")}, Hints: expr.Hints{Selectivity: .451, Cardinality: 1 << 18, ForceStrategy: force, ForceWorkerCount: workers}}
 }
 func TestParquetStrategies(t *testing.T) {
-	src, err := parquetsource.Open(testPath(t), parquetsource.Columns{PredicateIndex: 0, GroupIndex: 1, ValueIndex: 2})
+	src, err := parquetsource.OpenFile(testPath(t))
 	if err != nil {
 		t.Fatal(err)
 	}

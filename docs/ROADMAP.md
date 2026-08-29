@@ -78,31 +78,107 @@
 - aggregate CostModel feedback with explicit Hint precedence;
 - Sort/Top-K and feedback strategy regressions.
 
-## Phase 2.9 — richer analytical operators and calibrated planning
+### Phase 2.9 — Top-K key-only source replay
+
+- Top-K Scan/Filter/Projection/ExprProjection first pass now has an independent
+  key-only source projection;
+- the payload source is replayed only for winner partitions;
+- Join and aggregate-result inputs keep one physical input to avoid repeating
+  prepared build or aggregation work.
+
+### Phase 2.10 — UTF-8 and UTC temporal expressions
+
+- Parquet UTF-8 STRING, DATE, and UTC TIMESTAMP_MILLIS/MICROS/NANOS scan;
+- Arrow RecordBatch timestamp normalization to UTC Unix nanoseconds;
+- contains/starts-with/ends-with predicates with SQL NULL semantics;
+- Unicode character-count and UTC year/month/day/hour/minute/second expressions;
+- direct filtering on string predicates and extracted temporal values.
+- explicit UTC `TimestampSeconds`/`TimestampMillis`/`TimestampMicros`
+  literals, normalized with compile-time overflow checks;
+- checked signed/unsigned integer arithmetic and checked temporal `Add`/`Sub`
+  (date32 days, date64 milliseconds, timestamp nanoseconds);
+- conservative Parquet statistic pruning for DATE/timestamp comparisons and
+  calendar extraction, plus all-NULL string-match row groups.
+
+### Phase 2.11 — expression ordering keys
+
+- `SortBy` / `TopKBy` with direct scalar-expression keys;
+- hidden physical key materialization, preserving the logical output schema;
+- direct-column ordering fast path retained;
+- expression dependency-only Top-K first-pass replay;
+- stable multi-key Sort/Top-K with NULL placement independent of direction.
+
+### Phase 2.12 — parallel stable global sort
+
+- materialized global sorts split contiguous source-order ordinals into
+  independently stable runs, scheduled on the engine's bounded worker pool;
+- a deterministic k-way merge uses the original ordinal as the equality
+  tie-breaker, retaining full stable-sort semantics across run boundaries;
+- legacy physical construction remains serial by default, while Lazy sessions
+  use their configured worker count; this is CPU parallelism only—external
+  sort/spill remains Phase 3 work.
+
+### Phase 2.13 — RFC3339 and duration expressions
+
+- explicit string-to-timestamp casts accept RFC3339 offset/Z values and the
+  documented no-offset UTC form, then normalize to UTC nanoseconds;
+- Go-duration literals and string-to-duration casts use nanoseconds, with
+  checked timestamp/duration and duration/duration arithmetic;
+- Arrow Duration source values normalize seconds, milliseconds, microseconds,
+  and nanoseconds at ingestion; named IANA timezone conversion remains
+  intentionally unsupported.
+
+### Phase 2.14 — literal UTF-8 string transforms
+
+- Unicode-whitespace `Trim`/`TrimStart`/`TrimEnd` and Unicode simple-case
+  `Lower`/`Upper` projections;
+- literal-only `Replace`/`ReplaceAll`, Unicode-code-point `Slice`, and
+  Unicode-code-point `Find` with a direct column/literal filter path;
+- `ByteLength` alongside the existing character-count `Length`;
+- dictionary-string transformation materialization, NULL propagation, and
+  UTF-8/empty-string/negative-slice regression coverage.
+
+### Phase 2.15 — Window foundation
+
+- `NewWindow(PartitionBy(...), OrderBy(...))` and `LazyFrame.WithWindows`;
+- partition-local `row_number`, `rank`, and `dense_rank`, with input row order
+  restored after computation;
+- `ROWS BETWEEN` rolling count, sum, min, max, and average over numeric
+  columns, including NULL/NaN/infinity and checked integer-result overflow;
+- one shared materialization, ordering pass, and partition scan per window
+  node, with hidden expression ordering keys removed before output;
+- strict optimizer boundary: Filter, Limit, and Sort above a Window do not
+  move beneath it; unused window outputs permit eliminating the full node;
+- single global output partition, execution-time memory reservations,
+  cancellation, and Arrow/Parquet row-pipeline coverage.
+
+### Phase 2.16 — bounded regular expressions
+
+- literal-pattern `RegexMatch` filters over plain and dictionary strings;
+- capture-aware `RegexExtract`, with group zero selecting the full match and
+  NULL for no match or an unmatched optional group;
+- compile-time RE2 validation, 64-KiB pattern bounds, reusable compiled
+  programs, and projection CSE without row-materializing pattern metadata;
+- SQL three-valued predicate behavior plus Unicode, empty-match, invalid
+  pattern/group, long-input, and Lazy pipeline coverage.
+
+## Next — richer analytical operators and calibrated planning
 
 Priority order:
 
-1. **String/date expression breadth**
-   - contains/prefix/suffix/length;
-   - date/timestamp extraction;
-   - timezone/unit-aware casts;
-   - checked arithmetic modes.
+1. **String advanced layer**
+   - split/extract-all/JSON only after List/Struct vectors and output schema
+     contracts exist;
+   - normalization, case-folding, and collation only with a coherent
+     equality/grouping/sorting policy.
 
 2. **Ordering quality**
-   - expression sort keys without mandatory WithColumns;
-   - Top-K key-only first-pass source projection;
    - dictionary-aware/collation-aware ordering hooks;
-   - multi-worker stable sort partitions followed by merge.
 
 3. **Runtime planning feedback breadth**
    - feed build/probe bytes, skew and duplicate multiplicity into Join planning;
    - platform-calibrated ARM/x86 thresholds;
    - planner confidence/sample decay and source-version invalidation.
-
-4. **Window foundation**
-   - partition/order logical specification;
-   - row_number/rank/dense_rank;
-   - rolling aggregate execution contracts.
 
 ## Phase 3 — bounded memory and spill
 

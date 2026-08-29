@@ -1,0 +1,26 @@
+goos: darwin
+goarch: arm64
+pkg: gocolumn/kernel
+cpu: Apple M4 Pro
+BenchmarkStringUTF8Length/mode=scalar-12         	     787	   1347618 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStringUTF8Length/mode=scalar-12         	     930	   1358977 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStringUTF8Length/mode=scalar-12         	     909	   1352652 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStringUTF8Length/mode=scalar-12         	     878	   1344205 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStringUTF8Length/mode=scalar-12         	     913	   1382004 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStringUTF8Length/mode=scalar-12         	     871	   1388624 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStringUTF8Length/mode=scalar-12         	     874	   1359927 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStringUTF8Length/mode=scalar-12         	     908	   1339332 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStringUTF8Length/mode=scalar-12         	     890	   1351222 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStringUTF8Length/mode=scalar-12         	     874	   1386531 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStringUTF8Length/mode=simd-12           	     720	   1684265 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStringUTF8Length/mode=simd-12           	     734	   1637319 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStringUTF8Length/mode=simd-12           	     708	   1645541 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStringUTF8Length/mode=simd-12           	     699	   1678796 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStringUTF8Length/mode=simd-12           	     734	   1672177 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStringUTF8Length/mode=simd-12           	     721	   1675257 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStringUTF8Length/mode=simd-12           	     739	   1680082 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStringUTF8Length/mode=simd-12           	     711	   1656536 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStringUTF8Length/mode=simd-12           	     733	   1642043 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStringUTF8Length/mode=simd-12           	     723	   1656432 ns/op	       0 B/op	       0 allocs/op
+PASS
+ok  	gocolumn/kernel	27.299s

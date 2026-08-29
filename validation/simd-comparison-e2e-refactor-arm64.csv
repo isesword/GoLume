@@ -1,0 +1,45 @@
+goos: darwin
+goarch: arm64
+pkg: gocolumn/engine
+cpu: Apple M4 Pro
+,scalar,,simd,,,
+,sec/op,CI,sec/op,CI,vs base,P
+Int32ComparisonKernelMode/direct-fused/select=1-12,0.0006945515,2%,0.00043692100000000005,1%,-37.09%,p=0.000 n=10
+Int32ComparisonKernelMode/direct-fused/select=10-12,0.001490811,2%,0.0011913345,1%,-20.09%,p=0.000 n=10
+Int32ComparisonKernelMode/direct-fused/select=50-12,0.004900238,1%,0.004548229500000001,2%,-7.18%,p=0.000 n=10
+Int32ComparisonKernelMode/direct-fused/select=90-12,0.008291776,1%,0.007830267,1%,-5.57%,p=0.000 n=10
+Int32ComparisonKernelMode/direct-fused/select=100-12,0.008997595,1%,0.0084378225,1%,-6.22%,p=0.000 n=10
+Int32ComparisonKernelMode/bitmap-direct/select=1-12,0.0006019875,2%,0.00041768,1%,-30.62%,p=0.000 n=10
+Int32ComparisonKernelMode/bitmap-direct/select=10-12,0.001253835,1%,0.001047775,1%,-16.43%,p=0.000 n=10
+Int32ComparisonKernelMode/bitmap-direct/select=50-12,0.004583437,2%,0.00401807,1%,-12.34%,p=0.000 n=10
+Int32ComparisonKernelMode/bitmap-direct/select=90-12,0.008210459,1%,0.0068727995,1%,-16.29%,p=0.000 n=10
+Int32ComparisonKernelMode/bitmap-direct/select=100-12,0.008880220000000001,1%,0.007432379000000001,1%,-16.30%,p=0.000 n=10
+geomean,0.003147696497669042,,0.0025987689532569755,,-17.44%,
+
+,scalar,,simd,,,
+,B/op,CI,B/op,CI,vs base,P
+Int32ComparisonKernelMode/direct-fused/select=1-12,344,0%,344,0%,~,p=1.000 n=10
+Int32ComparisonKernelMode/direct-fused/select=10-12,344,0%,344,0%,~,p=1.000 n=10
+Int32ComparisonKernelMode/direct-fused/select=50-12,344,0%,344,0%,~,p=1.000 n=10
+Int32ComparisonKernelMode/direct-fused/select=90-12,344,0%,344,0%,~,p=1.000 n=10
+Int32ComparisonKernelMode/direct-fused/select=100-12,344,0%,344,0%,~,p=1.000 n=10
+Int32ComparisonKernelMode/bitmap-direct/select=1-12,336,0%,336,0%,~,p=1.000 n=10
+Int32ComparisonKernelMode/bitmap-direct/select=10-12,336,0%,336,0%,~,p=1.000 n=10
+Int32ComparisonKernelMode/bitmap-direct/select=50-12,336,0%,336,0%,~,p=1.000 n=10
+Int32ComparisonKernelMode/bitmap-direct/select=90-12,336,0%,336,0%,~,p=1.000 n=10
+Int32ComparisonKernelMode/bitmap-direct/select=100-12,336,0%,336,0%,~,p=1.000 n=10
+geomean,339.9764697740124,,339.9764697740124,,+0.00%,
+
+,scalar,,simd,,,
+,allocs/op,CI,allocs/op,CI,vs base,P
+Int32ComparisonKernelMode/direct-fused/select=1-12,3,0%,3,0%,~,p=1.000 n=10
+Int32ComparisonKernelMode/direct-fused/select=10-12,3,0%,3,0%,~,p=1.000 n=10
+Int32ComparisonKernelMode/direct-fused/select=50-12,3,0%,3,0%,~,p=1.000 n=10
+Int32ComparisonKernelMode/direct-fused/select=90-12,3,0%,3,0%,~,p=1.000 n=10
+Int32ComparisonKernelMode/direct-fused/select=100-12,3,0%,3,0%,~,p=1.000 n=10
+Int32ComparisonKernelMode/bitmap-direct/select=1-12,2,0%,2,0%,~,p=1.000 n=10
+Int32ComparisonKernelMode/bitmap-direct/select=10-12,2,0%,2,0%,~,p=1.000 n=10
+Int32ComparisonKernelMode/bitmap-direct/select=50-12,2,0%,2,0%,~,p=1.000 n=10
+Int32ComparisonKernelMode/bitmap-direct/select=90-12,2,0%,2,0%,~,p=1.000 n=10
+Int32ComparisonKernelMode/bitmap-direct/select=100-12,2,0%,2,0%,~,p=1.000 n=10
+geomean,2.449489742783178,,2.449489742783178,,+0.00%,

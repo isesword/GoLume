@@ -44,7 +44,7 @@ func TestProjectionProgramTypedCoercionCSEAndCast(t *testing.T) {
 	batch.Reset(3)
 
 	var ws ScalarWorkspace
-	values, err := program.Evaluate(batch, &ws)
+	values, err := program.Evaluate(batch, &ws, testKernelSet())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -100,7 +100,7 @@ func TestTypedPredicateFloatStringDateTimestamp(t *testing.T) {
 		t.Fatal(err)
 	}
 	var ws EvalWorkspace
-	out, err := program.Evaluate(batch, &ws, nil)
+	out, err := program.Evaluate(batch, &ws, testKernelSet())
 	if err != nil {
 		t.Fatal(err)
 	}

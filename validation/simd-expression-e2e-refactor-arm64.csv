@@ -1,0 +1,24 @@
+goos: darwin
+goarch: arm64
+pkg: gocolumn/expr
+cpu: Apple M4 Pro
+,scalar,,auto,,,
+,sec/op,CI,sec/op,CI,vs base,P
+Float64ExpressionKernelMode-12,0.0001004235,29%,8.277700000000001e-05,1%,-17.57%,p=0.000 n=10
+UTF8LengthExpressionKernelMode/long-ascii-12,0.0011821505,1%,0.00011490300000000001,1%,-90.28%,p=0.000 n=10
+UTF8LengthExpressionKernelMode/mixed-12,0.0011060445,4%,0.0011515765000000002,3%,+4.12%,p=0.004 n=10
+geomean,0.0005082689443330644,,0.00022208093713396612,,-56.31%,
+
+,scalar,,auto,,,
+,B/op,CI,B/op,CI,vs base,P
+Float64ExpressionKernelMode-12,64,0%,64,0%,~,p=1.000 n=10
+UTF8LengthExpressionKernelMode/long-ascii-12,0,0%,0,0%,~,p=1.000 n=10
+UTF8LengthExpressionKernelMode/mixed-12,0,0%,0,0%,~,p=1.000 n=10
+geomean,,,,,+0.00%,
+
+,scalar,,auto,,,
+,allocs/op,CI,allocs/op,CI,vs base,P
+Float64ExpressionKernelMode-12,1,0%,1,0%,~,p=1.000 n=10
+UTF8LengthExpressionKernelMode/long-ascii-12,0,0%,0,0%,~,p=1.000 n=10
+UTF8LengthExpressionKernelMode/mixed-12,0,0%,0,0%,~,p=1.000 n=10
+geomean,,,,,+0.00%,

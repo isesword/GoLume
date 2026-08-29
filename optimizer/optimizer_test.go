@@ -15,7 +15,9 @@ type testSource struct{ schema memory.Schema }
 func (s *testSource) Schema() memory.Schema                                { return s.schema }
 func (*testSource) Stats(context.Context) (source.Stats, error)            { return source.Stats{}, nil }
 func (*testSource) Partitions(context.Context) ([]source.Partition, error) { return nil, nil }
-func (*testSource) NewReader(context.Context) (source.Reader, error)       { return nil, nil }
+func (*testSource) NewReader(context.Context, source.ReadOptions) (source.Reader, error) {
+	return nil, nil
+}
 
 func TestProjectionAndPredicatePushdown(t *testing.T) {
 	src := &testSource{schema: memory.NewSchema(
@@ -229,7 +231,7 @@ func TestSortProjectionKeepsOrderingKeyAndPrunesUnused(t *testing.T) {
 		memory.Field{Name: "score", Type: memory.TypeInt64},
 		memory.Field{Name: "unused", Type: memory.TypeInt64},
 	)}
-	plan := &logical.Projection{Input: &logical.Sort{Input: &logical.Scan{Source: src}, By: []logical.SortKey{{Column: "score", Descending: true, NullsLast: true}}}, Columns: []string{"id"}}
+	plan := &logical.Projection{Input: &logical.Sort{Input: &logical.Scan{Source: src}, By: []logical.SortKey{{Expr: expr.Col("score"), Descending: true, NullsLast: true}}}, Columns: []string{"id"}}
 	got, err := Optimize(plan)
 	if err != nil {
 		t.Fatal(err)
@@ -243,9 +245,33 @@ func TestSortProjectionKeepsOrderingKeyAndPrunesUnused(t *testing.T) {
 	}
 }
 
+func TestExpressionSortProjectionKeepsDependenciesAndPrunesUnused(t *testing.T) {
+	src := &testSource{schema: memory.NewSchema(
+		memory.Field{Name: "id", Type: memory.TypeInt64},
+		memory.Field{Name: "a", Type: memory.TypeInt64},
+		memory.Field{Name: "b", Type: memory.TypeInt64},
+		memory.Field{Name: "unused", Type: memory.TypeInt64},
+	)}
+	plan := &logical.Projection{Input: &logical.Sort{
+		Input: &logical.Scan{Source: src},
+		By:    []logical.SortKey{{Expr: expr.Add(expr.Col("a"), expr.Col("b")), Descending: true, NullsLast: true}},
+	}, Columns: []string{"id"}}
+	got, err := Optimize(plan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	scan := findScan(t, got.Plan)
+	if want := []string{"id", "a", "b"}; !equalStrings(scan.Projection, want) {
+		t.Fatalf("scan projection=%v want=%v", scan.Projection, want)
+	}
+	if contains(scan.Projection, "unused") {
+		t.Fatalf("unused survived: %v", scan.Projection)
+	}
+}
+
 func TestSortLimitRewritesToTopK(t *testing.T) {
 	src := &testSource{schema: memory.NewSchema(memory.Field{Name: "score", Type: memory.TypeInt64})}
-	plan := &logical.Limit{Input: &logical.Sort{Input: &logical.Scan{Source: src}, By: []logical.SortKey{{Column: "score", Descending: true, NullsLast: true}}}, N: 10}
+	plan := &logical.Limit{Input: &logical.Sort{Input: &logical.Scan{Source: src}, By: []logical.SortKey{{Expr: expr.Col("score"), Descending: true, NullsLast: true}}}, N: 10}
 	got, err := Optimize(plan)
 	if err != nil {
 		t.Fatal(err)
@@ -258,11 +284,30 @@ func TestSortLimitRewritesToTopK(t *testing.T) {
 	}
 }
 
+func TestExpressionSortLimitRewritesToTopK(t *testing.T) {
+	src := &testSource{schema: memory.NewSchema(memory.Field{Name: "score", Type: memory.TypeInt64})}
+	plan := &logical.Limit{Input: &logical.Sort{
+		Input: &logical.Scan{Source: src},
+		By:    []logical.SortKey{{Expr: expr.Add(expr.Col("score"), expr.Lit(1)), Descending: true, NullsLast: true}},
+	}, N: 10}
+	got, err := Optimize(plan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	top, ok := got.Plan.(*logical.TopK)
+	if !ok {
+		t.Fatalf("plan=%T want *logical.TopK", got.Plan)
+	}
+	if len(top.By) != 1 || top.By[0].Expr == nil || top.By[0].Expr.String() != "(score + 1)" {
+		t.Fatalf("top-k keys=%+v", top.By)
+	}
+}
+
 func TestPredicateDoesNotCrossLimitOrTopK(t *testing.T) {
 	src := &testSource{schema: memory.NewSchema(memory.Field{Name: "x", Type: memory.TypeInt64})}
 	for _, plan := range []logical.Plan{
 		&logical.Filter{Input: &logical.Limit{Input: &logical.Scan{Source: src}, N: 5}, Predicate: expr.GT(expr.Col("x"), expr.Lit(1))},
-		&logical.Filter{Input: &logical.TopK{Input: &logical.Scan{Source: src}, K: 5, By: []logical.SortKey{{Column: "x", NullsLast: true}}}, Predicate: expr.GT(expr.Col("x"), expr.Lit(1))},
+		&logical.Filter{Input: &logical.TopK{Input: &logical.Scan{Source: src}, K: 5, By: []logical.SortKey{{Expr: expr.Col("x"), NullsLast: true}}}, Predicate: expr.GT(expr.Col("x"), expr.Lit(1))},
 	} {
 		got, err := Optimize(plan)
 		if err != nil {

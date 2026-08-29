@@ -33,7 +33,10 @@ func New(opts Options) *Engine {
 func (e *Engine) Close() error { return e.scheduler.Close() }
 
 // KernelCapabilities reports the active scalar/SIMD kernel backend.
-func (e *Engine) KernelCapabilities() kernel.Capabilities { return e.kernels.Caps }
+func (e *Engine) KernelCapabilities() kernel.Capabilities { return e.kernels.Capabilities() }
+
+// KernelSet returns the immutable dispatch handle shared by all execution paths.
+func (e *Engine) KernelSet() kernel.Set { return e.kernels }
 
 // Memory returns the engine-level query memory manager.
 func (e *Engine) Memory() memory.Manager { return e.memory }

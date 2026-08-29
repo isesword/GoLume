@@ -206,20 +206,11 @@ func (p *PreparedQuery) executeRadix(ctx context.Context, w *queryWorkspace, opt
 			} else {
 				gs = w.radix64.Materialize(nil)
 			}
-			if p.cq.GroupShape == GroupShapeI32 {
-				out.Groups = make([]Group, len(gs))
-			}
 			out.Rows = make([]AggregateRow, len(gs))
 			for i, g := range gs {
-				if p.cq.GroupShape == GroupShapeI32 {
-					out.Groups[i] = Group{Key: int32(uint32(g.Key)), KeyValid: true, Sum: g.Sum, Count: g.Count}
-				}
 				out.Rows[i] = AggregateRow{Keys: []KeyPart{p.decodeFixed(p.cq.GroupBy[0], g.Key)}, Sum: g.Sum, Count: g.Count, Aggregates: p.materializeAggregates(sumCountAggregateState(g.Sum, g.Count))}
 			}
 			if nullCount > 0 {
-				if p.cq.GroupShape == GroupShapeI32 {
-					out.Groups = append(out.Groups, Group{KeyValid: false, Sum: nullSum, Count: uint64(nullCount)})
-				}
 				out.Rows = append(out.Rows, AggregateRow{Keys: []KeyPart{p.decodeFixedValid(p.cq.GroupBy[0], 0, false)}, Sum: nullSum, Count: uint64(nullCount), Aggregates: p.materializeAggregates(sumCountAggregateState(nullSum, uint64(nullCount)))})
 			}
 		}

@@ -5,6 +5,7 @@ import (
 	"gocolumn/expr"
 	"gocolumn/memory"
 	"gocolumn/source"
+	"math"
 	"testing"
 
 	"github.com/apache/arrow-go/v18/arrow"
@@ -38,7 +39,7 @@ func TestSourceProjectionOpaqueAndDictionaryNormalization(t *testing.T) {
 	if len(report.Projection) != 2 || report.Projection[0] != "pred" || report.Projection[1] != "dict" {
 		t.Fatalf("projection=%v", report.Projection)
 	}
-	r, err := pushed.NewReader(context.Background())
+	r, err := pushed.NewReader(context.Background(), testReadOptions())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -189,7 +190,7 @@ func TestSourceTypedFloatDateTimestampBindings(t *testing.T) {
 		t.Fatalf("timestamp field=%+v", got)
 	}
 
-	r, err := src.NewReader(context.Background())
+	r, err := src.NewReader(context.Background(), testReadOptions())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -211,7 +212,127 @@ func TestSourceTypedFloatDateTimestampBindings(t *testing.T) {
 		t.Fatalf("date values=%v", dv.Values)
 	}
 	tv, _ := batch.Int64("ts")
-	if tv.Values[0] != 1000 {
+	if tv.Values[0] != int64(1000)*int64(1e6) {
 		t.Fatalf("timestamp values=%v", tv.Values)
+	}
+}
+
+func TestSourceNormalizesTimestampUnitsAndRejectsTimezone(t *testing.T) {
+	alloc := arrowmem.NewGoAllocator()
+	for _, tt := range []struct {
+		name string
+		unit arrow.TimeUnit
+		raw  arrow.Timestamp
+		want int64
+		zone string
+	}{
+		{name: "seconds", unit: arrow.Second, raw: 2, want: 2 * int64(1e9)},
+		{name: "millis", unit: arrow.Millisecond, raw: 2000, want: 2 * int64(1e9)},
+		{name: "micros", unit: arrow.Microsecond, raw: 2000000, want: 2 * int64(1e9)},
+		{name: "nanos", unit: arrow.Nanosecond, raw: arrow.Timestamp(2 * 1e9), want: 2 * int64(1e9)},
+		{name: "utc", unit: arrow.Millisecond, raw: 2000, want: 2 * int64(1e9), zone: "UTC"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			typ := &arrow.TimestampType{Unit: tt.unit, TimeZone: tt.zone}
+			b := array.NewTimestampBuilder(alloc, typ)
+			defer b.Release()
+			b.Append(tt.raw)
+			a := b.NewArray()
+			defer a.Release()
+			rec := array.NewRecordBatch(arrow.NewSchema([]arrow.Field{{Name: "ts", Type: typ}}, nil), []arrow.Array{a}, 1)
+			defer rec.Release()
+			src, err := NewSource(rec)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer src.Close()
+			r, err := src.NewReader(context.Background(), testReadOptions())
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer r.Close()
+			parts, _ := src.Partitions(context.Background())
+			batch := memory.NewBatch()
+			if err := r.ReadPartition(context.Background(), parts[0], batch); err != nil {
+				t.Fatal(err)
+			}
+			got, _ := batch.Int64("ts")
+			if got.Values[0] != tt.want {
+				t.Fatalf("timestamp=%d want=%d", got.Values[0], tt.want)
+			}
+		})
+	}
+
+	typ := &arrow.TimestampType{Unit: arrow.Millisecond, TimeZone: "Asia/Shanghai"}
+	b := array.NewTimestampBuilder(alloc, typ)
+	defer b.Release()
+	b.Append(1)
+	a := b.NewArray()
+	defer a.Release()
+	rec := array.NewRecordBatch(arrow.NewSchema([]arrow.Field{{Name: "ts", Type: typ}}, nil), []arrow.Array{a}, 1)
+	defer rec.Release()
+	if _, err := NewSource(rec); err == nil {
+		t.Fatal("expected non-UTC timestamp timezone rejection")
+	}
+}
+
+func TestSourceNormalizesDurationUnitsAndRejectsOverflow(t *testing.T) {
+	alloc := arrowmem.NewGoAllocator()
+	for _, tt := range []struct {
+		name string
+		unit arrow.TimeUnit
+		raw  arrow.Duration
+		want int64
+	}{
+		{name: "seconds", unit: arrow.Second, raw: 2, want: 2 * int64(1e9)},
+		{name: "millis", unit: arrow.Millisecond, raw: 2000, want: 2 * int64(1e9)},
+		{name: "micros", unit: arrow.Microsecond, raw: 2_000_000, want: 2 * int64(1e9)},
+		{name: "nanos", unit: arrow.Nanosecond, raw: 2 * arrow.Duration(1e9), want: 2 * int64(1e9)},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			typ := &arrow.DurationType{Unit: tt.unit}
+			builder := array.NewDurationBuilder(alloc, typ)
+			defer builder.Release()
+			builder.Append(tt.raw)
+			builder.AppendNull()
+			arr := builder.NewArray()
+			defer arr.Release()
+			record := array.NewRecordBatch(arrow.NewSchema([]arrow.Field{{Name: "duration", Type: typ, Nullable: true}}, nil), []arrow.Array{arr}, 2)
+			defer record.Release()
+			src, err := NewSource(record)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer src.Close()
+			reader, err := src.NewReader(context.Background(), testReadOptions())
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer reader.Close()
+			parts, _ := src.Partitions(context.Background())
+			batch := memory.NewBatch()
+			if err := reader.ReadPartition(context.Background(), parts[0], batch); err != nil {
+				t.Fatal(err)
+			}
+			got, err := batch.Int64("duration")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got.Values[0] != tt.want || got.IsValid(1) {
+				t.Fatalf("duration values=%v validity=%v want=%d and NULL", got.Values, got.Validity, tt.want)
+			}
+		})
+	}
+
+	typ := &arrow.DurationType{Unit: arrow.Second}
+	builder := array.NewDurationBuilder(alloc, typ)
+	defer builder.Release()
+	builder.Append(arrow.Duration(math.MaxInt64))
+	arr := builder.NewArray()
+	defer arr.Release()
+	record := array.NewRecordBatch(arrow.NewSchema([]arrow.Field{{Name: "duration", Type: typ}}, nil), []arrow.Array{arr}, 1)
+	defer record.Release()
+	if _, err := NewSource(record); err == nil {
+		t.Fatal("expected duration nanosecond normalization overflow")
 	}
 }

@@ -20,9 +20,6 @@ const (
 	AggAvg
 )
 
-// AggCount is retained as a source-compatible alias for COUNT(*).
-const AggCount = AggCountRows
-
 // Aggregate describes one logical aggregate expression.
 type Aggregate struct {
 	Kind   AggregateKind

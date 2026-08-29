@@ -10,14 +10,14 @@ import (
 
 func checkMaterialized(t *testing.T, r engine.Result) {
 	t.Helper()
-	if len(r.Groups) != r.GroupCount {
-		t.Fatalf("materialized=%d groups=%d", len(r.Groups), r.GroupCount)
+	if len(r.Rows) != r.GroupCount {
+		t.Fatalf("materialized=%d groups=%d", len(r.Rows), r.GroupCount)
 	}
 	var sum int64
 	var count int
-	for _, g := range r.Groups {
-		sum += g.Sum
-		count += int(g.Count)
+	for _, row := range r.Rows {
+		sum += row.Sum
+		count += int(row.Count)
 	}
 	if sum != r.Checksum || count != r.SelectedRows {
 		t.Fatalf("materialized checksum/count mismatch sum=%d/%d count=%d/%d", sum, r.Checksum, count, r.SelectedRows)
@@ -25,7 +25,7 @@ func checkMaterialized(t *testing.T, r engine.Result) {
 }
 
 func TestMaterialize(t *testing.T) {
-	src, err := parquetsource.Open(testPath(t), parquetsource.Columns{PredicateIndex: 0, GroupIndex: 1, ValueIndex: 2})
+	src, err := parquetsource.OpenFile(testPath(t))
 	if err != nil {
 		t.Fatal(err)
 	}

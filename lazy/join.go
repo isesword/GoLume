@@ -173,7 +173,7 @@ func (f LazyFrame) PrepareJoin(ctx context.Context) (*PreparedJoin, error) {
 	if err := validateJoinKeys(left.src.Schema(), right.src.Schema(), n.Keys); err != nil {
 		return nil, err
 	}
-	return &PreparedJoin{typ: n.Type, left: left, right: right, keys: append([]logical.JoinKey(nil), n.Keys...), kernel: kernel.New(kernel.ModeAuto), manager: f.session.engine.Memory()}, nil
+	return &PreparedJoin{typ: n.Type, left: left, right: right, keys: append([]logical.JoinKey(nil), n.Keys...), kernel: f.session.engine.KernelSet(), manager: f.session.engine.Memory()}, nil
 }
 
 // CollectJoin prepares and executes a terminal lazy join once.
@@ -209,7 +209,7 @@ func (p *PreparedJoin) Execute(ctx context.Context) (JoinResult, error) {
 		return JoinResult{}, err
 	}
 	result := JoinResult{Type: p.typ, RightRows: len(p.build.refs), LeftPushdown: p.left.report, RightPushdown: p.right.report}
-	reader, err := p.left.src.NewReader(ctx)
+	reader, err := p.left.src.NewReader(ctx, source.ReadOptions{Kernels: p.kernel})
 	if err != nil {
 		return JoinResult{}, err
 	}
@@ -220,7 +220,7 @@ func (p *PreparedJoin) Execute(ctx context.Context) (JoinResult, error) {
 		if err := reader.ReadPartition(ctx, part, batch); err != nil {
 			return JoinResult{}, err
 		}
-		selected, err := selectedRows(batch, p.left.predicate, &ew, expr.GTKernel(p.kernel.Int64GT))
+		selected, err := selectedRows(batch, p.left.predicate, &ew, p.kernel)
 		if err != nil {
 			return JoinResult{}, err
 		}
@@ -396,7 +396,7 @@ func (p *PreparedJoin) ensureBuild(ctx context.Context) error {
 }
 
 func (p *PreparedJoin) buildRight(ctx context.Context) error {
-	reader, err := p.right.src.NewReader(ctx)
+	reader, err := p.right.src.NewReader(ctx, source.ReadOptions{Kernels: p.kernel})
 	if err != nil {
 		return err
 	}
@@ -424,7 +424,7 @@ func (p *PreparedJoin) buildRight(ctx context.Context) error {
 				if err := reader.ReadPartition(ctx, part, batch); err != nil {
 					return err
 				}
-				selected, err := selectedRows(batch, p.right.predicate, &ew, expr.GTKernel(p.kernel.Int64GT))
+				selected, err := selectedRows(batch, p.right.predicate, &ew, p.kernel)
 				if err != nil {
 					return err
 				}
@@ -464,7 +464,7 @@ func (p *PreparedJoin) buildRight(ctx context.Context) error {
 		if err := reader.ReadPartition(ctx, part, batch); err != nil {
 			return err
 		}
-		selected, err := selectedRows(batch, p.right.predicate, &ew, expr.GTKernel(p.kernel.Int64GT))
+		selected, err := selectedRows(batch, p.right.predicate, &ew, p.kernel)
 		if err != nil {
 			return err
 		}
@@ -601,8 +601,8 @@ func fixedJoinValue(batch *memory.Batch, name string, row int) (uint64, bool, er
 	return 0, false, fmt.Errorf("fixed join column %q is not int32/int64/uint32/uint64", name)
 }
 
-func selectedRows(batch *memory.Batch, program expr.Program, ew *expr.EvalWorkspace, gt expr.GTKernel) ([]int, error) {
-	bools, err := program.Evaluate(batch, ew, gt)
+func selectedRows(batch *memory.Batch, program expr.Program, ew *expr.EvalWorkspace, kernels kernel.Set) ([]int, error) {
+	bools, err := program.Evaluate(batch, ew, kernels)
 	if err != nil {
 		return nil, err
 	}

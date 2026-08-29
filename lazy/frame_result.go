@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"gocolumn/kernel"
 	"gocolumn/logical"
 	"gocolumn/memory"
 	"gocolumn/optimizer"
@@ -50,6 +51,7 @@ type PreparedFrame struct {
 	src     source.Source
 	parts   []source.Partition
 	schema  memory.Schema
+	kernels kernel.Set
 	closers []io.Closer
 	lifeMu  sync.Mutex
 	active  sync.WaitGroup
@@ -82,7 +84,7 @@ func (f LazyFrame) prepareFrame(ctx context.Context) (*PreparedFrame, logical.Pl
 	if _, ok := physicalPlan.(*logical.Aggregate); ok {
 		return nil, nil, source.PushdownReport{}, fmt.Errorf("aggregate plans use Prepare, not PrepareFrame")
 	}
-	src, pending, closers, err := lowerSourcePipeline(ctx, physicalPlan, f.session.engine.Memory(), f.session.engine.KernelCapabilities().Mode, f.session.engine)
+	src, pending, closers, err := lowerSourcePipeline(ctx, physicalPlan, f.session.engine.Memory(), f.session.engine.KernelSet(), f.session.engine)
 	if err != nil {
 		return nil, nil, source.PushdownReport{}, err
 	}
@@ -93,7 +95,7 @@ func (f LazyFrame) prepareFrame(ctx context.Context) (*PreparedFrame, logical.Pl
 	}
 	if pending != nil {
 		childID := profileSourceID(src)
-		src, err = physical.NewFilterSource(src, pending, f.session.engine.KernelCapabilities().Mode)
+		src, err = physical.NewFilterSource(src, pending)
 		if err != nil {
 			cleanup()
 			return nil, nil, source.PushdownReport{}, err
@@ -105,7 +107,7 @@ func (f LazyFrame) prepareFrame(ctx context.Context) (*PreparedFrame, logical.Pl
 		cleanup()
 		return nil, nil, source.PushdownReport{}, err
 	}
-	return &PreparedFrame{src: src, parts: parts, schema: src.Schema(), closers: closers}, physicalPlan, report, nil
+	return &PreparedFrame{src: src, parts: parts, schema: src.Schema(), kernels: f.session.engine.KernelSet(), closers: closers}, physicalPlan, report, nil
 }
 
 // CollectFrame prepares and executes a row-producing lazy plan once.
@@ -142,7 +144,7 @@ func (p *PreparedFrame) Execute(ctx context.Context) (Frame, error) {
 	p.lifeMu.Unlock()
 	defer p.active.Done()
 
-	r, err := p.src.NewReader(ctx)
+	r, err := p.src.NewReader(ctx, source.ReadOptions{Kernels: p.kernels})
 	if err != nil {
 		return Frame{}, err
 	}

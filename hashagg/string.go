@@ -3,15 +3,9 @@ package hashagg
 import (
 	"bytes"
 	"encoding/binary"
-	"errors"
 	"gocolumn/aggregate"
 	"math/bits"
 )
-
-// ErrStringTableFull is retained for compatibility. Adaptive string tables no
-// longer return it under normal operation; memory-budget denial is returned
-// instead when configured growth cannot be reserved.
-var ErrStringTableFull = errors.New("string aggregation table full")
 
 // GroupString is a materialized variable-width string group. Valid is false
 // for the SQL NULL group.

@@ -10,7 +10,7 @@ import (
 )
 
 func TestRadixHonorsMemoryBudget(t *testing.T) {
-	src, err := parquetsource.Open(testPath(t), parquetsource.Columns{PredicateIndex: 0, GroupIndex: 1, ValueIndex: 2})
+	src, err := parquetsource.OpenFile(testPath(t))
 	if err != nil {
 		t.Fatal(err)
 	}

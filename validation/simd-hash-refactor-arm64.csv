@@ -1,0 +1,42 @@
+goos: darwin
+goarch: arm64
+pkg: gocolumn/kernel
+cpu: Apple M4 Pro
+,scalar,,unrolled,,,,,,,
+,sec/op,CI,sec/op,CI,vs base,P,sec/op,CI,vs base,P
+HashBackend/hash64-12,4.3851000000000004e-05,4%,2.98565e-05,1%,-31.91%,p=0.000 n=10
+UTF8Profiles/short-ascii/mode=scalar-12,,,,,,,0.000176334,4%
+UTF8Profiles/short-ascii/mode=simd-12,,,,,,,0.000178273,1%
+UTF8Profiles/long-ascii/mode=scalar-12,,,,,,,0.001183226,5%
+UTF8Profiles/long-ascii/mode=simd-12,,,,,,,0.00011582150000000001,1%
+UTF8Profiles/mixed/mode=scalar-12,,,,,,,0.001136061,1%
+UTF8Profiles/mixed/mode=simd-12,,,,,,,0.0011525300000000001,0%
+UTF8Profiles/malformed/mode=scalar-12,,,,,,,0.000647512,1%
+UTF8Profiles/malformed/mode=simd-12,,,,,,,0.000155731,0%
+geomean,4.385099999999999e-05,,2.9856499999999998e-05,,-31.91%,,0.00039297906330996535,,?,
+
+,scalar,,unrolled,,,,,,,
+,B/op,CI,B/op,CI,vs base,P,B/op,CI,vs base,P
+HashBackend/hash64-12,0,0%,0,0%,~,p=1.000 n=10
+UTF8Profiles/short-ascii/mode=scalar-12,,,,,,,0,0%
+UTF8Profiles/short-ascii/mode=simd-12,,,,,,,0,0%
+UTF8Profiles/long-ascii/mode=scalar-12,,,,,,,0,0%
+UTF8Profiles/long-ascii/mode=simd-12,,,,,,,0,0%
+UTF8Profiles/mixed/mode=scalar-12,,,,,,,0,0%
+UTF8Profiles/mixed/mode=simd-12,,,,,,,0,0%
+UTF8Profiles/malformed/mode=scalar-12,,,,,,,0,0%
+UTF8Profiles/malformed/mode=simd-12,,,,,,,0,0%
+geomean,,,,,+0.00%,,,,?,
+
+,scalar,,unrolled,,,,,,,
+,allocs/op,CI,allocs/op,CI,vs base,P,allocs/op,CI,vs base,P
+HashBackend/hash64-12,0,0%,0,0%,~,p=1.000 n=10
+UTF8Profiles/short-ascii/mode=scalar-12,,,,,,,0,0%
+UTF8Profiles/short-ascii/mode=simd-12,,,,,,,0,0%
+UTF8Profiles/long-ascii/mode=scalar-12,,,,,,,0,0%
+UTF8Profiles/long-ascii/mode=simd-12,,,,,,,0,0%
+UTF8Profiles/mixed/mode=scalar-12,,,,,,,0,0%
+UTF8Profiles/mixed/mode=simd-12,,,,,,,0,0%
+UTF8Profiles/malformed/mode=scalar-12,,,,,,,0,0%
+UTF8Profiles/malformed/mode=simd-12,,,,,,,0,0%
+geomean,,,,,+0.00%,,,,?,

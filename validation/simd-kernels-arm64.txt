@@ -1,0 +1,46 @@
+GoLume SIMD kernel gate
+date: 2026-08-29
+goos/goarch: darwin/arm64
+cpu: Apple M4 Pro
+go: 1.27.0
+build: GOEXPERIMENT=simd
+command: go test ./kernel -run '^$' -bench 'Benchmark(Int64Compare|Hash64Batch|Float64Arithmetic|Int64Arithmetic|BoolAnd|Int64Scale|StringUTF8Length)$' -benchmem -benchtime=100ms -count=10
+
+Median ns/op (10 samples; ModeScalar and ModeSIMD in the same SIMD build):
+
+kernel                       scalar       forced SIMD       delta       Auto
+Int64 comparison             78,653.5      91,091.0        +15.8%       scalar
+Hash64 batch                 43,311.0     146,664.5       +238.6%       scalar
+Float64 multiplication       46,222.5      32,200.0        -30.3%       SIMD
+checked Int64 addition       81,534.5     168,444.0       +106.6%       scalar
+SQL bitmap AND               14,154.0      16,008.5        +13.1%       scalar
+
+All cases reported 0 B/op and 0 allocs/op. Only Float64 arithmetic clears the
+>=10% hotspot threshold on this arm64 host. The other SIMD implementations stay
+available through ModeSIMD for differential correctness testing and diagnostics
+but are not selected by ModeAuto.
+
+benchstat (independent 10-sample rerun, Mann-Whitney U test):
+
+Int64Compare       78.06us +-3% ->  90.97us +-1%   +16.53% p=0.000 n=10
+Hash64Batch        43.48us +-1% -> 147.26us +-2%  +238.72% p=0.000 n=10
+Float64Arithmetic  46.34us +-2% ->  32.43us +-1%   -30.01% p=0.000 n=10
+Int64Arithmetic    81.59us +-10% -> 166.83us +-2% +104.48% p=0.000 n=10
+BoolAnd            14.10us +-2% ->  15.92us +-1%   +12.95% p=0.000 n=10
+
+Additional checked Int64 scaling gate (includes restoring the input buffer):
+60.95us scalar median vs 99.79us forced SIMD median, +63.7%, 10 samples,
+0 B/op and 0 allocs/op. It remains scalar in ModeAuto.
+
+UTF-8 Length gate, 16,384 rows of 64-byte multilingual strings: 1.228ms scalar
+median vs 1.663ms forced SIMD median, +35.4%, 10 samples. The forced SIMD path
+is allocation-free but does not clear the latency gate, so ModeAuto remains on
+the existing scalar implementation.
+
+1M-row prepared Parquet radix end-to-end gate (10 samples, 200ms/sample):
+
+ModeScalar 5.058ms +-1% -> ModeAuto 5.048ms +-1%, no significant change
+(p=0.739 n=10). Bytes/op were 35.16MiB in both modes (p=0.424), and
+allocations/op were 30.81k in both modes (p=1.000). This is within the 3%
+end-to-end regression limit while preserving groups=219196, selected=472475,
+checksum=236716301.

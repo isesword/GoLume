@@ -97,9 +97,10 @@ func (e *Engine) Prepare(ctx context.Context, src source.Source, q expr.Query, o
 	strategy, err := e.opts.CostModel.Choose(planner.Input{
 		Rows: stats.Rows, Partitions: stats.Partitions, Workers: workers,
 		Selectivity: cq.SelectivityHint, Cardinality: cq.CardinalityHint,
-		ReuseSelection: cq.ReuseSelection, Kernel: e.kernels.Caps,
+		ReuseSelection: cq.ReuseSelection, Kernel: e.kernels.Capabilities(),
 		ForceStrategy: cq.ForceStrategy, ForceRadixBits: cq.ForceRadixBits,
 		FusedCapable: cq.FusedCapable, RadixCapable: cq.RadixCapable,
+		ComparisonID: cq.ComparisonID, HasComparisonID: cq.HasComparisonID,
 		KeyWidthBytes: cq.KeyWidthBytes, PredicateComplexity: cq.Predicate.Complexity,
 	})
 	if err != nil {

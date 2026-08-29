@@ -1,6 +1,7 @@
 package logical
 
 import (
+	"fmt"
 	"gocolumn/expr"
 	"gocolumn/join"
 	"gocolumn/source"
@@ -52,12 +53,20 @@ type ExprProjection struct {
 
 func (*ExprProjection) planNode() {}
 
-// SortKey describes one column ordering key. NullsLast controls NULL placement
+// SortKey describes one ordering expression. NullsLast controls NULL placement
 // independently from ascending/descending value order.
 type SortKey struct {
-	Column     string
+	Expr       expr.Expr
 	Descending bool
 	NullsLast  bool
+}
+
+// Expression returns the validated expression represented by k.
+func (k SortKey) Expression() (expr.Expr, error) {
+	if k.Expr == nil {
+		return nil, fmt.Errorf("sort key requires an expression")
+	}
+	return k.Expr, nil
 }
 
 // Sort globally orders all input rows by one or more keys.

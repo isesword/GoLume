@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"gocolumn/aggregate"
 	"gocolumn/expr"
+	"gocolumn/kernel"
 	"gocolumn/memory"
 )
 
@@ -139,12 +140,24 @@ func compileQuery(schema memory.Schema, q expr.Query) (CompiledQuery, error) {
 	if avg <= 0 {
 		avg = 16
 	}
+	comparisonID, hasComparisonID := simpleComparisonKernelID(simple)
 	return CompiledQuery{
-		Predicate: prog, SimpleGT: simple, GroupBy: groups, GroupShape: shape,
+		Predicate: prog, SimpleComparison: simple, GroupBy: groups, GroupShape: shape,
 		ValueColumn: value, ValueNullable: valueNullable, Aggregates: append([]expr.Aggregate(nil), q.Aggregates...), AggregateLayout: layout,
 		CardinalityHint: card, SelectivityHint: sel, AverageKeyBytes: avg,
 		ReuseSelection: q.Hints.ReuseSelection, ForceStrategy: q.Hints.ForceStrategy,
-		ForceRadixBits: q.Hints.ForceRadixBits, FusedCapable: simple != nil,
+		ForceRadixBits: q.Hints.ForceRadixBits, FusedCapable: simple != nil, ComparisonID: comparisonID, HasComparisonID: hasComparisonID,
 		RadixCapable: radixCapable, KeyWidthBytes: keyWidth,
 	}, nil
+}
+
+func simpleComparisonKernelID(simple *expr.SimpleComparison) (kernel.KernelID, bool) {
+	if simple == nil {
+		return kernel.KernelID{}, false
+	}
+	op, err := directCompareOp(simple.Op)
+	if err != nil {
+		return kernel.KernelID{}, false
+	}
+	return kernel.ComparisonID(simple.Type, op)
 }

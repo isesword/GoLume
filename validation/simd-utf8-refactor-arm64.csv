@@ -1,0 +1,33 @@
+goos: darwin
+goarch: arm64
+pkg: gocolumn/kernel
+cpu: Apple M4 Pro
+,,,scalar,,,,simd,,,
+,sec/op,CI,sec/op,CI,vs base,P,sec/op,CI,vs base,P
+HashBackend/hash64/backend=scalar-12,4.3851000000000004e-05,4%
+HashBackend/hash64/backend=unrolled-12,2.98565e-05,1%
+UTF8Profiles/short-ascii-12,,,0.000176334,4%,,,0.000178273,1%
+UTF8Profiles/long-ascii-12,,,0.001183226,5%,,,0.00011582150000000001,1%
+UTF8Profiles/mixed-12,,,0.001136061,1%,,,0.0011525300000000001,0%
+UTF8Profiles/malformed-12,,,0.000647512,1%,,,0.000155731,0%
+geomean,3.618338543447807e-05,,0.0006259120447608549,,?,,0.0002467320216836261,,?,
+
+,,,scalar,,,,simd,,,
+,B/op,CI,B/op,CI,vs base,P,B/op,CI,vs base,P
+HashBackend/hash64/backend=scalar-12,0,0%
+HashBackend/hash64/backend=unrolled-12,0,0%
+UTF8Profiles/short-ascii-12,,,0,0%,,,0,0%
+UTF8Profiles/long-ascii-12,,,0,0%,,,0,0%
+UTF8Profiles/mixed-12,,,0,0%,,,0,0%
+UTF8Profiles/malformed-12,,,0,0%,,,0,0%
+geomean,,,,,?,,,,?,
+
+,,,scalar,,,,simd,,,
+,allocs/op,CI,allocs/op,CI,vs base,P,allocs/op,CI,vs base,P
+HashBackend/hash64/backend=scalar-12,0,0%
+HashBackend/hash64/backend=unrolled-12,0,0%
+UTF8Profiles/short-ascii-12,,,0,0%,,,0,0%
+UTF8Profiles/long-ascii-12,,,0,0%,,,0,0%
+UTF8Profiles/mixed-12,,,0,0%,,,0,0%
+UTF8Profiles/malformed-12,,,0,0%,,,0,0%
+geomean,,,,,?,,,,?,

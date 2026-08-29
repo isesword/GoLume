@@ -1,0 +1,93 @@
+{
+  "schema": 2,
+  "generated": "2026-08-29",
+  "criteria": {
+    "minimum_samples": 10,
+    "benchtime": "1s",
+    "minimum_improvement_percent": 10,
+    "maximum_p_value": 0.05,
+    "maximum_end_to_end_regression_percent": 3
+  },
+  "architectures": {
+    "darwin/arm64": {
+      "status": "approved",
+      "approved_kernel_ids": [
+        "compare-int32-gt",
+        "compare-int32-ge",
+        "compare-int32-lt",
+        "compare-int32-le",
+        "compare-uint32-gt",
+        "compare-uint32-ge",
+        "compare-uint32-lt",
+        "compare-uint32-le",
+        "compare-uint32-eq",
+        "arithmetic-float64-sub",
+        "arithmetic-float64-mul",
+        "arithmetic-float64-div",
+        "hash64-batch"
+      ],
+      "kernel_gate": {
+        "samples_file": "validation/simd-kernelid-candidates-refactor-arm64.txt",
+        "benchstat_csv": "validation/simd-kernelid-candidates-refactor-arm64.csv",
+        "comparison_improvement_percent_range": [36.22, 72.38],
+        "float64_improvement_percent_range": [19.30, 19.61],
+        "p_value": 0.000
+      },
+      "hash64_gate": {
+        "backend": "arm64-unrolled",
+        "hardware_simd": false,
+        "improvement_percent": 31.91,
+        "p_value": 0.000,
+        "samples_file": "validation/simd-hash-utf8-refactor-arm64.txt",
+        "benchstat_csv": "validation/simd-hash-refactor-arm64.csv"
+      },
+      "comparison_end_to_end": {
+        "samples_file": "validation/simd-comparison-e2e-refactor-arm64.txt",
+        "benchstat_csv": "validation/simd-comparison-e2e-refactor-arm64.csv",
+        "direct_fused_improvement_percent": [37.09, 20.09, 7.18, 5.57, 6.22],
+        "bitmap_direct_improvement_percent": [30.62, 16.43, 12.34, 16.29, 16.30]
+      },
+      "planner_bitmap_approvals": {
+        "kernel_id": "compare-int32-gt",
+        "vector_bits": 128,
+        "selectivity_percent": [10, 50, 90, 100],
+        "improvement_percent": [12.05, 11.66, 12.23, 11.92],
+        "rejected_1_percent_improvement": 4.40,
+        "samples_file": "validation/simd-comparison-strategy-refactor-arm64.txt",
+        "benchstat_csv": "validation/simd-comparison-strategy-refactor-arm64.csv"
+      },
+      "expression_end_to_end": {
+        "float64_improvement_percent": 17.57,
+        "float64_p_value": 0.000,
+        "samples_file": "validation/simd-expression-e2e-refactor-arm64.txt",
+        "benchstat_csv": "validation/simd-expression-e2e-refactor-arm64.csv"
+      },
+      "general_end_to_end": [
+        {"workload": "1m-parquet-prepared-radix", "change_percent": -0.52, "p_value": 0.052, "pass": true},
+        {"workload": "1m-parquet-prepared-lazy", "change_percent": -1.47, "p_value": 0.015, "pass": true},
+        {"workload": "prepared-radix-join", "change_percent": -0.53, "p_value": 0.481, "pass": true}
+      ],
+      "general_end_to_end_samples_file": "validation/simd-e2e-refactor-arm64.txt",
+      "general_end_to_end_benchstat_csv": "validation/simd-e2e-refactor-arm64.csv",
+      "deleted_candidates": [
+        {
+          "kernel_id": "string-utf8-length",
+          "reason": "mixed Unicode expression regressed beyond the end-to-end limit",
+          "regression_percent": 4.12,
+          "p_value": 0.004,
+          "samples_file": "validation/simd-expression-e2e-refactor-arm64.txt"
+        },
+        {"kernel_id": "hash128-batch", "reason": "unrolled scalar experiment regressed 10 percent"},
+        {"family": "int64-uint64-compare", "reason": "no retained implementation passed the isolated gate"},
+        {"family": "checked-integer-arithmetic", "reason": "no retained implementation passed the isolated gate"},
+        {"family": "boolean", "reason": "word-level scalar was faster"},
+        {"kernel_id": "int64-scale", "reason": "optimized bounded scalar is the only production implementation"}
+      ]
+    },
+    "linux/amd64": {
+      "approved_kernel_ids": [],
+      "status": "scalar",
+      "reason": "native linux/amd64 benchmark evidence is unavailable"
+    }
+  }
+}

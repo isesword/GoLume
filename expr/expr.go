@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"gocolumn/memory"
 	"strconv"
+	"time"
 )
 
 // Op identifies a logical expression operator.
@@ -29,6 +30,28 @@ const (
 	OpMul
 	OpDiv
 	OpConcat
+	OpContains
+	OpStartsWith
+	OpEndsWith
+	OpLength
+	OpYear
+	OpMonth
+	OpDay
+	OpHour
+	OpMinute
+	OpSecond
+	OpByteLength
+	OpTrim
+	OpTrimStart
+	OpTrimEnd
+	OpLower
+	OpUpper
+	OpFind
+	OpReplace
+	OpReplaceAll
+	OpSlice
+	OpRegexMatch
+	OpRegexExtract
 )
 
 // Expr is a logical scalar expression node.
@@ -78,14 +101,68 @@ func (Date32Literal) exprNode() {}
 // String returns the date32 physical literal used by explain output.
 func (v Date32Literal) String() string { return fmt.Sprintf("DATE32(%d)", v.Days) }
 
-// TimestampLiteral stores a logical timestamp as an int64 value in the source
-// field's Arrow timestamp unit. The logical type remains TypeTimestamp.
+// TimestampLiteral stores a UTC Unix timestamp expressed in nanoseconds.
+// The logical type remains TypeTimestamp.
 type TimestampLiteral struct{ Value int64 }
 
 func (TimestampLiteral) exprNode() {}
 
 // String returns the timestamp physical literal used by explain output.
 func (v TimestampLiteral) String() string { return fmt.Sprintf("TIMESTAMP(%d)", v.Value) }
+
+// DurationLiteral stores an elapsed duration expressed in nanoseconds. It
+// deliberately uses time.Duration at the API boundary so duration values
+// cannot be confused with a timestamp or a raw integer delta.
+type DurationLiteral struct{ Value time.Duration }
+
+func (DurationLiteral) exprNode() {}
+
+// String returns the duration physical literal used by explain output.
+func (v DurationLiteral) String() string { return fmt.Sprintf("DURATION(%d)", v.Value) }
+
+// TimestampUnit identifies the input unit accepted by an explicit timestamp
+// literal constructor. Timestamp values inside the engine are always UTC Unix
+// nanoseconds; this type exists only at the API boundary so a source unit is
+// never inferred implicitly.
+type TimestampUnit uint8
+
+const (
+	// TimestampUnitSecond interprets the literal value as Unix seconds.
+	TimestampUnitSecond TimestampUnit = iota + 1
+	// TimestampUnitMillisecond interprets the literal value as Unix milliseconds.
+	TimestampUnitMillisecond
+	// TimestampUnitMicrosecond interprets the literal value as Unix microseconds.
+	TimestampUnitMicrosecond
+)
+
+// TimestampUnitLiteral stores an explicitly unit-tagged timestamp literal.
+// It is normalized, with overflow checking, when an expression is compiled.
+type TimestampUnitLiteral struct {
+	Value int64
+	Unit  TimestampUnit
+}
+
+func (TimestampUnitLiteral) exprNode() {}
+
+// String returns the unit-preserving spelling used by explain output.
+func (v TimestampUnitLiteral) String() string {
+	switch v.Unit {
+	case TimestampUnitSecond:
+		return fmt.Sprintf("TIMESTAMP_SECONDS(%d)", v.Value)
+	case TimestampUnitMillisecond:
+		return fmt.Sprintf("TIMESTAMP_MILLIS(%d)", v.Value)
+	case TimestampUnitMicrosecond:
+		return fmt.Sprintf("TIMESTAMP_MICROS(%d)", v.Value)
+	default:
+		return fmt.Sprintf("TIMESTAMP_UNIT(%d)", v.Value)
+	}
+}
+
+// Nanoseconds returns v normalized to the engine's UTC Unix-nanosecond
+// timestamp contract. It reports an error instead of wrapping on overflow.
+func (v TimestampUnitLiteral) Nanoseconds() (int64, error) {
+	return normalizeTimestampUnitLiteral(v)
+}
 
 // Binary is a binary logical expression.
 type Binary struct {
@@ -108,6 +185,21 @@ func (Unary) exprNode() {}
 
 // String returns a human-readable unary expression.
 func (u Unary) String() string { return fmt.Sprintf("%s(%s)", u.Op, u.Value) }
+
+// Ternary is a logical expression with three scalar inputs. String
+// replacement uses Value, First, and Second as value, old text, and new text;
+// Slice uses them as value, offset, and length respectively.
+type Ternary struct {
+	Op                   Op
+	Value, First, Second Expr
+}
+
+func (Ternary) exprNode() {}
+
+// String returns a human-readable ternary expression.
+func (t Ternary) String() string {
+	return fmt.Sprintf("%s(%s, %s, %s)", t.Op, t.Value, t.First, t.Second)
+}
 
 // Cast converts Value to Target using the expression engine's explicit cast
 // rules. Unsafe or unsupported conversions fail during logical validation.
@@ -154,6 +246,50 @@ func (o Op) String() string {
 		return "/"
 	case OpConcat:
 		return "||"
+	case OpContains:
+		return "CONTAINS"
+	case OpStartsWith:
+		return "STARTS_WITH"
+	case OpEndsWith:
+		return "ENDS_WITH"
+	case OpLength:
+		return "LENGTH"
+	case OpYear:
+		return "YEAR"
+	case OpMonth:
+		return "MONTH"
+	case OpDay:
+		return "DAY"
+	case OpHour:
+		return "HOUR"
+	case OpMinute:
+		return "MINUTE"
+	case OpSecond:
+		return "SECOND"
+	case OpByteLength:
+		return "BYTE_LENGTH"
+	case OpTrim:
+		return "TRIM"
+	case OpTrimStart:
+		return "TRIM_START"
+	case OpTrimEnd:
+		return "TRIM_END"
+	case OpLower:
+		return "LOWER"
+	case OpUpper:
+		return "UPPER"
+	case OpFind:
+		return "FIND"
+	case OpReplace:
+		return "REPLACE"
+	case OpReplaceAll:
+		return "REPLACE_ALL"
+	case OpSlice:
+		return "SLICE"
+	case OpRegexMatch:
+		return "REGEX_MATCH"
+	case OpRegexExtract:
+		return "REGEX_EXTRACT"
 	default:
 		return "?"
 	}
@@ -174,8 +310,29 @@ func Str(v string) StringLiteral { return StringLiteral{Value: v} }
 // Date32 constructs an Arrow-compatible date32 literal in days since Unix epoch.
 func Date32(days int32) Date32Literal { return Date32Literal{Days: days} }
 
-// Timestamp constructs an Arrow-compatible physical timestamp literal.
+// Timestamp constructs a UTC Unix timestamp literal expressed in nanoseconds.
 func Timestamp(v int64) TimestampLiteral { return TimestampLiteral{Value: v} }
+
+// Duration constructs an elapsed-time literal normalized to nanoseconds.
+func Duration(v time.Duration) DurationLiteral { return DurationLiteral{Value: v} }
+
+// TimestampSeconds constructs a UTC timestamp literal from Unix seconds. The
+// conversion to the engine's nanosecond contract is checked during compilation.
+func TimestampSeconds(v int64) TimestampUnitLiteral {
+	return TimestampUnitLiteral{Value: v, Unit: TimestampUnitSecond}
+}
+
+// TimestampMillis constructs a UTC timestamp literal from Unix milliseconds.
+// The conversion to the engine's nanosecond contract is checked during compilation.
+func TimestampMillis(v int64) TimestampUnitLiteral {
+	return TimestampUnitLiteral{Value: v, Unit: TimestampUnitMillisecond}
+}
+
+// TimestampMicros constructs a UTC timestamp literal from Unix microseconds.
+// The conversion to the engine's nanosecond contract is checked during compilation.
+func TimestampMicros(v int64) TimestampUnitLiteral {
+	return TimestampUnitLiteral{Value: v, Unit: TimestampUnitMicrosecond}
+}
 
 // GT constructs a greater-than expression.
 func GT(l, r Expr) Binary { return Binary{Op: OpGT, Left: l, Right: r} }
@@ -233,13 +390,21 @@ func (n NamedExpr) Name() (string, error) {
 	return "", fmt.Errorf("computed expression %T requires an alias", n.Expr)
 }
 
-// Add constructs a numeric addition expression. SQL NULL propagates through the result.
+// Add constructs a numeric or temporal addition expression. Integer and
+// temporal results are checked for overflow. Date values accept signed integer
+// deltas in their physical unit; timestamps accept Duration values expressed in
+// UTC nanoseconds. SQL NULL propagates.
 func Add(l, r Expr) Binary { return Binary{Op: OpAdd, Left: l, Right: r} }
 
-// Sub constructs a numeric subtraction expression. SQL NULL propagates through the result.
+// Sub constructs a numeric or temporal subtraction expression. Integer and
+// temporal results are checked for overflow. Timestamps can subtract a
+// Duration or another timestamp; the latter produces a Duration. SQL NULL
+// propagates.
 func Sub(l, r Expr) Binary { return Binary{Op: OpSub, Left: l, Right: r} }
 
-// Mul constructs a numeric multiplication expression. SQL NULL propagates through the result.
+// Mul constructs a numeric multiplication expression. Integer results are
+// checked for overflow; floating-point results retain IEEE-754 semantics. SQL
+// NULL propagates.
 func Mul(l, r Expr) Binary { return Binary{Op: OpMul, Left: l, Right: r} }
 
 // Div constructs a numeric division expression. Integer inputs are promoted to
@@ -249,6 +414,95 @@ func Div(l, r Expr) Binary { return Binary{Op: OpDiv, Left: l, Right: r} }
 // Concat constructs a UTF-8 concatenation expression. NULL on either side
 // produces NULL, matching the engine's scalar NULL-propagation rule.
 func Concat(l, r Expr) Binary { return Binary{Op: OpConcat, Left: l, Right: r} }
+
+// Contains constructs a case-sensitive UTF-8 substring predicate. It is valid
+// in filters and preserves SQL NULL semantics.
+func Contains(value, needle Expr) Binary { return Binary{Op: OpContains, Left: value, Right: needle} }
+
+// StartsWith constructs a case-sensitive UTF-8 prefix predicate.
+func StartsWith(value, prefix Expr) Binary {
+	return Binary{Op: OpStartsWith, Left: value, Right: prefix}
+}
+
+// EndsWith constructs a case-sensitive UTF-8 suffix predicate.
+func EndsWith(value, suffix Expr) Binary { return Binary{Op: OpEndsWith, Left: value, Right: suffix} }
+
+// Length constructs a UTF-8 character-count projection expression.
+func Length(value Expr) Unary { return Unary{Op: OpLength, Value: value} }
+
+// ByteLength constructs a UTF-8 byte-count projection expression. Unlike
+// Length, it reports the number of encoded bytes rather than Unicode code
+// points.
+func ByteLength(value Expr) Unary { return Unary{Op: OpByteLength, Value: value} }
+
+// Trim removes leading and trailing Unicode whitespace from a string.
+func Trim(value Expr) Unary { return Unary{Op: OpTrim, Value: value} }
+
+// TrimStart removes leading Unicode whitespace from a string.
+func TrimStart(value Expr) Unary { return Unary{Op: OpTrimStart, Value: value} }
+
+// TrimEnd removes trailing Unicode whitespace from a string.
+func TrimEnd(value Expr) Unary { return Unary{Op: OpTrimEnd, Value: value} }
+
+// Lower applies Unicode simple case mapping to lower case.
+func Lower(value Expr) Unary { return Unary{Op: OpLower, Value: value} }
+
+// Upper applies Unicode simple case mapping to upper case.
+func Upper(value Expr) Unary { return Unary{Op: OpUpper, Value: value} }
+
+// Find returns the zero-based Unicode code-point index of needle in value, or
+// -1 when needle is absent. It performs a case-sensitive literal search.
+func Find(value, needle Expr) Binary { return Binary{Op: OpFind, Left: value, Right: needle} }
+
+// Replace replaces the first literal occurrence of old with new. It does not
+// interpret either argument as a regular expression.
+func Replace(value, old, new Expr) Ternary {
+	return Ternary{Op: OpReplace, Value: value, First: old, Second: new}
+}
+
+// ReplaceAll replaces every literal occurrence of old with new. It does not
+// interpret either argument as a regular expression.
+func ReplaceAll(value, old, new Expr) Ternary {
+	return Ternary{Op: OpReplaceAll, Value: value, First: old, Second: new}
+}
+
+// Slice returns up to length Unicode code points beginning at offset. A
+// negative offset counts from the end of the value; a negative length is an
+// error. Out-of-range offsets produce an empty string.
+func Slice(value, offset, length Expr) Ternary {
+	return Ternary{Op: OpSlice, Value: value, First: offset, Second: length}
+}
+
+// RegexMatch reports whether value contains a match for pattern. Pattern must
+// be a UTF-8 string literal and is compiled once when the predicate is built.
+func RegexMatch(value, pattern Expr) Binary {
+	return Binary{Op: OpRegexMatch, Left: value, Right: pattern}
+}
+
+// RegexExtract returns capture group group from the first match of pattern.
+// Pattern and group must be literals. Group zero selects the complete match;
+// an absent match or unmatched optional group produces NULL.
+func RegexExtract(value, pattern, group Expr) Ternary {
+	return Ternary{Op: OpRegexExtract, Value: value, First: pattern, Second: group}
+}
+
+// Year extracts the UTC calendar year from a date or timestamp.
+func Year(value Expr) Unary { return Unary{Op: OpYear, Value: value} }
+
+// Month extracts the UTC calendar month from a date or timestamp.
+func Month(value Expr) Unary { return Unary{Op: OpMonth, Value: value} }
+
+// Day extracts the UTC calendar day of month from a date or timestamp.
+func Day(value Expr) Unary { return Unary{Op: OpDay, Value: value} }
+
+// Hour extracts the UTC hour from a timestamp.
+func Hour(value Expr) Unary { return Unary{Op: OpHour, Value: value} }
+
+// Minute extracts the UTC minute from a timestamp.
+func Minute(value Expr) Unary { return Unary{Op: OpMinute, Value: value} }
+
+// Second extracts the UTC second from a timestamp.
+func Second(value Expr) Unary { return Unary{Op: OpSecond, Value: value} }
 
 // CastTo constructs an explicit scalar cast.
 func CastTo(v Expr, target memory.DataType) Cast { return Cast{Value: v, Target: target} }
@@ -267,6 +521,74 @@ func (c Column) Div(right Expr) Binary { return Div(c, right) }
 
 // Concat constructs c || right.
 func (c Column) Concat(right Expr) Binary { return Concat(c, right) }
+
+// Contains constructs a case-sensitive UTF-8 substring predicate.
+func (c Column) Contains(needle Expr) Binary { return Contains(c, needle) }
+
+// StartsWith constructs a case-sensitive UTF-8 prefix predicate.
+func (c Column) StartsWith(prefix Expr) Binary { return StartsWith(c, prefix) }
+
+// EndsWith constructs a case-sensitive UTF-8 suffix predicate.
+func (c Column) EndsWith(suffix Expr) Binary { return EndsWith(c, suffix) }
+
+// RegexMatch constructs a compiled regular-expression predicate.
+func (c Column) RegexMatch(pattern Expr) Binary { return RegexMatch(c, pattern) }
+
+// Length constructs a UTF-8 character-count projection expression.
+func (c Column) Length() Unary { return Length(c) }
+
+// ByteLength constructs a UTF-8 byte-count projection expression.
+func (c Column) ByteLength() Unary { return ByteLength(c) }
+
+// Trim removes leading and trailing Unicode whitespace from c.
+func (c Column) Trim() Unary { return Trim(c) }
+
+// TrimStart removes leading Unicode whitespace from c.
+func (c Column) TrimStart() Unary { return TrimStart(c) }
+
+// TrimEnd removes trailing Unicode whitespace from c.
+func (c Column) TrimEnd() Unary { return TrimEnd(c) }
+
+// Lower applies Unicode simple case mapping to lower case.
+func (c Column) Lower() Unary { return Lower(c) }
+
+// Upper applies Unicode simple case mapping to upper case.
+func (c Column) Upper() Unary { return Upper(c) }
+
+// Find returns the zero-based Unicode code-point index of needle, or -1.
+func (c Column) Find(needle Expr) Binary { return Find(c, needle) }
+
+// Replace replaces the first literal occurrence of old with new.
+func (c Column) Replace(old, new Expr) Ternary { return Replace(c, old, new) }
+
+// ReplaceAll replaces every literal occurrence of old with new.
+func (c Column) ReplaceAll(old, new Expr) Ternary { return ReplaceAll(c, old, new) }
+
+// Slice returns up to length Unicode code points beginning at offset.
+func (c Column) Slice(offset, length Expr) Ternary { return Slice(c, offset, length) }
+
+// RegexExtract returns a capture from the first regular-expression match.
+func (c Column) RegexExtract(pattern, group Expr) Ternary {
+	return RegexExtract(c, pattern, group)
+}
+
+// Year extracts the UTC calendar year from a date or timestamp.
+func (c Column) Year() Unary { return Year(c) }
+
+// Month extracts the UTC calendar month from a date or timestamp.
+func (c Column) Month() Unary { return Month(c) }
+
+// Day extracts the UTC calendar day of month from a date or timestamp.
+func (c Column) Day() Unary { return Day(c) }
+
+// Hour extracts the UTC hour from a timestamp.
+func (c Column) Hour() Unary { return Hour(c) }
+
+// Minute extracts the UTC minute from a timestamp.
+func (c Column) Minute() Unary { return Minute(c) }
+
+// Second extracts the UTC second from a timestamp.
+func (c Column) Second() Unary { return Second(c) }
 
 // Cast converts c to target.
 func (c Column) Cast(target memory.DataType) Cast { return CastTo(c, target) }
@@ -288,6 +610,21 @@ func (b Binary) Div(right Expr) Binary { return Div(b, right) }
 
 // Concat constructs b || right.
 func (b Binary) Concat(right Expr) Binary { return Concat(b, right) }
+
+// Gt constructs b > right.
+func (b Binary) Gt(right Expr) Binary { return GT(b, right) }
+
+// Ge constructs b >= right.
+func (b Binary) Ge(right Expr) Binary { return GE(b, right) }
+
+// Lt constructs b < right.
+func (b Binary) Lt(right Expr) Binary { return LT(b, right) }
+
+// Le constructs b <= right.
+func (b Binary) Le(right Expr) Binary { return LE(b, right) }
+
+// Eq constructs b = right.
+func (b Binary) Eq(right Expr) Binary { return EQ(b, right) }
 
 // Cast converts b to target.
 func (b Binary) Cast(target memory.DataType) Cast { return CastTo(b, target) }
@@ -340,11 +677,115 @@ func (v StringLiteral) Cast(target memory.DataType) Cast { return CastTo(v, targ
 // Alias assigns an output name to a string literal projection.
 func (v StringLiteral) Alias(name string) NamedExpr { return Named(v, name) }
 
+// Add constructs v + right.
+func (v DurationLiteral) Add(right Expr) Binary { return Add(v, right) }
+
+// Sub constructs v - right.
+func (v DurationLiteral) Sub(right Expr) Binary { return Sub(v, right) }
+
+// Cast converts v to target.
+func (v DurationLiteral) Cast(target memory.DataType) Cast { return CastTo(v, target) }
+
+// Alias assigns an output name to a duration literal projection.
+func (v DurationLiteral) Alias(name string) NamedExpr { return Named(v, name) }
+
 // Cast converts c to target.
 func (c Cast) Cast(target memory.DataType) Cast { return CastTo(c, target) }
 
 // Alias assigns an output name to a cast expression.
 func (c Cast) Alias(name string) NamedExpr { return Named(c, name) }
+
+// Gt constructs a comparison with a unary scalar expression on the left.
+func (u Unary) Gt(right Expr) Binary { return GT(u, right) }
+
+// Ge constructs a comparison with a unary scalar expression on the left.
+func (u Unary) Ge(right Expr) Binary { return GE(u, right) }
+
+// Lt constructs a comparison with a unary scalar expression on the left.
+func (u Unary) Lt(right Expr) Binary { return LT(u, right) }
+
+// Le constructs a comparison with a unary scalar expression on the left.
+func (u Unary) Le(right Expr) Binary { return LE(u, right) }
+
+// Eq constructs a comparison with a unary scalar expression on the left.
+func (u Unary) Eq(right Expr) Binary { return EQ(u, right) }
+
+// Cast converts a unary scalar expression to target.
+func (u Unary) Cast(target memory.DataType) Cast { return CastTo(u, target) }
+
+// Alias assigns an output name to a unary scalar expression.
+func (u Unary) Alias(name string) NamedExpr { return Named(u, name) }
+
+// Concat constructs u || right.
+func (u Unary) Concat(right Expr) Binary { return Concat(u, right) }
+
+// Trim removes leading and trailing Unicode whitespace from u.
+func (u Unary) Trim() Unary { return Trim(u) }
+
+// TrimStart removes leading Unicode whitespace from u.
+func (u Unary) TrimStart() Unary { return TrimStart(u) }
+
+// TrimEnd removes trailing Unicode whitespace from u.
+func (u Unary) TrimEnd() Unary { return TrimEnd(u) }
+
+// Lower applies Unicode simple case mapping to lower case.
+func (u Unary) Lower() Unary { return Lower(u) }
+
+// Upper applies Unicode simple case mapping to upper case.
+func (u Unary) Upper() Unary { return Upper(u) }
+
+// ByteLength constructs a UTF-8 byte-count projection expression.
+func (u Unary) ByteLength() Unary { return ByteLength(u) }
+
+// Length constructs a UTF-8 character-count projection expression.
+func (u Unary) Length() Unary { return Length(u) }
+
+// Find returns the zero-based Unicode code-point index of needle, or -1.
+func (u Unary) Find(needle Expr) Binary { return Find(u, needle) }
+
+// Replace replaces the first literal occurrence of old with new.
+func (u Unary) Replace(old, new Expr) Ternary { return Replace(u, old, new) }
+
+// ReplaceAll replaces every literal occurrence of old with new.
+func (u Unary) ReplaceAll(old, new Expr) Ternary { return ReplaceAll(u, old, new) }
+
+// Slice returns up to length Unicode code points beginning at offset.
+func (u Unary) Slice(offset, length Expr) Ternary { return Slice(u, offset, length) }
+
+// RegexExtract returns a capture from the first regular-expression match.
+func (u Unary) RegexExtract(pattern, group Expr) Ternary {
+	return RegexExtract(u, pattern, group)
+}
+
+// Cast converts a ternary scalar expression to target.
+func (t Ternary) Cast(target memory.DataType) Cast { return CastTo(t, target) }
+
+// Alias assigns an output name to a ternary scalar expression.
+func (t Ternary) Alias(name string) NamedExpr { return Named(t, name) }
+
+// Concat constructs t || right.
+func (t Ternary) Concat(right Expr) Binary { return Concat(t, right) }
+
+// Trim removes leading and trailing Unicode whitespace from t.
+func (t Ternary) Trim() Unary { return Trim(t) }
+
+// TrimStart removes leading Unicode whitespace from t.
+func (t Ternary) TrimStart() Unary { return TrimStart(t) }
+
+// TrimEnd removes trailing Unicode whitespace from t.
+func (t Ternary) TrimEnd() Unary { return TrimEnd(t) }
+
+// Lower applies Unicode simple case mapping to lower case.
+func (t Ternary) Lower() Unary { return Lower(t) }
+
+// Upper applies Unicode simple case mapping to upper case.
+func (t Ternary) Upper() Unary { return Upper(t) }
+
+// Length constructs a UTF-8 character-count projection expression.
+func (t Ternary) Length() Unary { return Length(t) }
+
+// ByteLength constructs a UTF-8 byte-count projection expression.
+func (t Ternary) ByteLength() Unary { return ByteLength(t) }
 
 // Gt constructs c > right.
 func (c Column) Gt(right Expr) Binary { return GT(c, right) }

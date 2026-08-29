@@ -2,9 +2,16 @@ package expr
 
 import (
 	"fmt"
+	"gocolumn/kernel"
 	"gocolumn/memory"
 	"math"
+	"math/bits"
+	"regexp"
 	"strconv"
+	"strings"
+	"time"
+	"unicode"
+	"unicode/utf8"
 )
 
 // ScalarOpcode identifies one physical scalar-expression instruction.
@@ -17,6 +24,8 @@ const (
 	scalarLiteralString
 	scalarBinary
 	scalarCast
+	scalarUnary
+	scalarTernary
 )
 
 // ScalarInstruction is one operation in a compiled scalar-expression program.
@@ -30,7 +39,9 @@ type ScalarInstruction struct {
 	I64        int64
 	F64        float64
 	String     string
-	A, B       int
+	Regex      *regexp.Regexp
+	RegexGroup int
+	A, B, C    int
 }
 
 // ScalarProgram is a compact reusable typed scalar-expression program. It is
@@ -177,12 +188,50 @@ func (c *scalarCompiler) compile(e Expr) (int, TypeInfo, error) {
 		in = ScalarInstruction{Code: scalarLiteralI64, Type: memory.TypeDate32, I64: int64(n.Days)}
 	case TimestampLiteral:
 		in = ScalarInstruction{Code: scalarLiteralI64, Type: memory.TypeTimestamp, I64: n.Value}
+	case DurationLiteral:
+		in = ScalarInstruction{Code: scalarLiteralI64, Type: memory.TypeDuration, I64: int64(n.Value)}
+	case TimestampUnitLiteral:
+		nanos, err := n.Nanoseconds()
+		if err != nil {
+			return 0, TypeInfo{}, err
+		}
+		in = ScalarInstruction{Code: scalarLiteralI64, Type: memory.TypeTimestamp, I64: nanos}
 	case Cast:
 		a, ai, err := c.compile(n.Value)
 		if err != nil {
 			return 0, TypeInfo{}, err
 		}
 		in = ScalarInstruction{Code: scalarCast, Type: n.Target, SourceType: ai.Type, A: a}
+	case Unary:
+		a, ai, err := c.compile(n.Value)
+		if err != nil {
+			return 0, TypeInfo{}, err
+		}
+		in = ScalarInstruction{Code: scalarUnary, Op: n.Op, Type: info.Type, SourceType: ai.Type, A: a}
+	case Ternary:
+		a, _, err := c.compile(n.Value)
+		if err != nil {
+			return 0, TypeInfo{}, err
+		}
+		if n.Op == OpRegexExtract {
+			pattern := n.First.(StringLiteral)
+			group := n.Second.(Int64Literal)
+			in = ScalarInstruction{Code: scalarTernary, Op: n.Op, Type: info.Type, A: a, B: -1, C: -1}
+			in.Regex, in.RegexGroup, err = compileRegexExtract(pattern.Value, group.Value)
+			if err != nil {
+				return 0, TypeInfo{}, err
+			}
+			break
+		}
+		b, _, err := c.compile(n.First)
+		if err != nil {
+			return 0, TypeInfo{}, err
+		}
+		cReg, _, err := c.compile(n.Second)
+		if err != nil {
+			return 0, TypeInfo{}, err
+		}
+		in = ScalarInstruction{Code: scalarTernary, Op: n.Op, Type: info.Type, A: a, B: b, C: cReg}
 	case Binary:
 		a, _, err := c.compile(n.Left)
 		if err != nil {
@@ -216,10 +265,18 @@ func scalarExprKey(e Expr) string {
 		return "d32:" + strconv.FormatInt(int64(n.Days), 10)
 	case TimestampLiteral:
 		return "ts:" + strconv.FormatInt(n.Value, 10)
+	case DurationLiteral:
+		return "duration:" + strconv.FormatInt(int64(n.Value), 10)
+	case TimestampUnitLiteral:
+		return "tsunit:" + strconv.FormatUint(uint64(n.Unit), 10) + ":" + strconv.FormatInt(n.Value, 10)
 	case Cast:
 		return "cast:" + n.Target.String() + ":" + scalarExprKey(n.Value)
 	case Binary:
 		return "b:" + n.Op.String() + ":" + scalarExprKey(n.Left) + ":" + scalarExprKey(n.Right)
+	case Unary:
+		return "u:" + n.Op.String() + ":" + scalarExprKey(n.Value)
+	case Ternary:
+		return "t:" + n.Op.String() + ":" + scalarExprKey(n.Value) + ":" + scalarExprKey(n.First) + ":" + scalarExprKey(n.Second)
 	default:
 		return fmt.Sprintf("%T:%s", e, e.String())
 	}
@@ -228,11 +285,11 @@ func scalarExprKey(e Expr) string {
 // Evaluate executes one scalar program over batch and returns a typed register
 // owned by workspace. The register remains valid until the next evaluation with
 // the same workspace.
-func (p ScalarProgram) Evaluate(batch *memory.Batch, w *ScalarWorkspace) (ScalarValue, error) {
+func (p ScalarProgram) Evaluate(batch *memory.Batch, w *ScalarWorkspace, kernels kernel.Set) (ScalarValue, error) {
 	if p.Root < 0 || p.Root >= len(p.Instructions) {
 		return ScalarValue{}, fmt.Errorf("invalid scalar program root")
 	}
-	if err := evaluateInstructions(p.Instructions, batch, w); err != nil {
+	if err := evaluateInstructions(p.Instructions, batch, w, kernels); err != nil {
 		return ScalarValue{}, err
 	}
 	return scalarValue(&w.regs[p.Root], batch.Rows), nil
@@ -240,8 +297,8 @@ func (p ScalarProgram) Evaluate(batch *memory.Batch, w *ScalarWorkspace) (Scalar
 
 // EvaluateInt64 executes p and returns an int64 physical vector. Semantic
 // date/timestamp results must use Evaluate so their logical type is preserved.
-func (p ScalarProgram) EvaluateInt64(batch *memory.Batch, w *ScalarWorkspace) (*memory.Int64Vector, error) {
-	v, err := p.Evaluate(batch, w)
+func (p ScalarProgram) EvaluateInt64(batch *memory.Batch, w *ScalarWorkspace, kernels kernel.Set) (*memory.Int64Vector, error) {
+	v, err := p.Evaluate(batch, w, kernels)
 	if err != nil {
 		return nil, err
 	}
@@ -253,8 +310,8 @@ func (p ScalarProgram) EvaluateInt64(batch *memory.Batch, w *ScalarWorkspace) (*
 
 // Evaluate executes a fused projection program and returns values in output
 // order. Returned vector views alias workspace or input memory.
-func (p ProjectionProgram) Evaluate(batch *memory.Batch, w *ScalarWorkspace) ([]ScalarValue, error) {
-	if err := evaluateInstructions(p.Instructions, batch, w); err != nil {
+func (p ProjectionProgram) Evaluate(batch *memory.Batch, w *ScalarWorkspace, kernels kernel.Set) ([]ScalarValue, error) {
+	if err := evaluateInstructions(p.Instructions, batch, w, kernels); err != nil {
 		return nil, err
 	}
 	out := make([]ScalarValue, len(p.Outputs))
@@ -336,7 +393,7 @@ func familyOf(t memory.DataType) physicalFamily {
 	}
 }
 
-func evaluateInstructions(instructions []ScalarInstruction, batch *memory.Batch, w *ScalarWorkspace) error {
+func evaluateInstructions(instructions []ScalarInstruction, batch *memory.Batch, w *ScalarWorkspace, kernels kernel.Set) error {
 	w.Ensure(batch.Rows, len(instructions))
 	for i, in := range instructions {
 		r := &w.regs[i]
@@ -374,6 +431,9 @@ func evaluateInstructions(instructions []ScalarInstruction, batch *memory.Batch,
 			offsets[0] = 0
 			r.data = r.data[:0]
 			for row := 0; row < batch.Rows; row++ {
+				if uint64(len(r.data))+uint64(len(in.String)) > math.MaxUint32 {
+					return fmt.Errorf("string literal result exceeds 4 GiB at row %d", row)
+				}
 				r.data = append(r.data, in.String...)
 				offsets[row+1] = uint32(len(r.data))
 			}
@@ -382,7 +442,19 @@ func evaluateInstructions(instructions []ScalarInstruction, batch *memory.Batch,
 				return err
 			}
 		case scalarBinary:
-			if err := evalBinary(r, &w.regs[in.A], &w.regs[in.B], in.Op, in.Type, batch.Rows); err != nil {
+			if err := evalBinary(r, &w.regs[in.A], &w.regs[in.B], in.Op, in.Type, batch.Rows, kernels); err != nil {
+				return err
+			}
+		case scalarUnary:
+			if err := evalUnary(r, &w.regs[in.A], in.Op, in.SourceType, batch.Rows); err != nil {
+				return err
+			}
+		case scalarTernary:
+			var first, second *scalarRegister
+			if in.B >= 0 && in.C >= 0 {
+				first, second = &w.regs[in.B], &w.regs[in.C]
+			}
+			if err := evalTernary(r, &w.regs[in.A], first, second, in, batch.Rows); err != nil {
 				return err
 			}
 		default:
@@ -468,6 +540,30 @@ func combineValidity(r, a, b *scalarRegister, rows int) {
 	}
 }
 
+func combineTernaryValidity(r, a, b, c *scalarRegister, rows int) {
+	if a.validity == nil && b.validity == nil && c.validity == nil {
+		r.validity = nil
+		return
+	}
+	v := ensureValidity(r, rows)
+	for wi := range v {
+		av, bv, cv := ^uint64(0), ^uint64(0), ^uint64(0)
+		if a.validity != nil {
+			av = a.validity[wi]
+		}
+		if b.validity != nil {
+			bv = b.validity[wi]
+		}
+		if c.validity != nil {
+			cv = c.validity[wi]
+		}
+		v[wi] = av & bv & cv
+	}
+	if len(v) > 0 {
+		v[len(v)-1] &= memory.TailMask(rows)
+	}
+}
+
 func copyRegisterValidity(r, a *scalarRegister, rows int) {
 	if a.validity == nil {
 		r.validity = nil
@@ -533,11 +629,27 @@ func ensureOffsets(r *scalarRegister, rows int) []uint32 {
 	return r.offsets
 }
 
-func evalBinary(out, a, b *scalarRegister, op Op, result memory.DataType, rows int) error {
+func evalBinary(out, a, b *scalarRegister, op Op, result memory.DataType, rows int, kernels kernel.Set) error {
 	combineValidity(out, a, b, rows)
+	if op == OpFind {
+		return evalStringFind(out, a, b, rows)
+	}
+	if isTemporalType(result) {
+		return evalTemporalBinary(out, a, b, op, result, rows, kernels)
+	}
 	switch familyOf(result) {
 	case familyI64:
 		values := ensureI64(out, rows)
+		if familyOf(a.typ) == familyI64 && familyOf(b.typ) == familyI64 {
+			arithmetic, ok := physicalCheckedArithmeticOp(op)
+			if !ok {
+				return fmt.Errorf("operator %s does not produce int64", op)
+			}
+			if row := kernels.Int64Arithmetic(a.i64[:rows], b.i64[:rows], values, out.validity, nil, arithmetic); row >= 0 {
+				return arithmeticOverflow(op, result, row)
+			}
+			return nil
+		}
 		for row := 0; row < rows; row++ {
 			if !isValidRegister(out, row) {
 				values[row] = 0
@@ -553,17 +665,39 @@ func evalBinary(out, a, b *scalarRegister, op Op, result memory.DataType, rows i
 			}
 			switch op {
 			case OpAdd:
-				values[row] = av + bv
+				value, ok := checkedAddInt64(av, bv)
+				if !ok {
+					return arithmeticOverflow(op, result, row)
+				}
+				values[row] = value
 			case OpSub:
-				values[row] = av - bv
+				value, ok := checkedSubInt64(av, bv)
+				if !ok {
+					return arithmeticOverflow(op, result, row)
+				}
+				values[row] = value
 			case OpMul:
-				values[row] = av * bv
+				value, ok := checkedMulInt64(av, bv)
+				if !ok {
+					return arithmeticOverflow(op, result, row)
+				}
+				values[row] = value
 			default:
 				return fmt.Errorf("operator %s does not produce int64", op)
 			}
 		}
 	case familyU64:
 		values := ensureU64(out, rows)
+		if familyOf(a.typ) == familyU64 && familyOf(b.typ) == familyU64 {
+			arithmetic, ok := physicalCheckedArithmeticOp(op)
+			if !ok {
+				return fmt.Errorf("operator %s does not produce uint64", op)
+			}
+			if row := kernels.Uint64Arithmetic(a.u64[:rows], b.u64[:rows], values, out.validity, nil, arithmetic); row >= 0 {
+				return arithmeticOverflow(op, result, row)
+			}
+			return nil
+		}
 		for row := 0; row < rows; row++ {
 			if !isValidRegister(out, row) {
 				values[row] = 0
@@ -579,17 +713,37 @@ func evalBinary(out, a, b *scalarRegister, op Op, result memory.DataType, rows i
 			}
 			switch op {
 			case OpAdd:
-				values[row] = av + bv
+				value, carry := bits.Add64(av, bv, 0)
+				if carry != 0 {
+					return arithmeticOverflow(op, result, row)
+				}
+				values[row] = value
 			case OpSub:
-				values[row] = av - bv
+				value, borrow := bits.Sub64(av, bv, 0)
+				if borrow != 0 {
+					return arithmeticOverflow(op, result, row)
+				}
+				values[row] = value
 			case OpMul:
-				values[row] = av * bv
+				hi, lo := bits.Mul64(av, bv)
+				if hi != 0 {
+					return arithmeticOverflow(op, result, row)
+				}
+				values[row] = lo
 			default:
 				return fmt.Errorf("operator %s does not produce uint64", op)
 			}
 		}
 	case familyF64:
 		values := ensureF64(out, rows)
+		if familyOf(a.typ) == familyF64 && familyOf(b.typ) == familyF64 {
+			arithmetic, ok := physicalArithmeticOp(op)
+			if !ok {
+				return fmt.Errorf("operator %s does not produce float64", op)
+			}
+			kernels.Float64Arithmetic(a.f64[:rows], b.f64[:rows], values, out.validity, arithmetic)
+			return nil
+		}
 		for row := 0; row < rows; row++ {
 			if !isValidRegister(out, row) {
 				values[row] = 0
@@ -633,8 +787,12 @@ func evalBinary(out, a, b *scalarRegister, op Op, result memory.DataType, rows i
 				if err != nil {
 					return err
 				}
-				out.data = append(out.data, av...)
-				out.data = append(out.data, bv...)
+				if err := appendStringResult(&out.data, av, op, row); err != nil {
+					return err
+				}
+				if err := appendStringResult(&out.data, bv, op, row); err != nil {
+					return err
+				}
 			}
 			offsets[row+1] = uint32(len(out.data))
 		}
@@ -644,11 +802,447 @@ func evalBinary(out, a, b *scalarRegister, op Op, result memory.DataType, rows i
 	return nil
 }
 
+func physicalArithmeticOp(op Op) (kernel.ArithmeticOp, bool) {
+	switch op {
+	case OpAdd:
+		return kernel.ArithmeticAdd, true
+	case OpSub:
+		return kernel.ArithmeticSub, true
+	case OpMul:
+		return kernel.ArithmeticMul, true
+	case OpDiv:
+		return kernel.ArithmeticDiv, true
+	default:
+		return 0, false
+	}
+}
+
+func physicalCheckedArithmeticOp(op Op) (kernel.ArithmeticOp, bool) {
+	switch op {
+	case OpAdd:
+		return kernel.ArithmeticAdd, true
+	case OpSub:
+		return kernel.ArithmeticSub, true
+	case OpMul:
+		return kernel.ArithmeticMul, true
+	default:
+		return 0, false
+	}
+}
+
+func evalTemporalBinary(out, a, b *scalarRegister, op Op, result memory.DataType, rows int, kernels kernel.Set) error {
+	if op != OpAdd && op != OpSub {
+		return fmt.Errorf("operator %s does not produce %s", op, result)
+	}
+	if result == memory.TypeDate32 {
+		values := ensureI32(out, rows)
+		for row := 0; row < rows; row++ {
+			if !isValidRegister(out, row) {
+				values[row] = 0
+				continue
+			}
+			value, err := temporalArithmeticValue(a, b, op, result, row)
+			if err != nil {
+				return err
+			}
+			if value < math.MinInt32 || value > math.MaxInt32 {
+				return arithmeticOverflow(op, result, row)
+			}
+			values[row] = int32(value)
+		}
+		return nil
+	}
+	values := ensureI64(out, rows)
+	if familyOf(a.typ) == familyI64 && familyOf(b.typ) == familyI64 {
+		arithmetic, _ := physicalCheckedArithmeticOp(op)
+		if row := kernels.Int64Arithmetic(a.i64[:rows], b.i64[:rows], values, out.validity, nil, arithmetic); row >= 0 {
+			return arithmeticOverflow(op, result, row)
+		}
+		return nil
+	}
+	for row := 0; row < rows; row++ {
+		if !isValidRegister(out, row) {
+			values[row] = 0
+			continue
+		}
+		value, err := temporalArithmeticValue(a, b, op, result, row)
+		if err != nil {
+			return err
+		}
+		values[row] = value
+	}
+	return nil
+}
+
+func temporalArithmeticValue(a, b *scalarRegister, op Op, result memory.DataType, row int) (int64, error) {
+	var temporal, delta *scalarRegister
+	switch op {
+	case OpAdd:
+		if a.typ == result {
+			temporal, delta = a, b
+		} else if b.typ == result {
+			temporal, delta = b, a
+		} else {
+			return 0, fmt.Errorf("operator + requires %s input", result)
+		}
+	case OpSub:
+		if a.typ != result {
+			return 0, fmt.Errorf("operator - requires %s left input", result)
+		}
+		temporal, delta = a, b
+	}
+	raw, err := registerInt64(temporal, row)
+	if err != nil {
+		return 0, err
+	}
+	d, err := registerInt64(delta, row)
+	if err != nil {
+		return 0, err
+	}
+	var value int64
+	var ok bool
+	if op == OpAdd {
+		value, ok = checkedAddInt64(raw, d)
+	} else {
+		value, ok = checkedSubInt64(raw, d)
+	}
+	if !ok {
+		return 0, arithmeticOverflow(op, result, row)
+	}
+	return value, nil
+}
+
+func arithmeticOverflow(op Op, typ memory.DataType, row int) error {
+	return fmt.Errorf("checked %s arithmetic for %s overflows at row %d", op, typ, row)
+}
+
+func checkedAddInt64(a, b int64) (int64, bool) {
+	if (b > 0 && a > math.MaxInt64-b) || (b < 0 && a < math.MinInt64-b) {
+		return 0, false
+	}
+	return a + b, true
+}
+
+func checkedSubInt64(a, b int64) (int64, bool) {
+	if (b > 0 && a < math.MinInt64+b) || (b < 0 && a > math.MaxInt64+b) {
+		return 0, false
+	}
+	return a - b, true
+}
+
+func checkedMulInt64(a, b int64) (int64, bool) {
+	if (a == math.MinInt64 && b == -1) || (b == math.MinInt64 && a == -1) {
+		return 0, false
+	}
+	value := a * b
+	if a != 0 && value/a != b {
+		return 0, false
+	}
+	return value, true
+}
+
+func timestampUnitScale(unit TimestampUnit) (int64, error) {
+	switch unit {
+	case TimestampUnitSecond:
+		return int64(time.Second), nil
+	case TimestampUnitMillisecond:
+		return int64(time.Millisecond), nil
+	case TimestampUnitMicrosecond:
+		return int64(time.Microsecond), nil
+	default:
+		return 0, fmt.Errorf("unsupported timestamp unit %d", unit)
+	}
+}
+
+func normalizeTimestampUnitLiteral(v TimestampUnitLiteral) (int64, error) {
+	scale, err := timestampUnitScale(v.Unit)
+	if err != nil {
+		return 0, err
+	}
+	nanos, ok := checkedMulInt64(v.Value, scale)
+	if !ok {
+		return 0, fmt.Errorf("%s overflows UTC nanosecond normalization", v)
+	}
+	return nanos, nil
+}
+
+func evalUnary(out, in *scalarRegister, op Op, source memory.DataType, rows int) error {
+	copyRegisterValidity(out, in, rows)
+	if out.typ == memory.TypeString {
+		return evalStringUnary(out, in, op, rows)
+	}
+	values := ensureI64(out, rows)
+	for row := 0; row < rows; row++ {
+		if !isValidRegister(out, row) {
+			values[row] = 0
+			continue
+		}
+		switch op {
+		case OpLength:
+			text, err := registerString(in, row)
+			if err != nil {
+				return err
+			}
+			values[row] = int64(utf8.RuneCount(text))
+		case OpByteLength:
+			text, err := registerString(in, row)
+			if err != nil {
+				return err
+			}
+			values[row] = int64(len(text))
+		case OpYear, OpMonth, OpDay, OpHour, OpMinute, OpSecond:
+			raw, err := registerInt64(in, row)
+			if err != nil {
+				return err
+			}
+			values[row], err = calendarPart(source, raw, op)
+			if err != nil {
+				return err
+			}
+		default:
+			return fmt.Errorf("operator %s does not produce int64", op)
+		}
+	}
+	return nil
+}
+
+func evalStringUnary(out, in *scalarRegister, op Op, rows int) error {
+	offsets := ensureOffsets(out, rows)
+	offsets[0] = 0
+	out.data = out.data[:0]
+	for row := 0; row < rows; row++ {
+		if isValidRegister(out, row) {
+			text, err := registerString(in, row)
+			if err != nil {
+				return err
+			}
+			value, err := transformString(text, op)
+			if err != nil {
+				return fmt.Errorf("%s at row %d: %w", op, row, err)
+			}
+			if err := appendStringResult(&out.data, value, op, row); err != nil {
+				return err
+			}
+		}
+		offsets[row+1] = uint32(len(out.data))
+	}
+	return nil
+}
+
+func transformString(value []byte, op Op) ([]byte, error) {
+	switch op {
+	case OpTrim:
+		return []byte(strings.TrimSpace(string(value))), nil
+	case OpTrimStart:
+		return []byte(strings.TrimLeftFunc(string(value), unicodeWhitespace)), nil
+	case OpTrimEnd:
+		return []byte(strings.TrimRightFunc(string(value), unicodeWhitespace)), nil
+	case OpLower:
+		return []byte(strings.ToLower(string(value))), nil
+	case OpUpper:
+		return []byte(strings.ToUpper(string(value))), nil
+	default:
+		return nil, fmt.Errorf("operator does not produce string")
+	}
+}
+
+func unicodeWhitespace(r rune) bool { return unicode.IsSpace(r) }
+
+func evalStringFind(out, value, needle *scalarRegister, rows int) error {
+	if out.typ != memory.TypeInt64 {
+		return fmt.Errorf("FIND result type %s is not int64", out.typ)
+	}
+	values := ensureI64(out, rows)
+	for row := 0; row < rows; row++ {
+		if !isValidRegister(out, row) {
+			values[row] = 0
+			continue
+		}
+		text, err := registerString(value, row)
+		if err != nil {
+			return err
+		}
+		query, err := registerString(needle, row)
+		if err != nil {
+			return err
+		}
+		byteIndex := strings.Index(string(text), string(query))
+		if byteIndex < 0 {
+			values[row] = -1
+			continue
+		}
+		values[row] = int64(utf8.RuneCount(text[:byteIndex]))
+	}
+	return nil
+}
+
+func evalTernary(out, value, first, second *scalarRegister, in ScalarInstruction, rows int) error {
+	op := in.Op
+	if out.typ != memory.TypeString {
+		return fmt.Errorf("%s result type %s is not string", op, out.typ)
+	}
+	if op == OpRegexExtract {
+		copyRegisterValidity(out, value, rows)
+	} else {
+		combineTernaryValidity(out, value, first, second, rows)
+	}
+	if op == OpRegexExtract && out.validity == nil {
+		validity := ensureValidity(out, rows)
+		for i := range validity {
+			validity[i] = ^uint64(0)
+		}
+		if len(validity) > 0 {
+			validity[len(validity)-1] &= memory.TailMask(rows)
+		}
+	}
+	offsets := ensureOffsets(out, rows)
+	offsets[0] = 0
+	out.data = out.data[:0]
+	for row := 0; row < rows; row++ {
+		if isValidRegister(out, row) {
+			input, err := registerString(value, row)
+			if err != nil {
+				return err
+			}
+			var result []byte
+			switch op {
+			case OpReplace, OpReplaceAll:
+				old, err := registerString(first, row)
+				if err != nil {
+					return err
+				}
+				newValue, err := registerString(second, row)
+				if err != nil {
+					return err
+				}
+				count := 1
+				if op == OpReplaceAll {
+					count = -1
+				}
+				result = []byte(strings.Replace(string(input), string(old), string(newValue), count))
+			case OpSlice:
+				offset, err := registerInt64(first, row)
+				if err != nil {
+					return err
+				}
+				length, err := registerInt64(second, row)
+				if err != nil {
+					return err
+				}
+				result, err = sliceUTF8(input, offset, length)
+				if err != nil {
+					return fmt.Errorf("SLICE at row %d: %w", row, err)
+				}
+			case OpRegexExtract:
+				if in.Regex == nil {
+					return fmt.Errorf("REGEX_EXTRACT has no compiled pattern")
+				}
+				matches := in.Regex.FindSubmatchIndex(input)
+				start := in.RegexGroup * 2
+				if matches == nil || start+1 >= len(matches) || matches[start] < 0 {
+					out.validity[row>>6] &^= uint64(1) << uint(row&63)
+					result = nil
+				} else {
+					result = input[matches[start]:matches[start+1]]
+				}
+			default:
+				return fmt.Errorf("operator %s does not produce string", op)
+			}
+			if err := appendStringResult(&out.data, result, op, row); err != nil {
+				return err
+			}
+		}
+		offsets[row+1] = uint32(len(out.data))
+	}
+	return nil
+}
+
+func sliceUTF8(value []byte, offset, length int64) ([]byte, error) {
+	if length < 0 {
+		return nil, fmt.Errorf("length must be non-negative")
+	}
+	runes := int64(utf8.RuneCount(value))
+	start := offset
+	if start < 0 {
+		start = runes + start
+		if start < 0 {
+			start = 0
+		}
+	}
+	if start >= runes || length == 0 {
+		return []byte{}, nil
+	}
+	end := runes
+	if length < runes-start {
+		end = start + length
+	}
+	return value[runeByteOffset(value, start):runeByteOffset(value, end)], nil
+}
+
+func runeByteOffset(value []byte, count int64) int {
+	if count <= 0 {
+		return 0
+	}
+	pos := 0
+	for seen := int64(0); pos < len(value) && seen < count; seen++ {
+		_, width := utf8.DecodeRune(value[pos:])
+		pos += width
+	}
+	return pos
+}
+
+func appendStringResult(dst *[]byte, value []byte, op Op, row int) error {
+	if uint64(len(*dst))+uint64(len(value)) > math.MaxUint32 {
+		return fmt.Errorf("%s string result exceeds 4 GiB at row %d", op, row)
+	}
+	*dst = append(*dst, value...)
+	return nil
+}
+
+func calendarPart(source memory.DataType, value int64, op Op) (int64, error) {
+	instant, err := utcCalendarTime(source, value)
+	if err != nil {
+		return 0, err
+	}
+	switch op {
+	case OpYear:
+		return int64(instant.Year()), nil
+	case OpMonth:
+		return int64(instant.Month()), nil
+	case OpDay:
+		return int64(instant.Day()), nil
+	case OpHour:
+		return int64(instant.Hour()), nil
+	case OpMinute:
+		return int64(instant.Minute()), nil
+	case OpSecond:
+		return int64(instant.Second()), nil
+	default:
+		return 0, fmt.Errorf("operator %s is not a calendar extractor", op)
+	}
+}
+
+func utcCalendarTime(source memory.DataType, value int64) (time.Time, error) {
+	switch source {
+	case memory.TypeDate32:
+		return time.Unix(value*24*60*60, 0).UTC(), nil
+	case memory.TypeDate64:
+		return time.Unix(value/1000, (value%1000)*int64(time.Millisecond)).UTC(), nil
+	case memory.TypeTimestamp:
+		return time.Unix(value/int64(time.Second), value%int64(time.Second)).UTC(), nil
+	default:
+		return time.Time{}, fmt.Errorf("type %s has no UTC calendar representation", source)
+	}
+}
+
 func evalCast(out, in *scalarRegister, from, to memory.DataType, rows int) error {
 	if !CanCast(from, to) {
 		return fmt.Errorf("cannot cast %s to %s", from, to)
 	}
 	copyRegisterValidity(out, in, rows)
+	if from == memory.TypeString && (to == memory.TypeTimestamp || to == memory.TypeDuration) {
+		return evalStringTemporalCast(out, in, to, rows)
+	}
 	switch familyOf(to) {
 	case familyI32:
 		values := ensureI32(out, rows)
@@ -744,6 +1338,51 @@ func evalCast(out, in *scalarRegister, from, to memory.DataType, rows int) error
 		return fmt.Errorf("cast target %s has no physical vector", to)
 	}
 	return nil
+}
+
+func evalStringTemporalCast(out, in *scalarRegister, to memory.DataType, rows int) error {
+	values := ensureI64(out, rows)
+	for row := 0; row < rows; row++ {
+		if !isValidRegister(out, row) {
+			values[row] = 0
+			continue
+		}
+		text, err := registerString(in, row)
+		if err != nil {
+			return err
+		}
+		switch to {
+		case memory.TypeTimestamp:
+			values[row], err = parseTimestampText(string(text))
+		case memory.TypeDuration:
+			var duration time.Duration
+			duration, err = time.ParseDuration(string(text))
+			values[row] = int64(duration)
+		default:
+			return fmt.Errorf("cannot parse string as %s", to)
+		}
+		if err != nil {
+			return fmt.Errorf("cast string to %s at row %d: %w", to, row, err)
+		}
+	}
+	return nil
+}
+
+func parseTimestampText(text string) (int64, error) {
+	instant, err := time.Parse(time.RFC3339Nano, text)
+	if err != nil {
+		// RFC3339 itself requires an offset. The engine deliberately permits the
+		// otherwise unambiguous no-offset spelling and interprets it as UTC.
+		instant, err = time.ParseInLocation("2006-01-02T15:04:05.999999999", text, time.UTC)
+		if err != nil {
+			return 0, fmt.Errorf("expected RFC3339 timestamp with Z/offset or UTC no-offset form: %w", err)
+		}
+	}
+	min, max := time.Unix(0, math.MinInt64).UTC(), time.Unix(0, math.MaxInt64).UTC()
+	if instant.Before(min) || instant.After(max) {
+		return 0, fmt.Errorf("timestamp is outside the UTC nanosecond range")
+	}
+	return instant.UnixNano(), nil
 }
 
 func registerInt64(r *scalarRegister, row int) (int64, error) {

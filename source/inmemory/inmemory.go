@@ -50,7 +50,12 @@ func (s *Source) Partitions(context.Context) ([]source.Partition, error) {
 }
 
 // NewReader creates an independent reader over the immutable batches.
-func (s *Source) NewReader(context.Context) (source.Reader, error) { return &reader{s: s}, nil }
+func (s *Source) NewReader(_ context.Context, opts source.ReadOptions) (source.Reader, error) {
+	if err := opts.Validate(); err != nil {
+		return nil, err
+	}
+	return &reader{s: s}, nil
+}
 
 // ApplyPushdown returns a shallow projected source. In-memory sources have no
 // persistent row-group statistics, so predicates remain residual and do not

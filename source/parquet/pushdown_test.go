@@ -52,7 +52,7 @@ func TestApplyPushdownProjectionAndRowGroupPruning(t *testing.T) {
 		t.Fatalf("parts=%v", parts)
 	}
 
-	r, err := pushed.NewReader(context.Background())
+	r, err := pushed.NewReader(context.Background(), testReadOptions())
 	if err != nil {
 		t.Fatal(err)
 	}

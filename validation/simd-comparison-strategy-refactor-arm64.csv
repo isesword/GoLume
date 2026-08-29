@@ -1,0 +1,26 @@
+,direct,,bitmap,,,
+,sec/op,CI,sec/op,CI,vs base,P
+Int32ComparisonKernelMode/select=1-12,0.00043692100000000005,1%,0.00041768,1%,-4.40%,p=0.000 n=10
+Int32ComparisonKernelMode/select=10-12,0.0011913345,1%,0.001047775,1%,-12.05%,p=0.000 n=10
+Int32ComparisonKernelMode/select=50-12,0.004548229500000001,2%,0.00401807,1%,-11.66%,p=0.000 n=10
+Int32ComparisonKernelMode/select=90-12,0.007830267,1%,0.0068727995,1%,-12.23%,p=0.000 n=10
+Int32ComparisonKernelMode/select=100-12,0.0084378225,1%,0.007432379000000001,1%,-11.92%,p=0.000 n=10
+geomean,0.002746990724287865,,0.0024585449134209114,,-10.50%,
+
+,direct,,bitmap,,,
+,B/op,CI,B/op,CI,vs base,P
+Int32ComparisonKernelMode/select=1-12,344,0%,336,0%,-2.33%,p=0.000 n=10
+Int32ComparisonKernelMode/select=10-12,344,0%,336,0%,-2.33%,p=0.000 n=10
+Int32ComparisonKernelMode/select=50-12,344,0%,336,0%,-2.33%,p=0.000 n=10
+Int32ComparisonKernelMode/select=90-12,344,0%,336,0%,-2.33%,p=0.000 n=10
+Int32ComparisonKernelMode/select=100-12,344,0%,336,0%,-2.33%,p=0.000 n=10
+geomean,343.9999999999999,,336,,-2.33%,
+
+,direct,,bitmap,,,
+,allocs/op,CI,allocs/op,CI,vs base,P
+Int32ComparisonKernelMode/select=1-12,3,0%,2,0%,-33.33%,p=0.000 n=10
+Int32ComparisonKernelMode/select=10-12,3,0%,2,0%,-33.33%,p=0.000 n=10
+Int32ComparisonKernelMode/select=50-12,3,0%,2,0%,-33.33%,p=0.000 n=10
+Int32ComparisonKernelMode/select=90-12,3,0%,2,0%,-33.33%,p=0.000 n=10
+Int32ComparisonKernelMode/select=100-12,3,0%,2,0%,-33.33%,p=0.000 n=10
+geomean,2.9999999999999996,,2,,-33.33%,

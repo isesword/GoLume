@@ -4,6 +4,7 @@ import (
 	"context"
 	"gocolumn/engine"
 	"gocolumn/expr"
+	"gocolumn/kernel"
 	"gocolumn/memory"
 	"gocolumn/source"
 	"gocolumn/source/inmemory"
@@ -12,8 +13,22 @@ import (
 )
 
 func BenchmarkPreparedLazyParquet(b *testing.B) {
+	benchmarkPreparedLazyParquet(b, kernel.ModeAuto)
+}
+
+func BenchmarkPreparedLazyParquetKernelMode(b *testing.B) {
+	for _, choice := range []struct {
+		name string
+		mode kernel.Mode
+	}{{"mode=scalar", kernel.ModeScalar}, {"mode=auto", kernel.ModeAuto}} {
+		b.Run(choice.name, func(b *testing.B) { benchmarkPreparedLazyParquet(b, choice.mode) })
+	}
+}
+
+func benchmarkPreparedLazyParquet(b *testing.B, mode kernel.Mode) {
 	opts := engine.DefaultOptions()
 	opts.Workers = 4
+	opts.KernelMode = mode
 	session := NewSession(opts)
 	defer session.Close()
 	frame, err := session.ScanParquet("../testdata/bench-1m.parquet")
@@ -44,6 +59,65 @@ func BenchmarkPreparedLazyParquet(b *testing.B) {
 		if result.GroupCount != 219196 || result.SelectedRows != 472475 || result.Checksum != 236716301 {
 			b.Fatal("correctness mismatch")
 		}
+	}
+}
+
+func BenchmarkPreparedRadixJoinKernelMode(b *testing.B) {
+	for _, choice := range []struct {
+		name string
+		mode kernel.Mode
+	}{{"mode=scalar", kernel.ModeScalar}, {"mode=auto", kernel.ModeAuto}} {
+		b.Run(choice.name, func(b *testing.B) {
+			const leftRows, rightRows = 1 << 16, 1 << 14
+			leftBatch, rightBatch := memory.NewBatch(), memory.NewBatch()
+			leftKeys, rightKeys := make([]int32, leftRows), make([]int32, rightRows)
+			for i := range leftKeys {
+				leftKeys[i] = int32(i % rightRows)
+			}
+			for i := range rightKeys {
+				rightKeys[i] = int32(i)
+			}
+			leftBatch.Int32s["key"] = &memory.Int32Vector{Values: leftKeys}
+			rightBatch.Int32s["key"] = &memory.Int32Vector{Values: rightKeys}
+			leftBatch.Reset(leftRows)
+			rightBatch.Reset(rightRows)
+			schema := memory.NewSchema(memory.Field{Name: "key", Type: memory.TypeInt32})
+			left, err := inmemory.New(schema, leftBatch)
+			if err != nil {
+				b.Fatal(err)
+			}
+			right, err := inmemory.New(schema, rightBatch)
+			if err != nil {
+				b.Fatal(err)
+			}
+			opts := engine.DefaultOptions()
+			opts.Workers, opts.KernelMode = 4, choice.mode
+			session := NewSession(opts)
+			defer session.Close()
+			frame := session.FromSource(left).Join(session.FromSource(right), JoinOptions{Type: InnerJoin, LeftOn: []string{"key"}, RightOn: []string{"key"}, Suffix: "_right", RadixBits: 8, Workers: 4})
+			prepared, err := frame.PrepareFrame(context.Background())
+			if err != nil {
+				b.Fatal(err)
+			}
+			defer prepared.Close()
+			warm, err := prepared.Execute(context.Background())
+			if err != nil {
+				b.Fatal(err)
+			}
+			_ = warm.Close()
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				got, err := prepared.Execute(context.Background())
+				if err != nil {
+					b.Fatal(err)
+				}
+				if got.Rows != leftRows {
+					b.Fatalf("rows=%d want=%d", got.Rows, leftRows)
+				}
+				_ = got.Close()
+			}
+		})
 	}
 }
 

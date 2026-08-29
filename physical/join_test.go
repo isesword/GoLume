@@ -3,6 +3,7 @@ package physical
 import (
 	"context"
 	"gocolumn/join"
+	"gocolumn/kernel"
 	"gocolumn/memory"
 	"gocolumn/scheduler"
 	"gocolumn/source"
@@ -23,7 +24,8 @@ func TestJoinSourceFeedsColumnarPayload(t *testing.T) {
 	rb.Int64s["bonus"] = &memory.Int64Vector{Values: []int64{5, 7, 11}}
 	rb.Reset(3)
 	right, _ := inmemory.New(rightSchema, rb)
-	js, err := NewJoinSource(context.Background(), left, right, join.Inner, []JoinKey{{Left: "id", Right: "id"}}, "_r", memory.NewBudgetManager(1<<20))
+	kernels := kernel.New(kernel.ModeScalar)
+	js, err := NewJoinSource(context.Background(), left, right, join.Inner, []JoinKey{{Left: "id", Right: "id"}}, "_r", memory.NewBudgetManager(1<<20), kernels)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -36,7 +38,7 @@ func TestJoinSourceFeedsColumnarPayload(t *testing.T) {
 	if !stats.RowsUpperBound {
 		t.Fatalf("join stats should mark row count as upper bound: %+v", stats)
 	}
-	r, err := js.NewReader(context.Background())
+	r, err := js.NewReader(context.Background(), source.ReadOptions{Kernels: kernels})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -70,8 +72,8 @@ type countingReader struct {
 	inner  source.Reader
 }
 
-func (s *countingSource) NewReader(ctx context.Context) (source.Reader, error) {
-	r, err := s.Source.NewReader(ctx)
+func (s *countingSource) NewReader(ctx context.Context, opts source.ReadOptions) (source.Reader, error) {
+	r, err := s.Source.NewReader(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -96,7 +98,8 @@ func TestJoinSourcePrepareDoesNotReadProbeSide(t *testing.T) {
 	rb.Int32s["id"] = &memory.Int32Vector{Values: []int32{2, 3}}
 	rb.Reset(2)
 	right, _ := inmemory.New(schema, rb)
-	js, err := NewJoinSource(context.Background(), left, right, join.Inner, []JoinKey{{Left: "id", Right: "id"}}, "", memory.NewBudgetManager(1<<20))
+	kernels := kernel.New(kernel.ModeScalar)
+	js, err := NewJoinSource(context.Background(), left, right, join.Inner, []JoinKey{{Left: "id", Right: "id"}}, "", memory.NewBudgetManager(1<<20), kernels)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -105,7 +108,7 @@ func TestJoinSourcePrepareDoesNotReadProbeSide(t *testing.T) {
 		t.Fatalf("prepare read probe side %d times", left.reads)
 	}
 	parts, _ := js.Partitions(context.Background())
-	r, err := js.NewReader(context.Background())
+	r, err := js.NewReader(context.Background(), source.ReadOptions{Kernels: kernels})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -136,7 +139,8 @@ func TestJoinSourceUsesRadixForLargeFixedBuild(t *testing.T) {
 	rb.Reset(buildRows)
 	right, _ := inmemory.New(leftSchema, rb)
 
-	js, err := NewJoinSourceWithOptions(context.Background(), left, right, join.Inner, []JoinKey{{Left: "id", Right: "id"}}, "", memory.NewBudgetManager(32<<20), JoinSourceOptions{RadixBits: 4})
+	kernels := kernel.New(kernel.ModeScalar)
+	js, err := NewJoinSourceWithOptions(context.Background(), left, right, join.Inner, []JoinKey{{Left: "id", Right: "id"}}, "", memory.NewBudgetManager(32<<20), JoinSourceOptions{Kernels: kernels, RadixBits: 4})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -145,7 +149,7 @@ func TestJoinSourceUsesRadixForLargeFixedBuild(t *testing.T) {
 		t.Fatalf("strategy=%q", got)
 	}
 	parts, _ := js.Partitions(context.Background())
-	r, _ := js.NewReader(context.Background())
+	r, _ := js.NewReader(context.Background(), source.ReadOptions{Kernels: kernels})
 	defer r.Close()
 	out := memory.NewBatch()
 	if err := r.ReadPartition(context.Background(), parts[0], out); err != nil {
@@ -168,7 +172,8 @@ func TestParallelRadixJoinSource(t *testing.T) {
 	right, _ := inmemory.New(leftSchema, rb)
 	pool := scheduler.NewPool(4)
 	defer pool.Close()
-	js, err := NewJoinSourceWithOptions(context.Background(), left, right, join.Inner, []JoinKey{{Left: "id", Right: "id"}}, "", memory.NewBudgetManager(1<<20), JoinSourceOptions{RadixBits: 2, Workers: 4, Executor: pool})
+	kernels := kernel.New(kernel.ModeScalar)
+	js, err := NewJoinSourceWithOptions(context.Background(), left, right, join.Inner, []JoinKey{{Left: "id", Right: "id"}}, "", memory.NewBudgetManager(1<<20), JoinSourceOptions{Kernels: kernels, RadixBits: 2, Workers: 4, Executor: pool})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -177,7 +182,7 @@ func TestParallelRadixJoinSource(t *testing.T) {
 		t.Fatalf("strategy=%q", got)
 	}
 	parts, _ := js.Partitions(context.Background())
-	r, _ := js.NewReader(context.Background())
+	r, _ := js.NewReader(context.Background(), source.ReadOptions{Kernels: kernels})
 	defer r.Close()
 	out := memory.NewBatch()
 	if err := r.ReadPartition(context.Background(), parts[0], out); err != nil {

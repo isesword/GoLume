@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"gocolumn/expr"
+	"gocolumn/kernel"
 	"gocolumn/memory"
 	"gocolumn/source"
 )
@@ -17,6 +18,103 @@ type ProjectSource struct {
 	named        []expr.NamedExpr
 	program      expr.ProjectionProgram
 	includeInput bool
+}
+
+// DropColumnsSource removes internal columns without evaluating or copying the
+// remaining vectors. It is used by physical plans that materialize temporary
+// keys (for example expression ordering) but must preserve the logical input
+// schema, including opaque Arrow columns.
+type DropColumnsSource struct {
+	input  source.Source
+	schema memory.Schema
+	drop   []string
+}
+
+// NewDropColumnsSource returns a source that hides columns from input. Every
+// requested column must be present; an empty drop list returns input unchanged.
+func NewDropColumnsSource(input source.Source, columns []string) (source.Source, error) {
+	if input == nil {
+		return nil, fmt.Errorf("drop-columns input is nil")
+	}
+	if len(columns) == 0 {
+		return input, nil
+	}
+	dropSet := make(map[string]struct{}, len(columns))
+	for _, name := range columns {
+		if _, exists := input.Schema().Field(name); !exists {
+			return nil, fmt.Errorf("drop-columns column %q not found", name)
+		}
+		dropSet[name] = struct{}{}
+	}
+	fields := make([]memory.Field, 0, len(input.Schema().Fields)-len(dropSet))
+	for _, field := range input.Schema().Fields {
+		if _, drop := dropSet[field.Name]; !drop {
+			fields = append(fields, field)
+		}
+	}
+	drop := make([]string, 0, len(dropSet))
+	for _, field := range input.Schema().Fields {
+		if _, exists := dropSet[field.Name]; exists {
+			drop = append(drop, field.Name)
+		}
+	}
+	return &DropColumnsSource{input: input, schema: memory.NewSchema(fields...), drop: drop}, nil
+}
+
+// Schema returns the input schema without dropped columns.
+func (s *DropColumnsSource) Schema() memory.Schema { return s.schema }
+
+// Stats preserves input row and partition statistics.
+func (s *DropColumnsSource) Stats(ctx context.Context) (source.Stats, error) {
+	return s.input.Stats(ctx)
+}
+
+// Partitions preserves input partition boundaries.
+func (s *DropColumnsSource) Partitions(ctx context.Context) ([]source.Partition, error) {
+	return s.input.Partitions(ctx)
+}
+
+// NewReader creates a reader that removes only temporary vector bindings.
+func (s *DropColumnsSource) NewReader(ctx context.Context, opts source.ReadOptions) (source.Reader, error) {
+	if err := opts.Validate(); err != nil {
+		return nil, err
+	}
+	reader, err := s.input.NewReader(ctx, opts)
+	if err != nil {
+		return nil, err
+	}
+	return &dropColumnsReader{child: reader, drop: append([]string(nil), s.drop...)}, nil
+}
+
+type dropColumnsReader struct {
+	child source.Reader
+	drop  []string
+}
+
+// Close releases the wrapped source reader.
+func (r *dropColumnsReader) Close() error { return r.child.Close() }
+
+// ReadPartition reads one partition and removes temporary bindings.
+func (r *dropColumnsReader) ReadPartition(ctx context.Context, p source.Partition, dst *memory.Batch) error {
+	if err := r.child.ReadPartition(ctx, p, dst); err != nil {
+		return err
+	}
+	for _, name := range r.drop {
+		removeColumn(dst, name)
+	}
+	return nil
+}
+
+// Dictionary forwards dictionary metadata for columns that remain visible.
+func (s *DropColumnsSource) Dictionary(ctx context.Context, column string) (source.Dictionary, error) {
+	if _, exists := s.schema.Field(column); !exists {
+		return source.Dictionary{}, fmt.Errorf("dropped column %q has no dictionary", column)
+	}
+	dp, ok := s.input.(source.DictionaryProvider)
+	if !ok {
+		return source.Dictionary{}, fmt.Errorf("drop-columns input has no dictionary provider")
+	}
+	return dp.Dictionary(ctx, column)
 }
 
 // NewProjectSource compiles named scalar expressions against input. When
@@ -98,12 +196,15 @@ func (s *ProjectSource) Partitions(ctx context.Context) ([]source.Partition, err
 }
 
 // NewReader creates an independent projection reader.
-func (s *ProjectSource) NewReader(ctx context.Context) (source.Reader, error) {
-	r, err := s.input.NewReader(ctx)
+func (s *ProjectSource) NewReader(ctx context.Context, opts source.ReadOptions) (source.Reader, error) {
+	if err := opts.Validate(); err != nil {
+		return nil, err
+	}
+	r, err := s.input.NewReader(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	return &projectReader{owner: s, child: r, input: memory.NewBatch()}, nil
+	return &projectReader{owner: s, child: r, input: memory.NewBatch(), kernels: opts.Kernels}, nil
 }
 
 type projectReader struct {
@@ -111,6 +212,7 @@ type projectReader struct {
 	child     source.Reader
 	input     *memory.Batch
 	workspace expr.ScalarWorkspace
+	kernels   kernel.Set
 }
 
 // Close releases the child reader.
@@ -121,7 +223,7 @@ func (r *projectReader) ReadPartition(ctx context.Context, p source.Partition, d
 	if err := r.child.ReadPartition(ctx, p, r.input); err != nil {
 		return err
 	}
-	values, err := r.owner.program.Evaluate(r.input, &r.workspace)
+	values, err := r.owner.program.Evaluate(r.input, &r.workspace, r.kernels)
 	if err != nil {
 		return err
 	}

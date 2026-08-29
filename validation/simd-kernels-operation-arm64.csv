@@ -1,0 +1,36 @@
+goos: darwin
+goarch: arm64
+pkg: gocolumn/kernel
+cpu: Apple M4 Pro
+,scalar,,simd,,,
+,sec/op,CI,sec/op,CI,vs base,P
+Int64Compare-12,8.063300000000001e-05,3%,9.2843e-05,1%,+15.14%,p=0.000 n=10
+Hash64Batch-12,4.3916000000000004e-05,1%,0.00015521300000000002,1%,+253.43%,p=0.000 n=10
+Float64Arithmetic-12,4.87385e-05,1%,3.3347000000000004e-05,2%,-31.58%,p=0.000 n=10
+Int64Arithmetic-12,8.51185e-05,3%,0.00017989950000000003,2%,+111.35%,p=0.000 n=10
+BoolAnd-12,1.4647e-05,1%,1.63845e-05,1%,+11.86%,p=0.000 n=10
+Int64Scale-12,5.7888500000000007e-05,2%,0.0001026485,2%,+77.32%,p=0.000 n=10
+StringUTF8Length-12,0.001281575,2%,0.0017292990000000001,1%,+34.94%,p=0.000 n=10
+geomean,7.694130205211088e-05,,0.00011407824708562187,,+48.27%,
+
+,scalar,,simd,,,
+,B/op,CI,B/op,CI,vs base,P
+Int64Compare-12,0,0%,0,0%,~,p=1.000 n=10
+Hash64Batch-12,0,0%,0,0%,~,p=1.000 n=10
+Float64Arithmetic-12,0,0%,0,0%,~,p=1.000 n=10
+Int64Arithmetic-12,0,0%,0,0%,~,p=1.000 n=10
+BoolAnd-12,0,0%,0,0%,~,p=1.000 n=10
+Int64Scale-12,0,0%,0,0%,~,p=1.000 n=10
+StringUTF8Length-12,2.097166e+06,0%,0,0%,-100.00%,p=0.000 n=10
+geomean,,,,,?,
+
+,scalar,,simd,,,
+,allocs/op,CI,allocs/op,CI,vs base,P
+Int64Compare-12,0,0%,0,0%,~,p=1.000 n=10
+Hash64Batch-12,0,0%,0,0%,~,p=1.000 n=10
+Float64Arithmetic-12,0,0%,0,0%,~,p=1.000 n=10
+Int64Arithmetic-12,0,0%,0,0%,~,p=1.000 n=10
+BoolAnd-12,0,0%,0,0%,~,p=1.000 n=10
+Int64Scale-12,0,0%,0,0%,~,p=1.000 n=10
+StringUTF8Length-12,16384,0%,0,0%,-100.00%,p=0.000 n=10
+geomean,,,,,?,

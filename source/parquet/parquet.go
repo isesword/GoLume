@@ -4,37 +4,33 @@ import (
 	"context"
 	"fmt"
 	"gocolumn/expr"
+	"gocolumn/kernel"
 	"gocolumn/memory"
 	"gocolumn/source"
+	"math"
 	"os"
+	"time"
+	"unicode/utf8"
 
 	arrowparquet "github.com/apache/arrow-go/v18/parquet"
 	"github.com/apache/arrow-go/v18/parquet/file"
 	"github.com/apache/arrow-go/v18/parquet/metadata"
+	"github.com/apache/arrow-go/v18/parquet/schema"
 )
-
-// Columns maps the three Phase 2.2 logical query roles to Parquet physical
-// column indexes. Open is retained for source compatibility; new lazy code
-// should prefer OpenFile, which discovers primitive columns by name.
-type Columns struct {
-	PredicateName  string
-	PredicateIndex int
-	GroupName      string
-	GroupIndex     int
-	ValueName      string
-	ValueIndex     int
-}
 
 type columnBinding struct {
 	Name     string
 	Index    int
 	Type     memory.DataType
 	Nullable bool
+	// TimestampScale converts the physical int64 timestamp unit to UTC
+	// nanoseconds. It is one for ordinary int64 and nanosecond timestamps.
+	TimestampScale int64
 }
 
-// Source exposes projected primitive Parquet columns as row-group partitions.
-// Phase 2.3 supports flat int32 and int64 columns. Pushdown clones are immutable
-// and safe to prepare independently from the same base source.
+// Source exposes projected flat Parquet columns as row-group partitions. It
+// supports integers, UTF-8 strings, dates, and UTC timestamps. Pushdown clones
+// are immutable and safe to prepare independently from the same base source.
 type Source struct {
 	path        string
 	meta        *metadata.FileMetaData
@@ -49,48 +45,10 @@ type Source struct {
 	report      source.PushdownReport
 }
 
-// Open validates the legacy three-column mapping and constructs a Parquet
-// source. New lazy code should prefer OpenFile so projection can be discovered
-// directly from file schema metadata.
-func Open(path string, cols Columns) (*Source, error) {
-	if cols.PredicateIndex == 0 && cols.GroupIndex == 0 && cols.ValueIndex == 0 {
-		cols.PredicateIndex, cols.GroupIndex, cols.ValueIndex = 0, 1, 2
-	}
-	if cols.PredicateName == "" {
-		cols.PredicateName = "pred"
-	}
-	if cols.GroupName == "" {
-		cols.GroupName = "key"
-	}
-	if cols.ValueName == "" {
-		cols.ValueName = "value"
-	}
-	base, err := openMetadata(path)
-	if err != nil {
-		return nil, err
-	}
-	indexes := []int{cols.PredicateIndex, cols.GroupIndex, cols.ValueIndex}
-	names := []string{cols.PredicateName, cols.GroupName, cols.ValueName}
-	bindings := make([]columnBinding, len(indexes))
-	fields := make([]memory.Field, len(indexes))
-	for i, idx := range indexes {
-		b, err := bindingAt(base.meta, idx, names[i])
-		if err != nil {
-			return nil, err
-		}
-		bindings[i] = b
-		fields[i] = memory.Field{Name: b.Name, Type: b.Type, Nullable: b.Nullable, Encoding: memory.EncodingPlain}
-	}
-	base.allBindings = bindings
-	base.bindings = append([]columnBinding(nil), bindings...)
-	base.baseSchema = memory.NewSchema(fields...)
-	base.schema = base.baseSchema
-	return base, nil
-}
-
-// OpenFile discovers a flat primitive Parquet schema and exposes all supported
-// int32/int64 columns. Repeated/nested columns and other physical types are
-// rejected in Phase 2.3 rather than silently decoded incorrectly.
+// OpenFile discovers a flat primitive Parquet schema and exposes supported
+// integer, UTF-8 string, date, and UTC timestamp columns. Repeated/nested
+// columns and unsupported physical or logical types are rejected rather than
+// silently decoded incorrectly.
 func OpenFile(path string) (*Source, error) {
 	base, err := openMetadata(path)
 	if err != nil {
@@ -110,7 +68,7 @@ func OpenFile(path string) (*Source, error) {
 			return nil, err
 		}
 		bindings = append(bindings, b)
-		fields = append(fields, memory.Field{Name: b.Name, Type: b.Type, Nullable: b.Nullable, Encoding: memory.EncodingPlain})
+		fields = append(fields, fieldForBinding(b))
 	}
 	base.allBindings = bindings
 	base.bindings = append([]columnBinding(nil), bindings...)
@@ -154,16 +112,58 @@ func bindingAt(meta *metadata.FileMetaData, index int, logicalName string) (colu
 		return columnBinding{}, fmt.Errorf("parquet column index %d out of range", index)
 	}
 	d := meta.Schema.Column(index)
-	var typ memory.DataType
+	binding := columnBinding{Name: logicalName, Index: index, Nullable: d.MaxDefinitionLevel() > 0, TimestampScale: 1}
 	switch d.PhysicalType() {
 	case arrowparquet.Types.Int32:
-		typ = memory.TypeInt32
+		if _, ok := d.LogicalType().(schema.DateLogicalType); ok {
+			binding.Type = memory.TypeDate32
+		} else {
+			binding.Type = memory.TypeInt32
+		}
 	case arrowparquet.Types.Int64:
-		typ = memory.TypeInt64
+		if timestamp, ok := d.LogicalType().(schema.TimestampLogicalType); ok {
+			if !timestamp.IsAdjustedToUTC() {
+				return columnBinding{}, fmt.Errorf("parquet timestamp column %q is not UTC-adjusted", d.Path())
+			}
+			scale, err := parquetTimestampScale(timestamp.TimeUnit())
+			if err != nil {
+				return columnBinding{}, fmt.Errorf("parquet timestamp column %q: %w", d.Path(), err)
+			}
+			binding.Type = memory.TypeTimestamp
+			binding.TimestampScale = scale
+		} else {
+			binding.Type = memory.TypeInt64
+		}
+	case arrowparquet.Types.ByteArray:
+		if _, ok := d.LogicalType().(schema.StringLogicalType); !ok {
+			return columnBinding{}, fmt.Errorf("parquet byte array column %q is not UTF-8 STRING", d.Path())
+		}
+		binding.Type = memory.TypeString
 	default:
-		return columnBinding{}, fmt.Errorf("parquet column %q physical type %s is not supported by phase-2.3 lazy scan", d.Path(), d.PhysicalType())
+		return columnBinding{}, fmt.Errorf("parquet column %q physical type %s is not supported by lazy scan", d.Path(), d.PhysicalType())
 	}
-	return columnBinding{Name: logicalName, Index: index, Type: typ, Nullable: d.MaxDefinitionLevel() > 0}, nil
+	return binding, nil
+}
+
+func fieldForBinding(b columnBinding) memory.Field {
+	encoding := memory.EncodingPlain
+	if b.Type == memory.TypeString {
+		encoding = memory.EncodingView
+	}
+	return memory.Field{Name: b.Name, Type: b.Type, Nullable: b.Nullable, Encoding: encoding}
+}
+
+func parquetTimestampScale(unit schema.TimeUnitType) (int64, error) {
+	switch unit {
+	case schema.TimeUnitMillis:
+		return int64(1e6), nil
+	case schema.TimeUnitMicros:
+		return int64(1e3), nil
+	case schema.TimeUnitNanos:
+		return 1, nil
+	default:
+		return 0, fmt.Errorf("timestamp unit %d is not supported", unit)
+	}
 }
 
 // Description returns a concise source label used by explain output.
@@ -184,12 +184,15 @@ func (s *Source) Partitions(context.Context) ([]source.Partition, error) {
 
 // NewReader opens an independent Arrow-Go reader configured to decode only the
 // projected column chunks.
-func (s *Source) NewReader(context.Context) (source.Reader, error) {
+func (s *Source) NewReader(_ context.Context, opts source.ReadOptions) (source.Reader, error) {
+	if err := opts.Validate(); err != nil {
+		return nil, err
+	}
 	r, err := file.OpenParquetFile(s.path, false)
 	if err != nil {
 		return nil, err
 	}
-	return &reader{r: r, bindings: append([]columnBinding(nil), s.bindings...)}, nil
+	return &reader{r: r, bindings: append([]columnBinding(nil), s.bindings...), kernels: opts.Kernels}, nil
 }
 
 // ApplyPushdown returns an immutable source clone that reads only requested
@@ -312,11 +315,13 @@ func orderedNames(schema memory.Schema, names map[string]struct{}) []string {
 }
 
 type reader struct {
-	r        *file.Reader
-	bindings []columnBinding
-	dense64  []int64
-	dense32  []int32
-	defs     []int16
+	r          *file.Reader
+	bindings   []columnBinding
+	kernels    kernel.Set
+	dense64    []int64
+	dense32    []int32
+	denseBytes []arrowparquet.ByteArray
+	defs       []int16
 }
 
 // Close releases the underlying Parquet file reader.
@@ -347,12 +352,16 @@ func (r *reader) ReadPartition(ctx context.Context, p source.Partition, dst *mem
 			return err
 		}
 		switch b.Type {
-		case memory.TypeInt64:
+		case memory.TypeInt64, memory.TypeTimestamp:
 			if err := r.readInt64(chunk, b, rows, dst); err != nil {
 				return err
 			}
-		case memory.TypeInt32:
+		case memory.TypeInt32, memory.TypeDate32:
 			if err := r.readInt32(chunk, b, rows, dst); err != nil {
+				return err
+			}
+		case memory.TypeString:
+			if err := r.readString(chunk, b, rows, dst); err != nil {
 				return err
 			}
 		default:
@@ -384,7 +393,7 @@ func (r *reader) readInt64(chunk file.ColumnChunkReader, b columnBinding, rows i
 		if int(total) != rows || values != rows {
 			return fmt.Errorf("column %q row count mismatch total=%d values=%d want=%d", b.Name, total, values, rows)
 		}
-		return nil
+		return normalizeTimestampColumn(b, v.Values, nil, r.kernels)
 	}
 	r.dense64 = resize(r.dense64, rows)
 	r.defs = resize(r.defs, rows)
@@ -412,7 +421,7 @@ func (r *reader) readInt64(chunk file.ColumnChunkReader, b columnBinding, rows i
 	if dense != values {
 		return fmt.Errorf("column %q dense mismatch got=%d want=%d", b.Name, dense, values)
 	}
-	return nil
+	return normalizeTimestampColumn(b, v.Values, v.Validity, r.kernels)
 }
 
 func (r *reader) readInt32(chunk file.ColumnChunkReader, b columnBinding, rows int, dst *memory.Batch) error {
@@ -467,6 +476,90 @@ func (r *reader) readInt32(chunk file.ColumnChunkReader, b columnBinding, rows i
 	return nil
 }
 
+func (r *reader) readString(chunk file.ColumnChunkReader, b columnBinding, rows int, dst *memory.Batch) error {
+	v := dst.Strings[b.Name]
+	if v == nil {
+		v = &memory.StringViewVector{}
+		dst.Strings[b.Name] = v
+	}
+	v.Offsets = resize(v.Offsets, rows+1)
+	v.Offsets[0] = 0
+	v.Data = v.Data[:0]
+	v.Encoding = memory.EncodingView
+	c, ok := chunk.(*file.ByteArrayColumnChunkReader)
+	if !ok {
+		return fmt.Errorf("column %q is not a byte-array chunk reader", b.Name)
+	}
+	if !b.Nullable {
+		v.Validity = nil
+		r.denseBytes = resize(r.denseBytes, rows)
+		total, values, err := c.ReadBatch(int64(rows), r.denseBytes, nil, nil)
+		if err != nil {
+			return err
+		}
+		if int(total) != rows || values != rows {
+			return fmt.Errorf("column %q row count mismatch total=%d values=%d want=%d", b.Name, total, values, rows)
+		}
+		for row, value := range r.denseBytes {
+			if err := appendUTF8Value(v, b.Name, row, value); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	r.denseBytes = resize(r.denseBytes, rows)
+	r.defs = resize(r.defs, rows)
+	v.Validity = memory.EnsureBitmap(v.Validity, rows)
+	total, values, err := c.ReadBatch(int64(rows), r.denseBytes, r.defs, nil)
+	if err != nil {
+		return err
+	}
+	if int(total) != rows {
+		return fmt.Errorf("column %q row count mismatch total=%d want=%d", b.Name, total, rows)
+	}
+	dense := 0
+	for row := 0; row < rows; row++ {
+		if r.defs[row] == 0 {
+			v.Offsets[row+1] = uint32(len(v.Data))
+			continue
+		}
+		if dense >= values {
+			return fmt.Errorf("column %q dense overflow", b.Name)
+		}
+		if err := appendUTF8Value(v, b.Name, row, r.denseBytes[dense]); err != nil {
+			return err
+		}
+		dense++
+		memory.Set(v.Validity, row)
+	}
+	if dense != values {
+		return fmt.Errorf("column %q dense mismatch got=%d want=%d", b.Name, dense, values)
+	}
+	return nil
+}
+
+func appendUTF8Value(v *memory.StringViewVector, column string, row int, value arrowparquet.ByteArray) error {
+	if !utf8.Valid(value) {
+		return fmt.Errorf("column %q row %d contains invalid UTF-8", column, row)
+	}
+	if len(v.Data) > math.MaxUint32-len(value) {
+		return fmt.Errorf("column %q string data exceeds uint32 offset capacity", column)
+	}
+	v.Data = append(v.Data, value...)
+	v.Offsets[row+1] = uint32(len(v.Data))
+	return nil
+}
+
+func normalizeTimestampColumn(b columnBinding, values []int64, validity memory.Bitmap, kernels kernel.Set) error {
+	if b.Type != memory.TypeTimestamp || b.TimestampScale == 1 {
+		return nil
+	}
+	if row := kernels.ScaleInt64(values, validity, b.TimestampScale); row >= 0 {
+		return fmt.Errorf("column %q timestamp row %d overflows UTC nanosecond normalization", b.Name, row)
+	}
+	return nil
+}
+
 // truthSet is a conservative set of SQL truth values that may occur in one row group.
 type truthSet uint8
 
@@ -505,6 +598,8 @@ func predicateTruth(rg *metadata.RowGroupMetaData, predicate expr.Expr, bindings
 			return combineTruth(n.Op, left, right), nil
 		case expr.OpGT, expr.OpGE, expr.OpLT, expr.OpLE, expr.OpEQ:
 			return comparisonTruth(rg, n, bindings)
+		case expr.OpContains, expr.OpStartsWith, expr.OpEndsWith:
+			return stringPredicateTruth(rg, n, bindings)
 		default:
 			return truthAny, nil
 		}
@@ -531,77 +626,51 @@ func predicateTruth(rg *metadata.RowGroupMetaData, predicate expr.Expr, bindings
 }
 
 func comparisonTruth(rg *metadata.RowGroupMetaData, b expr.Binary, bindings map[string]columnBinding) (truthSet, error) {
-	col, lit, op, ok := normalizeComparison(b)
+	if extract, ok := b.Left.(expr.Unary); ok {
+		return extractComparisonTruth(rg, b, extract, bindings)
+	}
+	col, literal, op, ok := normalizeColumnLiteralComparison(b)
 	if !ok {
 		return truthAny, nil
 	}
 	binding, ok := bindings[col.Name]
-	if !ok || binding.Type != memory.TypeInt64 {
-		return truthAny, nil
-	}
-	chunk, err := rg.ColumnChunk(binding.Index)
-	if err != nil {
-		return truthAny, err
-	}
-	stats, err := chunk.Statistics()
-	if err != nil || stats == nil {
-		return truthAny, err
-	}
-	i64, ok := stats.(*metadata.Int64Statistics)
 	if !ok {
 		return truthAny, nil
 	}
-	var out truthSet
-	nullsKnown := i64.HasNullCount()
-	nulls := int64(0)
-	if nullsKnown {
-		nulls = i64.NullCount()
-		if nulls > 0 {
-			out |= truthNull
+	stats, err := columnStatistics(rg, binding)
+	if err != nil || stats == nil {
+		return truthAny, err
+	}
+	// Parquet has no portable way to tell whether arbitrary BYTE_ARRAY min/max
+	// statistics were prefix-truncated. They are therefore never used to infer
+	// string value ranges; null-count-only pruning remains safe.
+	if binding.Type == memory.TypeString {
+		if stats.HasNullCount() && stats.NullCount() >= rg.NumRows() {
+			return truthNull, nil
 		}
+		return truthAny, nil
 	}
-	nonNullPossible := !nullsKnown || nulls < rg.NumRows()
-	if !nonNullPossible {
-		return out, nil
+	literalValue, ok, err := comparisonLiteral(binding, literal)
+	if err != nil || !ok {
+		if err != nil {
+			return truthAny, err
+		}
+		return truthAny, nil
 	}
-	if !i64.HasMinMax() {
-		return out | truthTrue | truthFalse, nil
+	min, max, hasMinMax, err := numericStatistics(binding, stats)
+	if err != nil {
+		return truthAny, err
 	}
-	min, max := i64.Min(), i64.Max()
-	v := lit.Value
-	var mayTrue, mayFalse bool
-	switch op {
-	case expr.OpGT:
-		mayTrue, mayFalse = max > v, min <= v
-	case expr.OpGE:
-		mayTrue, mayFalse = max >= v, min < v
-	case expr.OpLT:
-		mayTrue, mayFalse = min < v, max >= v
-	case expr.OpLE:
-		mayTrue, mayFalse = min <= v, max > v
-	case expr.OpEQ:
-		mayTrue = min <= v && v <= max
-		mayFalse = min != v || max != v
-	}
-	if mayTrue {
-		out |= truthTrue
-	}
-	if mayFalse {
-		out |= truthFalse
-	}
-	return out, nil
+	return rangeTruth(rg, stats, hasMinMax, min, max, literalValue, op), nil
 }
 
-func normalizeComparison(b expr.Binary) (expr.Column, expr.Int64Literal, expr.Op, bool) {
+func normalizeColumnLiteralComparison(b expr.Binary) (expr.Column, expr.Expr, expr.Op, bool) {
 	if c, ok := b.Left.(expr.Column); ok {
-		if lit, ok := b.Right.(expr.Int64Literal); ok {
-			return c, lit, b.Op, true
-		}
+		return c, b.Right, b.Op, true
 	}
-	lit, litOK := b.Left.(expr.Int64Literal)
-	c, colOK := b.Right.(expr.Column)
-	if !litOK || !colOK {
-		return expr.Column{}, expr.Int64Literal{}, expr.OpInvalid, false
+	c, ok := b.Right.(expr.Column)
+	if !ok {
+		return expr.Column{}, nil, expr.OpInvalid, false
 	}
 	op := b.Op
 	switch op {
@@ -615,9 +684,262 @@ func normalizeComparison(b expr.Binary) (expr.Column, expr.Int64Literal, expr.Op
 		op = expr.OpGE
 	case expr.OpEQ:
 	default:
-		return expr.Column{}, expr.Int64Literal{}, expr.OpInvalid, false
+		return expr.Column{}, nil, expr.OpInvalid, false
 	}
-	return c, lit, op, true
+	return c, b.Left, op, true
+}
+
+func comparisonLiteral(binding columnBinding, literal expr.Expr) (int64, bool, error) {
+	switch v := literal.(type) {
+	case expr.Int64Literal:
+		return v.Value, true, nil
+	case expr.Date32Literal:
+		if binding.Type != memory.TypeDate32 {
+			return 0, false, nil
+		}
+		return int64(v.Days), true, nil
+	case expr.TimestampLiteral:
+		if binding.Type != memory.TypeTimestamp {
+			return 0, false, nil
+		}
+		return v.Value, true, nil
+	case expr.TimestampUnitLiteral:
+		if binding.Type != memory.TypeTimestamp {
+			return 0, false, nil
+		}
+		nanos, err := v.Nanoseconds()
+		return nanos, err == nil, err
+	default:
+		return 0, false, nil
+	}
+}
+
+func columnStatistics(rg *metadata.RowGroupMetaData, binding columnBinding) (metadata.TypedStatistics, error) {
+	chunk, err := rg.ColumnChunk(binding.Index)
+	if err != nil {
+		return nil, err
+	}
+	return chunk.Statistics()
+}
+
+func numericStatistics(binding columnBinding, stats metadata.TypedStatistics) (int64, int64, bool, error) {
+	if !stats.HasMinMax() {
+		return 0, 0, false, nil
+	}
+	switch binding.Type {
+	case memory.TypeInt32, memory.TypeDate32:
+		v, ok := stats.(*metadata.Int32Statistics)
+		if !ok {
+			return 0, 0, false, nil
+		}
+		return int64(v.Min()), int64(v.Max()), true, nil
+	case memory.TypeInt64:
+		v, ok := stats.(*metadata.Int64Statistics)
+		if !ok {
+			return 0, 0, false, nil
+		}
+		return v.Min(), v.Max(), true, nil
+	case memory.TypeTimestamp:
+		v, ok := stats.(*metadata.Int64Statistics)
+		if !ok {
+			return 0, 0, false, nil
+		}
+		min, err := normalizeTimestampStatistic(binding, v.Min())
+		if err != nil {
+			return 0, 0, false, err
+		}
+		max, err := normalizeTimestampStatistic(binding, v.Max())
+		if err != nil {
+			return 0, 0, false, err
+		}
+		return min, max, true, nil
+	default:
+		return 0, 0, false, nil
+	}
+}
+
+func normalizeTimestampStatistic(binding columnBinding, value int64) (int64, error) {
+	if binding.TimestampScale == 1 {
+		return value, nil
+	}
+	if value > math.MaxInt64/binding.TimestampScale || value < math.MinInt64/binding.TimestampScale {
+		return 0, fmt.Errorf("column %q timestamp statistics overflow UTC nanosecond normalization", binding.Name)
+	}
+	return value * binding.TimestampScale, nil
+}
+
+func rangeTruth(rg *metadata.RowGroupMetaData, stats metadata.TypedStatistics, hasMinMax bool, min, max, literal int64, op expr.Op) truthSet {
+	out := nullOnlyTruth(stats)
+	if stats.HasNullCount() && stats.NullCount() >= rg.NumRows() {
+		return out
+	}
+	if !hasMinMax {
+		return out | truthTrue | truthFalse
+	}
+	var mayTrue, mayFalse bool
+	switch op {
+	case expr.OpGT:
+		mayTrue, mayFalse = max > literal, min <= literal
+	case expr.OpGE:
+		mayTrue, mayFalse = max >= literal, min < literal
+	case expr.OpLT:
+		mayTrue, mayFalse = min < literal, max >= literal
+	case expr.OpLE:
+		mayTrue, mayFalse = min <= literal, max > literal
+	case expr.OpEQ:
+		mayTrue = min <= literal && literal <= max
+		mayFalse = min != literal || max != literal
+	}
+	if mayTrue {
+		out |= truthTrue
+	}
+	if mayFalse {
+		out |= truthFalse
+	}
+	return out
+}
+
+// nullOnlyTruth returns every truth value possible solely from null-count
+// metadata. Unknown null counts intentionally retain NULL as possible.
+func nullOnlyTruth(stats metadata.TypedStatistics) truthSet {
+	if !stats.HasNullCount() {
+		return truthNull
+	}
+	var out truthSet
+	if stats.NullCount() > 0 {
+		out |= truthNull
+	}
+	return out
+}
+
+func stringPredicateTruth(rg *metadata.RowGroupMetaData, b expr.Binary, bindings map[string]columnBinding) (truthSet, error) {
+	column, ok := b.Left.(expr.Column)
+	if !ok {
+		return truthAny, nil
+	}
+	if _, ok := b.Right.(expr.StringLiteral); !ok {
+		return truthAny, nil
+	}
+	binding, ok := bindings[column.Name]
+	if !ok || binding.Type != memory.TypeString {
+		return truthAny, nil
+	}
+	stats, err := columnStatistics(rg, binding)
+	if err != nil || stats == nil {
+		return truthAny, err
+	}
+	if stats.HasNullCount() && stats.NullCount() >= rg.NumRows() {
+		return truthNull, nil
+	}
+	return truthAny, nil
+}
+
+func extractComparisonTruth(rg *metadata.RowGroupMetaData, b expr.Binary, extract expr.Unary, bindings map[string]columnBinding) (truthSet, error) {
+	if extract.Op != expr.OpYear && extract.Op != expr.OpMonth && extract.Op != expr.OpDay &&
+		extract.Op != expr.OpHour && extract.Op != expr.OpMinute && extract.Op != expr.OpSecond {
+		return truthAny, nil
+	}
+	column, ok := extract.Value.(expr.Column)
+	if !ok {
+		return truthAny, nil
+	}
+	literal, ok := b.Right.(expr.Int64Literal)
+	if !ok {
+		return truthAny, nil
+	}
+	binding, ok := bindings[column.Name]
+	if !ok {
+		return truthAny, nil
+	}
+	if (extract.Op == expr.OpHour || extract.Op == expr.OpMinute || extract.Op == expr.OpSecond) && binding.Type != memory.TypeTimestamp {
+		return truthAny, nil
+	}
+	if (extract.Op == expr.OpYear || extract.Op == expr.OpMonth || extract.Op == expr.OpDay) &&
+		binding.Type != memory.TypeDate32 && binding.Type != memory.TypeDate64 && binding.Type != memory.TypeTimestamp {
+		return truthAny, nil
+	}
+	stats, err := columnStatistics(rg, binding)
+	if err != nil || stats == nil {
+		return truthAny, err
+	}
+	min, max, hasMinMax, err := numericStatistics(binding, stats)
+	if err != nil {
+		return truthAny, err
+	}
+	if !hasMinMax {
+		return rangeTruth(rg, stats, false, 0, 0, 0, b.Op), nil
+	}
+	minTime := utcTemporalTime(binding.Type, min)
+	maxTime := utcTemporalTime(binding.Type, max)
+	if extract.Op == expr.OpYear {
+		return rangeTruth(rg, stats, true, int64(minTime.Year()), int64(maxTime.Year()), literal.Value, b.Op), nil
+	}
+	if sameTemporalBucket(minTime, maxTime, extract.Op) {
+		part := temporalPart(minTime, extract.Op)
+		return rangeTruth(rg, stats, true, part, part, literal.Value, b.Op), nil
+	}
+	lo, hi := temporalPartDomain(extract.Op)
+	return rangeTruth(rg, stats, true, lo, hi, literal.Value, b.Op), nil
+}
+
+func utcTemporalTime(typ memory.DataType, value int64) time.Time {
+	switch typ {
+	case memory.TypeDate32:
+		return time.Unix(value*24*60*60, 0).UTC()
+	case memory.TypeDate64:
+		return time.Unix(value/1000, (value%1000)*int64(time.Millisecond)).UTC()
+	default: // TypeTimestamp values are normalized to UTC nanoseconds.
+		return time.Unix(value/int64(time.Second), value%int64(time.Second)).UTC()
+	}
+}
+
+func sameTemporalBucket(min, max time.Time, extract expr.Op) bool {
+	switch extract {
+	case expr.OpMonth:
+		return min.Year() == max.Year() && min.Month() == max.Month()
+	case expr.OpDay:
+		return min.Year() == max.Year() && min.YearDay() == max.YearDay()
+	case expr.OpHour:
+		return min.Year() == max.Year() && min.YearDay() == max.YearDay() && min.Hour() == max.Hour()
+	case expr.OpMinute:
+		return min.Year() == max.Year() && min.YearDay() == max.YearDay() && min.Hour() == max.Hour() && min.Minute() == max.Minute()
+	case expr.OpSecond:
+		return min.Year() == max.Year() && min.YearDay() == max.YearDay() && min.Hour() == max.Hour() && min.Minute() == max.Minute() && min.Second() == max.Second()
+	default:
+		return false
+	}
+}
+
+func temporalPart(value time.Time, extract expr.Op) int64 {
+	switch extract {
+	case expr.OpMonth:
+		return int64(value.Month())
+	case expr.OpDay:
+		return int64(value.Day())
+	case expr.OpHour:
+		return int64(value.Hour())
+	case expr.OpMinute:
+		return int64(value.Minute())
+	case expr.OpSecond:
+		return int64(value.Second())
+	default:
+		return int64(value.Year())
+	}
+}
+
+func temporalPartDomain(extract expr.Op) (int64, int64) {
+	switch extract {
+	case expr.OpMonth:
+		return 1, 12
+	case expr.OpDay:
+		return 1, 31
+	case expr.OpHour:
+		return 0, 23
+	case expr.OpMinute, expr.OpSecond:
+		return 0, 59
+	default:
+		return math.MinInt64, math.MaxInt64
+	}
 }
 
 func nullTruth(rg *metadata.RowGroupMetaData, name string, op expr.Op, bindings map[string]columnBinding) (truthSet, error) {

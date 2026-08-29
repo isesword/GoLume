@@ -5,6 +5,7 @@ import (
 	"container/heap"
 	"context"
 	"fmt"
+	"gocolumn/join"
 	"gocolumn/memory"
 	"gocolumn/source"
 	"math"
@@ -22,16 +23,34 @@ type SortKey struct {
 	NullsLast  bool
 }
 
+// SortSourceOptions controls optional parallel execution for global sorting.
+// A non-nil Executor is required when Workers is greater than one. The default
+// zero value keeps the serial implementation used by NewSortSource.
+type SortSourceOptions struct {
+	Workers  int
+	Executor join.ParallelExecutor
+}
+
 // SortSource globally sorts all input rows. Sort materializes the full input
 // and therefore charges an execution-time memory reservation.
 type SortSource struct {
-	input   source.Source
-	keys    []SortKey
-	manager memory.Manager
+	input    source.Source
+	keys     []SortKey
+	manager  memory.Manager
+	workers  int
+	executor join.ParallelExecutor
 }
 
 // NewSortSource validates sort keys and returns a full-materialization sort.
 func NewSortSource(input source.Source, keys []SortKey, manager memory.Manager) (source.Source, error) {
+	return NewSortSourceWithOptions(input, keys, manager, SortSourceOptions{})
+}
+
+// NewSortSourceWithOptions validates sort keys and returns a full-materialization
+// sort. When configured with a persistent Executor and multiple Workers, the
+// materialized row ordinals are split into contiguous runs, sorted concurrently,
+// then merged by the original global ordinal to preserve stable ordering.
+func NewSortSourceWithOptions(input source.Source, keys []SortKey, manager memory.Manager, opts SortSourceOptions) (source.Source, error) {
 	if input == nil {
 		return nil, fmt.Errorf("sort input is nil")
 	}
@@ -41,7 +60,19 @@ func NewSortSource(input source.Source, keys []SortKey, manager memory.Manager) 
 	if err := validateSortKeys(input.Schema(), keys); err != nil {
 		return nil, err
 	}
-	return &SortSource{input: input, keys: append([]SortKey(nil), keys...), manager: manager}, nil
+	if opts.Workers < 0 {
+		return nil, fmt.Errorf("sort workers must be non-negative")
+	}
+	if opts.Workers > 1 && opts.Executor == nil {
+		return nil, fmt.Errorf("parallel sort requires executor")
+	}
+	return &SortSource{
+		input:    input,
+		keys:     append([]SortKey(nil), keys...),
+		manager:  manager,
+		workers:  opts.Workers,
+		executor: opts.Executor,
+	}, nil
 }
 
 // Schema preserves the input schema.
@@ -60,8 +91,11 @@ func (s *SortSource) Partitions(ctx context.Context) ([]source.Partition, error)
 }
 
 // NewReader creates an independent global-sort reader.
-func (s *SortSource) NewReader(ctx context.Context) (source.Reader, error) {
-	child, err := s.input.NewReader(ctx)
+func (s *SortSource) NewReader(ctx context.Context, opts source.ReadOptions) (source.Reader, error) {
+	if err := opts.Validate(); err != nil {
+		return nil, err
+	}
+	child, err := s.input.NewReader(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -111,13 +145,117 @@ func (r *sortReader) ReadPartition(ctx context.Context, p source.Partition, dst 
 		return err
 	}
 	defer full.ReleaseOwned()
-	rows := make([]int, full.Rows)
+	cmp := batchComparator{batch: full, schema: r.owner.input.Schema(), keys: r.owner.keys}
+	rows, err := sortRows(ctx, full.Rows, cmp, r.owner.workers, r.owner.executor)
+	if err != nil {
+		return err
+	}
+	return takeRows(ctx, dst, full, rows)
+}
+
+// sortRows returns global input row ordinals in requested order. Each ordinal
+// is also the stability tie-breaker: contiguous runs therefore remain stable
+// locally and the merge reproduces the original source order for equal keys.
+func sortRows(ctx context.Context, rowCount int, cmp batchComparator, workers int, exec join.ParallelExecutor) ([]int, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	rows := make([]int, rowCount)
 	for i := range rows {
 		rows[i] = i
 	}
-	cmp := batchComparator{batch: full, schema: r.owner.input.Schema(), keys: r.owner.keys}
-	sort.SliceStable(rows, func(i, j int) bool { return cmp.less(rows[i], rows[j]) })
-	return takeRows(ctx, dst, full, rows)
+	if rowCount < 2 || workers <= 1 || exec == nil {
+		sort.SliceStable(rows, func(i, j int) bool { return cmp.less(rows[i], rows[j]) })
+		return rows, nil
+	}
+	if workers > exec.MaxWorkers() {
+		workers = exec.MaxWorkers()
+	}
+	if workers > rowCount {
+		workers = rowCount
+	}
+	if workers <= 1 {
+		sort.SliceStable(rows, func(i, j int) bool { return cmp.less(rows[i], rows[j]) })
+		return rows, nil
+	}
+	runs := make([][]int, workers)
+	base, extra := rowCount/workers, rowCount%workers
+	start := 0
+	for i := range runs {
+		end := start + base
+		if i < extra {
+			end++
+		}
+		runs[i] = rows[start:end]
+		start = end
+	}
+	if err := exec.ParallelFor(ctx, len(runs), workers, func(run int) error {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		sort.SliceStable(runs[run], func(i, j int) bool { return cmp.less(runs[run][i], runs[run][j]) })
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+	return mergeSortedRuns(runs, cmp), nil
+}
+
+// mergeSortedRuns performs a k-way merge without losing global source order
+// for equal keys. batchComparator's ordinal tie-breaker makes the heap order
+// total and deterministic across run boundaries.
+func mergeSortedRuns(runs [][]int, cmp batchComparator) []int {
+	h := rowRunHeap{cmp: cmp, runs: make([]rowRun, len(runs))}
+	for i, rows := range runs {
+		h.runs[i] = rowRun{rows: rows}
+	}
+	heap.Init(&h)
+	out := make([]int, 0)
+	for h.Len() > 0 {
+		row := h.runs[0].rows[h.runs[0].next]
+		out = append(out, row)
+		h.runs[0].next++
+		if h.runs[0].next == len(h.runs[0].rows) {
+			heap.Pop(&h)
+		} else {
+			heap.Fix(&h, 0)
+		}
+	}
+	return out
+}
+
+type rowRun struct {
+	rows []int
+	next int
+}
+
+type rowRunHeap struct {
+	cmp  batchComparator
+	runs []rowRun
+}
+
+// Len returns the number of active merge runs.
+func (h rowRunHeap) Len() int { return len(h.runs) }
+
+// Less orders the current head row of two merge runs.
+func (h rowRunHeap) Less(i, j int) bool {
+	left := h.runs[i].rows[h.runs[i].next]
+	right := h.runs[j].rows[h.runs[j].next]
+	return h.cmp.less(left, right)
+}
+
+// Swap exchanges two merge runs.
+func (h rowRunHeap) Swap(i, j int) { h.runs[i], h.runs[j] = h.runs[j], h.runs[i] }
+
+// Push adds a merge run to the heap.
+func (h *rowRunHeap) Push(x any) { h.runs = append(h.runs, x.(rowRun)) }
+
+// Pop removes and returns the final heap run.
+func (h *rowRunHeap) Pop() any {
+	n := len(h.runs)
+	run := h.runs[n-1]
+	h.runs = h.runs[:n-1]
+	return run
 }
 
 func (r *sortReader) reserve(ctx context.Context) error {
@@ -129,6 +267,16 @@ func (r *sortReader) reserve(ctx context.Context) error {
 		return err
 	}
 	bytes := estimateOrderBytes(r.owner.input.Schema(), st.Rows)
+	// Parallel merging retains the sorted-run ordinals and emits one additional
+	// merged ordinal buffer. Charge it explicitly rather than silently widening
+	// the full-materialization memory footprint.
+	if r.owner.usesParallelSort() {
+		if st.Rows > math.MaxInt64/8 || bytes > math.MaxInt64-st.Rows*8 {
+			bytes = math.MaxInt64
+		} else {
+			bytes += st.Rows * 8
+		}
+	}
 	if st.Bytes > bytes {
 		bytes = st.Bytes
 	}
@@ -138,6 +286,10 @@ func (r *sortReader) reserve(ctx context.Context) error {
 	}
 	r.reservation = res
 	return nil
+}
+
+func (s *SortSource) usesParallelSort() bool {
+	return s.workers > 1 && s.executor != nil && s.executor.MaxWorkers() > 1
 }
 
 // Dictionary forwards stable dictionary metadata from the input.
@@ -152,23 +304,30 @@ func (s *SortSource) Dictionary(ctx context.Context, column string) (source.Dict
 // TopKSource keeps only the best K ordering keys in O(K) heap memory, then
 // re-reads only partitions containing winners to materialize payload columns.
 type TopKSource struct {
-	input   source.Source
-	keys    []SortKey
-	k       int
-	manager memory.Manager
-}
-
-// NewTopKSource constructs a bounded-memory Top-K operator without explicit
-// memory accounting. Engine lowering should prefer NewTopKSourceWithManager.
-func NewTopKSource(input source.Source, k int, keys []SortKey) (source.Source, error) {
-	return NewTopKSourceWithManager(input, k, keys, nil)
+	input    source.Source
+	keyInput source.Source
+	keys     []SortKey
+	k        int
+	manager  memory.Manager
 }
 
 // NewTopKSourceWithManager constructs a bounded-memory Top-K operator whose
 // retained candidate and winner materialization state is charged to manager.
 func NewTopKSourceWithManager(input source.Source, k int, keys []SortKey, manager memory.Manager) (source.Source, error) {
+	return NewTopKSourceWithKeyInput(input, input, k, keys, manager)
+}
+
+// NewTopKSourceWithKeyInput constructs a Top-K source with a narrow source for
+// the first ordering pass and a full payload source for the winning-row pass.
+// Both inputs must expose the same partitions and row positions. keyInput may
+// omit every column except the ordering keys, which avoids decoding payload
+// columns while the bounded heap is being built.
+func NewTopKSourceWithKeyInput(input, keyInput source.Source, k int, keys []SortKey, manager memory.Manager) (source.Source, error) {
 	if input == nil {
 		return nil, fmt.Errorf("top-k input is nil")
+	}
+	if keyInput == nil {
+		return nil, fmt.Errorf("top-k key input is nil")
 	}
 	if k < 0 {
 		return nil, fmt.Errorf("top-k must be non-negative")
@@ -179,7 +338,10 @@ func NewTopKSourceWithManager(input source.Source, k int, keys []SortKey, manage
 	if err := validateSortKeys(input.Schema(), keys); err != nil {
 		return nil, err
 	}
-	return &TopKSource{input: input, keys: append([]SortKey(nil), keys...), k: k, manager: manager}, nil
+	if err := validateSortKeys(keyInput.Schema(), keys); err != nil {
+		return nil, fmt.Errorf("top-k key input: %w", err)
+	}
+	return &TopKSource{input: input, keyInput: keyInput, keys: append([]SortKey(nil), keys...), k: k, manager: manager}, nil
 }
 
 // Schema preserves the input schema.
@@ -204,26 +366,40 @@ func (s *TopKSource) Partitions(context.Context) ([]source.Partition, error) {
 }
 
 // NewReader creates an independent Top-K reader.
-func (s *TopKSource) NewReader(ctx context.Context) (source.Reader, error) {
-	first, err := s.input.NewReader(ctx)
+func (s *TopKSource) NewReader(ctx context.Context, opts source.ReadOptions) (source.Reader, error) {
+	if err := opts.Validate(); err != nil {
+		return nil, err
+	}
+	first, err := s.keyInput.NewReader(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	parts, err := s.input.Partitions(ctx)
+	parts, err := s.keyInput.Partitions(ctx)
 	if err != nil {
 		first.Close()
 		return nil, err
 	}
-	return &topKReader{owner: s, first: first, parts: parts, scratch: memory.NewBatch()}, nil
+	payloadParts, err := s.input.Partitions(ctx)
+	if err != nil {
+		first.Close()
+		return nil, err
+	}
+	if !samePartitionLayout(parts, payloadParts) {
+		first.Close()
+		return nil, fmt.Errorf("top-k key input partitions do not match payload input")
+	}
+	return &topKReader{owner: s, first: first, parts: parts, payloadParts: payloadParts, scratch: memory.NewBatch(), readOpts: opts}, nil
 }
 
 type topKReader struct {
-	owner       *TopKSource
-	first       source.Reader
-	parts       []source.Partition
-	scratch     *memory.Batch
-	reservation memory.Reservation
-	done        bool
+	owner        *TopKSource
+	first        source.Reader
+	parts        []source.Partition
+	payloadParts []source.Partition
+	scratch      *memory.Batch
+	reservation  memory.Reservation
+	done         bool
+	readOpts     source.ReadOptions
 }
 
 // Close releases reader-local resources.
@@ -262,19 +438,19 @@ func (r *topKReader) ReadPartition(ctx context.Context, p source.Partition, dst 
 		for row := 0; row < r.scratch.Rows; row++ {
 			if h.Len() < r.owner.k {
 				cand := rowCandidate{cells: make([]sortCell, len(r.owner.keys))}
-				if err := snapshotCandidateInto(&cand, r.scratch, r.owner.input.Schema(), r.owner.keys, part.ID, row, ordinal); err != nil {
+				if err := snapshotCandidateInto(&cand, r.scratch, r.owner.keyInput.Schema(), r.owner.keys, part.ID, row, ordinal); err != nil {
 					return err
 				}
 				heap.Push(h, cand)
 				ordinal++
 				continue
 			}
-			better, err := batchRowLessCandidate(r.scratch, r.owner.input.Schema(), r.owner.keys, row, ordinal, h.items[0])
+			better, err := batchRowLessCandidate(r.scratch, r.owner.keyInput.Schema(), r.owner.keys, row, ordinal, h.items[0])
 			if err != nil {
 				return err
 			}
 			if better {
-				if err := snapshotCandidateInto(&h.items[0], r.scratch, r.owner.input.Schema(), r.owner.keys, part.ID, row, ordinal); err != nil {
+				if err := snapshotCandidateInto(&h.items[0], r.scratch, r.owner.keyInput.Schema(), r.owner.keys, part.ID, row, ordinal); err != nil {
 					return err
 				}
 				heap.Fix(h, 0)
@@ -289,7 +465,7 @@ func (r *topKReader) ReadPartition(ctx context.Context, p source.Partition, dst 
 		dst.Reset(0)
 		return nil
 	}
-	second, err := r.owner.input.NewReader(ctx)
+	second, err := r.owner.input.NewReader(ctx, r.readOpts)
 	if err != nil {
 		return err
 	}
@@ -303,8 +479,8 @@ func (r *topKReader) ReadPartition(ctx context.Context, p source.Partition, dst 
 	for _, w := range winners {
 		byPart[w.partition] = append(byPart[w.partition], w.row)
 	}
-	partByID := make(map[int]source.Partition, len(r.parts))
-	for _, part := range r.parts {
+	partByID := make(map[int]source.Partition, len(r.payloadParts))
+	for _, part := range r.payloadParts {
 		partByID[part.ID] = part
 	}
 	for partID, rows := range byPart {
@@ -354,6 +530,18 @@ func (r *topKReader) ReadPartition(ctx context.Context, p source.Partition, dst 
 	}
 	dst.Reset(full.Rows)
 	return nil
+}
+
+func samePartitionLayout(left, right []source.Partition) bool {
+	if len(left) != len(right) {
+		return false
+	}
+	for i := range left {
+		if left[i].ID != right[i].ID || left[i].Rows != right[i].Rows {
+			return false
+		}
+	}
+	return true
 }
 
 func (r *topKReader) reserve(ctx context.Context) error {
@@ -444,12 +632,9 @@ type batchComparator struct {
 
 func (c batchComparator) less(a, b int) bool {
 	for _, key := range c.keys {
-		cmp := compareBatchRows(c.batch, c.schema, key.Column, a, b, key.NullsLast)
+		cmp := compareBatchRows(c.batch, c.schema, key, a, b)
 		if cmp == 0 {
 			continue
-		}
-		if key.Descending {
-			return cmp > 0
 		}
 		return cmp < 0
 	}
@@ -500,12 +685,9 @@ func batchRowLessCandidate(batch *memory.Batch, schema memory.Schema, keys []Sor
 		if err != nil {
 			return false, err
 		}
-		cmp := compareCells(cell, b.cells[i], key.NullsLast)
+		cmp := compareSortCells(cell, b.cells[i], key)
 		if cmp == 0 {
 			continue
-		}
-		if key.Descending {
-			return cmp > 0, nil
 		}
 		return cmp < 0, nil
 	}
@@ -634,26 +816,33 @@ func compareCells(a, b sortCell, nullsLast bool) int {
 	return 0
 }
 
-func compareBatchRows(batch *memory.Batch, schema memory.Schema, column string, a, b int, nullsLast bool) int {
-	ca, err := snapshotCell(batch, schema, column, a)
+func compareBatchRows(batch *memory.Batch, schema memory.Schema, key SortKey, a, b int) int {
+	ca, err := snapshotCell(batch, schema, key.Column, a)
 	if err != nil {
 		panic(err)
 	}
-	cb, err := snapshotCell(batch, schema, column, b)
+	cb, err := snapshotCell(batch, schema, key.Column, b)
 	if err != nil {
 		panic(err)
 	}
-	return compareCells(ca, cb, nullsLast)
+	return compareSortCells(ca, cb, key)
+}
+
+// compareSortCells applies NULL placement before value direction. Descending
+// reverses only non-NULL values, so NullsLast remains last in either direction.
+func compareSortCells(a, b sortCell, key SortKey) int {
+	cmp := compareCells(a, b, key.NullsLast)
+	if cmp != 0 && !a.null && !b.null && key.Descending {
+		return -cmp
+	}
+	return cmp
 }
 
 func candidateLess(a, b rowCandidate, keys []SortKey) bool {
 	for i, key := range keys {
-		cmp := compareCells(a.cells[i], b.cells[i], key.NullsLast)
+		cmp := compareSortCells(a.cells[i], b.cells[i], key)
 		if cmp == 0 {
 			continue
-		}
-		if key.Descending {
-			return cmp > 0
 		}
 		return cmp < 0
 	}

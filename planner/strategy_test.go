@@ -6,7 +6,7 @@ import (
 )
 
 func TestHeuristicARMStyleUsesFused(t *testing.T) {
-	s, err := (Heuristic{}).Choose(Input{Rows: 1 << 20, Partitions: 8, Workers: 1, Selectivity: .45, Cardinality: 1 << 18, Kernel: kernel.Capabilities{HardwareSIMD: true, VectorBits: 128}})
+	s, err := (Heuristic{}).Choose(Input{Rows: 1 << 20, Partitions: 8, Workers: 1, Selectivity: .45, Cardinality: 1 << 18, Kernel: kernel.New(kernel.ModeAuto).Capabilities()})
 	if err != nil {
 		t.Fatal(err)
 	}

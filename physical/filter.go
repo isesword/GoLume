@@ -15,12 +15,11 @@ import (
 type FilterSource struct {
 	input   source.Source
 	program expr.Program
-	kernel  kernel.Set
 }
 
 // NewFilterSource compiles predicate against input and returns a reusable
 // compacting source. A nil predicate returns input unchanged.
-func NewFilterSource(input source.Source, predicate expr.Expr, mode kernel.Mode) (source.Source, error) {
+func NewFilterSource(input source.Source, predicate expr.Expr) (source.Source, error) {
 	if predicate == nil {
 		return input, nil
 	}
@@ -28,7 +27,7 @@ func NewFilterSource(input source.Source, predicate expr.Expr, mode kernel.Mode)
 	if err != nil {
 		return nil, err
 	}
-	return &FilterSource{input: input, program: program, kernel: kernel.New(mode)}, nil
+	return &FilterSource{input: input, program: program}, nil
 }
 
 // Schema preserves the input schema.
@@ -44,12 +43,15 @@ func (s *FilterSource) Partitions(ctx context.Context) ([]source.Partition, erro
 }
 
 // NewReader creates an independent compacting filter reader.
-func (s *FilterSource) NewReader(ctx context.Context) (source.Reader, error) {
-	r, err := s.input.NewReader(ctx)
+func (s *FilterSource) NewReader(ctx context.Context, opts source.ReadOptions) (source.Reader, error) {
+	if err := opts.Validate(); err != nil {
+		return nil, err
+	}
+	r, err := s.input.NewReader(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	return &filterReader{owner: s, child: r, input: memory.NewBatch(), output: memory.NewBatch()}, nil
+	return &filterReader{owner: s, child: r, input: memory.NewBatch(), output: memory.NewBatch(), kernels: opts.Kernels}, nil
 }
 
 type filterReader struct {
@@ -59,6 +61,7 @@ type filterReader struct {
 	output *memory.Batch
 	eval   expr.EvalWorkspace
 	rows   []int
+	kernels kernel.Set
 }
 
 // Close releases the child reader.
@@ -70,7 +73,7 @@ func (r *filterReader) ReadPartition(ctx context.Context, p source.Partition, ds
 	if err := r.child.ReadPartition(ctx, p, r.input); err != nil {
 		return err
 	}
-	bv, err := r.owner.program.Evaluate(r.input, &r.eval, expr.GTKernel(r.owner.kernel.Int64GT))
+	bv, err := r.owner.program.Evaluate(r.input, &r.eval, r.kernels)
 	if err != nil {
 		return err
 	}
@@ -86,7 +89,7 @@ func (r *filterReader) ReadPartition(ctx context.Context, p source.Partition, ds
 		dst.Reset(r.input.Rows)
 		return nil
 	}
-	if err := compactSelected(ctx, r.output, r.input, r.rows); err != nil {
+	if err := compactSelected(ctx, r.output, r.input, r.rows, bv.Truth, r.kernels); err != nil {
 		return err
 	}
 	dst.ClearColumns()

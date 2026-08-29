@@ -1,0 +1,66 @@
+goos: darwin
+goarch: arm64
+pkg: gocolumn/expr
+cpu: Apple M4 Pro
+BenchmarkFloat64ExpressionKernelMode/mode=scalar-12         	    8726	    169177 ns/op	      64 B/op	       1 allocs/op
+BenchmarkFloat64ExpressionKernelMode/mode=scalar-12         	   10000	    129983 ns/op	      64 B/op	       1 allocs/op
+BenchmarkFloat64ExpressionKernelMode/mode=scalar-12         	   10000	    100921 ns/op	      64 B/op	       1 allocs/op
+BenchmarkFloat64ExpressionKernelMode/mode=scalar-12         	   10000	    100728 ns/op	      64 B/op	       1 allocs/op
+BenchmarkFloat64ExpressionKernelMode/mode=scalar-12         	   10000	    100330 ns/op	      64 B/op	       1 allocs/op
+BenchmarkFloat64ExpressionKernelMode/mode=scalar-12         	   12002	    100480 ns/op	      64 B/op	       1 allocs/op
+BenchmarkFloat64ExpressionKernelMode/mode=scalar-12         	   10000	    100352 ns/op	      64 B/op	       1 allocs/op
+BenchmarkFloat64ExpressionKernelMode/mode=scalar-12         	   10000	    100052 ns/op	      64 B/op	       1 allocs/op
+BenchmarkFloat64ExpressionKernelMode/mode=scalar-12         	   10000	    100367 ns/op	      64 B/op	       1 allocs/op
+BenchmarkFloat64ExpressionKernelMode/mode=scalar-12         	   10000	    100157 ns/op	      64 B/op	       1 allocs/op
+BenchmarkFloat64ExpressionKernelMode/mode=auto-12           	   14412	     83458 ns/op	      64 B/op	       1 allocs/op
+BenchmarkFloat64ExpressionKernelMode/mode=auto-12           	   13893	     83076 ns/op	      64 B/op	       1 allocs/op
+BenchmarkFloat64ExpressionKernelMode/mode=auto-12           	   14470	     82894 ns/op	      64 B/op	       1 allocs/op
+BenchmarkFloat64ExpressionKernelMode/mode=auto-12           	   14554	     82360 ns/op	      64 B/op	       1 allocs/op
+BenchmarkFloat64ExpressionKernelMode/mode=auto-12           	   14322	     82029 ns/op	      64 B/op	       1 allocs/op
+BenchmarkFloat64ExpressionKernelMode/mode=auto-12           	   14604	     83790 ns/op	      64 B/op	       1 allocs/op
+BenchmarkFloat64ExpressionKernelMode/mode=auto-12           	   14473	     82393 ns/op	      64 B/op	       1 allocs/op
+BenchmarkFloat64ExpressionKernelMode/mode=auto-12           	   14532	     82460 ns/op	      64 B/op	       1 allocs/op
+BenchmarkFloat64ExpressionKernelMode/mode=auto-12           	   14538	     82660 ns/op	      64 B/op	       1 allocs/op
+BenchmarkFloat64ExpressionKernelMode/mode=auto-12           	   14458	     84095 ns/op	      64 B/op	       1 allocs/op
+BenchmarkUTF8LengthExpressionKernelMode/long-ascii/mode=scalar-12         	    1010	   1182874 ns/op	       0 B/op	       0 allocs/op
+BenchmarkUTF8LengthExpressionKernelMode/long-ascii/mode=scalar-12         	    1030	   1183860 ns/op	       0 B/op	       0 allocs/op
+BenchmarkUTF8LengthExpressionKernelMode/long-ascii/mode=scalar-12         	    1011	   1172170 ns/op	       0 B/op	       0 allocs/op
+BenchmarkUTF8LengthExpressionKernelMode/long-ascii/mode=scalar-12         	    1020	   1179002 ns/op	       0 B/op	       0 allocs/op
+BenchmarkUTF8LengthExpressionKernelMode/long-ascii/mode=scalar-12         	    1008	   1185491 ns/op	       0 B/op	       0 allocs/op
+BenchmarkUTF8LengthExpressionKernelMode/long-ascii/mode=scalar-12         	    1005	   1181427 ns/op	       0 B/op	       0 allocs/op
+BenchmarkUTF8LengthExpressionKernelMode/long-ascii/mode=scalar-12         	    1032	   1173378 ns/op	       0 B/op	       0 allocs/op
+BenchmarkUTF8LengthExpressionKernelMode/long-ascii/mode=scalar-12         	    1034	   1183421 ns/op	       0 B/op	       0 allocs/op
+BenchmarkUTF8LengthExpressionKernelMode/long-ascii/mode=scalar-12         	    1003	   1177879 ns/op	       0 B/op	       0 allocs/op
+BenchmarkUTF8LengthExpressionKernelMode/long-ascii/mode=scalar-12         	    1018	   1185013 ns/op	       0 B/op	       0 allocs/op
+BenchmarkUTF8LengthExpressionKernelMode/long-ascii/mode=auto-12           	    9806	    114890 ns/op	       0 B/op	       0 allocs/op
+BenchmarkUTF8LengthExpressionKernelMode/long-ascii/mode=auto-12           	   10000	    115513 ns/op	       0 B/op	       0 allocs/op
+BenchmarkUTF8LengthExpressionKernelMode/long-ascii/mode=auto-12           	   10000	    114821 ns/op	       0 B/op	       0 allocs/op
+BenchmarkUTF8LengthExpressionKernelMode/long-ascii/mode=auto-12           	   10000	    114287 ns/op	       0 B/op	       0 allocs/op
+BenchmarkUTF8LengthExpressionKernelMode/long-ascii/mode=auto-12           	   10000	    116775 ns/op	       0 B/op	       0 allocs/op
+BenchmarkUTF8LengthExpressionKernelMode/long-ascii/mode=auto-12           	   10000	    113547 ns/op	       0 B/op	       0 allocs/op
+BenchmarkUTF8LengthExpressionKernelMode/long-ascii/mode=auto-12           	   10000	    115166 ns/op	       0 B/op	       0 allocs/op
+BenchmarkUTF8LengthExpressionKernelMode/long-ascii/mode=auto-12           	   10000	    115101 ns/op	       0 B/op	       0 allocs/op
+BenchmarkUTF8LengthExpressionKernelMode/long-ascii/mode=auto-12           	   10000	    113585 ns/op	       0 B/op	       0 allocs/op
+BenchmarkUTF8LengthExpressionKernelMode/long-ascii/mode=auto-12           	   10000	    114916 ns/op	       0 B/op	       0 allocs/op
+BenchmarkUTF8LengthExpressionKernelMode/mixed/mode=scalar-12              	    1081	   1127075 ns/op	       0 B/op	       0 allocs/op
+BenchmarkUTF8LengthExpressionKernelMode/mixed/mode=scalar-12              	    1020	   1102287 ns/op	       0 B/op	       0 allocs/op
+BenchmarkUTF8LengthExpressionKernelMode/mixed/mode=scalar-12              	    1137	   1109802 ns/op	       0 B/op	       0 allocs/op
+BenchmarkUTF8LengthExpressionKernelMode/mixed/mode=scalar-12              	    1096	   1154002 ns/op	       0 B/op	       0 allocs/op
+BenchmarkUTF8LengthExpressionKernelMode/mixed/mode=scalar-12              	    1112	   1083718 ns/op	       0 B/op	       0 allocs/op
+BenchmarkUTF8LengthExpressionKernelMode/mixed/mode=scalar-12              	    1070	   1083294 ns/op	       0 B/op	       0 allocs/op
+BenchmarkUTF8LengthExpressionKernelMode/mixed/mode=scalar-12              	    1142	   1113935 ns/op	       0 B/op	       0 allocs/op
+BenchmarkUTF8LengthExpressionKernelMode/mixed/mode=scalar-12              	    1044	   1067410 ns/op	       0 B/op	       0 allocs/op
+BenchmarkUTF8LengthExpressionKernelMode/mixed/mode=scalar-12              	    1210	   1064541 ns/op	       0 B/op	       0 allocs/op
+BenchmarkUTF8LengthExpressionKernelMode/mixed/mode=scalar-12              	    1074	   1153169 ns/op	       0 B/op	       0 allocs/op
+BenchmarkUTF8LengthExpressionKernelMode/mixed/mode=auto-12                	     879	   1162744 ns/op	       0 B/op	       0 allocs/op
+BenchmarkUTF8LengthExpressionKernelMode/mixed/mode=auto-12                	    1033	   1177849 ns/op	       0 B/op	       0 allocs/op
+BenchmarkUTF8LengthExpressionKernelMode/mixed/mode=auto-12                	    1039	   1149783 ns/op	       0 B/op	       0 allocs/op
+BenchmarkUTF8LengthExpressionKernelMode/mixed/mode=auto-12                	    1058	   1136485 ns/op	       0 B/op	       0 allocs/op
+BenchmarkUTF8LengthExpressionKernelMode/mixed/mode=auto-12                	    1076	   1112666 ns/op	       0 B/op	       0 allocs/op
+BenchmarkUTF8LengthExpressionKernelMode/mixed/mode=auto-12                	    1090	   1153370 ns/op	       0 B/op	       0 allocs/op
+BenchmarkUTF8LengthExpressionKernelMode/mixed/mode=auto-12                	    1052	   1130723 ns/op	       0 B/op	       0 allocs/op
+BenchmarkUTF8LengthExpressionKernelMode/mixed/mode=auto-12                	    1088	   1184989 ns/op	       0 B/op	       0 allocs/op
+BenchmarkUTF8LengthExpressionKernelMode/mixed/mode=auto-12                	    1069	   1202362 ns/op	       0 B/op	       0 allocs/op
+BenchmarkUTF8LengthExpressionKernelMode/mixed/mode=auto-12                	    1046	   1129057 ns/op	       0 B/op	       0 allocs/op
+PASS
+ok  	gocolumn/expr	84.127s

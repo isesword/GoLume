@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"gocolumn/hashagg"
 	"gocolumn/join"
+	"gocolumn/kernel"
 	"gocolumn/memory"
 	"gocolumn/source"
 )
@@ -39,6 +40,7 @@ type JoinSource struct {
 	buildLoc     []rowLocation
 	reservations []memory.Reservation
 	closed       bool
+	kernels      kernel.Set
 }
 
 type joinShape uint8
@@ -61,6 +63,8 @@ type joinOutputBinding struct {
 // build into radix-partitioned hash tables; zero keeps the proven single-table
 // default.
 type JoinSourceOptions struct {
+	// Kernels is the exact immutable dispatch set shared by the owning engine.
+	Kernels kernel.Set
 	// RadixBits in [1,8] enables radix-partitioned fixed-key hash tables.
 	RadixBits uint8
 	// Workers controls parallel radix build/probe. Values <=1 keep the serial
@@ -79,8 +83,8 @@ type JoinSourceOptions struct {
 // during preparation; each left partition is consumed exactly when a reader
 // executes it. Inputs should already include filters that must execute before
 // the join.
-func NewJoinSource(ctx context.Context, left, right source.Source, typ join.Type, keys []JoinKey, suffix string, manager memory.Manager) (*JoinSource, error) {
-	return NewJoinSourceWithOptions(ctx, left, right, typ, keys, suffix, manager, JoinSourceOptions{})
+func NewJoinSource(ctx context.Context, left, right source.Source, typ join.Type, keys []JoinKey, suffix string, manager memory.Manager, kernels kernel.Set) (*JoinSource, error) {
+	return NewJoinSourceWithOptions(ctx, left, right, typ, keys, suffix, manager, JoinSourceOptions{Kernels: kernels})
 }
 
 // NewJoinSourceWithOptions prepares a reusable columnar join with explicit
@@ -90,10 +94,13 @@ func NewJoinSourceWithOptions(ctx context.Context, left, right source.Source, ty
 	if left == nil || right == nil {
 		return nil, fmt.Errorf("physical join requires left and right sources")
 	}
+	if !opts.Kernels.Valid() {
+		return nil, fmt.Errorf("physical join requires a valid kernel set")
+	}
 	if len(keys) < 1 || len(keys) > 2 {
 		return nil, fmt.Errorf("physical join requires one or two equality keys")
 	}
-	s := &JoinSource{left: left, right: right, typ: typ, keys: append([]JoinKey(nil), keys...), suffix: suffix, radixBits: opts.RadixBits, radixWorkers: opts.Workers, radixExec: opts.Executor}
+	s := &JoinSource{left: left, right: right, typ: typ, keys: append([]JoinKey(nil), keys...), suffix: suffix, radixBits: opts.RadixBits, radixWorkers: opts.Workers, radixExec: opts.Executor, kernels: opts.Kernels}
 	if s.radixBits > 8 {
 		return nil, fmt.Errorf("physical join radix bits %d exceed 8", s.radixBits)
 	}
@@ -148,11 +155,17 @@ func (s *JoinSource) Partitions(context.Context) ([]source.Partition, error) {
 }
 
 // NewReader creates an independent left-probe reader.
-func (s *JoinSource) NewReader(ctx context.Context) (source.Reader, error) {
+func (s *JoinSource) NewReader(ctx context.Context, opts source.ReadOptions) (source.Reader, error) {
+	if err := opts.Validate(); err != nil {
+		return nil, err
+	}
+	if opts.Kernels != s.kernels {
+		return nil, fmt.Errorf("physical join reader kernel set differs from prepared build")
+	}
 	if s.closed {
 		return nil, fmt.Errorf("physical join source closed")
 	}
-	r, err := s.left.NewReader(ctx)
+	r, err := s.left.NewReader(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -279,7 +292,7 @@ func (s *JoinSource) buildRight(ctx context.Context, manager memory.Manager) err
 	if err != nil {
 		return err
 	}
-	rd, err := s.right.NewReader(ctx)
+	rd, err := s.right.NewReader(ctx, source.ReadOptions{Kernels: s.kernels})
 	if err != nil {
 		return err
 	}

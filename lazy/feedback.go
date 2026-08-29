@@ -33,6 +33,8 @@ func writeSourceIdentity(w byteWriter, plan logical.Plan) {
 		writeSourceIdentity(w, n.Input)
 	case *logical.Aggregate:
 		writeSourceIdentity(w, n.Input)
+	case *logical.Window:
+		writeSourceIdentity(w, n.Input)
 	case *logical.Join:
 		writeSourceIdentity(w, n.Left)
 		writeSourceIdentity(w, n.Right)

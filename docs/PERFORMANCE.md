@@ -2,6 +2,18 @@
 
 数字用于架构判断，不是产品 SLA。
 
+当前 SIMD kernel 的逐能力门控、forced 实际实现路径和 arm64 10-sample 结果见
+[`SIMD_KERNELS.md`](SIMD_KERNELS.md)。`ModeAuto` 不再使用全局 SIMD 开关；
+每个具体 KernelID 独立选择 backend。失败候选已从生产代码删除，不能通过
+`ModeSIMD` 重新启用。
+
+2026-08-29 M4 Pro 重构门禁的正式结果：Int32/Uint32 比较 kernel 提升
+36.22%～72.38%，Float64 Sub/Mul/Div 提升 19.30%～19.61%，四路展开
+Hash64 提升 31.91%；Float64 完整表达式提升 17.57%。最终 Auto allowlist
+下 1M Parquet、Prepared Lazy 和 Radix Join 均未回退。UTF-8 ASCII-prefix
+候选因混合中文表达式显著回退 4.12% 而被彻底删除。原始 1s x 10 样本和
+benchstat CSV 由 `validation/simd-auto-gates.json` 索引。
+
 
 ## Phase 2.3 Lazy/pushdown regression
 

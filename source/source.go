@@ -2,6 +2,8 @@ package source
 
 import (
 	"context"
+	"fmt"
+	"gocolumn/kernel"
 	"gocolumn/memory"
 )
 
@@ -25,12 +27,25 @@ type Reader interface {
 	Close() error
 }
 
+// ReadOptions carries immutable execution services into a complete source
+// reader chain. Kernels is mandatory so wrappers cannot silently rebuild or
+// substitute a dispatch table.
+type ReadOptions struct{ Kernels kernel.Set }
+
+// Validate rejects the zero value instead of installing a hidden default.
+func (o ReadOptions) Validate() error {
+	if !o.Kernels.Valid() {
+		return fmt.Errorf("source read options require a valid kernel set")
+	}
+	return nil
+}
+
 // Source describes a partitioned columnar input and creates independent readers.
 type Source interface {
 	Schema() memory.Schema
 	Stats(ctx context.Context) (Stats, error)
 	Partitions(ctx context.Context) ([]Partition, error)
-	NewReader(ctx context.Context) (Reader, error)
+	NewReader(ctx context.Context, opts ReadOptions) (Reader, error)
 }
 
 // Dictionary is source-level dictionary metadata. A source may implement

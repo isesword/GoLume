@@ -3,6 +3,7 @@ package radix
 import (
 	"context"
 	"gocolumn/hashagg"
+	"gocolumn/kernel"
 	"gocolumn/scheduler"
 	"sync/atomic"
 )
@@ -27,6 +28,7 @@ type PairWorkspace struct {
 	localMask            uint64
 	counts, starts       []int
 	hashes               []uint64
+	hashA, hashB         []uint64
 	pkeys                []hashagg.Key128
 	pvalid               []uint8
 	pvals                []int64
@@ -39,10 +41,14 @@ type PairWorkspace struct {
 	gen                  uint32
 	localCounts, offsets []int
 	partial              []Summary
+	kernels              kernel.Set
 }
 
 // NewPairWorkspace allocates reusable buffers for pair-key radix aggregation.
-func NewPairWorkspace(maxRows, cardinalityHint int, radixBits uint) *PairWorkspace {
+func NewPairWorkspace(maxRows, cardinalityHint int, radixBits uint, kernels kernel.Set) *PairWorkspace {
+	if !kernels.Valid() {
+		panic("radix: NewPairWorkspace requires a valid kernel set")
+	}
 	if radixBits < 1 {
 		radixBits = 1
 	}
@@ -57,10 +63,10 @@ func NewPairWorkspace(maxRows, cardinalityHint int, radixBits uint) *PairWorkspa
 	slots := parts * lc
 	return &PairWorkspace{
 		bits: radixBits, parts: parts, shift: 64 - radixBits, localCap: lc, localMask: uint64(lc - 1),
-		counts: make([]int, parts), starts: make([]int, parts+1), hashes: make([]uint64, maxRows),
+		counts: make([]int, parts), starts: make([]int, parts+1), hashes: make([]uint64, maxRows), hashA: make([]uint64, maxRows), hashB: make([]uint64, maxRows),
 		pkeys: make([]hashagg.Key128, maxRows), pvalid: make([]uint8, maxRows), pvals: make([]int64, maxRows), phashes: make([]uint64, maxRows),
 		ta: make([]uint64, slots), tb: make([]uint64, slots), tvalid: make([]uint8, slots),
-		tableSums: make([]int64, slots), tableCounts: make([]uint64, slots), epoch: make([]uint32, slots),
+		tableSums: make([]int64, slots), tableCounts: make([]uint64, slots), epoch: make([]uint32, slots), kernels: kernels,
 	}
 }
 
@@ -136,13 +142,15 @@ func (p *PairWorkspace) AggregateNullable(ctx context.Context, sched scheduler.S
 		lo, hi := shard(len(keys), workers, w)
 		cnt := local[w*p.parts : (w+1)*p.parts]
 		for i := lo; i < hi; i++ {
-			vm := uint8(3)
-			if validMasks != nil {
-				vm = validMasks[i] & 3
-			}
-			k := normalizePairKey(keys[i], vm)
-			h := hashagg.Hash128Nullable(k, vm)
-			p.hashes[i] = h
+			p.hashA[i], p.hashB[i] = keys[i].A, keys[i].B
+		}
+		var masks []uint8
+		if validMasks != nil {
+			masks = validMasks[lo:hi]
+		}
+		p.kernels.Hash128Batch(p.hashA[lo:hi], p.hashB[lo:hi], masks, p.hashes[lo:hi])
+		for i := lo; i < hi; i++ {
+			h := p.hashes[i]
 			cnt[int(h>>p.shift)]++
 		}
 		return nil
@@ -268,5 +276,5 @@ func EstimatePairWorkspaceBytes(maxRows, cardinalityHint int, radixBits uint, wo
 		lc = 16
 	}
 	slots := parts * lc
-	return int64(maxRows)*(8+16+1+8+8) + int64(slots)*(8+8+1+8+8+4) + int64(parts+1)*8 + int64(workers*parts)*16 + int64(workers)*24
+	return int64(maxRows)*(8+8+8+16+1+8+8) + int64(slots)*(8+8+1+8+8+4) + int64(parts+1)*8 + int64(workers*parts)*16 + int64(workers)*24
 }

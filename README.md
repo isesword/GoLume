@@ -1,4 +1,4 @@
-# Go Columnar Engine — Phase 2.8 Ordering + Runtime Feedback
+# Go Columnar Engine — Phase 2.16 Regex Expressions
 
 Go Columnar Engine 是一个面向 Go 原生服务、CLI 和嵌入式分析场景的 Polars-like 列式分析引擎。核心路线保持：
 
@@ -19,6 +19,21 @@ SIMD / hash / radix / scheduler
 ```
 
 Phase 2.8 在 Phase 2.7 的 Lazy/Join/Analyze 基础上补齐三个面向真实分析查询的重要能力：**Limit / Sort / Top-K**、**opaque Arrow Take/materialization**、以及 **runtime feedback → aggregate CostModel**。
+
+当前表达式层也支持编译期正则：`RegexMatch` 用于过滤，
+`RegexExtract` 用于提取完整匹配或指定捕获组。pattern 只能是字面量，
+使用 Go RE2 引擎并限制为 64 KiB；未匹配和未参与匹配的可选捕获组返回
+NULL。
+
+```go
+pattern := lazy.Str(`^([^:]+):([0-9]+)$`)
+result := lf.
+    Filter(lazy.RegexMatch(lazy.Col("event"), pattern)).
+    SelectExprs(
+        lazy.RegexExtract(lazy.Col("event"), pattern, lazy.Lit(1)).Alias("name"),
+        lazy.RegexExtract(lazy.Col("event"), pattern, lazy.Lit(2)).Alias("id"),
+    )
+```
 
 ## Lazy ordering API
 
@@ -133,6 +148,7 @@ Phase 2.8 继续保留并回归：
 - Projection/Predicate Pushdown 与 Parquet row-group pruning；
 - Arrow RecordBatch typed/opaque source；
 - typed scalar expressions、Cast、CSE；
+- bounded literal-pattern RegexMatch / RegexExtract；
 - PreparedQuery / PreparedFrame；
 - adaptive hash aggregation、nullable/composite/dictionary keys；
 - columnar JoinSource；
@@ -157,6 +173,7 @@ checksum = 236716301
 
 ```bash
 go mod download
+./scripts/check_simd_structure.sh
 go test ./...
 GOEXPERIMENT=simd go test ./...
 go test -race ./...

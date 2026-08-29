@@ -1,0 +1,51 @@
+goos: darwin
+goarch: arm64
+pkg: gocolumn/kernel
+cpu: Apple M4 Pro
+,scalar,,simd,,,
+,sec/op,CI,sec/op,CI,vs base,P
+KernelID/compare-int32-gt-12,7.1347e-05,1%,2.065e-05,1%,-71.06%,p=0.000 n=10
+KernelID/compare-int32-ge-12,7.228350000000001e-05,3%,2.04895e-05,1%,-71.65%,p=0.000 n=10
+KernelID/compare-int32-lt-12,7.2386e-05,1%,2.0394500000000003e-05,0%,-71.83%,p=0.000 n=10
+KernelID/compare-int32-le-12,7.230450000000001e-05,2%,2.0445e-05,1%,-71.72%,p=0.000 n=10
+KernelID/compare-uint32-gt-12,7.23575e-05,1%,2.0387e-05,2%,-71.82%,p=0.000 n=10
+KernelID/compare-uint32-ge-12,7.292600000000001e-05,1%,2.0811e-05,2%,-71.46%,p=0.000 n=10
+KernelID/compare-uint32-lt-12,7.429800000000001e-05,2%,2.0594e-05,1%,-72.28%,p=0.000 n=10
+KernelID/compare-uint32-le-12,7.42505e-05,1%,2.0508e-05,1%,-72.38%,p=0.000 n=10
+KernelID/compare-uint32-eq-12,3.22695e-05,1%,2.0580999999999998e-05,1%,-36.22%,p=0.000 n=10
+KernelID/arithmetic-float64-sub-12,3.2849000000000003e-05,1%,2.6408000000000002e-05,1%,-19.61%,p=0.000 n=10
+KernelID/arithmetic-float64-mul-12,3.2895e-05,0%,2.6536e-05,1%,-19.33%,p=0.000 n=10
+KernelID/arithmetic-float64-div-12,3.3067e-05,2%,2.6684500000000002e-05,1%,-19.30%,p=0.000 n=10
+geomean,5.577330239377682e-05,,2.1899281504973166e-05,,-60.74%,
+
+,scalar,,simd,,,
+,B/op,CI,B/op,CI,vs base,P
+KernelID/compare-int32-gt-12,0,0%,0,0%,~,p=1.000 n=10
+KernelID/compare-int32-ge-12,0,0%,0,0%,~,p=1.000 n=10
+KernelID/compare-int32-lt-12,0,0%,0,0%,~,p=1.000 n=10
+KernelID/compare-int32-le-12,0,0%,0,0%,~,p=1.000 n=10
+KernelID/compare-uint32-gt-12,0,0%,0,0%,~,p=1.000 n=10
+KernelID/compare-uint32-ge-12,0,0%,0,0%,~,p=1.000 n=10
+KernelID/compare-uint32-lt-12,0,0%,0,0%,~,p=1.000 n=10
+KernelID/compare-uint32-le-12,0,0%,0,0%,~,p=1.000 n=10
+KernelID/compare-uint32-eq-12,0,0%,0,0%,~,p=1.000 n=10
+KernelID/arithmetic-float64-sub-12,0,0%,0,0%,~,p=1.000 n=10
+KernelID/arithmetic-float64-mul-12,0,0%,0,0%,~,p=1.000 n=10
+KernelID/arithmetic-float64-div-12,0,0%,0,0%,~,p=1.000 n=10
+geomean,,,,,+0.00%,
+
+,scalar,,simd,,,
+,allocs/op,CI,allocs/op,CI,vs base,P
+KernelID/compare-int32-gt-12,0,0%,0,0%,~,p=1.000 n=10
+KernelID/compare-int32-ge-12,0,0%,0,0%,~,p=1.000 n=10
+KernelID/compare-int32-lt-12,0,0%,0,0%,~,p=1.000 n=10
+KernelID/compare-int32-le-12,0,0%,0,0%,~,p=1.000 n=10
+KernelID/compare-uint32-gt-12,0,0%,0,0%,~,p=1.000 n=10
+KernelID/compare-uint32-ge-12,0,0%,0,0%,~,p=1.000 n=10
+KernelID/compare-uint32-lt-12,0,0%,0,0%,~,p=1.000 n=10
+KernelID/compare-uint32-le-12,0,0%,0,0%,~,p=1.000 n=10
+KernelID/compare-uint32-eq-12,0,0%,0,0%,~,p=1.000 n=10
+KernelID/arithmetic-float64-sub-12,0,0%,0,0%,~,p=1.000 n=10
+KernelID/arithmetic-float64-mul-12,0,0%,0,0%,~,p=1.000 n=10
+KernelID/arithmetic-float64-div-12,0,0%,0,0%,~,p=1.000 n=10
+geomean,,,,,+0.00%,

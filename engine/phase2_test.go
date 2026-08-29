@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"gocolumn/engine"
 	"gocolumn/expr"
+	"gocolumn/kernel"
 	"gocolumn/memory"
 	"gocolumn/source"
 	"gocolumn/source/inmemory"
@@ -15,6 +16,56 @@ import (
 
 func baseQuery(group []string, force string, workers int) expr.Query {
 	return expr.Query{Filter: expr.GT(expr.Col("pred"), expr.I64(0)), GroupBy: group, Aggregates: []expr.Aggregate{expr.Sum("value", "sum"), expr.Count("count")}, Hints: expr.Hints{Selectivity: .8, Cardinality: 64, ForceStrategy: force, ForceWorkerCount: workers}}
+}
+
+func TestDirectFusedTypedComparisonUsesBlockMasks(t *testing.T) {
+	const rows = 131
+	b := memory.NewBatch()
+	b.Rows = rows
+	b.Float64s["pred"] = &memory.Float64Vector{Values: make([]float64, rows), Validity: memory.EnsureBitmap(nil, rows)}
+	b.Int32s["key"] = &memory.Int32Vector{Values: make([]int32, rows)}
+	b.Int64s["value"] = &memory.Int64Vector{Values: make([]int64, rows)}
+	wantRows, wantChecksum := 0, int64(0)
+	for row := 0; row < rows; row++ {
+		value := float64(row%17) - 8.5
+		b.Float64s["pred"].Values[row] = value
+		b.Int32s["key"].Values[row] = int32(row % 7)
+		b.Int64s["value"].Values[row] = int64(row + 1)
+		if row%9 != 2 {
+			memory.Set(b.Float64s["pred"].Validity, row)
+			if value <= 1.5 {
+				wantRows++
+				wantChecksum += int64(row + 1)
+			}
+		}
+	}
+	schema := memory.NewSchema(
+		memory.Field{Name: "pred", Type: memory.TypeFloat64, Nullable: true},
+		memory.Field{Name: "key", Type: memory.TypeInt32},
+		memory.Field{Name: "value", Type: memory.TypeInt64},
+	)
+	src, err := inmemory.New(schema, b)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, mode := range []kernel.Mode{kernel.ModeScalar, kernel.ModeSIMD} {
+		opts := engine.DefaultOptions()
+		opts.KernelMode = mode
+		eng := engine.New(opts)
+		q := expr.Query{
+			Filter: expr.LE(expr.Col("pred"), expr.F64(1.5)), GroupBy: []string{"key"},
+			Aggregates: []expr.Aggregate{expr.Sum("value", "sum")},
+			Hints:      expr.Hints{ForceStrategy: "direct-fused", Cardinality: 7, Selectivity: .6},
+		}
+		result, err := eng.Execute(context.Background(), src, q, engine.ExecuteOptions{})
+		eng.Close()
+		if err != nil {
+			t.Fatalf("mode=%s: %v", mode, err)
+		}
+		if result.SelectedRows != wantRows || result.Checksum != wantChecksum || result.GroupCount != 7 {
+			t.Fatalf("mode=%s result=%+v want rows=%d checksum=%d", mode, result, wantRows, wantChecksum)
+		}
+	}
 }
 
 func TestDictionaryStringGroupByAndMaterialize(t *testing.T) {
@@ -184,7 +235,7 @@ func TestCompositePredicateUsesBitmapProgram(t *testing.T) {
 }
 
 func TestPreparedQueryRetainsAndReleasesWorkspace(t *testing.T) {
-	src, err := parquetsource.Open(testPath(t), parquetsource.Columns{PredicateIndex: 0, GroupIndex: 1, ValueIndex: 2})
+	src, err := parquetsource.OpenFile(testPath(t))
 	if err != nil {
 		t.Fatal(err)
 	}

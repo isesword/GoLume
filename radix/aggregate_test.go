@@ -3,6 +3,7 @@ package radix
 import (
 	"context"
 	"gocolumn/hashagg"
+	"gocolumn/kernel"
 	"gocolumn/scheduler"
 	"testing"
 )
@@ -12,7 +13,7 @@ func TestAggregate(t *testing.T) {
 	defer p.Close()
 	keys := []uint64{1, 2, 1, 3, 2, 2}
 	vals := []int64{10, 20, 5, 7, 2, 3}
-	w := NewWorkspace(len(keys), 4, 2)
+	w := NewWorkspace(len(keys), 4, 2, kernel.New(kernel.ModeScalar))
 	s, err := w.Aggregate(context.Background(), p, keys, vals, 4)
 	if err != nil {
 		t.Fatal(err)
@@ -41,7 +42,7 @@ func TestPairAggregateNullable(t *testing.T) {
 	}
 	valid := []uint8{3, 1, 3, 0, 0}
 	vals := []int64{1, 2, 3, 4, 5}
-	w := NewPairWorkspace(len(keys), 4, 2)
+	w := NewPairWorkspace(len(keys), 4, 2, kernel.New(kernel.ModeScalar))
 	s, err := w.AggregateNullable(context.Background(), p, keys, valid, vals, 3)
 	if err != nil {
 		t.Fatal(err)

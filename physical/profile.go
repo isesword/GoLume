@@ -43,8 +43,11 @@ func (s *ProfileSource) Partitions(ctx context.Context) ([]source.Partition, err
 }
 
 // NewReader returns a reader that records one inclusive timing per partition.
-func (s *ProfileSource) NewReader(ctx context.Context) (source.Reader, error) {
-	r, err := s.input.NewReader(ctx)
+func (s *ProfileSource) NewReader(ctx context.Context, opts source.ReadOptions) (source.Reader, error) {
+	if err := opts.Validate(); err != nil {
+		return nil, err
+	}
+	r, err := s.input.NewReader(ctx, opts)
 	if err != nil {
 		return nil, err
 	}

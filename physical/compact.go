@@ -2,15 +2,17 @@ package physical
 
 import (
 	"context"
+	"fmt"
+	"gocolumn/kernel"
 	"gocolumn/memory"
 )
 
-func compactSelected(ctx context.Context, dst, src *memory.Batch, rows []int) error {
+func compactSelected(ctx context.Context, dst, src *memory.Batch, rows []int, selection memory.Bitmap, kernels kernel.Set) error {
 	n := len(rows)
 	for name, v := range src.Int64s {
 		out := ensureI64(dst.Int64s[name], n)
-		for i, row := range rows {
-			out.Values[i] = v.Values[row]
+		if got := kernels.CompactInt64(v.Values, selection, out.Values); got != n {
+			return fmt.Errorf("compact int64 column %q selected %d rows, want %d", name, got, n)
 		}
 		out.Validity = compactValidity(out.Validity, v.Validity, rows)
 		out.Encoding = v.Encoding
@@ -18,8 +20,8 @@ func compactSelected(ctx context.Context, dst, src *memory.Batch, rows []int) er
 	}
 	for name, v := range src.Int32s {
 		out := ensureI32(dst.Int32s[name], n)
-		for i, row := range rows {
-			out.Values[i] = v.Values[row]
+		if got := kernels.CompactInt32(v.Values, selection, out.Values); got != n {
+			return fmt.Errorf("compact int32 column %q selected %d rows, want %d", name, got, n)
 		}
 		out.Validity = compactValidity(out.Validity, v.Validity, rows)
 		out.Encoding = v.Encoding
@@ -27,8 +29,8 @@ func compactSelected(ctx context.Context, dst, src *memory.Batch, rows []int) er
 	}
 	for name, v := range src.Uint32s {
 		out := ensureU32(dst.Uint32s[name], n)
-		for i, row := range rows {
-			out.Values[i] = v.Values[row]
+		if got := kernels.CompactUint32(v.Values, selection, out.Values); got != n {
+			return fmt.Errorf("compact uint32 column %q selected %d rows, want %d", name, got, n)
 		}
 		out.Validity = compactValidity(out.Validity, v.Validity, rows)
 		out.Encoding = v.Encoding
@@ -36,8 +38,8 @@ func compactSelected(ctx context.Context, dst, src *memory.Batch, rows []int) er
 	}
 	for name, v := range src.Uint64s {
 		out := ensureU64(dst.Uint64s[name], n)
-		for i, row := range rows {
-			out.Values[i] = v.Values[row]
+		if got := kernels.CompactUint64(v.Values, selection, out.Values); got != n {
+			return fmt.Errorf("compact uint64 column %q selected %d rows, want %d", name, got, n)
 		}
 		out.Validity = compactValidity(out.Validity, v.Validity, rows)
 		out.Encoding = v.Encoding
@@ -45,8 +47,8 @@ func compactSelected(ctx context.Context, dst, src *memory.Batch, rows []int) er
 	}
 	for name, v := range src.Float64s {
 		out := ensureF64(dst.Float64s[name], n)
-		for i, row := range rows {
-			out.Values[i] = v.Values[row]
+		if got := kernels.CompactFloat64(v.Values, selection, out.Values); got != n {
+			return fmt.Errorf("compact float64 column %q selected %d rows, want %d", name, got, n)
 		}
 		out.Validity = compactValidity(out.Validity, v.Validity, rows)
 		out.Encoding = v.Encoding
@@ -58,8 +60,8 @@ func compactSelected(ctx context.Context, dst, src *memory.Batch, rows []int) er
 			out = &memory.DictionaryStringVector{}
 		}
 		out.Indices = ensureU32Slice(out.Indices, n)
-		for i, row := range rows {
-			out.Indices[i] = v.Indices[row]
+		if got := kernels.CompactUint32(v.Indices, selection, out.Indices); got != n {
+			return fmt.Errorf("compact dictionary column %q selected %d rows, want %d", name, got, n)
 		}
 		out.Validity = compactValidity(out.Validity, v.Validity, rows)
 		out.Offsets, out.Data, out.DictionaryDomain, out.Encoding = v.Offsets, v.Data, v.DictionaryDomain, v.Encoding

@@ -44,17 +44,19 @@ func TestStateMerge(t *testing.T) {
 	}
 }
 
-func TestSumCountVector(t *testing.T) {
-	v := NewSumCountVector(4)
+func TestInt64VectorDefaultLayout(t *testing.T) {
+	v := NewInt64Vector(4, DefaultLayout())
 	v.Init(2, 10)
 	v.Add(2, 5)
-	if v.Sum(2) != 15 || v.Count(2) != 2 {
-		t.Fatalf("sum=%d count=%d", v.Sum(2), v.Count(2))
+	got := v.Result(2)
+	if got.Sum != 15 || got.CountRows != 2 {
+		t.Fatalf("sum=%d count=%d", got.Sum, got.CountRows)
 	}
-	w := NewSumCountVector(8)
+	w := NewInt64Vector(8, DefaultLayout())
 	v.Copy(&w, 2, 5)
-	if w.Sum(5) != 15 || w.Count(5) != 2 {
-		t.Fatalf("copied sum=%d count=%d", w.Sum(5), w.Count(5))
+	got = w.Result(5)
+	if got.Sum != 15 || got.CountRows != 2 {
+		t.Fatalf("copied sum=%d count=%d", got.Sum, got.CountRows)
 	}
 }
 

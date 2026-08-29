@@ -5,11 +5,12 @@ import (
 	"testing"
 
 	"gocolumn/memory"
+	"gocolumn/scheduler"
 	"gocolumn/source"
 	"gocolumn/source/inmemory"
 )
 
-func benchmarkOrderSource(b *testing.B, topK bool) {
+func benchmarkOrderSource(b *testing.B, topK bool, sortOpts SortSourceOptions) {
 	const rows = 1 << 18
 	schema := memory.NewSchema(
 		memory.Field{Name: "id", Type: memory.TypeInt64},
@@ -43,9 +44,9 @@ func benchmarkOrderSource(b *testing.B, topK bool) {
 
 	newSource := func() (source.Source, error) {
 		if topK {
-			return NewTopKSource(base, 100, keys)
+			return NewTopKSourceWithManager(base, 100, keys, nil)
 		}
-		return NewSortSource(base, keys, memory.NewBudgetManager(0))
+		return NewSortSourceWithOptions(base, keys, memory.NewBudgetManager(0), sortOpts)
 	}
 
 	b.ReportAllocs()
@@ -62,7 +63,7 @@ func benchmarkOrderSource(b *testing.B, topK bool) {
 		if len(parts) != 1 {
 			b.Fatalf("ordered source partitions=%d, want 1", len(parts))
 		}
-		r, err := s.NewReader(ctx)
+		r, err := s.NewReader(ctx, testReadOptions())
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -86,5 +87,12 @@ func benchmarkOrderSource(b *testing.B, topK bool) {
 	}
 }
 
-func BenchmarkGlobalSort262K(b *testing.B) { benchmarkOrderSource(b, false) }
-func BenchmarkTopK100Of262K(b *testing.B)  { benchmarkOrderSource(b, true) }
+func BenchmarkGlobalSort262K(b *testing.B) { benchmarkOrderSource(b, false, SortSourceOptions{}) }
+
+func BenchmarkGlobalSort262KParallel4(b *testing.B) {
+	pool := scheduler.NewPool(4)
+	b.Cleanup(func() { _ = pool.Close() })
+	benchmarkOrderSource(b, false, SortSourceOptions{Workers: 4, Executor: pool})
+}
+
+func BenchmarkTopK100Of262K(b *testing.B) { benchmarkOrderSource(b, true, SortSourceOptions{}) }

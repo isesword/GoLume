@@ -1,5 +1,42 @@
 # Changelog
 
+## Phase 2.16
+
+- Added literal-pattern `RegexMatch` predicates and capture-aware
+  `RegexExtract` projections to the expression and Lazy APIs.
+- Compile regular expressions into reusable RE2 programs, cap patterns at 64
+  KiB, and keep pattern/group metadata out of row-materialized registers.
+- Preserve SQL three-valued predicate semantics; extraction returns NULL for
+  no match or an unmatched optional capture group.
+- Added plain/dictionary string, Unicode, empty-match, invalid-pattern,
+  capture-bound, long-input, CSE, and Lazy end-to-end regressions.
+
+## SIMD dispatch and API reset (breaking)
+
+- Replaced generic hot-loop comparison/arithmetic dispatch with generated,
+  operation-specialized scalar and SIMD functions; the committed generator has
+  a drift-check mode used by structural validation.
+- Deleted failed SIMD production paths: 64-bit comparison masks, checked
+  integer lane rescans, arm64 widening and AVX2 simulated 64-bit multiply,
+  portable bitmap Bool, intermediate Hash128 inputs, and UTF-8 double-pass and
+  ASCII-prefix candidates. `ModeSIMD` now falls back honestly to scalar when no
+  retained SIMD backend exists.
+- Approved operation-specific darwin/arm64 Auto entries for Int32/Uint32
+  comparisons and Float64 Sub/Mul/Div. Added a non-SIMD `arm64-unrolled` Hash64
+  backend whose capability explicitly reports `HardwareSIMD=false`.
+- Added measured Int32 GT planner approvals for the 10/50/90/100% BitmapDirect
+  selection buckets; the 1% bucket remains DirectFused.
+- Removed the per-64-row DirectFused bitmap allocation and added 1-second x 10
+  kernel, selectivity, expression, Hash, UTF-8, Parquet, Lazy, Radix, and Join
+  gate evidence under `validation/`.
+- Replaced public function-field kernel sets and family-wide capability flags with an immutable, comparable `kernel.Set` handle and exact `KernelID` capability lookup.
+- Made `source.ReadOptions.Kernels` mandatory and propagated the same engine-owned handle through Parquet, physical operators, Lazy frames, terminal joins, and radix workspaces.
+- Removed all repository compatibility APIs: `Result.Groups`/`engine.Group`, `expr.AggCount`, aggregate `SumCountVector` helpers, sort `Column` alternatives, Parquet `Open`/`Columns`, `ErrStringTableFull`, and the Top-K constructor without a memory manager.
+- Removed allocating SIMD tail adapters, centralized canonical SplitMix64 semantics, retained stable dictionary predicate results in `EvalWorkspace`, and added structural/allocation regression tests.
+- amd64 Auto remains scalar until native linux/amd64 evidence is available.
+
+See `docs/SIMD_API_MIGRATION.md` and `docs/SIMD_KERNELS.md`.
+
 ## Phase 2.8
 
 - Added Lazy Limit, Sort, and bounded-heap Top-K with `Sort + Limit -> TopK` optimization.

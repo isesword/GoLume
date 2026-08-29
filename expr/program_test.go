@@ -1,9 +1,12 @@
 package expr
 
 import (
+	"gocolumn/kernel"
 	"gocolumn/memory"
 	"testing"
 )
+
+func testKernelSet() kernel.Set { return kernel.New(kernel.ModeScalar) }
 
 func TestProgramThreeValuedLogic(t *testing.T) {
 	schema := memory.NewSchema(memory.Field{Name: "x", Type: memory.TypeInt64, Nullable: true})
@@ -20,7 +23,7 @@ func TestProgramThreeValuedLogic(t *testing.T) {
 		t.Fatal(err)
 	}
 	var w EvalWorkspace
-	v, err := p.Evaluate(b, &w, nil)
+	v, err := p.Evaluate(b, &w, testKernelSet())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -34,7 +37,7 @@ func TestProgramThreeValuedLogic(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	v2, err := p2.Evaluate(b, &w, nil)
+	v2, err := p2.Evaluate(b, &w, testKernelSet())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -61,7 +64,7 @@ func TestCompilePredicateNilMeansAllRows(t *testing.T) {
 	batch.Rows = 3
 	batch.Int64s["x"] = &memory.Int64Vector{Values: []int64{1, 2, 3}}
 	var workspace EvalWorkspace
-	out, err := program.Evaluate(batch, &workspace, nil)
+	out, err := program.Evaluate(batch, &workspace, testKernelSet())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -83,7 +86,7 @@ func TestOpaqueColumnNullPredicate(t *testing.T) {
 	b.Rows = 3
 	b.Opaque["nested"] = &memory.OpaqueVector{Rows: 3, Type: memory.TypeArrow, Validity: valid, Value: struct{}{}}
 	var ws EvalWorkspace
-	got, err := program.Evaluate(b, &ws, nil)
+	got, err := program.Evaluate(b, &ws, testKernelSet())
 	if err != nil {
 		t.Fatal(err)
 	}

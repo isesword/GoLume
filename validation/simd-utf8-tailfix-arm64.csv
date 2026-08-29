@@ -1,0 +1,18 @@
+goos: darwin
+goarch: arm64
+pkg: gocolumn/kernel
+cpu: Apple M4 Pro
+,scalar,,simd,,,
+,sec/op,CI,sec/op,CI,vs base,P
+StringUTF8Length-12,0.0013558145,2%,0.0016643565000000003,1%,+22.76%,p=0.000 n=10
+geomean,0.0013558145000000003,,0.0016643565000000007,,+22.76%,
+
+,scalar,,simd,,,
+,B/op,CI,B/op,CI,vs base,P
+StringUTF8Length-12,0,0%,0,0%,~,p=1.000 n=10
+geomean,,,,,+0.00%,
+
+,scalar,,simd,,,
+,allocs/op,CI,allocs/op,CI,vs base,P
+StringUTF8Length-12,0,0%,0,0%,~,p=1.000 n=10
+geomean,,,,,+0.00%,

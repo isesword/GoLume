@@ -8,6 +8,7 @@ import (
 	"gocolumn/expr"
 	"gocolumn/memory"
 	"gocolumn/source"
+	"math"
 	"sync"
 
 	"github.com/apache/arrow-go/v18/arrow"
@@ -108,7 +109,10 @@ func NewSource(records ...arrow.RecordBatch) (*Source, error) {
 		for ri, rec := range owner.records {
 			arr := rec.Column(bindings[i].index)
 			bindings[i].validities[ri] = validityBitmap(arr)
-			cachePhysicalValues(&bindings[i], ri, arr)
+			if err := cachePhysicalValues(&bindings[i], ri, arr); err != nil {
+				owner.close()
+				return nil, fmt.Errorf("arrowrecord: column %q: %w", bindings[i].name, err)
+			}
 			switch a := arr.(type) {
 			case *array.String:
 				bindings[i].offsets[ri] = offsets32(a.ValueOffsets())
@@ -179,7 +183,10 @@ func (s *Source) Partitions(context.Context) ([]source.Partition, error) {
 // bindings. Primitive value buffers and string byte buffers are referenced
 // directly; validity bitmaps, string offsets, and normalized dictionary codes
 // are cached once when the Source is constructed.
-func (s *Source) NewReader(context.Context) (source.Reader, error) {
+func (s *Source) NewReader(_ context.Context, opts source.ReadOptions) (source.Reader, error) {
+	if err := opts.Validate(); err != nil {
+		return nil, err
+	}
 	if s == nil || s.owner == nil {
 		return nil, fmt.Errorf("arrowrecord: nil source")
 	}
@@ -268,7 +275,7 @@ func (s *Source) ApplyPushdown(_ context.Context, req source.PushdownRequest) (s
 	return &out, report, nil
 }
 
-func cachePhysicalValues(b *binding, partition int, arr arrow.Array) {
+func cachePhysicalValues(b *binding, partition int, arr arrow.Array) error {
 	switch a := arr.(type) {
 	case *array.Int8:
 		out := make([]int32, len(a.Values()))
@@ -319,9 +326,24 @@ func cachePhysicalValues(b *binding, partition int, arr arrow.Array) {
 		}
 		b.i64[partition] = out
 	case *array.Timestamp:
+		typ, ok := a.DataType().(*arrow.TimestampType)
+		if !ok {
+			return fmt.Errorf("timestamp array has invalid data type %T", a.DataType())
+		}
+		if typ.TimeZone != "" && typ.TimeZone != "UTC" && typ.TimeZone != "Etc/UTC" {
+			return fmt.Errorf("timestamp timezone %q is not supported; use UTC or no timezone", typ.TimeZone)
+		}
+		scale, err := arrowTimeUnitScale(typ.Unit, "timestamp")
+		if err != nil {
+			return err
+		}
 		out := make([]int64, len(a.Values()))
 		for i, v := range a.Values() {
-			out[i] = int64(v)
+			ns, err := scaleTimestampToNanos(int64(v), scale)
+			if err != nil {
+				return fmt.Errorf("timestamp row %d: %w", i, err)
+			}
+			out[i] = ns
 		}
 		b.i64[partition] = out
 	case *array.Time64:
@@ -331,12 +353,50 @@ func cachePhysicalValues(b *binding, partition int, arr arrow.Array) {
 		}
 		b.i64[partition] = out
 	case *array.Duration:
+		typ, ok := a.DataType().(*arrow.DurationType)
+		if !ok {
+			return fmt.Errorf("duration array has invalid data type %T", a.DataType())
+		}
+		scale, err := arrowTimeUnitScale(typ.Unit, "duration")
+		if err != nil {
+			return err
+		}
 		out := make([]int64, len(a.Values()))
 		for i, v := range a.Values() {
-			out[i] = int64(v)
+			ns, err := scaleTimestampToNanos(int64(v), scale)
+			if err != nil {
+				return fmt.Errorf("duration row %d: %w", i, err)
+			}
+			out[i] = ns
 		}
 		b.i64[partition] = out
 	}
+	return nil
+}
+
+func arrowTimeUnitScale(unit arrow.TimeUnit, kind string) (int64, error) {
+	switch unit {
+	case arrow.Second:
+		return int64(1e9), nil
+	case arrow.Millisecond:
+		return int64(1e6), nil
+	case arrow.Microsecond:
+		return int64(1e3), nil
+	case arrow.Nanosecond:
+		return 1, nil
+	default:
+		return 0, fmt.Errorf("%s unit %s is not supported", kind, unit)
+	}
+}
+
+func scaleTimestampToNanos(value, scale int64) (int64, error) {
+	if scale <= 0 {
+		return 0, fmt.Errorf("timestamp scale %d is invalid", scale)
+	}
+	if value > math.MaxInt64/scale || value < math.MinInt64/scale {
+		return 0, fmt.Errorf("nanosecond normalization overflows")
+	}
+	return value * scale, nil
 }
 
 func memoryField(f arrow.Field) memory.Field {

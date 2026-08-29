@@ -122,10 +122,16 @@ candidate state: O(K)
 payload output:  O(K)
 ```
 
-The source does re-read partitions containing winners. The first pass currently
-reads the already-planned input projection; it does not yet create a separate
-key-only child source. That is a future I/O optimization, not a correctness
-requirement.
+The source re-reads partitions containing winners. For a row-preserving lazy
+pipeline consisting of Scan, Filter, Projection, and/or ExprProjection, the
+first pass is now lowered as a separate key-only child source. Its source
+projection contains the ordering keys plus any residual-filter dependencies,
+so non-winning partitions do not decode payload columns. The second pass
+replays the complete payload pipeline and gathers only winner rows.
+
+Join and aggregate-result inputs deliberately retain the single-input Top-K
+path: re-lowering them solely for a narrow key pass would repeat retained join
+build or aggregate work and can cost more than the payload I/O it saves.
 
 Top-K candidate snapshots were explicitly optimized so non-winning rows do not
 allocate. A candidate is copied only when it first enters the heap or replaces

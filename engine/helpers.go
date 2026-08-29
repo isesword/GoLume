@@ -25,16 +25,7 @@ func aggregateValueAt(values *memory.Int64Vector, row int) (int64, bool) {
 
 func (p *PreparedQuery) selection(w *workerWorkspace) (memory.Bitmap, int, error) {
 	b := w.batch
-	if p.cq.SimpleGT != nil {
-		pred, err := b.Int64(p.cq.SimpleGT.Column)
-		if err != nil {
-			return nil, 0, err
-		}
-		w.selection = memory.EnsureBitmap(w.selection, b.Rows)
-		n := p.e.kernels.Int64GT(pred.Values, pred.Validity, w.selection, p.cq.SimpleGT.Threshold)
-		return w.selection, n, nil
-	}
-	bv, err := p.cq.Predicate.Evaluate(b, &w.expr, expr.GTKernel(p.e.kernels.Int64GT))
+	bv, err := p.cq.Predicate.Evaluate(b, &w.expr, p.e.kernels)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -178,10 +169,6 @@ func (p *PreparedQuery) materializeAggregates(st aggregate.Int64Result) []Aggreg
 
 func (p *PreparedQuery) materializeI32Result(out *Result, t *hashagg.I32Table) {
 	gs := t.Materialize(nil)
-	out.Groups = make([]Group, len(gs))
-	for i, g := range gs {
-		out.Groups[i] = Group{Key: g.Key, KeyValid: g.Valid, Sum: g.Sum, Count: g.Count}
-	}
 	out.Rows = make([]AggregateRow, len(gs))
 	for i, g := range gs {
 		out.Rows[i] = AggregateRow{Keys: []KeyPart{p.decodeFixedValid(p.cq.GroupBy[0], uint64(uint32(g.Key)), g.Valid)}, Sum: g.Sum, Count: g.Count, Aggregates: p.materializeAggregates(g.State)}

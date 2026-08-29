@@ -3,7 +3,7 @@ package radix
 import (
 	"context"
 	"errors"
-	"gocolumn/hashagg"
+	"gocolumn/kernel"
 	"gocolumn/scheduler"
 	"math/bits"
 	"sync/atomic"
@@ -52,6 +52,7 @@ type Workspace struct {
 	localCounts []int
 	offsets     []int
 	partial     []Summary
+	kernels     kernel.Set
 }
 
 func nextPow2(v int) int {
@@ -63,7 +64,10 @@ func nextPow2(v int) int {
 
 // NewWorkspace allocates reusable buffers sized for maxRows and the estimated group cardinality.
 // cardinalityHint affects local-table sizing only; callers may fall back when ErrLocalTableFull is returned.
-func NewWorkspace(maxRows, cardinalityHint int, radixBits uint) *Workspace {
+func NewWorkspace(maxRows, cardinalityHint int, radixBits uint, kernels kernel.Set) *Workspace {
+	if !kernels.Valid() {
+		panic("radix: NewWorkspace requires a valid kernel set")
+	}
 	if radixBits < 1 {
 		radixBits = 1
 	}
@@ -81,6 +85,7 @@ func NewWorkspace(maxRows, cardinalityHint int, radixBits uint) *Workspace {
 		counts: make([]int, parts), starts: make([]int, parts+1), hashes: make([]uint64, maxRows),
 		pkeys: make([]uint64, maxRows), pvals: make([]int64, maxRows), phashes: make([]uint64, maxRows),
 		tableKeys: make([]uint64, slots), tableSums: make([]int64, slots), tableCounts: make([]uint64, slots), epoch: make([]uint32, slots),
+		kernels: kernels,
 	}
 }
 
@@ -117,9 +122,9 @@ func (w *Workspace) Aggregate(ctx context.Context, sched scheduler.Scheduler, ke
 	if err := sched.ParallelFor(ctx, workers, workers, func(worker int) error {
 		lo, hi := shard(len(keys), workers, worker)
 		cnt := localCounts[worker*w.parts : (worker+1)*w.parts]
+		w.kernels.Hash64Batch(keys[lo:hi], w.hashes[lo:hi])
 		for i := lo; i < hi; i++ {
-			h := hashagg.Hash64(keys[i])
-			w.hashes[i] = h
+			h := w.hashes[i]
 			cnt[int(h>>w.shift)]++
 		}
 		return nil

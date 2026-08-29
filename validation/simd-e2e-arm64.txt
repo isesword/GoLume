@@ -1,0 +1,72 @@
+goos: darwin
+goarch: arm64
+pkg: gocolumn/engine
+cpu: Apple M4 Pro
+BenchmarkPreparedRadixKernelMode/mode=scalar-12         	     235	   5111505 ns/op	36867428 B/op	   30812 allocs/op
+BenchmarkPreparedRadixKernelMode/mode=scalar-12         	     236	   5064209 ns/op	36866868 B/op	   30811 allocs/op
+BenchmarkPreparedRadixKernelMode/mode=scalar-12         	     231	   5150821 ns/op	36866564 B/op	   30811 allocs/op
+BenchmarkPreparedRadixKernelMode/mode=scalar-12         	     232	   5177332 ns/op	36866947 B/op	   30812 allocs/op
+BenchmarkPreparedRadixKernelMode/mode=scalar-12         	     237	   5093544 ns/op	36867184 B/op	   30812 allocs/op
+BenchmarkPreparedRadixKernelMode/mode=scalar-12         	     232	   5205996 ns/op	36866907 B/op	   30811 allocs/op
+BenchmarkPreparedRadixKernelMode/mode=scalar-12         	     235	   5148798 ns/op	36866872 B/op	   30811 allocs/op
+BenchmarkPreparedRadixKernelMode/mode=scalar-12         	     231	   5141995 ns/op	36866992 B/op	   30811 allocs/op
+BenchmarkPreparedRadixKernelMode/mode=scalar-12         	     235	   5118758 ns/op	36866867 B/op	   30811 allocs/op
+BenchmarkPreparedRadixKernelMode/mode=scalar-12         	     234	   5078521 ns/op	36867180 B/op	   30812 allocs/op
+BenchmarkPreparedRadixKernelMode/mode=auto-12           	     235	   5089582 ns/op	36867348 B/op	   30812 allocs/op
+BenchmarkPreparedRadixKernelMode/mode=auto-12           	     235	   5261228 ns/op	36866780 B/op	   30811 allocs/op
+BenchmarkPreparedRadixKernelMode/mode=auto-12           	     236	   5086100 ns/op	36866980 B/op	   30811 allocs/op
+BenchmarkPreparedRadixKernelMode/mode=auto-12           	     235	   5130286 ns/op	36867102 B/op	   30812 allocs/op
+BenchmarkPreparedRadixKernelMode/mode=auto-12           	     235	   5089506 ns/op	36866991 B/op	   30811 allocs/op
+BenchmarkPreparedRadixKernelMode/mode=auto-12           	     236	   5136526 ns/op	36867167 B/op	   30812 allocs/op
+BenchmarkPreparedRadixKernelMode/mode=auto-12           	     236	   5078400 ns/op	36867080 B/op	   30812 allocs/op
+BenchmarkPreparedRadixKernelMode/mode=auto-12           	     230	   5071113 ns/op	36866817 B/op	   30811 allocs/op
+BenchmarkPreparedRadixKernelMode/mode=auto-12           	     234	   5130098 ns/op	36866669 B/op	   30811 allocs/op
+BenchmarkPreparedRadixKernelMode/mode=auto-12           	     231	   5216494 ns/op	36867257 B/op	   30812 allocs/op
+PASS
+ok  	gocolumn/engine	35.103s
+goos: darwin
+goarch: arm64
+pkg: gocolumn/lazy
+cpu: Apple M4 Pro
+BenchmarkPreparedLazyParquetKernelMode/mode=scalar-12         	     214	   5371587 ns/op	36867035 B/op	   30812 allocs/op
+BenchmarkPreparedLazyParquetKernelMode/mode=scalar-12         	     230	   5264753 ns/op	36866765 B/op	   30811 allocs/op
+BenchmarkPreparedLazyParquetKernelMode/mode=scalar-12         	     231	   5156341 ns/op	36866543 B/op	   30811 allocs/op
+BenchmarkPreparedLazyParquetKernelMode/mode=scalar-12         	     234	   5296995 ns/op	36866935 B/op	   30812 allocs/op
+BenchmarkPreparedLazyParquetKernelMode/mode=scalar-12         	     229	   5680457 ns/op	36867068 B/op	   30812 allocs/op
+BenchmarkPreparedLazyParquetKernelMode/mode=scalar-12         	     218	   5589441 ns/op	36867321 B/op	   30812 allocs/op
+BenchmarkPreparedLazyParquetKernelMode/mode=scalar-12         	     224	   5507349 ns/op	36867207 B/op	   30812 allocs/op
+BenchmarkPreparedLazyParquetKernelMode/mode=scalar-12         	     210	   5272509 ns/op	36867011 B/op	   30812 allocs/op
+BenchmarkPreparedLazyParquetKernelMode/mode=scalar-12         	     224	   5304355 ns/op	36867042 B/op	   30812 allocs/op
+BenchmarkPreparedLazyParquetKernelMode/mode=scalar-12         	     229	   5195707 ns/op	36866917 B/op	   30811 allocs/op
+BenchmarkPreparedLazyParquetKernelMode/mode=auto-12           	     222	   5210246 ns/op	36867024 B/op	   30811 allocs/op
+BenchmarkPreparedLazyParquetKernelMode/mode=auto-12           	     232	   5331596 ns/op	36866746 B/op	   30811 allocs/op
+BenchmarkPreparedLazyParquetKernelMode/mode=auto-12           	     230	   5258601 ns/op	36866817 B/op	   30811 allocs/op
+BenchmarkPreparedLazyParquetKernelMode/mode=auto-12           	     229	   5261096 ns/op	36866943 B/op	   30811 allocs/op
+BenchmarkPreparedLazyParquetKernelMode/mode=auto-12           	     225	   5196056 ns/op	36867176 B/op	   30812 allocs/op
+BenchmarkPreparedLazyParquetKernelMode/mode=auto-12           	     231	   5228965 ns/op	36866812 B/op	   30811 allocs/op
+BenchmarkPreparedLazyParquetKernelMode/mode=auto-12           	     230	   5365152 ns/op	36866966 B/op	   30812 allocs/op
+BenchmarkPreparedLazyParquetKernelMode/mode=auto-12           	     229	   5288134 ns/op	36866691 B/op	   30811 allocs/op
+BenchmarkPreparedLazyParquetKernelMode/mode=auto-12           	     170	   9159007 ns/op	36866882 B/op	   30812 allocs/op
+BenchmarkPreparedLazyParquetKernelMode/mode=auto-12           	     213	   5327089 ns/op	36866712 B/op	   30811 allocs/op
+BenchmarkPreparedRadixJoinKernelMode/mode=scalar-12           	     385	   3100843 ns/op	12426159 B/op	    2506 allocs/op
+BenchmarkPreparedRadixJoinKernelMode/mode=scalar-12           	     396	   3220967 ns/op	12426164 B/op	    2506 allocs/op
+BenchmarkPreparedRadixJoinKernelMode/mode=scalar-12           	     368	   3412673 ns/op	12426152 B/op	    2506 allocs/op
+BenchmarkPreparedRadixJoinKernelMode/mode=scalar-12           	     366	   3080215 ns/op	12426147 B/op	    2506 allocs/op
+BenchmarkPreparedRadixJoinKernelMode/mode=scalar-12           	     388	   3119256 ns/op	12426160 B/op	    2506 allocs/op
+BenchmarkPreparedRadixJoinKernelMode/mode=scalar-12           	     385	   3117604 ns/op	12426164 B/op	    2506 allocs/op
+BenchmarkPreparedRadixJoinKernelMode/mode=scalar-12           	     384	   3110915 ns/op	12426167 B/op	    2506 allocs/op
+BenchmarkPreparedRadixJoinKernelMode/mode=scalar-12           	     384	   3115199 ns/op	12426167 B/op	    2506 allocs/op
+BenchmarkPreparedRadixJoinKernelMode/mode=scalar-12           	     386	   3082252 ns/op	12426178 B/op	    2506 allocs/op
+BenchmarkPreparedRadixJoinKernelMode/mode=scalar-12           	     388	   3092497 ns/op	12426165 B/op	    2506 allocs/op
+BenchmarkPreparedRadixJoinKernelMode/mode=auto-12             	     392	   3108678 ns/op	12426156 B/op	    2506 allocs/op
+BenchmarkPreparedRadixJoinKernelMode/mode=auto-12             	     362	   3060363 ns/op	12426176 B/op	    2506 allocs/op
+BenchmarkPreparedRadixJoinKernelMode/mode=auto-12             	     385	   3024655 ns/op	12426169 B/op	    2506 allocs/op
+BenchmarkPreparedRadixJoinKernelMode/mode=auto-12             	     396	   3030856 ns/op	12426177 B/op	    2506 allocs/op
+BenchmarkPreparedRadixJoinKernelMode/mode=auto-12             	     391	   3054926 ns/op	12426164 B/op	    2506 allocs/op
+BenchmarkPreparedRadixJoinKernelMode/mode=auto-12             	     398	   3294693 ns/op	12426158 B/op	    2506 allocs/op
+BenchmarkPreparedRadixJoinKernelMode/mode=auto-12             	     406	   2996724 ns/op	12426155 B/op	    2506 allocs/op
+BenchmarkPreparedRadixJoinKernelMode/mode=auto-12             	     398	   2997704 ns/op	12426127 B/op	    2506 allocs/op
+BenchmarkPreparedRadixJoinKernelMode/mode=auto-12             	     405	   2969501 ns/op	12426170 B/op	    2506 allocs/op
+BenchmarkPreparedRadixJoinKernelMode/mode=auto-12             	     397	   2999896 ns/op	12426178 B/op	    2506 allocs/op
+PASS
+ok  	gocolumn/lazy	66.770s

@@ -2,9 +2,11 @@ package lazy
 
 import (
 	"context"
+	"fmt"
 	"gocolumn/engine"
 	"gocolumn/expr"
 	"gocolumn/memory"
+	"gocolumn/source"
 	"gocolumn/source/inmemory"
 	"strings"
 	"testing"
@@ -73,6 +75,89 @@ func TestLimitRunsAfterResidualFilter(t *testing.T) {
 	if !equalI64(got, []int64{9, 8}) {
 		t.Fatalf("filtered limit=%v", got)
 	}
+}
+
+func TestLazyTopKReplaysOnlyOrderingAndFilterColumnsOnFirstPass(t *testing.T) {
+	schema := memory.NewSchema(
+		memory.Field{Name: "pred", Type: memory.TypeInt64},
+		memory.Field{Name: "score", Type: memory.TypeInt64},
+		memory.Field{Name: "payload", Type: memory.TypeInt64},
+	)
+	b1 := memory.NewBatch()
+	b1.Int64s["pred"] = &memory.Int64Vector{Values: []int64{0, 10, 11}}
+	b1.Int64s["score"] = &memory.Int64Vector{Values: []int64{100, 20, 40}}
+	b1.Int64s["payload"] = &memory.Int64Vector{Values: []int64{1000, 2000, 3000}}
+	b1.Reset(3)
+	b2 := memory.NewBatch()
+	b2.Int64s["pred"] = &memory.Int64Vector{Values: []int64{12, 3, 13}}
+	b2.Int64s["score"] = &memory.Int64Vector{Values: []int64{30, 90, 50}}
+	b2.Int64s["payload"] = &memory.Int64Vector{Values: []int64{4000, 5000, 6000}}
+	b2.Reset(3)
+	base, err := inmemory.New(schema, b1, b2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	requests := make([]source.PushdownRequest, 0, 2)
+	src := &topKPushdownRecorder{input: base, requests: &requests}
+	s := NewSession(engine.DefaultOptions())
+	defer s.Close()
+
+	frame, err := s.FromSource(src).
+		Filter(Col("pred").Gt(Lit(9))).
+		TopK(2, Desc("score")).
+		Select("payload").
+		CollectFrame(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer frame.Close()
+	if got := frameInt64Column(t, frame, "payload"); !equalI64(got, []int64{6000, 3000}) {
+		t.Fatalf("payload=%v want=[6000 3000]", got)
+	}
+	if len(requests) != 2 {
+		t.Fatalf("pushdown requests=%d want 2", len(requests))
+	}
+	if got, want := requests[0].Projection, []string{"pred", "score", "payload"}; !equalStrings(got, want) {
+		t.Fatalf("payload projection=%v want=%v", got, want)
+	}
+	if got, want := requests[1].Projection, []string{"pred", "score"}; !equalStrings(got, want) {
+		t.Fatalf("top-k first-pass projection=%v want=%v", got, want)
+	}
+}
+
+// topKPushdownRecorder keeps the production source behavior while exposing
+// projection requests so the lazy Top-K first-pass contract can be tested.
+type topKPushdownRecorder struct {
+	input    source.Source
+	requests *[]source.PushdownRequest
+}
+
+func (s *topKPushdownRecorder) Schema() memory.Schema { return s.input.Schema() }
+
+func (s *topKPushdownRecorder) Stats(ctx context.Context) (source.Stats, error) {
+	return s.input.Stats(ctx)
+}
+
+func (s *topKPushdownRecorder) Partitions(ctx context.Context) ([]source.Partition, error) {
+	return s.input.Partitions(ctx)
+}
+
+func (s *topKPushdownRecorder) NewReader(ctx context.Context, opts source.ReadOptions) (source.Reader, error) {
+	return s.input.NewReader(ctx, opts)
+}
+
+func (s *topKPushdownRecorder) ApplyPushdown(ctx context.Context, req source.PushdownRequest) (source.Source, source.PushdownReport, error) {
+	cloned := source.PushdownRequest{Projection: append([]string(nil), req.Projection...), Predicate: req.Predicate}
+	*s.requests = append(*s.requests, cloned)
+	pushdown, ok := s.input.(source.PushdownSource)
+	if !ok {
+		return nil, source.PushdownReport{}, fmt.Errorf("recorded source does not support pushdown")
+	}
+	next, report, err := pushdown.ApplyPushdown(ctx, req)
+	if err != nil {
+		return nil, source.PushdownReport{}, err
+	}
+	return &topKPushdownRecorder{input: next, requests: s.requests}, report, nil
 }
 
 func TestOpaqueArrowSurvivesFilterTopKAndMaterialization(t *testing.T) {
@@ -147,6 +232,18 @@ func frameInt64Column(t *testing.T, f Frame, name string) []int64 {
 	return out
 }
 func equalI64(a, b []int64) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+func equalStrings(a, b []string) bool {
 	if len(a) != len(b) {
 		return false
 	}

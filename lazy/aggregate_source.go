@@ -58,7 +58,10 @@ func (s *aggregateResultSource) Partitions(ctx context.Context) ([]source.Partit
 }
 
 // NewReader creates a reader that executes the reusable prepared aggregate once.
-func (s *aggregateResultSource) NewReader(context.Context) (source.Reader, error) {
+func (s *aggregateResultSource) NewReader(_ context.Context, opts source.ReadOptions) (source.Reader, error) {
+	if err := opts.Validate(); err != nil {
+		return nil, err
+	}
 	return &aggregateResultReader{owner: s}, nil
 }
 

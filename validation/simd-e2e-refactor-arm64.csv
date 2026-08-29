@@ -1,0 +1,37 @@
+goos: darwin
+goarch: arm64
+pkg: gocolumn/engine
+cpu: Apple M4 Pro
+,scalar,,auto,,,
+,sec/op,CI,sec/op,CI,vs base,P
+PreparedRadixKernelMode-12,0.0050275805,1%,0.0050017805000000005,1%,~,p=0.052 n=10
+geomean,0.0050275805,,0.0050017805000000005,,-0.51%,
+
+,scalar,,auto,,,
+,B/op,CI,B/op,CI,vs base,P
+PreparedRadixKernelMode-12,3.68670645e+07,0%,3.68669075e+07,0%,~,p=0.092 n=10
+geomean,3.686706449999996e+07,,3.686690749999995e+07,,-0.00%,
+
+,scalar,,auto,,,
+,allocs/op,CI,allocs/op,CI,vs base,P
+PreparedRadixKernelMode-12,30811.5,0%,30811,0%,~,p=0.350 n=10
+geomean,30811.499999999978,,30810.999999999985,,-0.00%,
+
+pkg: gocolumn/lazy
+,scalar,,auto,,,
+,sec/op,CI,sec/op,CI,vs base,P
+PreparedLazyParquetKernelMode-12,0.0051427335,2%,0.005067048,2%,-1.47%,p=0.015 n=10
+PreparedRadixJoinKernelMode-12,0.003003546,1%,0.0029880740000000003,2%,~,p=0.481 n=10
+geomean,0.003930195495518129,,0.0038911070899619294,,-0.99%,
+
+,scalar,,auto,,,
+,B/op,CI,B/op,CI,vs base,P
+PreparedLazyParquetKernelMode-12,3.68669115e+07,0%,3.68669065e+07,0%,~,p=0.954 n=10
+PreparedRadixJoinKernelMode-12,1.2426162e+07,0%,1.24261675e+07,0%,~,p=0.343 n=10
+geomean,2.1403602844817102e+07,,2.140360613017907e+07,,+0.00%,
+
+,scalar,,auto,,,
+,allocs/op,CI,allocs/op,CI,vs base,P
+PreparedLazyParquetKernelMode-12,30811,0%,30811,0%,~,p=1.000 n=10
+PreparedRadixJoinKernelMode-12,2506,0%,2506,0%,~,p=1.000 n=10
+geomean,8787.056731352091,,8787.056731352091,,+0.00%,

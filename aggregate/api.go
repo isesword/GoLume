@@ -230,21 +230,6 @@ func (s *AvgState) Finalize() Value {
 	return Value{Valid: true, Float64: float64(s.sum) / float64(s.count), IsFloat: true}
 }
 
-// SumCountVector is retained as a source-compatible alias for the common
-// SUM(value)+COUNT(*) aggregate layout. New code should use Int64Vector when
-// the physical aggregate layout is known at query compilation time.
-type SumCountVector = Int64Vector
-
-// NewSumCountVector allocates the Phase-1 compatible SUM+COUNT state layout.
-func NewSumCountVector(slots int) SumCountVector {
-	return NewInt64Vector(slots, DefaultLayout())
-}
-
-// SumCountBytesForSlots returns retained bytes for the default SUM+COUNT state.
-func SumCountBytesForSlots(slots int) int64 {
-	return Int64VectorBytesForSlots(slots, DefaultLayout())
-}
-
 // Layout describes the aggregate state arrays required by one physical hash
 // aggregation operator. The layout is selected once during query compilation;
 // row hot paths update only the arrays enabled by this layout.
@@ -465,24 +450,6 @@ func (v *Int64Vector) Result(slot int) Int64Result {
 		r.AvgValid = true
 	}
 	return r
-}
-
-// Sum returns the accumulated SUM storage for compatibility with the existing
-// SUM+COUNT specialized materialization path.
-func (v *Int64Vector) Sum(slot int) int64 {
-	if len(v.sums) == 0 {
-		return 0
-	}
-	return v.sums[slot]
-}
-
-// Count returns COUNT(*) storage for compatibility with existing group result
-// types. It returns zero when COUNT(*) is not present in the physical layout.
-func (v *Int64Vector) Count(slot int) uint64 {
-	if len(v.countRows) == 0 {
-		return 0
-	}
-	return v.countRows[slot]
 }
 
 // Int64VectorBytesForSlots estimates retained state bytes for slots.

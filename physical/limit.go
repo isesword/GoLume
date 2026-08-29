@@ -49,8 +49,11 @@ func (s *LimitSource) Partitions(ctx context.Context) ([]source.Partition, error
 }
 
 // NewReader creates an independent reader with its own remaining-row counter.
-func (s *LimitSource) NewReader(ctx context.Context) (source.Reader, error) {
-	r, err := s.input.NewReader(ctx)
+func (s *LimitSource) NewReader(ctx context.Context, opts source.ReadOptions) (source.Reader, error) {
+	if err := opts.Validate(); err != nil {
+		return nil, err
+	}
+	r, err := s.input.NewReader(ctx, opts)
 	if err != nil {
 		return nil, err
 	}

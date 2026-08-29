@@ -91,7 +91,7 @@ func (p *PreparedQuery) newWorkspace(ctx context.Context) (*queryWorkspace, erro
 	}
 	w.workers = make([]workerWorkspace, workers)
 	for i := range w.workers {
-		rd, err := p.src.NewReader(ctx)
+		rd, err := p.src.NewReader(ctx, source.ReadOptions{Kernels: p.e.kernels})
 		if err != nil {
 			return nil, err
 		}
@@ -112,7 +112,7 @@ func (p *PreparedQuery) newWorkspace(ctx context.Context) (*queryWorkspace, erro
 			}
 			w.selectedKeys = make([]uint64, rows)
 			w.selectedVals = make([]int64, rows)
-			w.radix64 = radix.NewWorkspace(rows, p.cq.CardinalityHint, p.strategy.RadixBits)
+			w.radix64 = radix.NewWorkspace(rows, p.cq.CardinalityHint, p.strategy.RadixBits, p.e.kernels)
 		case GroupShapePairFixed:
 			if err := w.reserve(ctx, int64(rows)*(16+1+8)+radix.EstimatePairWorkspaceBytes(rows, p.cq.CardinalityHint, p.strategy.RadixBits, workers)); err != nil {
 				return nil, fmt.Errorf("pair radix workspace: %w", err)
@@ -120,7 +120,7 @@ func (p *PreparedQuery) newWorkspace(ctx context.Context) (*queryWorkspace, erro
 			w.selectedPairs = make([]hashagg.Key128, rows)
 			w.selectedPairValid = make([]uint8, rows)
 			w.selectedVals = make([]int64, rows)
-			w.radixPair = radix.NewPairWorkspace(rows, p.cq.CardinalityHint, p.strategy.RadixBits)
+			w.radixPair = radix.NewPairWorkspace(rows, p.cq.CardinalityHint, p.strategy.RadixBits, p.e.kernels)
 		default:
 			return nil, fmt.Errorf("radix workspace unsupported for group shape %d", p.cq.GroupShape)
 		}

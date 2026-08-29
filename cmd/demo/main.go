@@ -20,7 +20,7 @@ func main() {
 	repeat := flag.Int("repeat", 1, "execute the prepared query N times")
 	concurrency := flag.Int("prepare-concurrency", 1, "max simultaneous executions of this prepared query")
 	flag.Parse()
-	src, err := parquetsource.Open(*path, parquetsource.Columns{PredicateIndex: 0, GroupIndex: 1, ValueIndex: 2})
+	src, err := parquetsource.OpenFile(*path)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -46,13 +46,13 @@ func main() {
 		fmt.Printf("run=%d strategy=%s workers=%d groups=%d selected=%d checksum=%d elapsed=%s retained_memory=%d\n", i+1, res.Strategy.Kind, res.Strategy.Workers, res.GroupCount, res.SelectedRows, res.Checksum, res.Elapsed, eng.Memory().Used())
 	}
 	if *materialize {
-		sort.Slice(res.Groups, func(i, j int) bool { return res.Groups[i].Key < res.Groups[j].Key })
+		sort.Slice(res.Rows, func(i, j int) bool { return res.Rows[i].Keys[0].Int64 < res.Rows[j].Keys[0].Int64 })
 		limit := 5
-		if len(res.Groups) < limit {
-			limit = len(res.Groups)
+		if len(res.Rows) < limit {
+			limit = len(res.Rows)
 		}
-		for _, g := range res.Groups[:limit] {
-			fmt.Printf("key=%d sum=%d count=%d\n", g.Key, g.Sum, g.Count)
+		for _, row := range res.Rows[:limit] {
+			fmt.Printf("key=%d sum=%d count=%d\n", row.Keys[0].Int64, row.Sum, row.Count)
 		}
 	}
 }

@@ -22,7 +22,7 @@ func TestScalarProgramArithmeticAndNulls(t *testing.T) {
 	batch.Int64s["b"] = &memory.Int64Vector{Values: []int64{1, 2, 3}}
 	batch.Reset(3)
 	var w ScalarWorkspace
-	got, err := p.EvaluateInt64(batch, &w)
+	got, err := p.EvaluateInt64(batch, &w, testKernelSet())
 	if err != nil {
 		t.Fatal(err)
 	}

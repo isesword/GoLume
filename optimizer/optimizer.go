@@ -62,6 +62,8 @@ func mergeFilters(plan logical.Plan, rules *[]string) logical.Plan {
 		return &logical.Limit{Input: mergeFilters(n.Input, rules), N: n.N}
 	case *logical.Aggregate:
 		return &logical.Aggregate{Input: mergeFilters(n.Input, rules), GroupBy: append([]string(nil), n.GroupBy...), Aggregates: append([]expr.Aggregate(nil), n.Aggregates...), Hints: n.Hints}
+	case *logical.Window:
+		return cloneWindow(n, mergeFilters(n.Input, rules))
 	case *logical.Scan:
 		return cloneScan(n)
 	default:
@@ -92,6 +94,8 @@ func mergeProjections(plan logical.Plan, rules *[]string) logical.Plan {
 		return &logical.Limit{Input: mergeProjections(n.Input, rules), N: n.N}
 	case *logical.Aggregate:
 		return &logical.Aggregate{Input: mergeProjections(n.Input, rules), GroupBy: append([]string(nil), n.GroupBy...), Aggregates: append([]expr.Aggregate(nil), n.Aggregates...), Hints: n.Hints}
+	case *logical.Window:
+		return cloneWindow(n, mergeProjections(n.Input, rules))
 	case *logical.Scan:
 		return cloneScan(n)
 	default:
@@ -134,6 +138,8 @@ func mergeLimits(plan logical.Plan, rules *[]string) logical.Plan {
 		return &logical.Join{Left: mergeLimits(n.Left, rules), Right: mergeLimits(n.Right, rules), Type: n.Type, Keys: append([]logical.JoinKey(nil), n.Keys...), Suffix: n.Suffix, RadixBits: n.RadixBits, Workers: n.Workers}
 	case *logical.Aggregate:
 		return &logical.Aggregate{Input: mergeLimits(n.Input, rules), GroupBy: append([]string(nil), n.GroupBy...), Aggregates: append([]expr.Aggregate(nil), n.Aggregates...), Hints: n.Hints}
+	case *logical.Window:
+		return cloneWindow(n, mergeLimits(n.Input, rules))
 	case *logical.Scan:
 		return cloneScan(n)
 	default:
@@ -176,6 +182,12 @@ func pushPredicates(plan logical.Plan, inherited expr.Expr, rules *[]string) log
 		// pushed through the aggregation boundary. Predicates already inside the
 		// aggregate subtree are optimized independently.
 		return &logical.Aggregate{Input: pushPredicates(n.Input, nil, rules), GroupBy: append([]string(nil), n.GroupBy...), Aggregates: append([]expr.Aggregate(nil), n.Aggregates...), Hints: n.Hints}
+	case *logical.Window:
+		// A filter above a window changes the rows contributing to rank and
+		// rolling frames, even when it mentions only inherited input columns.
+		// Keep inherited predicates above this strict semantic boundary while
+		// still optimizing predicates already present in the child subtree.
+		return cloneWindow(n, pushPredicates(n.Input, nil, rules))
 
 	case *logical.Scan:
 		out := cloneScan(n)
@@ -193,6 +205,65 @@ func pushPredicates(plan logical.Plan, inherited expr.Expr, rules *[]string) log
 // nil means the caller requires every output column from the current node.
 func pushProjection(plan logical.Plan, required map[string]struct{}, rules *[]string) (logical.Plan, error) {
 	switch n := plan.(type) {
+	case *logical.Window:
+		inSchema, err := logical.InferSchema(n.Input)
+		if err != nil {
+			return nil, err
+		}
+		wanted := required
+		if wanted == nil {
+			wanted = allColumns(n)
+		}
+		produced := make(map[string]logical.WindowExpr, len(n.Exprs))
+		kept := make([]logical.WindowExpr, 0, len(n.Exprs))
+		for _, window := range n.Exprs {
+			produced[window.Alias] = window
+			if _, ok := wanted[window.Alias]; ok {
+				kept = append(kept, window)
+			}
+		}
+		childRequired := make(map[string]struct{})
+		for name := range wanted {
+			if _, computed := produced[name]; computed {
+				continue
+			}
+			if _, ok := inSchema.Field(name); ok {
+				childRequired[name] = struct{}{}
+			}
+		}
+		if len(kept) == 0 {
+			child, err := pushProjection(n.Input, childRequired, rules)
+			if err != nil {
+				return nil, err
+			}
+			*rules = append(*rules, "window-elimination")
+			return child, nil
+		}
+		for _, name := range n.Spec.PartitionBy {
+			childRequired[name] = struct{}{}
+		}
+		for i, key := range n.Spec.By {
+			value, err := key.Expression()
+			if err != nil {
+				return nil, fmt.Errorf("window order key %d: %w", i, err)
+			}
+			for _, name := range expr.Columns(value) {
+				childRequired[name] = struct{}{}
+			}
+		}
+		for _, window := range kept {
+			if window.Column != "" {
+				childRequired[window.Column] = struct{}{}
+			}
+		}
+		child, err := pushProjection(n.Input, childRequired, rules)
+		if err != nil {
+			return nil, err
+		}
+		if len(kept) != len(n.Exprs) {
+			*rules = append(*rules, "window-expression-pruning")
+		}
+		return cloneWindowExprs(n, child, kept), nil
 	case *logical.Aggregate:
 		childRequired := make(map[string]struct{})
 		for _, name := range n.GroupBy {
@@ -302,8 +373,14 @@ func pushProjection(plan logical.Plan, required map[string]struct{}, rules *[]st
 		if childRequired == nil {
 			childRequired = allColumns(n.Input)
 		}
-		for _, key := range n.By {
-			childRequired[key.Column] = struct{}{}
+		for i, key := range n.By {
+			value, err := key.Expression()
+			if err != nil {
+				return nil, fmt.Errorf("sort key %d: %w", i, err)
+			}
+			for _, name := range expr.Columns(value) {
+				childRequired[name] = struct{}{}
+			}
 		}
 		child, err := pushProjection(n.Input, childRequired, rules)
 		if err != nil {
@@ -316,8 +393,14 @@ func pushProjection(plan logical.Plan, required map[string]struct{}, rules *[]st
 		if childRequired == nil {
 			childRequired = allColumns(n.Input)
 		}
-		for _, key := range n.By {
-			childRequired[key.Column] = struct{}{}
+		for i, key := range n.By {
+			value, err := key.Expression()
+			if err != nil {
+				return nil, fmt.Errorf("top-k key %d: %w", i, err)
+			}
+			for _, name := range expr.Columns(value) {
+				childRequired[name] = struct{}{}
+			}
 		}
 		child, err := pushProjection(n.Input, childRequired, rules)
 		if err != nil {
@@ -431,6 +514,8 @@ func removeNoopProjections(plan logical.Plan, rules *[]string) logical.Plan {
 		return &logical.Join{Left: removeNoopProjections(n.Left, rules), Right: removeNoopProjections(n.Right, rules), Type: n.Type, Keys: append([]logical.JoinKey(nil), n.Keys...), Suffix: n.Suffix, RadixBits: n.RadixBits, Workers: n.Workers}
 	case *logical.Aggregate:
 		return &logical.Aggregate{Input: removeNoopProjections(n.Input, rules), GroupBy: append([]string(nil), n.GroupBy...), Aggregates: append([]expr.Aggregate(nil), n.Aggregates...), Hints: n.Hints}
+	case *logical.Window:
+		return cloneWindow(n, removeNoopProjections(n.Input, rules))
 	case *logical.Scan:
 		return cloneScan(n)
 	default:
@@ -507,6 +592,24 @@ func equalStrings(a, b []string) bool {
 
 func cloneSortKeys(in []logical.SortKey) []logical.SortKey {
 	return append([]logical.SortKey(nil), in...)
+}
+
+func cloneWindow(n *logical.Window, input logical.Plan) *logical.Window {
+	return cloneWindowExprs(n, input, n.Exprs)
+}
+
+func cloneWindowExprs(n *logical.Window, input logical.Plan, expressions []logical.WindowExpr) *logical.Window {
+	if n == nil {
+		return nil
+	}
+	return &logical.Window{
+		Input: input,
+		Spec: logical.WindowSpec{
+			PartitionBy: append([]string(nil), n.Spec.PartitionBy...),
+			By:          cloneSortKeys(n.Spec.By),
+		},
+		Exprs: append([]logical.WindowExpr(nil), expressions...),
+	}
 }
 
 func uniqueStrings(in []string) []string {

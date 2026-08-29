@@ -3,19 +3,11 @@ package engine
 import (
 	"gocolumn/aggregate"
 	"gocolumn/expr"
+	"gocolumn/kernel"
 	"gocolumn/memory"
 	"gocolumn/planner"
 	"time"
 )
-
-// Group is the backward-compatible single-int32 materialization shape.
-// KeyValid is false for the SQL NULL group.
-type Group struct {
-	Key      int32
-	KeyValid bool
-	Sum      int64
-	Count    uint64
-}
 
 // KeyPart is one materialized group-key component. Valid is false for SQL NULL.
 type KeyPart struct {
@@ -45,10 +37,9 @@ type AggregateRow struct {
 	Aggregates []AggregateValue
 }
 
-// Result contains summary counters and optional materialized groups.
+// Result contains summary counters and optional materialized aggregate rows.
 type Result struct {
-	Groups       []Group        // populated for single int32 group-by
-	Rows         []AggregateRow // generic materialized result
+	Rows         []AggregateRow
 	GroupCount   int
 	SelectedRows int
 	Checksum     int64
@@ -84,21 +75,23 @@ type CompiledGroupColumn struct {
 
 // CompiledQuery is the engine-internal compiled query description.
 type CompiledQuery struct {
-	Predicate       expr.Program
-	SimpleGT        *expr.SimpleGT
-	GroupBy         []CompiledGroupColumn
-	GroupShape      GroupShape
-	ValueColumn     string
-	ValueNullable   bool
-	Aggregates      []expr.Aggregate
-	AggregateLayout aggregate.Layout
-	CardinalityHint int
-	SelectivityHint float64
-	AverageKeyBytes int
-	ReuseSelection  bool
-	ForceStrategy   string
-	ForceRadixBits  uint
-	FusedCapable    bool
-	RadixCapable    bool
-	KeyWidthBytes   int
+	Predicate        expr.Program
+	SimpleComparison *expr.SimpleComparison
+	GroupBy          []CompiledGroupColumn
+	GroupShape       GroupShape
+	ValueColumn      string
+	ValueNullable    bool
+	Aggregates       []expr.Aggregate
+	AggregateLayout  aggregate.Layout
+	CardinalityHint  int
+	SelectivityHint  float64
+	AverageKeyBytes  int
+	ReuseSelection   bool
+	ForceStrategy    string
+	ForceRadixBits   uint
+	FusedCapable     bool
+	ComparisonID     kernel.KernelID
+	HasComparisonID  bool
+	RadixCapable     bool
+	KeyWidthBytes    int
 }

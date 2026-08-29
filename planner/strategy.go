@@ -3,6 +3,7 @@ package planner
 import (
 	"fmt"
 	"gocolumn/kernel"
+	"gocolumn/memory"
 )
 
 // Kind identifies a physical aggregation execution strategy.
@@ -54,6 +55,8 @@ type Input struct {
 	RadixCapable        bool
 	KeyWidthBytes       int
 	PredicateComplexity int
+	ComparisonID        kernel.KernelID
+	HasComparisonID     bool
 }
 
 // CostModel selects a physical aggregation strategy from runtime statistics.
@@ -118,10 +121,47 @@ func (Heuristic) Choose(in Input) (Strategy, error) {
 	if in.ReuseSelection || in.PredicateComplexity > 1 {
 		return Strategy{Kind: StrategyBitmapDirect, Workers: 1, Reason: "selection bitmap is reusable or predicate is composite"}, nil
 	}
-	// M4/NEON measurements showed a simple fused predicate can beat bitmap
-	// materialization. x86 with >=256-bit vectors can justify bitmap execution.
-	if in.Kernel.HardwareSIMD && in.Kernel.VectorBits >= 256 {
-		return Strategy{Kind: StrategyBitmapDirect, Workers: 1, Reason: "wide hardware SIMD available"}, nil
+	if in.HasComparisonID && approvedBitmapStrategy(in.Kernel, in.ComparisonID, in.Selectivity) {
+		return Strategy{Kind: StrategyBitmapDirect, Workers: 1, Reason: "benchmark-approved SIMD selection bucket"}, nil
 	}
 	return Strategy{Kind: StrategyDirectFused, Workers: 1, Reason: "avoid bitmap materialization for simple predicate"}, nil
+}
+
+type bitmapApproval struct {
+	arch               string
+	vectorBits         int
+	id                 kernel.KernelID
+	selectivityPercent int
+}
+
+var int32GT, _ = kernel.ComparisonID(memory.TypeInt32, kernel.CompareGT)
+
+// Entries are operation-specific and backed by the committed 1s x 10 arm64
+// DirectFused/Bitmap benchmark. The 1% bucket stays DirectFused because its
+// 4.40% gain did not clear the 10% policy threshold.
+var bitmapApprovals = map[bitmapApproval]struct{}{
+	{arch: "arm64", vectorBits: 128, id: int32GT, selectivityPercent: 10}:  {},
+	{arch: "arm64", vectorBits: 128, id: int32GT, selectivityPercent: 50}:  {},
+	{arch: "arm64", vectorBits: 128, id: int32GT, selectivityPercent: 90}:  {},
+	{arch: "arm64", vectorBits: 128, id: int32GT, selectivityPercent: 100}: {},
+}
+
+func approvedBitmapStrategy(caps kernel.Capabilities, id kernel.KernelID, selectivity float64) bool {
+	capability, ok := caps.For(id)
+	if !ok || !capability.HardwareSIMD {
+		return false
+	}
+	bucket := 100
+	switch {
+	case selectivity <= .01:
+		bucket = 1
+	case selectivity <= .10:
+		bucket = 10
+	case selectivity <= .50:
+		bucket = 50
+	case selectivity <= .90:
+		bucket = 90
+	}
+	_, ok = bitmapApprovals[bitmapApproval{arch: caps.Arch(), vectorBits: capability.VectorBits, id: id, selectivityPercent: bucket}]
+	return ok
 }

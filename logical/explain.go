@@ -76,7 +76,7 @@ func writePlan(b *strings.Builder, plan Plan, depth int) {
 			if k.NullsLast {
 				nulls = "nulls-last"
 			}
-			keys = append(keys, fmt.Sprintf("%s %s %s", k.Column, dir, nulls))
+			keys = append(keys, fmt.Sprintf("%s %s %s", sortKeyString(k), dir, nulls))
 		}
 		fmt.Fprintf(b, "%sSORT [%s]\n", indent, strings.Join(keys, ", "))
 		writePlan(b, n.Input, depth+1)
@@ -91,7 +91,7 @@ func writePlan(b *strings.Builder, plan Plan, depth int) {
 			if k.NullsLast {
 				nulls = "nulls-last"
 			}
-			keys = append(keys, fmt.Sprintf("%s %s %s", k.Column, dir, nulls))
+			keys = append(keys, fmt.Sprintf("%s %s %s", sortKeyString(k), dir, nulls))
 		}
 		fmt.Fprintf(b, "%sTOPK k=%d [%s]\n", indent, n.K, strings.Join(keys, ", "))
 		writePlan(b, n.Input, depth+1)
@@ -105,9 +105,84 @@ func writePlan(b *strings.Builder, plan Plan, depth int) {
 		}
 		fmt.Fprintf(b, "%sAGGREGATE keys=[%s] aggs=[%s]\n", indent, strings.Join(n.GroupBy, ", "), strings.Join(aggs, ", "))
 		writePlan(b, n.Input, depth+1)
+	case *Window:
+		order := make([]string, 0, len(n.Spec.By))
+		for _, key := range n.Spec.By {
+			direction := "asc"
+			if key.Descending {
+				direction = "desc"
+			}
+			nulls := "nulls-first"
+			if key.NullsLast {
+				nulls = "nulls-last"
+			}
+			order = append(order, fmt.Sprintf("%s %s %s", sortKeyString(key), direction, nulls))
+		}
+		items := make([]string, 0, len(n.Exprs))
+		for _, window := range n.Exprs {
+			items = append(items, windowExprString(window))
+		}
+		fmt.Fprintf(b, "%sWINDOW partition_by=[%s] order_by=[%s] outputs=[%s]\n", indent, strings.Join(n.Spec.PartitionBy, ", "), strings.Join(order, ", "), strings.Join(items, ", "))
+		writePlan(b, n.Input, depth+1)
 	default:
 		fmt.Fprintf(b, "%s<unknown %T>\n", indent, plan)
 	}
+}
+
+func windowExprString(window WindowExpr) string {
+	var name string
+	switch window.Function {
+	case WindowRowNumber:
+		name = "row_number()"
+	case WindowRank:
+		name = "rank()"
+	case WindowDenseRank:
+		name = "dense_rank()"
+	case WindowCountRows:
+		name = "count_rows(" + frameString(window.Frame) + ")"
+	case WindowCountValues:
+		name = "count(" + window.Column + ", " + frameString(window.Frame) + ")"
+	case WindowSum:
+		name = "sum(" + window.Column + ", " + frameString(window.Frame) + ")"
+	case WindowMin:
+		name = "min(" + window.Column + ", " + frameString(window.Frame) + ")"
+	case WindowMax:
+		name = "max(" + window.Column + ", " + frameString(window.Frame) + ")"
+	case WindowAvg:
+		name = "avg(" + window.Column + ", " + frameString(window.Frame) + ")"
+	default:
+		name = fmt.Sprintf("window(%d)", window.Function)
+	}
+	return name + " AS " + window.Alias
+}
+
+func frameString(frame RowsFrame) string {
+	return "ROWS BETWEEN " + boundString(frame.Start) + " AND " + boundString(frame.End)
+}
+
+func boundString(bound RowBound) string {
+	switch bound.Kind {
+	case RowUnboundedPreceding:
+		return "UNBOUNDED PRECEDING"
+	case RowPreceding:
+		return fmt.Sprintf("%d PRECEDING", bound.Offset)
+	case RowCurrent:
+		return "CURRENT ROW"
+	case RowFollowing:
+		return fmt.Sprintf("%d FOLLOWING", bound.Offset)
+	case RowUnboundedFollowing:
+		return "UNBOUNDED FOLLOWING"
+	default:
+		return fmt.Sprintf("<invalid %d>", bound.Kind)
+	}
+}
+
+func sortKeyString(key SortKey) string {
+	value, err := key.Expression()
+	if err != nil {
+		return "<invalid: " + err.Error() + ">"
+	}
+	return value.String()
 }
 
 func aggregateString(a expr.Aggregate) string {

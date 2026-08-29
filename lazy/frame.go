@@ -33,24 +33,137 @@ type GroupedFrame struct {
 	keys  []string
 }
 
-// SortExpr describes one lazy column ordering key.
+// SortExpr describes one lazy ordering key.
 type SortExpr struct {
-	Column     string
+	Expr       expr.Expr
 	Descending bool
 	NullsLast  bool
 }
 
+// WindowSpec is the shared partitioning and ordering definition for one
+// WithWindows call.
+type WindowSpec = logical.WindowSpec
+
+// WindowExpr describes one named ranking or rolling aggregate output.
+type WindowExpr = logical.WindowExpr
+
+// RowsFrame is an inclusive, partition-local ROWS frame.
+type RowsFrame = logical.RowsFrame
+
+// RowBound identifies one side of a ROWS frame.
+type RowBound = logical.RowBound
+
+// UnboundedPreceding is the first row of the current partition.
+var UnboundedPreceding = logical.RowBound{Kind: logical.RowUnboundedPreceding}
+
+// CurrentRow is the current row in the window ordering.
+var CurrentRow = logical.RowBound{Kind: logical.RowCurrent}
+
+// UnboundedFollowing is the last row of the current partition.
+var UnboundedFollowing = logical.RowBound{Kind: logical.RowUnboundedFollowing}
+
+// PartitionBy lists direct input columns used to form window partitions.
+func PartitionBy(columns ...string) []string { return append([]string(nil), columns...) }
+
+// OrderBy groups ordinary lazy ordering expressions for NewWindow.
+func OrderBy(keys ...SortExpr) []SortExpr { return append([]SortExpr(nil), keys...) }
+
+// NewWindow creates a window specification. Validation is deferred to Schema,
+// PrepareFrame, or CollectFrame so builders remain immutable and composable.
+func NewWindow(partitionBy []string, orderBy []SortExpr) WindowSpec {
+	keys := make([]logical.SortKey, len(orderBy))
+	for i, key := range orderBy {
+		keys[i] = logical.SortKey{Expr: key.Expr, Descending: key.Descending, NullsLast: key.NullsLast}
+	}
+	return logical.WindowSpec{PartitionBy: append([]string(nil), partitionBy...), By: keys}
+}
+
+// Preceding identifies a row offset before the current ordered row.
+func Preceding(n int64) RowBound { return logical.RowBound{Kind: logical.RowPreceding, Offset: n} }
+
+// Following identifies a row offset after the current ordered row.
+func Following(n int64) RowBound { return logical.RowBound{Kind: logical.RowFollowing, Offset: n} }
+
+// RowsBetween creates an inclusive ROWS frame. Invalid boundary combinations
+// are reported during logical schema validation.
+func RowsBetween(start, end RowBound) RowsFrame { return logical.RowsFrame{Start: start, End: end} }
+
+// RowNumber assigns one-based consecutive positions inside each partition.
+func RowNumber(alias string) WindowExpr {
+	return logical.WindowExpr{Function: logical.WindowRowNumber, Alias: alias}
+}
+
+// Rank assigns one-based rank positions with gaps after ties.
+func Rank(alias string) WindowExpr {
+	return logical.WindowExpr{Function: logical.WindowRank, Alias: alias}
+}
+
+// DenseRank assigns one-based rank positions without gaps after ties.
+func DenseRank(alias string) WindowExpr {
+	return logical.WindowExpr{Function: logical.WindowDenseRank, Alias: alias}
+}
+
+// RollingCountRows counts rows in frame, including rows whose values are NULL.
+func RollingCountRows(frame RowsFrame, alias string) WindowExpr {
+	return logical.WindowExpr{Function: logical.WindowCountRows, Frame: frame, Alias: alias}
+}
+
+// RollingCount counts non-NULL values of column in frame.
+func RollingCount(column string, frame RowsFrame, alias string) WindowExpr {
+	return logical.WindowExpr{Function: logical.WindowCountValues, Column: column, Frame: frame, Alias: alias}
+}
+
+// RollingSum sums numeric column values in frame.
+func RollingSum(column string, frame RowsFrame, alias string) WindowExpr {
+	return logical.WindowExpr{Function: logical.WindowSum, Column: column, Frame: frame, Alias: alias}
+}
+
+// RollingMin returns the minimum non-NULL numeric column value in frame.
+func RollingMin(column string, frame RowsFrame, alias string) WindowExpr {
+	return logical.WindowExpr{Function: logical.WindowMin, Column: column, Frame: frame, Alias: alias}
+}
+
+// RollingMax returns the maximum non-NULL numeric column value in frame.
+func RollingMax(column string, frame RowsFrame, alias string) WindowExpr {
+	return logical.WindowExpr{Function: logical.WindowMax, Column: column, Frame: frame, Alias: alias}
+}
+
+// RollingAvg returns the mean of non-NULL numeric column values in frame.
+func RollingAvg(column string, frame RowsFrame, alias string) WindowExpr {
+	return logical.WindowExpr{Function: logical.WindowAvg, Column: column, Frame: frame, Alias: alias}
+}
+
 // Asc orders column ascending with NULL values last.
-func Asc(column string) SortExpr { return SortExpr{Column: column, NullsLast: true} }
+func Asc(column string) SortExpr { return SortExpr{Expr: expr.Col(column), NullsLast: true} }
 
 // Desc orders column descending with NULL values last.
-func Desc(column string) SortExpr { return SortExpr{Column: column, Descending: true, NullsLast: true} }
+func Desc(column string) SortExpr {
+	return SortExpr{Expr: expr.Col(column), Descending: true, NullsLast: true}
+}
 
 // AscNullsFirst orders column ascending with NULL values first.
-func AscNullsFirst(column string) SortExpr { return SortExpr{Column: column} }
+func AscNullsFirst(column string) SortExpr { return SortExpr{Expr: expr.Col(column)} }
 
 // DescNullsFirst orders column descending with NULL values first.
-func DescNullsFirst(column string) SortExpr { return SortExpr{Column: column, Descending: true} }
+func DescNullsFirst(column string) SortExpr {
+	return SortExpr{Expr: expr.Col(column), Descending: true}
+}
+
+// AscExpr orders a scalar expression ascending with NULL values last.
+func AscExpr(value expr.Expr) SortExpr { return SortExpr{Expr: value, NullsLast: true} }
+
+// DescExpr orders a scalar expression descending with NULL values last.
+func DescExpr(value expr.Expr) SortExpr {
+	return SortExpr{Expr: value, Descending: true, NullsLast: true}
+}
+
+// AscExprNullsFirst orders a scalar expression ascending with NULL values first.
+func AscExprNullsFirst(value expr.Expr) SortExpr { return SortExpr{Expr: value} }
+
+// DescExprNullsFirst orders a scalar expression descending with NULL values first.
+func DescExprNullsFirst(value expr.Expr) SortExpr {
+	return SortExpr{Expr: value, Descending: true}
+}
 
 // Prepared is a lazily compiled physical query with reusable engine workspaces.
 type Prepared struct {
@@ -73,15 +186,96 @@ func Str(v string) expr.StringLiteral { return expr.Str(v) }
 // Date32 constructs a date32 literal expressed as days since the Unix epoch.
 func Date32(days int32) expr.Date32Literal { return expr.Date32(days) }
 
-// Timestamp constructs a physical timestamp literal in the source column's
-// Arrow timestamp unit.
+// Timestamp constructs a UTC Unix timestamp literal expressed in nanoseconds.
 func Timestamp(v int64) expr.TimestampLiteral { return expr.Timestamp(v) }
+
+// Duration constructs an elapsed-time literal normalized to nanoseconds.
+func Duration(v time.Duration) expr.DurationLiteral { return expr.Duration(v) }
+
+// TimestampSeconds constructs a UTC Unix timestamp literal from seconds.
+func TimestampSeconds(v int64) expr.TimestampUnitLiteral { return expr.TimestampSeconds(v) }
+
+// TimestampMillis constructs a UTC Unix timestamp literal from milliseconds.
+func TimestampMillis(v int64) expr.TimestampUnitLiteral { return expr.TimestampMillis(v) }
+
+// TimestampMicros constructs a UTC Unix timestamp literal from microseconds.
+func TimestampMicros(v int64) expr.TimestampUnitLiteral { return expr.TimestampMicros(v) }
 
 // Cast constructs an explicit typed scalar cast.
 func Cast(e expr.Expr, target memory.DataType) expr.Cast { return expr.CastTo(e, target) }
 
 // Concat constructs a UTF-8 concatenation expression.
 func Concat(left, right expr.Expr) expr.Binary { return expr.Concat(left, right) }
+
+// Contains constructs a case-sensitive UTF-8 substring predicate.
+func Contains(value, needle expr.Expr) expr.Binary { return expr.Contains(value, needle) }
+
+// StartsWith constructs a case-sensitive UTF-8 prefix predicate.
+func StartsWith(value, prefix expr.Expr) expr.Binary { return expr.StartsWith(value, prefix) }
+
+// EndsWith constructs a case-sensitive UTF-8 suffix predicate.
+func EndsWith(value, suffix expr.Expr) expr.Binary { return expr.EndsWith(value, suffix) }
+
+// RegexMatch constructs a compiled regular-expression predicate.
+func RegexMatch(value, pattern expr.Expr) expr.Binary { return expr.RegexMatch(value, pattern) }
+
+// Length constructs a UTF-8 character-count projection expression.
+func Length(value expr.Expr) expr.Unary { return expr.Length(value) }
+
+// ByteLength constructs a UTF-8 byte-count projection expression.
+func ByteLength(value expr.Expr) expr.Unary { return expr.ByteLength(value) }
+
+// Trim removes leading and trailing Unicode whitespace from a string.
+func Trim(value expr.Expr) expr.Unary { return expr.Trim(value) }
+
+// TrimStart removes leading Unicode whitespace from a string.
+func TrimStart(value expr.Expr) expr.Unary { return expr.TrimStart(value) }
+
+// TrimEnd removes trailing Unicode whitespace from a string.
+func TrimEnd(value expr.Expr) expr.Unary { return expr.TrimEnd(value) }
+
+// Lower applies Unicode simple case mapping to lower case.
+func Lower(value expr.Expr) expr.Unary { return expr.Lower(value) }
+
+// Upper applies Unicode simple case mapping to upper case.
+func Upper(value expr.Expr) expr.Unary { return expr.Upper(value) }
+
+// Find returns the zero-based Unicode code-point index of needle, or -1.
+func Find(value, needle expr.Expr) expr.Binary { return expr.Find(value, needle) }
+
+// Replace replaces the first literal occurrence of old with new.
+func Replace(value, old, new expr.Expr) expr.Ternary { return expr.Replace(value, old, new) }
+
+// ReplaceAll replaces every literal occurrence of old with new.
+func ReplaceAll(value, old, new expr.Expr) expr.Ternary {
+	return expr.ReplaceAll(value, old, new)
+}
+
+// Slice returns up to length Unicode code points beginning at offset.
+func Slice(value, offset, length expr.Expr) expr.Ternary { return expr.Slice(value, offset, length) }
+
+// RegexExtract returns a capture from the first regular-expression match.
+func RegexExtract(value, pattern, group expr.Expr) expr.Ternary {
+	return expr.RegexExtract(value, pattern, group)
+}
+
+// Year extracts the UTC calendar year from a date or timestamp.
+func Year(value expr.Expr) expr.Unary { return expr.Year(value) }
+
+// Month extracts the UTC calendar month from a date or timestamp.
+func Month(value expr.Expr) expr.Unary { return expr.Month(value) }
+
+// Day extracts the UTC calendar day of month from a date or timestamp.
+func Day(value expr.Expr) expr.Unary { return expr.Day(value) }
+
+// Hour extracts the UTC hour from a timestamp.
+func Hour(value expr.Expr) expr.Unary { return expr.Hour(value) }
+
+// Minute extracts the UTC minute from a timestamp.
+func Minute(value expr.Expr) expr.Unary { return expr.Minute(value) }
+
+// Second extracts the UTC second from a timestamp.
+func Second(value expr.Expr) expr.Unary { return expr.Second(value) }
 
 // Sum constructs SUM(column) AS alias.
 func Sum(column, alias string) expr.Aggregate { return expr.Sum(column, alias) }
@@ -148,26 +342,47 @@ func (f LazyFrame) WithColumns(expressions ...expr.NamedExpr) LazyFrame {
 	return f
 }
 
+// WithWindows computes named analytic outputs using one shared window
+// specification. Window results retain the input row order.
+func (f LazyFrame) WithWindows(spec WindowSpec, expressions ...WindowExpr) LazyFrame {
+	if f.err != nil {
+		return f
+	}
+	if len(expressions) == 0 {
+		f.err = fmt.Errorf("WithWindows requires at least one expression")
+		return f
+	}
+	f.plan = &logical.Window{Input: f.plan, Spec: spec, Exprs: append([]logical.WindowExpr(nil), expressions...)}
+	return f
+}
+
 // Named assigns an output name to a scalar expression.
 func Named(e expr.Expr, alias string) expr.NamedExpr { return expr.Named(e, alias) }
 
 // Sort appends a global stable ordering operation. Sort is lazy and executes
 // only when the plan is collected or prepared.
 func (f LazyFrame) Sort(by ...SortExpr) LazyFrame {
+	return f.orderBy("Sort", by...)
+}
+
+// SortBy is the expression-oriented spelling of Sort. It accepts AscExpr and
+// DescExpr keys directly, so callers do not need a visible WithColumns step.
+func (f LazyFrame) SortBy(by ...SortExpr) LazyFrame {
+	return f.orderBy("SortBy", by...)
+}
+
+func (f LazyFrame) orderBy(operation string, by ...SortExpr) LazyFrame {
 	if f.err != nil {
 		return f
 	}
 	if len(by) == 0 {
-		f.err = fmt.Errorf("Sort requires at least one key")
+		f.err = fmt.Errorf("%s requires at least one key", operation)
 		return f
 	}
-	keys := make([]logical.SortKey, len(by))
-	for i, k := range by {
-		if k.Column == "" {
-			f.err = fmt.Errorf("Sort key %d has an empty column", i)
-			return f
-		}
-		keys[i] = logical.SortKey{Column: k.Column, Descending: k.Descending, NullsLast: k.NullsLast}
+	keys, err := lazySortKeys(operation, by)
+	if err != nil {
+		f.err = err
+		return f
 	}
 	f.plan = &logical.Sort{Input: f.plan, By: keys}
 	return f
@@ -175,27 +390,44 @@ func (f LazyFrame) Sort(by ...SortExpr) LazyFrame {
 
 // TopK appends a bounded-memory ordering operator that returns the best K rows.
 func (f LazyFrame) TopK(k int, by ...SortExpr) LazyFrame {
+	return f.topKBy("TopK", k, by...)
+}
+
+// TopKBy is the expression-oriented spelling of TopK.
+func (f LazyFrame) TopKBy(k int, by ...SortExpr) LazyFrame {
+	return f.topKBy("TopKBy", k, by...)
+}
+
+func (f LazyFrame) topKBy(operation string, k int, by ...SortExpr) LazyFrame {
 	if f.err != nil {
 		return f
 	}
 	if k < 0 {
-		f.err = fmt.Errorf("TopK requires a non-negative K")
+		f.err = fmt.Errorf("%s requires a non-negative K", operation)
 		return f
 	}
 	if len(by) == 0 {
-		f.err = fmt.Errorf("TopK requires at least one key")
+		f.err = fmt.Errorf("%s requires at least one key", operation)
 		return f
 	}
-	keys := make([]logical.SortKey, len(by))
-	for i, key := range by {
-		if key.Column == "" {
-			f.err = fmt.Errorf("TopK key %d has an empty column", i)
-			return f
-		}
-		keys[i] = logical.SortKey{Column: key.Column, Descending: key.Descending, NullsLast: key.NullsLast}
+	keys, err := lazySortKeys(operation, by)
+	if err != nil {
+		f.err = err
+		return f
 	}
 	f.plan = &logical.TopK{Input: f.plan, K: k, By: keys}
 	return f
+}
+
+func lazySortKeys(operation string, by []SortExpr) ([]logical.SortKey, error) {
+	keys := make([]logical.SortKey, len(by))
+	for i, key := range by {
+		if key.Expr == nil {
+			return nil, fmt.Errorf("%s key %d has an empty expression", operation, i)
+		}
+		keys[i] = logical.SortKey{Expr: key.Expr, Descending: key.Descending, NullsLast: key.NullsLast}
+	}
+	return keys, nil
 }
 
 // Limit appends an order-preserving global row limit.
@@ -305,13 +537,13 @@ func (f LazyFrame) explainRowPhysical(ctx context.Context) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	src, pending, closers, err := lowerSourcePipeline(ctx, physicalPlan, f.session.engine.Memory(), f.session.engine.KernelCapabilities().Mode, f.session.engine)
+	src, pending, closers, err := lowerSourcePipeline(ctx, physicalPlan, f.session.engine.Memory(), f.session.engine.KernelSet(), f.session.engine)
 	if err != nil {
 		return "", err
 	}
 	defer closeClosers(closers)
 	if pending != nil {
-		src, err = physical.NewFilterSource(src, pending, f.session.engine.KernelCapabilities().Mode)
+		src, err = physical.NewFilterSource(src, pending)
 		if err != nil {
 			return "", err
 		}
@@ -433,7 +665,7 @@ func (f LazyFrame) prepare(ctx context.Context, opts engine.PrepareOptions) (*en
 		if !ok {
 			return nil, nil, source.PushdownReport{}, nil, fmt.Errorf("Collect/Prepare requires GroupBy(...).Agg(...) as the terminal lazy operation")
 		}
-		physicalSource, query.Filter, closers, err = lowerSourcePipeline(ctx, agg.Input, f.session.engine.Memory(), f.session.engine.KernelCapabilities().Mode, f.session.engine)
+		physicalSource, query.Filter, closers, err = lowerSourcePipeline(ctx, agg.Input, f.session.engine.Memory(), f.session.engine.KernelSet(), f.session.engine)
 		if err != nil {
 			return nil, nil, source.PushdownReport{}, nil, err
 		}
@@ -538,6 +770,12 @@ func applyPushdown(ctx context.Context, plan logical.Plan) (logical.Plan, source
 			return nil, source.PushdownReport{}, err
 		}
 		return &logical.Aggregate{Input: child, GroupBy: append([]string(nil), n.GroupBy...), Aggregates: append([]expr.Aggregate(nil), n.Aggregates...), Hints: n.Hints}, report, nil
+	case *logical.Window:
+		child, report, err := applyPushdown(ctx, n.Input)
+		if err != nil {
+			return nil, source.PushdownReport{}, err
+		}
+		return &logical.Window{Input: child, Spec: logical.WindowSpec{PartitionBy: append([]string(nil), n.Spec.PartitionBy...), By: append([]logical.SortKey(nil), n.Spec.By...)}, Exprs: append([]logical.WindowExpr(nil), n.Exprs...)}, report, nil
 	default:
 		return nil, source.PushdownReport{}, fmt.Errorf("unsupported logical node %T", plan)
 	}
@@ -579,7 +817,7 @@ func containsAdvancedPlan(plan logical.Plan) bool {
 	switch n := plan.(type) {
 	case *logical.ExprProjection:
 		return true
-	case *logical.Sort, *logical.TopK, *logical.Limit:
+	case *logical.Sort, *logical.TopK, *logical.Limit, *logical.Window:
 		return true
 	case *logical.Filter:
 		return containsAdvancedPlan(n.Input)
@@ -594,7 +832,139 @@ func containsAdvancedPlan(plan logical.Plan) bool {
 	}
 }
 
-func lowerSourcePipeline(ctx context.Context, plan logical.Plan, manager memory.Manager, mode kernel.Mode, exec join.ParallelExecutor) (source.Source, expr.Expr, []io.Closer, error) {
+// canSplitTopKInput identifies row-preserving pipelines that can be lowered
+// twice: once with only ordering-key dependencies and once with the complete
+// payload. Joins and aggregate-result sources are intentionally excluded
+// because their prepared build/aggregation work should be reused, not repeated
+// solely to narrow a Top-K first pass.
+func canSplitTopKInput(plan logical.Plan) bool {
+	switch n := plan.(type) {
+	case *logical.Scan:
+		return true
+	case *logical.Filter:
+		return canSplitTopKInput(n.Input)
+	case *logical.Projection:
+		return canSplitTopKInput(n.Input)
+	case *logical.ExprProjection:
+		return canSplitTopKInput(n.Input)
+	default:
+		return false
+	}
+}
+
+// lowerTopKKeySource creates an independent, narrow replay of a row-preserving
+// Top-K input. Re-optimizing the added key projection lets PushdownSource
+// implementations avoid decoding non-ordering payload columns on the first
+// Top-K pass. The residual filter is replayed on both inputs, preserving the
+// row offsets used to gather payload rows from winning partitions.
+func lowerTopKKeySource(ctx context.Context, input logical.Plan, order orderKeyPlan, manager memory.Manager, kernels kernel.Set, exec join.ParallelExecutor) (source.Source, error) {
+	keyPlan, err := optimizer.Optimize(order.keyPlan(input))
+	if err != nil {
+		return nil, err
+	}
+	physicalPlan, _, err := applyPushdown(ctx, keyPlan.Plan)
+	if err != nil {
+		return nil, err
+	}
+	keySrc, pending, closers, err := lowerSourcePipeline(ctx, physicalPlan, manager, kernels, exec)
+	if err != nil {
+		return nil, err
+	}
+	if len(closers) != 0 {
+		for i := len(closers) - 1; i >= 0; i-- {
+			_ = closers[i].Close()
+		}
+		return nil, fmt.Errorf("top-k key source unexpectedly retains physical resources")
+	}
+	if pending == nil {
+		return keySrc, nil
+	}
+	childID := profileSourceID(keySrc)
+	keySrc, err = physical.NewFilterSource(keySrc, pending)
+	if err != nil {
+		return nil, err
+	}
+	return profileSource(ctx, keySrc, "filter", "residual filter before top-k keys", childID), nil
+}
+
+const internalOrderKeyPrefix = "__gocolumn_order_key_"
+
+// orderKeyPlan describes the hidden physical columns that back logical
+// ordering expressions. Direct columns keep their existing fast path; only
+// computed expressions are materialized and later removed from output.
+type orderKeyPlan struct {
+	computed      []expr.NamedExpr
+	keys          []physical.SortKey
+	keyColumns    []string
+	hiddenColumns []string
+}
+
+func newOrderKeyPlan(schema memory.Schema, by []logical.SortKey) (orderKeyPlan, error) {
+	plan := orderKeyPlan{
+		keys:          make([]physical.SortKey, len(by)),
+		keyColumns:    make([]string, 0, len(by)),
+		hiddenColumns: make([]string, 0, len(by)),
+	}
+	used := make(map[string]struct{}, len(schema.Fields)+len(by))
+	for _, field := range schema.Fields {
+		used[field.Name] = struct{}{}
+	}
+	keySeen := make(map[string]struct{}, len(by))
+	for i, key := range by {
+		value, err := key.Expression()
+		if err != nil {
+			return orderKeyPlan{}, fmt.Errorf("ordering key %d: %w", i, err)
+		}
+		if _, err := expr.InferScalarType(schema, value); err != nil {
+			return orderKeyPlan{}, fmt.Errorf("ordering key %d: %w", i, err)
+		}
+		column := ""
+		if direct, ok := value.(expr.Column); ok {
+			column = direct.Name
+		} else {
+			base := fmt.Sprintf("%s%d", internalOrderKeyPrefix, i)
+			column = base
+			for suffix := 1; ; suffix++ {
+				if _, exists := used[column]; !exists {
+					break
+				}
+				column = fmt.Sprintf("%s_%d", base, suffix)
+			}
+			used[column] = struct{}{}
+			plan.computed = append(plan.computed, expr.Named(value, column))
+			plan.hiddenColumns = append(plan.hiddenColumns, column)
+		}
+		plan.keys[i] = physical.SortKey{Column: column, Descending: key.Descending, NullsLast: key.NullsLast}
+		if _, exists := keySeen[column]; !exists {
+			keySeen[column] = struct{}{}
+			plan.keyColumns = append(plan.keyColumns, column)
+		}
+	}
+	return plan, nil
+}
+
+func (p orderKeyPlan) materialize(input source.Source) (source.Source, error) {
+	if len(p.computed) == 0 {
+		return input, nil
+	}
+	return physical.NewProjectSource(input, p.computed, true)
+}
+
+func (p orderKeyPlan) hide(input source.Source) (source.Source, error) {
+	return physical.NewDropColumnsSource(input, p.hiddenColumns)
+}
+
+func (p orderKeyPlan) keyPlan(input logical.Plan) logical.Plan {
+	if len(p.computed) == 0 {
+		return &logical.Projection{Input: input, Columns: append([]string(nil), p.keyColumns...)}
+	}
+	return &logical.Projection{
+		Input:   &logical.ExprProjection{Input: input, Exprs: append([]expr.NamedExpr(nil), p.computed...), IncludeInput: true},
+		Columns: append([]string(nil), p.keyColumns...),
+	}
+}
+
+func lowerSourcePipeline(ctx context.Context, plan logical.Plan, manager memory.Manager, kernels kernel.Set, exec join.ParallelExecutor) (source.Source, expr.Expr, []io.Closer, error) {
 	switch n := plan.(type) {
 	case *logical.Scan:
 		base := profileSource(ctx, n.Source, "scan", sourceDescription(n.Source))
@@ -607,19 +977,19 @@ func lowerSourcePipeline(ctx context.Context, plan logical.Plan, manager memory.
 		}
 		return src, nil, nil, nil
 	case *logical.Filter:
-		src, pending, closers, err := lowerSourcePipeline(ctx, n.Input, manager, mode, exec)
+		src, pending, closers, err := lowerSourcePipeline(ctx, n.Input, manager, kernels, exec)
 		if err != nil {
 			return nil, nil, nil, err
 		}
 		return src, expr.MergeAnd(pending, n.Predicate), closers, nil
 	case *logical.Projection:
-		src, pending, closers, err := lowerSourcePipeline(ctx, n.Input, manager, mode, exec)
+		src, pending, closers, err := lowerSourcePipeline(ctx, n.Input, manager, kernels, exec)
 		if err != nil {
 			return nil, nil, nil, err
 		}
 		if pending != nil {
 			childID := profileSourceID(src)
-			src, err = physical.NewFilterSource(src, pending, mode)
+			src, err = physical.NewFilterSource(src, pending)
 			if err != nil {
 				return nil, nil, nil, err
 			}
@@ -636,13 +1006,13 @@ func lowerSourcePipeline(ctx context.Context, plan logical.Plan, manager memory.
 		}
 		return profileSource(ctx, projected, "projection", "column projection", childID), nil, closers, nil
 	case *logical.ExprProjection:
-		src, pending, closers, err := lowerSourcePipeline(ctx, n.Input, manager, mode, exec)
+		src, pending, closers, err := lowerSourcePipeline(ctx, n.Input, manager, kernels, exec)
 		if err != nil {
 			return nil, nil, nil, err
 		}
 		if pending != nil {
 			childID := profileSourceID(src)
-			src, err = physical.NewFilterSource(src, pending, mode)
+			src, err = physical.NewFilterSource(src, pending)
 			if err != nil {
 				return nil, nil, nil, err
 			}
@@ -655,59 +1025,100 @@ func lowerSourcePipeline(ctx context.Context, plan logical.Plan, manager memory.
 		}
 		return profileSource(ctx, projected, "projection", "expression projection", childID), nil, closers, nil
 	case *logical.Sort:
-		src, pending, closers, err := lowerSourcePipeline(ctx, n.Input, manager, mode, exec)
+		src, pending, closers, err := lowerSourcePipeline(ctx, n.Input, manager, kernels, exec)
 		if err != nil {
 			return nil, nil, nil, err
 		}
 		if pending != nil {
 			childID := profileSourceID(src)
-			src, err = physical.NewFilterSource(src, pending, mode)
+			src, err = physical.NewFilterSource(src, pending)
 			if err != nil {
 				return nil, nil, closers, err
 			}
 			src = profileSource(ctx, src, "filter", "residual filter before sort", childID)
 		}
-		keys := make([]physical.SortKey, len(n.By))
-		for i, k := range n.By {
-			keys[i] = physical.SortKey{Column: k.Column, Descending: k.Descending, NullsLast: k.NullsLast}
-		}
-		childID := profileSourceID(src)
-		sorted, err := physical.NewSortSource(src, keys, manager)
+		order, err := newOrderKeyPlan(src.Schema(), n.By)
 		if err != nil {
 			return nil, nil, closers, err
 		}
-		return profileSource(ctx, sorted, "sort", "global sort", childID), nil, closers, nil
+		keyed, err := order.materialize(src)
+		if err != nil {
+			return nil, nil, closers, err
+		}
+		if keyed != src {
+			keyed = profileSource(ctx, keyed, "projection", "internal expression sort keys", profileSourceID(src))
+		}
+		childID := profileSourceID(keyed)
+		workers := 1
+		if exec != nil {
+			workers = exec.MaxWorkers()
+		}
+		sorted, err := physical.NewSortSourceWithOptions(keyed, order.keys, manager, physical.SortSourceOptions{Workers: workers, Executor: exec})
+		if err != nil {
+			return nil, nil, closers, err
+		}
+		sorted = profileSource(ctx, sorted, "sort", "global sort", childID)
+		out, err := order.hide(sorted)
+		if err != nil {
+			return nil, nil, closers, err
+		}
+		return out, nil, closers, nil
 	case *logical.TopK:
-		src, pending, closers, err := lowerSourcePipeline(ctx, n.Input, manager, mode, exec)
+		src, pending, closers, err := lowerSourcePipeline(ctx, n.Input, manager, kernels, exec)
 		if err != nil {
 			return nil, nil, nil, err
 		}
 		if pending != nil {
 			childID := profileSourceID(src)
-			src, err = physical.NewFilterSource(src, pending, mode)
+			src, err = physical.NewFilterSource(src, pending)
 			if err != nil {
 				return nil, nil, closers, err
 			}
 			src = profileSource(ctx, src, "filter", "residual filter before top-k", childID)
 		}
-		keys := make([]physical.SortKey, len(n.By))
-		for i, k := range n.By {
-			keys[i] = physical.SortKey{Column: k.Column, Descending: k.Descending, NullsLast: k.NullsLast}
-		}
-		childID := profileSourceID(src)
-		top, err := physical.NewTopKSourceWithManager(src, n.K, keys, manager)
+		order, err := newOrderKeyPlan(src.Schema(), n.By)
 		if err != nil {
 			return nil, nil, closers, err
 		}
-		return profileSource(ctx, top, "topk", fmt.Sprintf("top-k k=%d", n.K), childID), nil, closers, nil
+		keyed, err := order.materialize(src)
+		if err != nil {
+			return nil, nil, closers, err
+		}
+		if keyed != src {
+			keyed = profileSource(ctx, keyed, "projection", "internal expression top-k keys", profileSourceID(src))
+		}
+		childID := profileSourceID(keyed)
+		var top source.Source
+		if canSplitTopKInput(n.Input) {
+			keySrc, err := lowerTopKKeySource(ctx, n.Input, order, manager, kernels, exec)
+			if err != nil {
+				return nil, nil, closers, err
+			}
+			top, err = physical.NewTopKSourceWithKeyInput(keyed, keySrc, n.K, order.keys, manager)
+			if err != nil {
+				return nil, nil, closers, err
+			}
+			top = profileSource(ctx, top, "topk", fmt.Sprintf("top-k k=%d", n.K), childID, profileSourceID(keySrc))
+		} else {
+			top, err = physical.NewTopKSourceWithManager(keyed, n.K, order.keys, manager)
+			if err != nil {
+				return nil, nil, closers, err
+			}
+			top = profileSource(ctx, top, "topk", fmt.Sprintf("top-k k=%d", n.K), childID)
+		}
+		out, err := order.hide(top)
+		if err != nil {
+			return nil, nil, closers, err
+		}
+		return out, nil, closers, nil
 	case *logical.Limit:
-		src, pending, closers, err := lowerSourcePipeline(ctx, n.Input, manager, mode, exec)
+		src, pending, closers, err := lowerSourcePipeline(ctx, n.Input, manager, kernels, exec)
 		if err != nil {
 			return nil, nil, nil, err
 		}
 		if pending != nil {
 			childID := profileSourceID(src)
-			src, err = physical.NewFilterSource(src, pending, mode)
+			src, err = physical.NewFilterSource(src, pending)
 			if err != nil {
 				return nil, nil, closers, err
 			}
@@ -720,7 +1131,7 @@ func lowerSourcePipeline(ctx context.Context, plan logical.Plan, manager memory.
 		}
 		return profileSource(ctx, limited, "limit", fmt.Sprintf("limit n=%d", n.N), childID), nil, closers, nil
 	case *logical.Aggregate:
-		src, pending, closers, err := lowerSourcePipeline(ctx, n.Input, manager, mode, exec)
+		src, pending, closers, err := lowerSourcePipeline(ctx, n.Input, manager, kernels, exec)
 		if err != nil {
 			return nil, nil, nil, err
 		}
@@ -746,20 +1157,66 @@ func lowerSourcePipeline(ctx context.Context, plan logical.Plan, manager memory.
 		closers = append(closers, pq)
 		childID := profileSourceID(src)
 		return profileSource(ctx, aggSrc, "aggregate", "materialized aggregate source", childID), nil, closers, nil
+	case *logical.Window:
+		src, pending, closers, err := lowerSourcePipeline(ctx, n.Input, manager, kernels, exec)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		if pending != nil {
+			childID := profileSourceID(src)
+			src, err = physical.NewFilterSource(src, pending)
+			if err != nil {
+				return nil, nil, closers, err
+			}
+			src = profileSource(ctx, src, "filter", "residual filter before window", childID)
+		}
+		order, err := newOrderKeyPlan(src.Schema(), n.Spec.By)
+		if err != nil {
+			return nil, nil, closers, err
+		}
+		keyed, err := order.materialize(src)
+		if err != nil {
+			return nil, nil, closers, err
+		}
+		if keyed != src {
+			keyed = profileSource(ctx, keyed, "projection", "internal expression window keys", profileSourceID(src))
+		}
+		outSchema, err := logical.InferSchema(n)
+		if err != nil {
+			return nil, nil, closers, err
+		}
+		outputFields := make([]memory.Field, len(n.Exprs))
+		for i, window := range n.Exprs {
+			field, ok := outSchema.Field(window.Alias)
+			if !ok {
+				return nil, nil, closers, fmt.Errorf("window output %q missing from schema", window.Alias)
+			}
+			outputFields[i] = field
+		}
+		windowed, err := physical.NewWindowSource(keyed, n.Spec.PartitionBy, order.keys, lowerWindowExpressions(n.Exprs), outputFields, manager)
+		if err != nil {
+			return nil, nil, closers, err
+		}
+		windowed = profileSource(ctx, windowed, "window", "global analytic window", profileSourceID(keyed))
+		out, err := order.hide(windowed)
+		if err != nil {
+			return nil, nil, closers, err
+		}
+		return out, nil, closers, nil
 	case *logical.Join:
-		left, lp, lc, err := lowerSourcePipeline(ctx, n.Left, manager, mode, exec)
+		left, lp, lc, err := lowerSourcePipeline(ctx, n.Left, manager, kernels, exec)
 		if err != nil {
 			return nil, nil, nil, err
 		}
 		if lp != nil {
 			childID := profileSourceID(left)
-			left, err = physical.NewFilterSource(left, lp, mode)
+			left, err = physical.NewFilterSource(left, lp)
 			if err != nil {
 				return nil, nil, nil, err
 			}
 			left = profileSource(ctx, left, "filter", "left join filter", childID)
 		}
-		right, rp, rc, err := lowerSourcePipeline(ctx, n.Right, manager, mode, exec)
+		right, rp, rc, err := lowerSourcePipeline(ctx, n.Right, manager, kernels, exec)
 		if err != nil {
 			for i := len(lc) - 1; i >= 0; i-- {
 				_ = lc[i].Close()
@@ -768,7 +1225,7 @@ func lowerSourcePipeline(ctx context.Context, plan logical.Plan, manager memory.
 		}
 		if rp != nil {
 			childID := profileSourceID(right)
-			right, err = physical.NewFilterSource(right, rp, mode)
+			right, err = physical.NewFilterSource(right, rp)
 			if err != nil {
 				return nil, nil, nil, err
 			}
@@ -783,7 +1240,7 @@ func lowerSourcePipeline(ctx context.Context, plan logical.Plan, manager memory.
 			workers = exec.MaxWorkers()
 		}
 		joinStart := time.Now()
-		joined, err := physical.NewJoinSourceWithOptions(ctx, left, right, n.Type, keys, n.Suffix, manager, physical.JoinSourceOptions{RadixBits: n.RadixBits, Workers: workers, Executor: exec, AutoParallelRadix: n.RadixBits == 0})
+		joined, err := physical.NewJoinSourceWithOptions(ctx, left, right, n.Type, keys, n.Suffix, manager, physical.JoinSourceOptions{Kernels: kernels, RadixBits: n.RadixBits, Workers: workers, Executor: exec, AutoParallelRadix: n.RadixBits == 0})
 		joinPrepare := time.Since(joinStart)
 		if err != nil {
 			for i := len(rc) - 1; i >= 0; i-- {
@@ -808,6 +1265,22 @@ func lowerSourcePipeline(ctx context.Context, plan logical.Plan, manager memory.
 	default:
 		return nil, nil, nil, fmt.Errorf("phase-2.5 source lowering does not support %T", plan)
 	}
+}
+
+func lowerWindowExpressions(expressions []logical.WindowExpr) []physical.WindowExpression {
+	out := make([]physical.WindowExpression, len(expressions))
+	for i, window := range expressions {
+		out[i] = physical.WindowExpression{
+			Function: physical.WindowFunction(window.Function),
+			Column:   window.Column,
+			Alias:    window.Alias,
+			Frame: physical.WindowFrame{
+				Start: physical.WindowBound{Kind: physical.WindowBoundKind(window.Frame.Start.Kind), Offset: window.Frame.Start.Offset},
+				End:   physical.WindowBound{Kind: physical.WindowBoundKind(window.Frame.End.Kind), Offset: window.Frame.End.Offset},
+			},
+		}
+	}
+	return out
 }
 
 type profileIDProvider interface{ OperatorID() string }

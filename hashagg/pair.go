@@ -2,6 +2,7 @@ package hashagg
 
 import (
 	"gocolumn/aggregate"
+	"gocolumn/internal/hashmix"
 	"gocolumn/memory"
 	"math/bits"
 )
@@ -21,11 +22,11 @@ type Group128 struct {
 }
 
 // Hash128 returns the fixed-width pair hash for fully valid keys.
-func Hash128(k Key128) uint64 { return Hash64(k.A ^ bits.RotateLeft64(k.B, 31)) }
+func Hash128(k Key128) uint64 { return hashmix.Mix64(hashmix.PairValues(k.A, k.B)) }
 
 // Hash128Nullable returns a fixed-width pair hash that includes key validity.
 func Hash128Nullable(k Key128, validMask uint8) uint64 {
-	return Hash64(k.A ^ bits.RotateLeft64(k.B, 31) ^ uint64(validMask)*0x9e3779b97f4a7c15)
+	return hashmix.Pair(k.A, k.B, validMask)
 }
 
 // PairTable is an adaptive open-addressing aggregation table for two fixed
