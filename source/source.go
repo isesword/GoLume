@@ -40,11 +40,24 @@ func (o ReadOptions) Validate() error {
 	return nil
 }
 
-// Source describes a partitioned columnar input and creates independent readers.
+// Source describes the metadata required to plan a partitioned columnar input.
+// Execution is provided by BatchStreamProvider. During the Phase 3 migration,
+// scan implementations may instead implement LegacyReaderSource and are
+// adapted exactly once by OpenBatchStream at the external source boundary.
 type Source interface {
 	Schema() memory.Schema
 	Stats(ctx context.Context) (Stats, error)
 	Partitions(ctx context.Context) ([]Partition, error)
+}
+
+// LegacyReaderSource is the temporary compatibility contract for external
+// scan extensions written against the pre-Phase-3 partition Reader API.
+//
+// Deprecated: implement BatchStreamProvider. This adapter is scheduled for
+// removal in GoLume v0.8. Physical operators must never implement this
+// interface; it exists only at the external source boundary.
+type LegacyReaderSource interface {
+	Source
 	NewReader(ctx context.Context, opts ReadOptions) (Reader, error)
 }
 

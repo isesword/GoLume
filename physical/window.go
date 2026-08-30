@@ -228,26 +228,6 @@ func (s *WindowSource) Partitions(ctx context.Context) ([]source.Partition, erro
 	return []source.Partition{{ID: 0, Rows: st.Rows}}, nil
 }
 
-// NewReader creates an independent window evaluation reader.
-func (s *WindowSource) NewReader(ctx context.Context, opts source.ReadOptions) (source.Reader, error) {
-	if err := opts.Validate(); err != nil {
-		return nil, err
-	}
-	if s.mode != WindowExecutionResident {
-		return nil, fmt.Errorf("bounded window requires BatchStream execution")
-	}
-	child, err := s.input.NewReader(ctx, opts)
-	if err != nil {
-		return nil, err
-	}
-	parts, err := s.input.Partitions(ctx)
-	if err != nil {
-		_ = child.Close()
-		return nil, err
-	}
-	return &windowReader{owner: s, child: child, parts: parts, scratch: memory.NewBatch()}, nil
-}
-
 // Dictionary forwards stable source dictionary metadata for retained inputs.
 func (s *WindowSource) Dictionary(ctx context.Context, column string) (source.Dictionary, error) {
 	provider, ok := s.input.(source.DictionaryProvider)
@@ -259,8 +239,7 @@ func (s *WindowSource) Dictionary(ctx context.Context, column string) (source.Di
 
 type windowReader struct {
 	owner       *WindowSource
-	child       source.Reader
-	parts       []source.Partition
+	child       source.BatchStream
 	scratch     *memory.Batch
 	reservation memory.Reservation
 	done        bool
@@ -302,24 +281,20 @@ func (r *windowReader) reserve(ctx context.Context) error {
 	return nil
 }
 
-// ReadPartition evaluates every window expression exactly once for the global
+// Next evaluates every window expression exactly once for the global
 // input. Results are gathered in original row order, not ordering-key order.
-func (r *windowReader) ReadPartition(ctx context.Context, partition source.Partition, dst *memory.Batch) error {
-	if partition.ID != 0 {
-		return fmt.Errorf("window output partition %d is invalid", partition.ID)
-	}
+func (r *windowReader) Next(ctx context.Context, dst *memory.Batch) (bool, error) {
 	if r.done {
 		dst.ClearColumns()
-		dst.Reset(0)
-		return nil
+		return false, nil
 	}
 	r.done = true
 	if err := r.reserve(ctx); err != nil {
-		return err
+		return false, err
 	}
-	full, err := materializeSource(ctx, r.owner.input.Schema(), r.parts, r.child, r.scratch)
+	full, err := materializeStream(ctx, r.owner.input.Schema(), r.child, r.scratch)
 	if err != nil {
-		return err
+		return false, err
 	}
 	defer full.ReleaseOwned()
 	partitionKeys := make([]SortKey, len(r.owner.partitionBy))
@@ -331,38 +306,40 @@ func (r *windowReader) ReadPartition(ctx context.Context, partition source.Parti
 	keys = append(keys, r.owner.orderBy...)
 	rows, err := sortRows(ctx, full.Rows, batchComparator{batch: full, schema: r.owner.input.Schema(), keys: keys}, 1, nil)
 	if err != nil {
-		return err
+		return false, err
 	}
 	identity := make([]int, full.Rows)
 	for i := range identity {
 		identity[i] = i
 	}
 	if err := takeRows(ctx, dst, full, identity); err != nil {
-		return err
+		return false, err
 	}
 	for _, window := range r.owner.expressions {
 		clearWindowOutput(dst, window.Alias)
 		if len(rows) == 0 {
 			if err := evaluateWindowExpression(ctx, full, r.owner.input.Schema(), dst, nil, r.owner.orderBy, window); err != nil {
-				return err
+				return false, err
 			}
 			continue
 		}
 		for start := 0; start < len(rows); {
 			if err := ctx.Err(); err != nil {
-				return err
+				return false, err
 			}
 			end := start + 1
 			for end < len(rows) && sameRowsByKeys(full, r.owner.input.Schema(), partitionKeys, rows[start], rows[end]) {
 				end++
 			}
 			if err := evaluateWindowExpression(ctx, full, r.owner.input.Schema(), dst, rows[start:end], r.owner.orderBy, window); err != nil {
-				return err
+				return false, err
 			}
 			start = end
 		}
 	}
-	return nil
+	// A global window emits a schema-bearing empty batch once, so Collect can
+	// preserve typed columns for empty inputs without inventing a second path.
+	return true, nil
 }
 
 func sameRowsByKeys(batch *memory.Batch, schema memory.Schema, keys []SortKey, left, right int) bool {

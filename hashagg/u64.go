@@ -263,6 +263,35 @@ func (t *U64Table) Visit(fn func(key uint64, valid bool, state aggregate.Int64Re
 	return nil
 }
 
+// VisitChunk visits at most limit groups and advances cursor.
+func (t *U64Table) VisitChunk(cursor *int, limit int, fn func(key uint64, valid bool, state aggregate.Int64Result) error) (bool, error) {
+	if cursor == nil || limit < 1 || fn == nil {
+		return false, nil
+	}
+	emitted := 0
+	for *cursor < len(t.epoch) {
+		i := *cursor
+		*cursor = i + 1
+		if t.epoch[i] != t.gen {
+			continue
+		}
+		if err := fn(t.keys[i], true, t.state.Result(i)); err != nil {
+			return false, err
+		}
+		emitted++
+		if emitted == limit {
+			return !t.nullSet && *cursor >= len(t.epoch), nil
+		}
+	}
+	if t.nullSet && *cursor == len(t.epoch) {
+		*cursor++
+		if err := fn(0, false, t.nullState.Result(0)); err != nil {
+			return false, err
+		}
+	}
+	return true, nil
+}
+
 // Capacity returns the current number of hash slots.
 func (t *U64Table) Capacity() int { return len(t.keys) }
 

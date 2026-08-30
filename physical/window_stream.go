@@ -58,22 +58,16 @@ func (s *WindowSource) NewBatchStreamWithPartitions(ctx context.Context, opts so
 }
 
 type residentWindowStream struct {
-	reader source.Reader
-	part   source.Partition
+	reader *windowReader
 	done   bool
 }
 
 func newResidentWindowStream(ctx context.Context, owner *WindowSource, opts source.ReadOptions) (source.BatchStream, error) {
-	reader, err := owner.NewReader(ctx, opts)
+	child, err := source.OpenBatchStream(ctx, owner.input, opts)
 	if err != nil {
 		return nil, err
 	}
-	parts, err := owner.Partitions(ctx)
-	if err != nil {
-		_ = reader.Close()
-		return nil, err
-	}
-	return &residentWindowStream{reader: reader, part: parts[0]}, nil
+	return &residentWindowStream{reader: &windowReader{owner: owner, child: child, scratch: memory.NewBatch()}}, nil
 }
 
 // Next emits the resident window result once.
@@ -83,10 +77,7 @@ func (s *residentWindowStream) Next(ctx context.Context, dst *memory.Batch) (boo
 		return false, nil
 	}
 	s.done = true
-	if err := s.reader.ReadPartition(ctx, s.part, dst); err != nil {
-		return false, err
-	}
-	return true, nil
+	return s.reader.Next(ctx, dst)
 }
 
 // Close releases the resident window reader.
@@ -123,11 +114,6 @@ func (s *ordinalSource) Stats(ctx context.Context) (source.Stats, error) {
 // Partitions forwards child partitions.
 func (s *ordinalSource) Partitions(ctx context.Context) ([]source.Partition, error) {
 	return s.input.Partitions(ctx)
-}
-
-// NewReader rejects the legacy materializing reader path.
-func (s *ordinalSource) NewReader(context.Context, source.ReadOptions) (source.Reader, error) {
-	return nil, fmt.Errorf("window ordinal source requires BatchStream execution")
 }
 
 // NewBatchStream opens the ordinal-appending stream.
@@ -211,11 +197,6 @@ func (s *orderedWindowSource) Stats(ctx context.Context) (source.Stats, error) {
 // Partitions forwards ordered-input partitions.
 func (s *orderedWindowSource) Partitions(ctx context.Context) ([]source.Partition, error) {
 	return s.input.Partitions(ctx)
-}
-
-// NewReader rejects the legacy reader path.
-func (s *orderedWindowSource) NewReader(context.Context, source.ReadOptions) (source.Reader, error) {
-	return nil, fmt.Errorf("ordered window source requires BatchStream execution")
 }
 
 // NewBatchStream opens the bounded ordered-state evaluator.

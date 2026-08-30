@@ -243,6 +243,29 @@ func (t *PairTable) Visit(fn func(key Key128, validMask uint8, state aggregate.I
 	return nil
 }
 
+// VisitChunk visits at most limit groups and advances cursor.
+func (t *PairTable) VisitChunk(cursor *int, limit int, fn func(key Key128, validMask uint8, state aggregate.Int64Result) error) (bool, error) {
+	if cursor == nil || limit < 1 || fn == nil {
+		return false, nil
+	}
+	emitted := 0
+	for *cursor < len(t.epoch) {
+		i := *cursor
+		*cursor = i + 1
+		if t.epoch[i] != t.gen {
+			continue
+		}
+		if err := fn(Key128{A: t.a[i], B: t.b[i]}, t.validMask[i], t.state.Result(i)); err != nil {
+			return false, err
+		}
+		emitted++
+		if emitted == limit {
+			return *cursor >= len(t.epoch), nil
+		}
+	}
+	return true, nil
+}
+
 // Capacity returns the current number of hash slots.
 func (t *PairTable) Capacity() int { return len(t.a) }
 

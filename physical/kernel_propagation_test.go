@@ -21,7 +21,7 @@ func (s *kernelRecordingSource) NewReader(ctx context.Context, opts source.ReadO
 		return nil, err
 	}
 	s.seen = append(s.seen, opts.Kernels)
-	return s.Source.NewReader(ctx, opts)
+	return openTestReader(ctx, s.Source, opts)
 }
 
 func propagationBase(t *testing.T) source.Source {
@@ -69,7 +69,7 @@ func TestPhysicalWrappersPropagateExactKernelSet(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			reader, err := wrapped.NewReader(context.Background(), source.ReadOptions{Kernels: kernels})
+			reader, err := openTestReader(context.Background(), wrapped, source.ReadOptions{Kernels: kernels})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -77,7 +77,7 @@ func TestPhysicalWrappersPropagateExactKernelSet(t *testing.T) {
 			if len(recorder.seen) != 1 || recorder.seen[0] != kernels {
 				t.Fatalf("received kernel sets=%v, want exact engine handle", recorder.seen)
 			}
-			if _, err := wrapped.NewReader(context.Background(), source.ReadOptions{}); err == nil {
+			if _, err := openTestReader(context.Background(), wrapped, source.ReadOptions{}); err == nil {
 				t.Fatal("zero ReadOptions must fail")
 			}
 		})
@@ -96,7 +96,7 @@ func TestJoinPropagatesAndRequiresExactKernelSet(t *testing.T) {
 	if len(right.seen) != 1 || right.seen[0] != kernels {
 		t.Fatalf("build side received %v", right.seen)
 	}
-	reader, err := joined.NewReader(context.Background(), source.ReadOptions{Kernels: kernels})
+	reader, err := openTestReader(context.Background(), joined, source.ReadOptions{Kernels: kernels})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -104,7 +104,7 @@ func TestJoinPropagatesAndRequiresExactKernelSet(t *testing.T) {
 	if len(left.seen) != 1 || left.seen[0] != kernels {
 		t.Fatalf("probe side received %v", left.seen)
 	}
-	if _, err := joined.NewReader(context.Background(), source.ReadOptions{Kernels: kernel.New(kernel.ModeSIMD)}); err == nil {
+	if _, err := openTestReader(context.Background(), joined, source.ReadOptions{Kernels: kernel.New(kernel.ModeSIMD)}); err == nil {
 		t.Fatal("join accepted a different Set with the same mode")
 	}
 }

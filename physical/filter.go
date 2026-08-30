@@ -56,18 +56,6 @@ func (s *FilterSource) Partitions(ctx context.Context) ([]source.Partition, erro
 	return s.input.Partitions(ctx)
 }
 
-// NewReader creates an independent compacting filter reader.
-func (s *FilterSource) NewReader(ctx context.Context, opts source.ReadOptions) (source.Reader, error) {
-	if err := opts.Validate(); err != nil {
-		return nil, err
-	}
-	r, err := s.input.NewReader(ctx, opts)
-	if err != nil {
-		return nil, err
-	}
-	return &filterReader{owner: s, child: r, input: memory.NewBatch(), output: memory.NewBatch(), kernels: opts.Kernels}, nil
-}
-
 // NewBatchStream creates a native filter stream that may consume any number of
 // input morsels before returning the next non-empty output Batch.
 func (s *FilterSource) NewBatchStream(ctx context.Context, opts source.ReadOptions) (source.BatchStream, error) {
@@ -101,28 +89,6 @@ func (s *FilterSource) newBatchStream(ctx context.Context, opts source.ReadOptio
 		return nil
 	}
 	return stream, nil
-}
-
-type filterReader struct {
-	owner   *FilterSource
-	child   source.Reader
-	input   *memory.Batch
-	output  *memory.Batch
-	eval    expr.EvalWorkspace
-	rows    []int
-	kernels kernel.Set
-}
-
-// Close releases the child reader.
-func (r *filterReader) Close() error { return r.child.Close() }
-
-// ReadPartition filters and compacts one input partition. Specialized vectors
-// use typed gathers; opaque Arrow vectors use Arrow-Go's generic Take kernel.
-func (r *filterReader) ReadPartition(ctx context.Context, p source.Partition, dst *memory.Batch) error {
-	if err := r.child.ReadPartition(ctx, p, r.input); err != nil {
-		return err
-	}
-	return applyFilterBatch(ctx, r.owner, r.input, r.output, dst, &r.eval, &r.rows, r.kernels)
 }
 
 func applyFilterBatch(ctx context.Context, owner *FilterSource, input, output, dst *memory.Batch, eval *expr.EvalWorkspace, rows *[]int, kernels kernel.Set) error {

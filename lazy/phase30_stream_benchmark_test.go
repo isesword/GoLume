@@ -53,30 +53,6 @@ func BenchmarkPhase30PipelineMorsels(b *testing.B) {
 			}
 			defer prepared.Close()
 			b.SetBytes(totalRows * (4 + 8))
-			b.Run("reader-loop", func(b *testing.B) {
-				b.ReportAllocs()
-				rows := int64(0)
-				for i := 0; i < b.N; i++ {
-					reader, err := prepared.src.NewReader(context.Background(), source.ReadOptions{Kernels: prepared.kernels})
-					if err != nil {
-						b.Fatal(err)
-					}
-					batch := memory.NewBatch()
-					for _, part := range prepared.parts {
-						if err := reader.ReadPartition(context.Background(), part, batch); err != nil {
-							b.Fatal(err)
-						}
-						rows += int64(batch.Rows)
-					}
-					batch.ReleaseOwned()
-					if err := reader.Close(); err != nil {
-						b.Fatal(err)
-					}
-				}
-				if rows == 0 {
-					b.Fatal("reader produced no rows")
-				}
-			})
 			b.Run("batch-stream", func(b *testing.B) {
 				b.ReportAllocs()
 				rows := int64(0)

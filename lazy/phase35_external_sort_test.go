@@ -276,6 +276,14 @@ func (s orderedWindowTestSource) Ordering() []source.OrderingColumn {
 	return append([]source.OrderingColumn(nil), s.ordering...)
 }
 
+func (s *orderedWindowTestSource) NewBatchStream(ctx context.Context, opts source.ReadOptions) (source.BatchStream, error) {
+	return source.OpenBatchStream(ctx, s.Source, opts)
+}
+
+func (s *orderedWindowTestSource) NewBatchStreamWithPartitions(ctx context.Context, opts source.ReadOptions, parts []source.Partition) (source.BatchStream, error) {
+	return source.OpenBatchStreamWithPartitions(ctx, s.Source, opts, parts)
+}
+
 func TestBoundedOrderedWindowNeedsNoSpill(t *testing.T) {
 	batch := memory.NewBatch()
 	batch.Int32s["grp"] = &memory.Int32Vector{Values: []int32{1, 1, 2, 2}}

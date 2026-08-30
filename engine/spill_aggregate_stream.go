@@ -582,6 +582,7 @@ func (s *spillableAggregateStream) StreamDiagnostics() map[string]string {
 	}
 	return map[string]string{
 		"groups": fmt.Sprint(stats.Groups), "selected_rows": fmt.Sprint(stats.SelectedRows),
+		"checksum":   fmt.Sprint(stats.Checksum),
 		"spill_runs": fmt.Sprint(stats.SpillRuns), "spill_bytes": fmt.Sprint(stats.SpillBytes),
 		"peak_memory_bytes": fmt.Sprint(peak), "max_radix_depth": fmt.Sprint(stats.MaxRadixDepth),
 		"max_partition_groups": fmt.Sprint(stats.MaxPartitionGroups),

@@ -28,8 +28,8 @@ type BatchStreamDiagnostics interface {
 	StreamDiagnostics() map[string]string
 }
 
-// BatchStreamProvider lets a source provide a native stream. Sources that only
-// implement the partitioned Source contract are adapted by OpenBatchStream.
+// BatchStreamProvider lets a source provide a native stream. External scans
+// still implementing LegacyReaderSource are adapted by OpenBatchStream.
 type BatchStreamProvider interface {
 	NewBatchStream(ctx context.Context, opts ReadOptions) (BatchStream, error)
 }
@@ -99,7 +99,11 @@ func openBatchStream(ctx context.Context, src Source, opts ReadOptions, prepared
 			return nil, err
 		}
 	}
-	reader, err := src.NewReader(ctx, opts)
+	legacy, ok := src.(LegacyReaderSource)
+	if !ok {
+		return nil, fmt.Errorf("source %T implements neither BatchStreamProvider nor deprecated LegacyReaderSource", src)
+	}
+	reader, err := legacy.NewReader(ctx, opts)
 	if err != nil {
 		return nil, err
 	}

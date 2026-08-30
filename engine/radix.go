@@ -373,7 +373,11 @@ func (p *PreparedQuery) executeResidentRadix(ctx context.Context, w *queryWorksp
 }
 
 func (p *PreparedQuery) executeRadixFallbackReplay(ctx context.Context, workspace *queryWorkspace, opts ExecuteOptions) (Result, error) {
-	reader, err := p.src.NewReader(ctx, source.ReadOptions{Kernels: p.e.kernels})
+	legacy, ok := p.src.(source.LegacyReaderSource)
+	if !ok {
+		return Result{}, fmt.Errorf("legacy radix replay requires an external source.LegacyReaderSource")
+	}
+	reader, err := legacy.NewReader(ctx, source.ReadOptions{Kernels: p.e.kernels})
 	if err != nil {
 		return Result{}, err
 	}

@@ -103,12 +103,10 @@ func (f LazyFrame) Analyze(ctx context.Context) (AnalyzeReport, error) {
 	prepareCtx := observer.WithOperatorTrace(observer.WithPhase(ctx, observer.PhasePrepare), trace)
 
 	_, terminalAggregate := f.plan.(*logical.Aggregate)
-	policy, policyErr := f.effectiveExecutionPolicy()
-	if policyErr != nil {
-		return AnalyzeReport{}, policyErr
-	}
-	streamAggregate := terminalAggregate && (policy == engine.ExecutionBounded ||
-		policy == engine.ExecutionAuto && f.session.engine.Memory().Limit() > 0 && f.session.engine.SpillConfigured())
+	// Analyze follows the same native physical stream graph as Collect for every
+	// terminal aggregate. The former resident engine.Result branch made
+	// diagnostics observe a different optimizer/execution semantic.
+	streamAggregate := terminalAggregate
 	if terminalAggregate && !streamAggregate {
 		alloc0 := totalAlloc()
 		start := time.Now()
@@ -176,6 +174,8 @@ func (f LazyFrame) Analyze(ctx context.Context) (AnalyzeReport, error) {
 	if terminalAggregate {
 		report.GroupCount = int(frame.Height())
 		report.Strategy = "stream"
+		diagnostics := prepared.lastDiagnostics()
+		report.SelectedRows = int64(parseDiagInt(diagnostics, "selected_rows", 0))
 	}
 	for _, batch := range frame.batches() {
 		report.MaterializedRows += batch.Rows

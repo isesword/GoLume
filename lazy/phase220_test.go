@@ -99,3 +99,32 @@ func TestUnifiedPrepareRepeatsAggregateDataFrameExecution(t *testing.T) {
 		t.Fatalf("result=%+v err=%v", result, err)
 	}
 }
+
+func TestUnifiedPrepareResultPreservesPrepareOptions(t *testing.T) {
+	schema := memory.NewSchema(memory.Field{Name: "key", Type: memory.TypeInt32}, memory.Field{Name: "value", Type: memory.TypeInt64})
+	batch := memory.NewBatch()
+	batch.Int32s["key"] = &memory.Int32Vector{Values: []int32{1, 1, 2, 3}}
+	batch.Int64s["value"] = &memory.Int64Vector{Values: []int64{2, 3, 4, 5}}
+	batch.Reset(4)
+	src, err := inmemory.New(schema, batch)
+	if err != nil {
+		t.Fatal(err)
+	}
+	session := NewSession(engine.DefaultOptions())
+	defer session.Close()
+	const feedbackKey = "phase220-compat-options"
+	prepared, err := session.FromSource(src).GroupBy("key").Agg(Sum("value", "sum")).PrepareResult(context.Background(), engine.PrepareOptions{MaxConcurrency: 2, FeedbackKey: feedbackKey})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer prepared.Close()
+	if prepared.frame == nil || prepared.frame.planInfo.WorkspacePool != 2 {
+		t.Fatalf("workspace pool=%d, want 2", prepared.frame.planInfo.WorkspacePool)
+	}
+	if _, err := prepared.Execute(context.Background(), engine.ExecuteOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	if feedback, ok := session.Engine().RuntimeFeedback(feedbackKey); !ok || feedback.Samples != 1 {
+		t.Fatalf("custom feedback=%+v ok=%v", feedback, ok)
+	}
+}

@@ -4,6 +4,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
 go run ./tools/checkgodoc .
+GOEXPERIMENT=simd go run ./internal/cmd/gensimd -check
 bash -n ./scripts/bench_hotpaths.sh
 ./scripts/check_simd_structure.sh
 go test ./...

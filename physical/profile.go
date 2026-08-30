@@ -31,6 +31,10 @@ func NewProfileSource(input source.Source, trace *observer.OperatorTrace, node o
 // OperatorID returns the trace node ID represented by this wrapper.
 func (s *ProfileSource) OperatorID() string { return s.id }
 
+// ChildSource exposes the wrapped immutable source for cold-path diagnostics
+// and prepared-plan metadata discovery. It does not permit mutation.
+func (s *ProfileSource) ChildSource() source.Source { return s.input }
+
 // Schema forwards the wrapped source schema.
 func (s *ProfileSource) Schema() memory.Schema { return s.input.Schema() }
 
@@ -57,18 +61,6 @@ func (s *ProfileSource) Partitions(ctx context.Context) ([]source.Partition, err
 	return s.input.Partitions(ctx)
 }
 
-// NewReader returns a reader that records one inclusive timing per partition.
-func (s *ProfileSource) NewReader(ctx context.Context, opts source.ReadOptions) (source.Reader, error) {
-	if err := opts.Validate(); err != nil {
-		return nil, err
-	}
-	r, err := s.input.NewReader(ctx, opts)
-	if err != nil {
-		return nil, err
-	}
-	return &profileReader{owner: s, child: r}, nil
-}
-
 // NewBatchStream preserves native streaming operators while recording one
 // timing sample per produced batch. Without this forwarding method diagnostic
 // wrapping would accidentally force spillable operators through legacy Reader
@@ -90,6 +82,15 @@ func (s *ProfileSource) NewBatchStreamWithPartitions(ctx context.Context, opts s
 	return &profileBatchStream{owner: s, child: child}, nil
 }
 
+// StreamDiagnostics forwards cold-path operator diagnostics through the
+// profiling wrapper without affecting the batch hot loop.
+func (s *profileBatchStream) StreamDiagnostics() map[string]string {
+	if diagnostics, ok := s.child.(source.BatchStreamDiagnostics); ok {
+		return diagnostics.StreamDiagnostics()
+	}
+	return nil
+}
+
 // Dictionary forwards stable dictionary metadata when supported by input.
 func (s *ProfileSource) Dictionary(ctx context.Context, column string) (source.Dictionary, error) {
 	dp, ok := s.input.(source.DictionaryProvider)
@@ -97,11 +98,6 @@ func (s *ProfileSource) Dictionary(ctx context.Context, column string) (source.D
 		return source.Dictionary{}, fmt.Errorf("profile input has no dictionary provider")
 	}
 	return dp.Dictionary(ctx, column)
-}
-
-type profileReader struct {
-	owner *ProfileSource
-	child source.Reader
 }
 
 type profileBatchStream struct {
@@ -141,26 +137,6 @@ func (s *profileBatchStream) Next(ctx context.Context, dst *memory.Batch) (bool,
 func (s *profileBatchStream) Close() error {
 	err := s.child.Close()
 	s.captureDiagnostics(context.Background())
-	return err
-}
-
-// Close releases the wrapped reader.
-func (r *profileReader) Close() error { return r.child.Close() }
-
-// ReadPartition records inclusive duration and actual emitted row count.
-func (r *profileReader) ReadPartition(ctx context.Context, p source.Partition, dst *memory.Batch) error {
-	start := time.Now()
-	err := r.child.ReadPartition(ctx, p, dst)
-	elapsed := time.Since(start)
-	out := int64(0)
-	if err == nil && dst != nil {
-		out = int64(dst.Rows)
-	}
-	bytes := int64(0)
-	if err == nil && dst != nil {
-		bytes = estimateBatchBytes(dst)
-	}
-	r.owner.trace.RecordBytes(r.owner.id, observer.PhaseFromContext(ctx), p.Rows, out, bytes, elapsed)
 	return err
 }
 

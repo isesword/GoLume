@@ -63,7 +63,7 @@ func benchmarkOrderSource(b *testing.B, topK bool, sortOpts SortSourceOptions) {
 		if len(parts) != 1 {
 			b.Fatalf("ordered source partitions=%d, want 1", len(parts))
 		}
-		r, err := s.NewReader(ctx, testReadOptions())
+		r, err := openTestReader(ctx, s, testReadOptions())
 		if err != nil {
 			b.Fatal(err)
 		}

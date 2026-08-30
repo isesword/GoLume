@@ -22,7 +22,7 @@ func TestProjectSourceWithColumnsAndNullPropagation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	r, _ := ps.NewReader(context.Background(), testReadOptions())
+	r, _ := openTestReader(context.Background(), ps, testReadOptions())
 	defer r.Close()
 	parts, _ := ps.Partitions(context.Background())
 	out := memory.NewBatch()

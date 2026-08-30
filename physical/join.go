@@ -378,30 +378,6 @@ func (s *JoinSource) Partitions(context.Context) ([]source.Partition, error) {
 	return append([]source.Partition(nil), s.parts...), nil
 }
 
-// NewReader creates an independent left-probe reader.
-func (s *JoinSource) NewReader(ctx context.Context, opts source.ReadOptions) (source.Reader, error) {
-	if err := opts.Validate(); err != nil {
-		return nil, err
-	}
-	if opts.Kernels != s.kernels {
-		return nil, fmt.Errorf("physical join reader kernel set differs from prepared build")
-	}
-	if s.closed {
-		return nil, fmt.Errorf("physical join source closed")
-	}
-	if s.spillable || s.merge {
-		return nil, fmt.Errorf("%s join requires BatchStream execution", s.strategy)
-	}
-	if s.typ == join.Right || s.typ == join.Full {
-		return nil, fmt.Errorf("%s join requires BatchStream execution to track unmatched build rows", s.typ)
-	}
-	r, err := s.left.NewReader(ctx, opts)
-	if err != nil {
-		return nil, err
-	}
-	return &joinReader{owner: s, left: r, leftBatch: memory.NewBatch()}, nil
-}
-
 // Close releases memory reservations retained by the prepared build side.
 func (s *JoinSource) Close() error {
 	if s == nil || s.closed {
@@ -563,7 +539,7 @@ func (s *JoinSource) buildRight(ctx context.Context, manager memory.Manager) err
 		}
 		defer scratch.Release()
 	}
-	rd, err := s.right.NewReader(ctx, source.ReadOptions{Kernels: s.kernels})
+	rd, err := source.OpenBatchStreamWithPartitions(ctx, s.right, source.ReadOptions{Kernels: s.kernels}, parts)
 	if err != nil {
 		return err
 	}
@@ -583,10 +559,16 @@ func (s *JoinSource) buildRight(ctx context.Context, manager memory.Manager) err
 	}
 	allDictValid := true
 	actualRows := int64(0)
-	for _, part := range parts {
-		b := memory.NewBatch()
-		if err := rd.ReadPartition(ctx, part, b); err != nil {
-			return err
+	b := memory.NewBatch()
+	defer b.ReleaseOwned()
+	for {
+		b.ClearColumns()
+		ok, nextErr := rd.Next(ctx, b)
+		if nextErr != nil {
+			return nextErr
+		}
+		if !ok {
+			break
 		}
 		if actualRows > totalRows-int64(b.Rows) {
 			return fmt.Errorf("join build source emitted more rows than its partition contract")
@@ -838,7 +820,7 @@ func (s *JoinSource) release() {
 
 type joinReader struct {
 	owner                  *JoinSource
-	left                   source.Reader
+	left                   source.BatchStream
 	leftBatch              *memory.Batch
 	pairs                  []join.Pair
 	radixWorkspace         join.RadixProbeWorkspace
@@ -848,27 +830,35 @@ type joinReader struct {
 	lastSummary            join.Summary
 }
 
-// Close releases the left-side probe reader owned by this join reader.
+// Close releases the left-side probe stream owned by this join cursor.
 func (r *joinReader) Close() error { return r.left.Close() }
 
-// ReadPartition probes one left partition and materializes its joined rows into dst.
-func (r *joinReader) ReadPartition(ctx context.Context, p source.Partition, dst *memory.Batch) error {
-	if p.ID < 0 || p.ID >= len(r.owner.leftParts) {
-		return fmt.Errorf("join partition %d out of range", p.ID)
-	}
-	if err := r.left.ReadPartition(ctx, r.owner.leftParts[p.ID], r.leftBatch); err != nil {
-		return err
+// nextPairs probes one left child batch without materializing output. Keeping
+// this boundary separate lets bounded callers reserve workspace before the
+// potentially large joined batch is allocated.
+func (r *joinReader) nextPairs(ctx context.Context) (bool, error) {
+	ok, err := r.left.Next(ctx, r.leftBatch)
+	if err != nil || !ok {
+		return ok, err
 	}
 	r.pairs = r.pairs[:0]
-	var err error
 	r.lastSummary, err = r.owner.probe(ctx, r.leftBatch, func(pair join.Pair) error { r.pairs = append(r.pairs, pair); return nil }, &r.radixWorkspace, &r.parallelRadixWorkspace, &r.keys, &r.masks)
 	if err != nil {
-		return err
+		return false, err
 	}
-	if int64(len(r.pairs)) > p.Rows {
-		return fmt.Errorf("join output rows %d exceed prepared upper bound %d", len(r.pairs), p.Rows)
+	return true, nil
+}
+
+// Next probes one left child batch and materializes its joined rows into dst.
+func (r *joinReader) Next(ctx context.Context, dst *memory.Batch) (bool, error) {
+	ok, err := r.nextPairs(ctx)
+	if !ok || err != nil {
+		return ok, err
 	}
-	return materializeJoinBatch(dst, r.owner, r.leftBatch, r.pairs)
+	if err := materializeJoinBatch(dst, r.owner, r.leftBatch, r.pairs); err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 func encodePhysicalKey(batch *memory.Batch, keys []JoinKey, left bool, row int) (hashagg.Key128, uint8, error) {

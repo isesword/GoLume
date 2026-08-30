@@ -39,7 +39,8 @@ func TestSourceProjectionOpaqueAndDictionaryNormalization(t *testing.T) {
 	if len(report.Projection) != 2 || report.Projection[0] != "pred" || report.Projection[1] != "dict" {
 		t.Fatalf("projection=%v", report.Projection)
 	}
-	r, err := pushed.NewReader(context.Background(), testReadOptions())
+	legacy := pushed.(source.LegacyReaderSource)
+	r, err := legacy.NewReader(context.Background(), testReadOptions())
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -26,7 +26,19 @@
 
 ## Source
 
-实现 `source.Source + Reader` 即可新增 Arrow RecordBatch、IPC、Flight、Iceberg/Delta scan。`source/inmemory` 可用于 embedding 和 operator tests。
+物理执行扩展应实现 `source.Source` 的 metadata 方法与
+`source.BatchStreamProvider`（必要时实现 prepared-partition 变体）。BatchStream 是
+唯一的物理算子协议：一个输入可以产生 0、1 或多个输出 Batch，调用方借用 Batch 到
+下一次 `Next`/`Close`，并由 query-owned budget 约束 Exchange 与状态。
+
+旧版 Arrow RecordBatch、IPC、Flight、Iceberg/Delta scan 如果仍只有
+`NewReader`，可在迁移期实现 `source.LegacyReaderSource`。`source.OpenBatchStream` 只在
+这个外部 Source Adapter 边界执行一次 Reader 适配；Filter、Projection、Join、Sort、
+Window 和 Aggregate 不得实现或调用 Reader。LegacyReaderSource 计划在 GoLume v0.8 删除，
+新扩展应直接提供 BatchStream。`source/inmemory` 可用于 embedding 和 operator tests。
+
+Source 还应声明 `Replayability()`：只有稳定快照才允许 Top-K/分支重扫，未知重放能力
+必须进入有界 multiplex/spill 策略，不能静默缓存整张表。
 
 ## Cost model
 

@@ -29,7 +29,7 @@ func TestSortHonorsMemoryBudget(t *testing.T) {
 		t.Fatal(err)
 	}
 	ctx := context.Background()
-	r, err := s.NewReader(ctx, testReadOptions())
+	r, err := openTestReader(ctx, s, testReadOptions())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -67,7 +67,7 @@ func TestTopKHonorsMemoryBudget(t *testing.T) {
 		t.Fatal(err)
 	}
 	ctx := context.Background()
-	r, err := s.NewReader(ctx, testReadOptions())
+	r, err := openTestReader(ctx, s, testReadOptions())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -97,7 +97,7 @@ func TestTopKReleasesMemoryReservationOnClose(t *testing.T) {
 		t.Fatal(err)
 	}
 	ctx := context.Background()
-	r, err := s.NewReader(ctx, testReadOptions())
+	r, err := openTestReader(ctx, s, testReadOptions())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -136,7 +136,7 @@ func TestTopKRejectsActualVariableKeyStateOverBudget(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	reader, err := top.NewReader(context.Background(), testReadOptions())
+	reader, err := openTestReader(context.Background(), top, testReadOptions())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -195,7 +195,7 @@ func TestDescendingOrderKeepsNullPlacementForSortAndTopK(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			reader, err := ordered.NewReader(context.Background(), testReadOptions())
+			reader, err := openTestReader(context.Background(), ordered, testReadOptions())
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -320,7 +320,7 @@ func TestParallelSortChargesMergedOrdinalBuffer(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	reader, err := ordered.NewReader(context.Background(), testReadOptions())
+	reader, err := openTestReader(context.Background(), ordered, testReadOptions())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -373,7 +373,7 @@ func sortedIDs(t *testing.T, ordered source.Source) []int64 {
 	if len(parts) != 1 {
 		t.Fatalf("ordered partitions=%d want 1", len(parts))
 	}
-	reader, err := ordered.NewReader(ctx, testReadOptions())
+	reader, err := openTestReader(ctx, ordered, testReadOptions())
 	if err != nil {
 		t.Fatal(err)
 	}

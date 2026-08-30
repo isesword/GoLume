@@ -142,8 +142,16 @@ func (s *topKPushdownRecorder) Partitions(ctx context.Context) ([]source.Partiti
 	return s.input.Partitions(ctx)
 }
 
+func (s *topKPushdownRecorder) Replayability() source.Replayability {
+	return source.ReplayabilityOf(s.input)
+}
+
 func (s *topKPushdownRecorder) NewReader(ctx context.Context, opts source.ReadOptions) (source.Reader, error) {
-	return s.input.NewReader(ctx, opts)
+	legacy, ok := s.input.(source.LegacyReaderSource)
+	if !ok {
+		return nil, fmt.Errorf("top-k recorder requires legacy source")
+	}
+	return legacy.NewReader(ctx, opts)
 }
 
 func (s *topKPushdownRecorder) ApplyPushdown(ctx context.Context, req source.PushdownRequest) (source.Source, source.PushdownReport, error) {

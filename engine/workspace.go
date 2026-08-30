@@ -98,8 +98,12 @@ func (p *PreparedQuery) newWorkspace(ctx context.Context) (*queryWorkspace, erro
 		return nil, fmt.Errorf("predicate workspace: %w", err)
 	}
 	w.workers = make([]workerWorkspace, workers)
+	legacy, ok := p.src.(source.LegacyReaderSource)
+	if !ok {
+		return nil, fmt.Errorf("legacy engine.Result execution requires an external source.LegacyReaderSource; DataFrame execution uses the native physical stream graph")
+	}
 	for i := range w.workers {
-		rd, err := p.src.NewReader(ctx, source.ReadOptions{Kernels: p.e.kernels})
+		rd, err := legacy.NewReader(ctx, source.ReadOptions{Kernels: p.e.kernels})
 		if err != nil {
 			return nil, err
 		}

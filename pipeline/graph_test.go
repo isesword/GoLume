@@ -252,7 +252,11 @@ func newTrackedIntSource(t *testing.T, partitions, rows int) *trackedSource {
 }
 
 func (s *trackedSource) NewReader(ctx context.Context, opts source.ReadOptions) (source.Reader, error) {
-	reader, err := s.Source.NewReader(ctx, opts)
+	legacy, ok := s.Source.(source.LegacyReaderSource)
+	if !ok {
+		return nil, fmt.Errorf("tracked source requires legacy reader")
+	}
+	reader, err := legacy.NewReader(ctx, opts)
 	if err != nil {
 		return nil, err
 	}

@@ -107,18 +107,6 @@ func (s *DropColumnsSource) Partitions(ctx context.Context) ([]source.Partition,
 	return s.input.Partitions(ctx)
 }
 
-// NewReader creates a reader that removes only temporary vector bindings.
-func (s *DropColumnsSource) NewReader(ctx context.Context, opts source.ReadOptions) (source.Reader, error) {
-	if err := opts.Validate(); err != nil {
-		return nil, err
-	}
-	reader, err := s.input.NewReader(ctx, opts)
-	if err != nil {
-		return nil, err
-	}
-	return &dropColumnsReader{child: reader, drop: append([]string(nil), s.drop...)}, nil
-}
-
 // NewBatchStream creates a zero-copy native stream over the child.
 func (s *DropColumnsSource) NewBatchStream(ctx context.Context, opts source.ReadOptions) (source.BatchStream, error) {
 	return s.newBatchStream(ctx, opts, nil, false)
@@ -138,11 +126,6 @@ func (s *DropColumnsSource) newBatchStream(ctx context.Context, opts source.Read
 		return nil, err
 	}
 	return &dropColumnsBatchStream{state: unaryStreamState{child: child}, drop: append([]string(nil), s.drop...)}, nil
-}
-
-type dropColumnsReader struct {
-	child source.Reader
-	drop  []string
 }
 
 type dropColumnsBatchStream struct {
@@ -172,20 +155,6 @@ func (s *dropColumnsBatchStream) Next(ctx context.Context, dst *memory.Batch) (b
 
 // Close releases the child stream.
 func (s *dropColumnsBatchStream) Close() error { return s.state.Close() }
-
-// Close releases the wrapped source reader.
-func (r *dropColumnsReader) Close() error { return r.child.Close() }
-
-// ReadPartition reads one partition and removes temporary bindings.
-func (r *dropColumnsReader) ReadPartition(ctx context.Context, p source.Partition, dst *memory.Batch) error {
-	if err := r.child.ReadPartition(ctx, p, dst); err != nil {
-		return err
-	}
-	for _, name := range r.drop {
-		removeColumn(dst, name)
-	}
-	return nil
-}
 
 // Dictionary forwards dictionary metadata for columns that remain visible.
 func (s *DropColumnsSource) Dictionary(ctx context.Context, column string) (source.Dictionary, error) {
@@ -313,18 +282,6 @@ func (s *ProjectSource) Partitions(ctx context.Context) ([]source.Partition, err
 	return s.input.Partitions(ctx)
 }
 
-// NewReader creates an independent projection reader.
-func (s *ProjectSource) NewReader(ctx context.Context, opts source.ReadOptions) (source.Reader, error) {
-	if err := opts.Validate(); err != nil {
-		return nil, err
-	}
-	r, err := s.input.NewReader(ctx, opts)
-	if err != nil {
-		return nil, err
-	}
-	return &projectReader{owner: s, child: r, input: memory.NewBatch(), kernels: opts.Kernels}, nil
-}
-
 // NewBatchStream creates a native fused projection stream.
 func (s *ProjectSource) NewBatchStream(ctx context.Context, opts source.ReadOptions) (source.BatchStream, error) {
 	return s.newBatchStream(ctx, opts, nil, false)
@@ -350,28 +307,6 @@ func (s *ProjectSource) newBatchStream(ctx context.Context, opts source.ReadOpti
 		return stream.workspace.Close()
 	}
 	return stream, nil
-}
-
-type projectReader struct {
-	owner     *ProjectSource
-	child     source.Reader
-	input     *memory.Batch
-	workspace expr.ScalarWorkspace
-	kernels   kernel.Set
-}
-
-// Close releases the child reader.
-func (r *projectReader) Close() error {
-	_ = r.workspace.Close()
-	return r.child.Close()
-}
-
-// ReadPartition evaluates the fused projection program for one child partition.
-func (r *projectReader) ReadPartition(ctx context.Context, p source.Partition, dst *memory.Batch) error {
-	if err := r.child.ReadPartition(ctx, p, r.input); err != nil {
-		return err
-	}
-	return applyProjectBatch(ctx, r.owner, r.input, dst, &r.workspace, r.kernels)
 }
 
 func applyProjectBatch(ctx context.Context, owner *ProjectSource, input, dst *memory.Batch, workspace *expr.ScalarWorkspace, kernels kernel.Set) error {

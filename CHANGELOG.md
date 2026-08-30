@@ -1,5 +1,17 @@
 # Changelog
 
+## Phase 3.7
+
+- 收口 Lazy/DataFrame 的执行路径：Filter、Projection、Limit、Join、Sort、Window 和
+  Aggregate 均通过同一 `BatchStream` 物理图执行；resident aggregate 不再把整张结果
+  偷塞进单个 `engine.Result` Batch。
+- 将 `source.Source` 收敛为规划 metadata 契约，新增临时 `LegacyReaderSource` 外部适配
+  边界；物理算子不再暴露 `NewReader`。LegacyReaderSource 计划在 v0.8 删除。
+- Top-K 两遍重放按稳定 Batch 序号工作并要求 ReplayStable；Hash aggregate 增加无切片
+  迭代的分块输出，保留 typed/SIMD 批内 kernel。
+- deprecated `CollectResult`/`PrepareResult` 转发到 DataFrame BatchStream，保留统计
+  外观但不再维护第二套执行语义。
+
 ## Phase 2.17
 
 - Added an Arrow-shaped `TypeList` schema contract with one specialized

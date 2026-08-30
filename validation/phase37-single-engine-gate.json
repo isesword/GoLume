@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "phase": "3.7",
+  "date": "2026-08-31",
+  "status": "pass",
+  "environment": {
+    "goos": "darwin",
+    "goarch": "arm64"
+  },
+  "scope": {
+    "physical_contract": "physical operators expose native BatchStream; legacy Reader is accepted only at source.OpenBatchStream",
+    "aggregate_result": "CollectResult and PrepareResult are statistical facades over the DataFrame BatchStream",
+    "replay": "prepared native streams open independent query state for each execution",
+    "options": "PrepareResult preserves MaxConcurrency and FeedbackKey"
+  },
+  "correctness": {
+    "full_test": "pass",
+    "join_budget_reservation_before_materialization": "pass",
+    "aggregate_multi_execution": "pass",
+    "aggregate_prepare_options": "pass",
+    "cancellation_and_close": "pass",
+    "multi_batch_and_spill": "pass"
+  },
+  "validation": [
+    {
+      "command": "go test ./... -count=1 -timeout 240s",
+      "result": "pass"
+    },
+    {
+      "command": "GOEXPERIMENT=simd go test -race ./lazy ./physical",
+      "result": "pass"
+    },
+    {
+      "command": "./scripts/validate.sh",
+      "includes": [
+        "GoDoc",
+        "generator drift",
+        "scalar",
+        "Auto SIMD",
+        "forced SIMD",
+        "GODEBUG=simd=0",
+        "linux/amd64 cross-build",
+        "race",
+        "go vet",
+        "lazy demo"
+      ],
+      "result": "pass"
+    },
+    {
+      "command": "GOOS=linux GOARCH=amd64 GOEXPERIMENT=simd go build ./...",
+      "result": "pass"
+    },
+    {
+      "command": "git diff --check",
+      "result": "pass"
+    }
+  ],
+  "simd": {
+    "new_auto_candidate": false,
+    "decision": "stream scheduling, reservations, legacy adaptation, aggregate cursoring, and variable-width materialization remain scalar/control-plane; existing kernel.Set dispatch is unchanged",
+    "modes_checked": [
+      "scalar",
+      "auto",
+      "forced-simd",
+      "GODEBUG=simd=0",
+      "race"
+    ]
+  }
+}

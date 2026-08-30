@@ -62,18 +62,6 @@ func (s *LimitSource) Partitions(ctx context.Context) ([]source.Partition, error
 	return s.input.Partitions(ctx)
 }
 
-// NewReader creates an independent reader with its own remaining-row counter.
-func (s *LimitSource) NewReader(ctx context.Context, opts source.ReadOptions) (source.Reader, error) {
-	if err := opts.Validate(); err != nil {
-		return nil, err
-	}
-	r, err := s.input.NewReader(ctx, opts)
-	if err != nil {
-		return nil, err
-	}
-	return &limitReader{child: r, remaining: s.n, input: memory.NewBatch(), rows: make([]int, 0, 1024)}, nil
-}
-
 // NewBatchStream creates a native early-stopping limit stream.
 func (s *LimitSource) NewBatchStream(ctx context.Context, opts source.ReadOptions) (source.BatchStream, error) {
 	return s.newBatchStream(ctx, opts, nil, false)
@@ -99,13 +87,6 @@ func (s *LimitSource) newBatchStream(ctx context.Context, opts source.ReadOption
 		return nil
 	}
 	return stream, nil
-}
-
-type limitReader struct {
-	child     source.Reader
-	remaining int64
-	input     *memory.Batch
-	rows      []int
 }
 
 type limitBatchStream struct {
@@ -160,38 +141,6 @@ func (s *limitBatchStream) Next(ctx context.Context, dst *memory.Batch) (bool, e
 
 // Close releases limit workspace and the child stream.
 func (s *limitBatchStream) Close() error { return s.state.Close() }
-
-// Close releases child-reader resources.
-func (r *limitReader) Close() error { return r.child.Close() }
-
-// ReadPartition forwards at most the remaining prefix rows from one partition.
-func (r *limitReader) ReadPartition(ctx context.Context, p source.Partition, dst *memory.Batch) error {
-	if r.remaining <= 0 {
-		dst.ClearColumns()
-		dst.Reset(0)
-		return nil
-	}
-	if err := r.child.ReadPartition(ctx, p, r.input); err != nil {
-		return err
-	}
-	if int64(r.input.Rows) <= r.remaining {
-		dst.ClearColumns()
-		bindAll(dst, r.input)
-		dst.Reset(r.input.Rows)
-		r.remaining -= int64(r.input.Rows)
-		return nil
-	}
-	n := int(r.remaining)
-	r.rows = r.rows[:0]
-	for i := 0; i < n; i++ {
-		r.rows = append(r.rows, i)
-	}
-	if err := takeRows(ctx, dst, r.input, r.rows); err != nil {
-		return err
-	}
-	r.remaining = 0
-	return nil
-}
 
 // Dictionary forwards stable dictionary metadata from the input.
 func (s *LimitSource) Dictionary(ctx context.Context, column string) (source.Dictionary, error) {

@@ -98,8 +98,11 @@ type PreparedFrame struct {
 	manager  memory.Manager
 	pipeline pipeline.Options
 	observer observer.Observer
+	planInfo engine.PlanInfo
 	closers  []io.Closer
 	lifeMu   sync.Mutex
+	lastMu   sync.Mutex
+	lastDiag map[string]string
 	active   sync.WaitGroup
 	closed   bool
 }
@@ -188,7 +191,7 @@ func (f LazyFrame) prepareFrame(ctx context.Context) (*PreparedFrame, logical.Pl
 		cleanup()
 		return nil, nil, source.PushdownReport{}, err
 	}
-	return &PreparedFrame{engine: f.session.engine, src: src, parts: parts, schema: src.Schema(), kernels: f.session.engine.KernelSet(), manager: f.session.engine.Memory(), pipeline: pipelineOpts, observer: f.session.engine.Observer(), closers: closers}, physicalPlan, report, nil
+	return &PreparedFrame{engine: f.session.engine, src: src, parts: parts, schema: src.Schema(), kernels: f.session.engine.KernelSet(), manager: f.session.engine.Memory(), pipeline: pipelineOpts, observer: f.session.engine.Observer(), planInfo: preparedPlanInfo(src), closers: closers}, physicalPlan, report, nil
 }
 
 // CollectFrame is a compatibility spelling of Collect.
@@ -261,6 +264,7 @@ func (p *PreparedFrame) Execute(ctx context.Context) (frame Frame, resultErr err
 			return Frame{}, errors.Join(nextErr, closeErr)
 		}
 		if !ok {
+			p.rememberDiagnostics(stream)
 			break
 		}
 		reservation, err := outputManager.Reserve(ctx, memory.BatchBytes(scratch))
@@ -285,6 +289,26 @@ func (p *PreparedFrame) Execute(ctx context.Context) (frame Frame, resultErr err
 		return Frame{}, err
 	}
 	return out, nil
+}
+
+func (p *PreparedFrame) rememberDiagnostics(stream source.BatchStream) {
+	diagnostics, ok := stream.(source.BatchStreamDiagnostics)
+	if !ok {
+		return
+	}
+	p.lastMu.Lock()
+	p.lastDiag = diagnostics.StreamDiagnostics()
+	p.lastMu.Unlock()
+}
+
+func (p *PreparedFrame) lastDiagnostics() map[string]string {
+	p.lastMu.Lock()
+	defer p.lastMu.Unlock()
+	out := make(map[string]string, len(p.lastDiag))
+	for key, value := range p.lastDiag {
+		out[key] = value
+	}
+	return out
 }
 
 // Close waits for active executions and releases retained physical resources,

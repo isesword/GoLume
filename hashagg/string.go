@@ -258,6 +258,37 @@ func (t *StringTable) Visit(fn func(key []byte, valid bool, state aggregate.Int6
 	return nil
 }
 
+// VisitChunk visits at most limit groups and advances cursor. Keys remain
+// borrowed from the table arena for the duration of fn.
+func (t *StringTable) VisitChunk(cursor *int, limit int, fn func(key []byte, valid bool, state aggregate.Int64Result) error) (bool, error) {
+	if cursor == nil || limit < 1 || fn == nil {
+		return false, nil
+	}
+	emitted := 0
+	for *cursor < len(t.epoch) {
+		i := *cursor
+		*cursor = i + 1
+		if t.epoch[i] != t.gen {
+			continue
+		}
+		o, ln := t.off[i], t.lens[i]
+		if err := fn(t.arena[o:o+ln], true, t.state.Result(i)); err != nil {
+			return false, err
+		}
+		emitted++
+		if emitted == limit {
+			return !t.nullSet && *cursor >= len(t.epoch), nil
+		}
+	}
+	if t.nullSet && *cursor == len(t.epoch) {
+		*cursor++
+		if err := fn(nil, false, t.nullState.Result(0)); err != nil {
+			return false, err
+		}
+	}
+	return true, nil
+}
+
 // Capacity returns the current number of hash slots.
 func (t *StringTable) Capacity() int { return len(t.off) }
 

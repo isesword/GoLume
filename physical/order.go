@@ -122,30 +122,9 @@ func (s *SortSource) Partitions(ctx context.Context) ([]source.Partition, error)
 	return []source.Partition{{ID: 0, Rows: st.Rows}}, nil
 }
 
-// NewReader creates an independent global-sort reader.
-func (s *SortSource) NewReader(ctx context.Context, opts source.ReadOptions) (source.Reader, error) {
-	if err := opts.Validate(); err != nil {
-		return nil, err
-	}
-	if s.spillable {
-		return nil, fmt.Errorf("external sort requires BatchStream execution")
-	}
-	child, err := s.input.NewReader(ctx, opts)
-	if err != nil {
-		return nil, err
-	}
-	parts, err := s.input.Partitions(ctx)
-	if err != nil {
-		child.Close()
-		return nil, err
-	}
-	return &sortReader{owner: s, child: child, parts: parts, scratch: memory.NewBatch()}, nil
-}
-
 type sortReader struct {
 	owner       *SortSource
-	child       source.Reader
-	parts       []source.Partition
+	child       source.BatchStream
 	scratch     *memory.Batch
 	reservation memory.Reservation
 	done        bool
@@ -161,31 +140,30 @@ func (r *sortReader) Close() error {
 	return r.child.Close()
 }
 
-// ReadPartition materializes, stably sorts, and gathers the global input once.
-func (r *sortReader) ReadPartition(ctx context.Context, p source.Partition, dst *memory.Batch) error {
-	if p.ID != 0 {
-		return fmt.Errorf("sort output partition %d is invalid", p.ID)
-	}
+// Next materializes, stably sorts, and gathers the global input once.
+func (r *sortReader) Next(ctx context.Context, dst *memory.Batch) (bool, error) {
 	if r.done {
 		dst.ClearColumns()
-		dst.Reset(0)
-		return nil
+		return false, nil
 	}
 	r.done = true
 	if err := r.reserve(ctx); err != nil {
-		return err
+		return false, err
 	}
-	full, err := materializeSource(ctx, r.owner.input.Schema(), r.parts, r.child, r.scratch)
+	full, err := materializeStream(ctx, r.owner.input.Schema(), r.child, r.scratch)
 	if err != nil {
-		return err
+		return false, err
 	}
 	defer full.ReleaseOwned()
 	cmp := batchComparator{batch: full, schema: r.owner.input.Schema(), keys: r.owner.keys}
 	rows, err := sortRows(ctx, full.Rows, cmp, r.owner.workers, r.owner.executor)
 	if err != nil {
-		return err
+		return false, err
 	}
-	return takeRows(ctx, dst, full, rows)
+	if err := takeRows(ctx, dst, full, rows); err != nil {
+		return false, err
+	}
+	return dst.Rows != 0, nil
 }
 
 // sortRows returns global input row ordinals in requested order. Each ordinal
@@ -410,37 +388,32 @@ func (s *TopKSource) Partitions(context.Context) ([]source.Partition, error) {
 	return []source.Partition{{ID: 0, Rows: int64(s.k)}}, nil
 }
 
-// NewReader creates an independent Top-K reader.
-func (s *TopKSource) NewReader(ctx context.Context, opts source.ReadOptions) (source.Reader, error) {
+// NewBatchStream creates an independent two-pass O(K) stream. The input must
+// promise stable replay so both passes observe identical batch boundaries and
+// row ordinals.
+func (s *TopKSource) NewBatchStream(ctx context.Context, opts source.ReadOptions) (source.BatchStream, error) {
 	if err := opts.Validate(); err != nil {
 		return nil, err
 	}
-	first, err := s.keyInput.NewReader(ctx, opts)
+	if source.ReplayabilityOf(s.input) != source.ReplayStable || source.ReplayabilityOf(s.keyInput) != source.ReplayStable {
+		return nil, fmt.Errorf("top-k requires replay-stable input streams")
+	}
+	first, err := source.OpenBatchStream(ctx, s.keyInput, opts)
 	if err != nil {
 		return nil, err
 	}
-	parts, err := s.keyInput.Partitions(ctx)
-	if err != nil {
-		first.Close()
-		return nil, err
-	}
-	payloadParts, err := s.input.Partitions(ctx)
-	if err != nil {
-		first.Close()
-		return nil, err
-	}
-	if !samePartitionLayout(parts, payloadParts) {
-		first.Close()
-		return nil, fmt.Errorf("top-k key input partitions do not match payload input")
-	}
-	return &topKReader{owner: s, first: first, parts: parts, payloadParts: payloadParts, scratch: memory.NewBatch(), readOpts: opts}, nil
+	return &topKReader{owner: s, first: first, scratch: memory.NewBatch(), readOpts: opts}, nil
+}
+
+// NewBatchStreamWithPartitions keeps Top-K on the native stream graph. Its
+// output partition is synthetic, so the child sources resolve their own scans.
+func (s *TopKSource) NewBatchStreamWithPartitions(ctx context.Context, opts source.ReadOptions, _ []source.Partition) (source.BatchStream, error) {
+	return s.NewBatchStream(ctx, opts)
 }
 
 type topKReader struct {
 	owner         *TopKSource
-	first         source.Reader
-	parts         []source.Partition
-	payloadParts  []source.Partition
+	first         source.BatchStream
 	scratch       *memory.Batch
 	reservation   memory.Reservation
 	extra         []memory.Reservation
@@ -467,29 +440,29 @@ func (r *topKReader) Close() error {
 	return r.first.Close()
 }
 
-// ReadPartition scans ordering keys, maintains a bounded heap, then materializes
-// only selected rows from the winning source partitions.
-func (r *topKReader) ReadPartition(ctx context.Context, p source.Partition, dst *memory.Batch) error {
-	if p.ID != 0 {
-		return fmt.Errorf("top-k output partition %d is invalid", p.ID)
-	}
+// Next scans ordering keys, maintains a bounded heap, then replays only the
+// selected rows from winning source batches.
+func (r *topKReader) Next(ctx context.Context, dst *memory.Batch) (bool, error) {
 	if r.done || r.owner.k == 0 {
 		r.done = true
 		dst.ClearColumns()
-		dst.Reset(0)
-		return nil
+		return false, nil
 	}
 	r.done = true
 	if err := r.reserve(ctx); err != nil {
-		return err
+		return false, err
 	}
 	h := &candidateHeap{keys: r.owner.keys}
 	heap.Init(h)
 	trackActual := r.tracksActualMemory()
 	var ordinal int64
-	for _, part := range r.parts {
-		if err := r.first.ReadPartition(ctx, part, r.scratch); err != nil {
-			return err
+	for batchID := 0; ; batchID++ {
+		ok, err := r.first.Next(ctx, r.scratch)
+		if err != nil {
+			return false, err
+		}
+		if !ok {
+			break
 		}
 		for row := 0; row < r.scratch.Rows; row++ {
 			if h.Len() < r.owner.k {
@@ -498,15 +471,15 @@ func (r *topKReader) ReadPartition(ctx context.Context, p source.Partition, dst 
 					var keyErr error
 					textBytes, keyErr = sortKeyVariableBytes(r.scratch, r.owner.keyInput.Schema(), r.owner.keys, row)
 					if keyErr != nil {
-						return keyErr
+						return false, keyErr
 					}
 					if err := r.growReservation(ctx, r.baseBytes+r.candidateText+textBytes); err != nil {
-						return fmt.Errorf("top-k candidate key memory: %w", err)
+						return false, fmt.Errorf("top-k candidate key memory: %w", err)
 					}
 				}
 				cand := rowCandidate{cells: make([]sortCell, len(r.owner.keys))}
-				if err := snapshotCandidateInto(&cand, r.scratch, r.owner.keyInput.Schema(), r.owner.keys, part.ID, row, ordinal); err != nil {
-					return err
+				if err := snapshotCandidateInto(&cand, r.scratch, r.owner.keyInput.Schema(), r.owner.keys, batchID, row, ordinal); err != nil {
+					return false, err
 				}
 				heap.Push(h, cand)
 				r.candidateText += textBytes
@@ -515,23 +488,23 @@ func (r *topKReader) ReadPartition(ctx context.Context, p source.Partition, dst 
 			}
 			better, err := batchRowLessCandidate(r.scratch, r.owner.keyInput.Schema(), r.owner.keys, row, ordinal, h.items[0])
 			if err != nil {
-				return err
+				return false, err
 			}
 			if better {
 				candidateText := r.candidateText
 				if trackActual {
 					textBytes, err := sortKeyVariableBytes(r.scratch, r.owner.keyInput.Schema(), r.owner.keys, row)
 					if err != nil {
-						return err
+						return false, err
 					}
 					oldTextBytes := candidateVariableBytes(h.items[0])
 					candidateText = r.candidateText - oldTextBytes + textBytes
 					if err := r.growReservation(ctx, r.baseBytes+candidateText); err != nil {
-						return fmt.Errorf("top-k candidate key memory: %w", err)
+						return false, fmt.Errorf("top-k candidate key memory: %w", err)
 					}
 				}
-				if err := snapshotCandidateInto(&h.items[0], r.scratch, r.owner.keyInput.Schema(), r.owner.keys, part.ID, row, ordinal); err != nil {
-					return err
+				if err := snapshotCandidateInto(&h.items[0], r.scratch, r.owner.keyInput.Schema(), r.owner.keys, batchID, row, ordinal); err != nil {
+					return false, err
 				}
 				r.candidateText = candidateText
 				heap.Fix(h, 0)
@@ -543,12 +516,11 @@ func (r *topKReader) ReadPartition(ctx context.Context, p source.Partition, dst 
 	sort.SliceStable(winners, func(i, j int) bool { return candidateLess(winners[i], winners[j], r.owner.keys) })
 	if len(winners) == 0 {
 		dst.ClearColumns()
-		dst.Reset(0)
-		return nil
+		return false, nil
 	}
-	second, err := r.owner.input.NewReader(ctx, r.readOpts)
+	second, err := source.OpenBatchStream(ctx, r.owner.input, r.readOpts)
 	if err != nil {
-		return err
+		return false, err
 	}
 	defer second.Close()
 	type selectedPart struct {
@@ -560,18 +532,18 @@ func (r *topKReader) ReadPartition(ctx context.Context, p source.Partition, dst 
 	for _, w := range winners {
 		byPart[w.partition] = append(byPart[w.partition], w.row)
 	}
-	partByID := make(map[int]source.Partition, len(r.payloadParts))
-	for _, part := range r.payloadParts {
-		partByID[part.ID] = part
-	}
 	var payloadBytes int64
-	for partID, rows := range byPart {
-		part, ok := partByID[partID]
-		if !ok {
-			return fmt.Errorf("top-k selected unknown partition %d", partID)
+	for batchID := 0; ; batchID++ {
+		ok, err := second.Next(ctx, r.scratch)
+		if err != nil {
+			return false, err
 		}
-		if err := second.ReadPartition(ctx, part, r.scratch); err != nil {
-			return err
+		if !ok {
+			break
+		}
+		rows, wanted := byPart[batchID]
+		if !wanted {
+			continue
 		}
 		uniq := append([]int(nil), rows...)
 		sort.Ints(uniq)
@@ -580,29 +552,32 @@ func (r *topKReader) ReadPartition(ctx context.Context, p source.Partition, dst 
 			for _, row := range uniq {
 				bytes, estimateErr := memory.EstimateBatchRangeBytes(r.scratch, row, 1)
 				if estimateErr != nil {
-					return estimateErr
+					return false, estimateErr
 				}
 				if bytes > math.MaxInt64-payloadBytes {
-					return fmt.Errorf("top-k payload byte estimate overflows int64")
+					return false, fmt.Errorf("top-k payload byte estimate overflows int64")
 				}
 				payloadBytes += bytes
 			}
 			if r.baseBytes > math.MaxInt64-r.candidateText || payloadBytes > (math.MaxInt64-r.baseBytes-r.candidateText)/2 {
-				return fmt.Errorf("top-k payload reservation overflows int64")
+				return false, fmt.Errorf("top-k payload reservation overflows int64")
 			}
 			if err := r.growReservation(ctx, r.baseBytes+r.candidateText+payloadBytes*2); err != nil {
-				return fmt.Errorf("top-k winner payload memory: %w", err)
+				return false, fmt.Errorf("top-k winner payload memory: %w", err)
 			}
 		}
 		mini := memory.NewBatch()
 		if err := takeRows(ctx, mini, r.scratch, uniq); err != nil {
-			return err
+			return false, err
 		}
 		idx := make(map[int]int, len(uniq))
 		for i, row := range uniq {
 			idx[row] = i
 		}
-		selected[partID] = &selectedPart{batch: mini, index: idx}
+		selected[batchID] = &selectedPart{batch: mini, index: idx}
+	}
+	if len(selected) != len(byPart) {
+		return false, fmt.Errorf("top-k replay changed batch boundaries: selected %d of %d batches", len(selected), len(byPart))
 	}
 	defer func() {
 		for _, p := range selected {
@@ -613,12 +588,12 @@ func (r *topKReader) ReadPartition(ctx context.Context, p source.Partition, dst 
 	for _, w := range winners {
 		p := selected[w.partition]
 		if err := acc.appendRow(p.batch, p.index[w.row]); err != nil {
-			return err
+			return false, err
 		}
 	}
 	full, err := acc.finish()
 	if err != nil {
-		return err
+		return false, err
 	}
 	defer full.ReleaseOwned()
 	dst.ClearColumns()
@@ -629,19 +604,7 @@ func (r *topKReader) ReadPartition(ctx context.Context, p source.Partition, dst 
 		delete(full.Opaque, name)
 	}
 	dst.Reset(full.Rows)
-	return nil
-}
-
-func samePartitionLayout(left, right []source.Partition) bool {
-	if len(left) != len(right) {
-		return false
-	}
-	for i := range left {
-		if left[i].ID != right[i].ID || left[i].Rows != right[i].Rows {
-			return false
-		}
-	}
-	return true
+	return true, nil
 }
 
 func (r *topKReader) reserve(ctx context.Context) error {
@@ -1258,11 +1221,15 @@ func appendOneValidity(dst, src memory.Bitmap, srcRow, dstRow int) memory.Bitmap
 	return dst
 }
 
-func materializeSource(ctx context.Context, schema memory.Schema, parts []source.Partition, r source.Reader, scratch *memory.Batch) (*memory.Batch, error) {
+func materializeStream(ctx context.Context, schema memory.Schema, stream source.BatchStream, scratch *memory.Batch) (*memory.Batch, error) {
 	acc := newBatchAccumulator(schema)
-	for _, p := range parts {
-		if err := r.ReadPartition(ctx, p, scratch); err != nil {
+	for {
+		ok, err := stream.Next(ctx, scratch)
+		if err != nil {
 			return nil, err
+		}
+		if !ok {
+			break
 		}
 		for row := 0; row < scratch.Rows; row++ {
 			if err := acc.appendRow(scratch, row); err != nil {

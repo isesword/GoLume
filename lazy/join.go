@@ -223,7 +223,11 @@ func (p *PreparedJoin) Execute(ctx context.Context) (JoinResult, error) {
 	}
 	result := JoinResult{Type: p.typ, RightRows: len(p.build.refs), LeftPushdown: p.left.report, RightPushdown: p.right.report}
 	matchedBuild := make([]bool, len(p.build.refs))
-	reader, err := p.left.src.NewReader(ctx, source.ReadOptions{Kernels: p.kernel})
+	legacyLeft, ok := p.left.src.(source.LegacyReaderSource)
+	if !ok {
+		return JoinResult{}, fmt.Errorf("legacy CollectJoin requires an external source.LegacyReaderSource; use Join(...).Collect for the native stream graph")
+	}
+	reader, err := legacyLeft.NewReader(ctx, source.ReadOptions{Kernels: p.kernel})
 	if err != nil {
 		return JoinResult{}, err
 	}
@@ -420,7 +424,11 @@ func (p *PreparedJoin) ensureBuild(ctx context.Context) error {
 }
 
 func (p *PreparedJoin) buildRight(ctx context.Context) error {
-	reader, err := p.right.src.NewReader(ctx, source.ReadOptions{Kernels: p.kernel})
+	legacyRight, ok := p.right.src.(source.LegacyReaderSource)
+	if !ok {
+		return fmt.Errorf("legacy CollectJoin build requires an external source.LegacyReaderSource")
+	}
+	reader, err := legacyRight.NewReader(ctx, source.ReadOptions{Kernels: p.kernel})
 	if err != nil {
 		return err
 	}

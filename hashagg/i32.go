@@ -263,6 +263,37 @@ func (t *I32Table) Visit(fn func(key int32, valid bool, state aggregate.Int64Res
 	return nil
 }
 
+// VisitChunk visits at most limit groups and advances cursor without
+// materializing a group slice. cursor must start at zero and belongs to this
+// table generation. done reports that no groups remain.
+func (t *I32Table) VisitChunk(cursor *int, limit int, fn func(key int32, valid bool, state aggregate.Int64Result) error) (done bool, err error) {
+	if cursor == nil || limit < 1 || fn == nil {
+		return false, nil
+	}
+	emitted := 0
+	for *cursor < len(t.epoch) {
+		i := *cursor
+		*cursor = i + 1
+		if t.epoch[i] != t.gen {
+			continue
+		}
+		if err := fn(t.keys[i], true, t.state.Result(i)); err != nil {
+			return false, err
+		}
+		emitted++
+		if emitted == limit {
+			return !t.nullSet && *cursor >= len(t.epoch), nil
+		}
+	}
+	if t.nullSet && *cursor == len(t.epoch) {
+		*cursor++
+		if err := fn(0, false, t.nullState.Result(0)); err != nil {
+			return false, err
+		}
+	}
+	return true, nil
+}
+
 // Capacity returns the current number of hash slots.
 func (t *I32Table) Capacity() int { return len(t.keys) }
 

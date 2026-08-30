@@ -38,7 +38,7 @@ func TestJoinSourceFeedsColumnarPayload(t *testing.T) {
 	if !stats.RowsUpperBound {
 		t.Fatalf("join stats should mark row count as upper bound: %+v", stats)
 	}
-	r, err := js.NewReader(context.Background(), source.ReadOptions{Kernels: kernels})
+	r, err := openTestReader(context.Background(), js, source.ReadOptions{Kernels: kernels})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -73,7 +73,7 @@ type countingReader struct {
 }
 
 func (s *countingSource) NewReader(ctx context.Context, opts source.ReadOptions) (source.Reader, error) {
-	r, err := s.Source.NewReader(ctx, opts)
+	r, err := openTestReader(ctx, s.Source, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -108,7 +108,7 @@ func TestJoinSourcePrepareDoesNotReadProbeSide(t *testing.T) {
 		t.Fatalf("prepare read probe side %d times", left.reads)
 	}
 	parts, _ := js.Partitions(context.Background())
-	r, err := js.NewReader(context.Background(), source.ReadOptions{Kernels: kernels})
+	r, err := openTestReader(context.Background(), js, source.ReadOptions{Kernels: kernels})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -149,7 +149,7 @@ func TestJoinSourceUsesRadixForLargeFixedBuild(t *testing.T) {
 		t.Fatalf("strategy=%q", got)
 	}
 	parts, _ := js.Partitions(context.Background())
-	r, _ := js.NewReader(context.Background(), source.ReadOptions{Kernels: kernels})
+	r, _ := openTestReader(context.Background(), js, source.ReadOptions{Kernels: kernels})
 	defer r.Close()
 	out := memory.NewBatch()
 	if err := r.ReadPartition(context.Background(), parts[0], out); err != nil {
@@ -182,7 +182,7 @@ func TestParallelRadixJoinSource(t *testing.T) {
 		t.Fatalf("strategy=%q", got)
 	}
 	parts, _ := js.Partitions(context.Background())
-	r, _ := js.NewReader(context.Background(), source.ReadOptions{Kernels: kernels})
+	r, _ := openTestReader(context.Background(), js, source.ReadOptions{Kernels: kernels})
 	defer r.Close()
 	out := memory.NewBatch()
 	if err := r.ReadPartition(context.Background(), parts[0], out); err != nil {

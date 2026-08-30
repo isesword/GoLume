@@ -57,12 +57,15 @@ type aggregateStateTable struct {
 	str  *hashagg.StringTable
 }
 
-func newAggregateStateTable(shape GroupShape, layout aggregate.Layout, averageKeyBytes int, maxRetained int64, reserve func(int64) error) (*aggregateStateTable, error) {
+func newAggregateStateTable(shape GroupShape, layout aggregate.Layout, cardinalityHint, averageKeyBytes int, maxRetained int64, reserve func(int64) error) (*aggregateStateTable, error) {
 	if reserve == nil {
 		return nil, fmt.Errorf("aggregate state table requires a reservation callback")
 	}
 	t := &aggregateStateTable{shape: shape, layout: layout, maxRetained: maxRetained, reserve: reserve}
-	arenaHint := averageKeyBytes * 8
+	if cardinalityHint < 8 {
+		cardinalityHint = 8
+	}
+	arenaHint := averageKeyBytes * cardinalityHint
 	if arenaHint < 64 {
 		arenaHint = 64
 	}
@@ -73,15 +76,15 @@ func newAggregateStateTable(shape GroupShape, layout aggregate.Layout, averageKe
 	var initial int64
 	switch shape {
 	case GroupShapeI32:
-		initial = hashagg.EstimateI32TableBytesWithOptions(8, opts)
+		initial = hashagg.EstimateI32TableBytesWithOptions(cardinalityHint, opts)
 	case GroupShapeI64:
-		initial = hashagg.EstimateU64TableBytesWithOptions(8, opts)
+		initial = hashagg.EstimateU64TableBytesWithOptions(cardinalityHint, opts)
 	case GroupShapeU32, GroupShapeDictionaryString:
-		initial = hashagg.EstimateU32TableBytesWithOptions(8, opts)
+		initial = hashagg.EstimateU32TableBytesWithOptions(cardinalityHint, opts)
 	case GroupShapePairFixed:
-		initial = hashagg.EstimatePairTableBytesWithOptions(8, opts)
+		initial = hashagg.EstimatePairTableBytesWithOptions(cardinalityHint, opts)
 	case GroupShapeStringView:
-		initial = hashagg.EstimateStringTableBytesWithOptions(8, arenaHint, opts)
+		initial = hashagg.EstimateStringTableBytesWithOptions(cardinalityHint, arenaHint, opts)
 	default:
 		return nil, fmt.Errorf("spillable aggregate does not support group shape %d", shape)
 	}
@@ -94,19 +97,19 @@ func newAggregateStateTable(shape GroupShape, layout aggregate.Layout, averageKe
 	t.retained = initial
 	switch shape {
 	case GroupShapeI32:
-		t.i32 = hashagg.NewI32TableWithOptions(8, opts)
+		t.i32 = hashagg.NewI32TableWithOptions(cardinalityHint, opts)
 		t.i32.Reset()
 	case GroupShapeI64:
-		t.u64 = hashagg.NewU64TableWithOptions(8, opts)
+		t.u64 = hashagg.NewU64TableWithOptions(cardinalityHint, opts)
 		t.u64.Reset()
 	case GroupShapeU32, GroupShapeDictionaryString:
-		t.u32 = hashagg.NewU32TableWithOptions(8, opts)
+		t.u32 = hashagg.NewU32TableWithOptions(cardinalityHint, opts)
 		t.u32.Reset()
 	case GroupShapePairFixed:
-		t.pair = hashagg.NewPairTableWithOptions(8, opts)
+		t.pair = hashagg.NewPairTableWithOptions(cardinalityHint, opts)
 		t.pair.Reset()
 	case GroupShapeStringView:
-		t.str = hashagg.NewStringTableWithOptions(8, arenaHint, opts)
+		t.str = hashagg.NewStringTableWithOptions(cardinalityHint, arenaHint, opts)
 		t.str.Reset()
 	}
 	return t, nil
@@ -183,6 +186,52 @@ func (t *aggregateStateTable) visit(fn func(aggregateRecord) error) error {
 		})
 	default:
 		return fmt.Errorf("unsupported aggregate table shape %d", t.shape)
+	}
+}
+
+// visitChunk advances a stable table-generation cursor and emits at most
+// limit records. It lets resident aggregation produce bounded output batches
+// without first materializing an engine.Result or a group slice.
+func (t *aggregateStateTable) visitChunk(cursor *int, limit int, fn func(aggregateRecord) error) (bool, error) {
+	switch t.shape {
+	case GroupShapeI32:
+		return t.i32.VisitChunk(cursor, limit, func(key int32, valid bool, state aggregate.Int64Result) error {
+			mask := uint8(0)
+			if valid {
+				mask = 1
+			}
+			return fn(aggregateRecord{a: uint64(uint32(key)), validMask: mask, state: state})
+		})
+	case GroupShapeI64:
+		return t.u64.VisitChunk(cursor, limit, func(key uint64, valid bool, state aggregate.Int64Result) error {
+			mask := uint8(0)
+			if valid {
+				mask = 1
+			}
+			return fn(aggregateRecord{a: key, validMask: mask, state: state})
+		})
+	case GroupShapeU32, GroupShapeDictionaryString:
+		return t.u32.VisitChunk(cursor, limit, func(key uint32, valid bool, state aggregate.Int64Result) error {
+			mask := uint8(0)
+			if valid {
+				mask = 1
+			}
+			return fn(aggregateRecord{a: uint64(key), validMask: mask, state: state})
+		})
+	case GroupShapePairFixed:
+		return t.pair.VisitChunk(cursor, limit, func(key hashagg.Key128, validMask uint8, state aggregate.Int64Result) error {
+			return fn(aggregateRecord{a: key.A, b: key.B, validMask: validMask, state: state})
+		})
+	case GroupShapeStringView:
+		return t.str.VisitChunk(cursor, limit, func(key []byte, valid bool, state aggregate.Int64Result) error {
+			mask := uint8(0)
+			if valid {
+				mask = 1
+			}
+			return fn(aggregateRecord{stringKey: key, validMask: mask, state: state})
+		})
+	default:
+		return false, fmt.Errorf("unsupported aggregate table shape %d", t.shape)
 	}
 }
 
@@ -599,7 +648,7 @@ func newAggregateTableOwner(ctx context.Context, p *PreparedQuery, operator *mem
 		owner.retained += bytes
 		return nil
 	}
-	table, err := newAggregateStateTable(p.cq.GroupShape, p.cq.AggregateLayout, p.cq.AverageKeyBytes, maxRetained, reserve)
+	table, err := newAggregateStateTable(p.cq.GroupShape, p.cq.AggregateLayout, 8, p.cq.AverageKeyBytes, maxRetained, reserve)
 	if err != nil {
 		owner.close()
 		return nil, err

@@ -66,7 +66,7 @@ type externalSortStream struct {
 }
 
 // NewBatchStream opens the execution-scoped external stable sort when the
-// planner selected Spillable. Resident sorting keeps the established Reader.
+// planner selected Spillable. Resident sorting still consumes the child through BatchStream.
 func (s *SortSource) NewBatchStream(ctx context.Context, opts source.ReadOptions) (source.BatchStream, error) {
 	if !s.spillable {
 		return newResidentSortStream(ctx, s, opts)
@@ -82,27 +82,17 @@ func (s *SortSource) NewBatchStreamWithPartitions(ctx context.Context, opts sour
 }
 
 type residentSortStream struct {
-	reader source.Reader
-	part   source.Partition
+	reader *sortReader
 	done   bool
 	closed bool
 }
 
 func newResidentSortStream(ctx context.Context, owner *SortSource, opts source.ReadOptions) (source.BatchStream, error) {
-	reader, err := owner.NewReader(ctx, opts)
+	child, err := source.OpenBatchStream(ctx, owner.input, opts)
 	if err != nil {
 		return nil, err
 	}
-	parts, err := owner.Partitions(ctx)
-	if err != nil {
-		_ = reader.Close()
-		return nil, err
-	}
-	if len(parts) != 1 {
-		_ = reader.Close()
-		return nil, fmt.Errorf("resident sort expected one output partition, got %d", len(parts))
-	}
-	return &residentSortStream{reader: reader, part: parts[0]}, nil
+	return &residentSortStream{reader: &sortReader{owner: owner, child: child, scratch: memory.NewBatch()}}, nil
 }
 
 // Next emits the one resident sorted batch.
@@ -119,10 +109,7 @@ func (s *residentSortStream) Next(ctx context.Context, dst *memory.Batch) (bool,
 		return false, nil
 	}
 	s.done = true
-	if err := s.reader.ReadPartition(ctx, s.part, dst); err != nil {
-		return false, err
-	}
-	return dst.Rows != 0, nil
+	return s.reader.Next(ctx, dst)
 }
 
 // Close releases the resident sort reader.

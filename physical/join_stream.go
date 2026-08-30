@@ -35,9 +35,8 @@ type joinRunRef struct {
 
 type residentJoinBatchStream struct {
 	reader             *joinReader
-	parts              []source.Partition
-	next               int
 	closed             bool
+	probeExhausted     bool
 	exhausted          bool
 	probeRows          int64
 	probeBytes         int64
@@ -55,7 +54,7 @@ type residentJoinBatchStream struct {
 }
 
 // NewBatchStream opens either the execution-scoped spill implementation or a
-// compatibility stream over the retained broadcast build.
+// native stream over the retained broadcast build.
 func (s *JoinSource) NewBatchStream(ctx context.Context, opts source.ReadOptions) (source.BatchStream, error) {
 	parts, err := s.Partitions(ctx)
 	if err != nil {
@@ -64,12 +63,15 @@ func (s *JoinSource) NewBatchStream(ctx context.Context, opts source.ReadOptions
 	return s.NewBatchStreamWithPartitions(ctx, opts, parts)
 }
 
-// NewBatchStreamWithPartitions preserves prepared partition assignments for
-// resident broadcast joins. Spillable joins own both input partition passes
-// and deliberately ignore the synthetic output partition.
+// NewBatchStreamWithPartitions preserves the prepared physical graph. Join
+// output partitions are synthetic; every strategy opens its child stream and
+// supports zero or many output batches per source partition.
 func (s *JoinSource) NewBatchStreamWithPartitions(ctx context.Context, opts source.ReadOptions, parts []source.Partition) (source.BatchStream, error) {
 	if err := opts.Validate(); err != nil {
 		return nil, err
+	}
+	if opts.Kernels != s.kernels {
+		return nil, fmt.Errorf("physical join stream kernel set differs from prepared build")
 	}
 	if s.closed {
 		return nil, fmt.Errorf("physical join source closed")
@@ -80,13 +82,12 @@ func (s *JoinSource) NewBatchStreamWithPartitions(ctx context.Context, opts sour
 	if s.merge {
 		return newMergeJoinStream(ctx, s)
 	}
-	reader, err := s.left.NewReader(ctx, opts)
+	left, err := source.OpenBatchStreamWithPartitions(ctx, s.left, opts, s.leftParts)
 	if err != nil {
 		return nil, err
 	}
 	stream := &residentJoinBatchStream{
-		reader:           &joinReader{owner: s, left: reader, leftBatch: memory.NewBatch()},
-		parts:            append([]source.Partition(nil), parts...),
+		reader:           &joinReader{owner: s, left: left, leftBatch: memory.NewBatch()},
 		started:          time.Now(),
 		feedbackEligible: len(parts) == len(s.parts),
 	}
@@ -98,7 +99,7 @@ func (s *JoinSource) NewBatchStreamWithPartitions(ctx context.Context, opts sour
 		if stream.state != nil {
 			stream.matchedReservation, err = stream.state.Reserve(ctx, int64(len(s.buildLoc)))
 			if err != nil {
-				_ = reader.Close()
+				_ = left.Close()
 				return nil, err
 			}
 		}
@@ -107,9 +108,8 @@ func (s *JoinSource) NewBatchStreamWithPartitions(ctx context.Context, opts sour
 	return stream, nil
 }
 
-// Next emits one resident join partition. Bounded high-multiplicity output is
-// handled by spillableJoinStream; this compatibility path intentionally keeps
-// the established broadcast performance behavior.
+// Next probes one native child batch. Bounded high-multiplicity output is
+// handled by spillableJoinStream; MemoryOnly keeps the broadcast fast path.
 func (s *residentJoinBatchStream) Next(ctx context.Context, dst *memory.Batch) (bool, error) {
 	if dst == nil {
 		return false, fmt.Errorf("join stream destination is nil")
@@ -126,7 +126,7 @@ func (s *residentJoinBatchStream) Next(ctx context.Context, dst *memory.Batch) (
 		dst.ClearColumns()
 		return false, nil
 	}
-	if s.next >= len(s.parts) {
+	if s.probeExhausted {
 		if len(s.matchedBuild) != 0 {
 			capacity := minInt(4096, len(s.matchedBuild)-s.unmatchedNext)
 			if err := s.reserveOutput(ctx, int64(capacity), 0); err != nil {
@@ -156,20 +156,24 @@ func (s *residentJoinBatchStream) Next(ctx context.Context, dst *memory.Batch) (
 		dst.ClearColumns()
 		return false, nil
 	}
-	part := s.parts[s.next]
-	s.next++
-	probeRows := int64(0)
-	if part.ID >= 0 && part.ID < len(s.reader.owner.leftParts) {
-		probeRows = s.reader.owner.leftParts[part.ID].Rows
-	}
-	if err := s.reserveOutput(ctx, part.Rows, probeRows); err != nil {
-		return false, err
-	}
-	if err := s.reader.ReadPartition(ctx, part, dst); err != nil {
+	ok, err := s.reader.nextPairs(ctx)
+	if err != nil {
 		if s.outputReservation != nil {
 			s.outputReservation.Release()
 			s.outputReservation = nil
 		}
+		return false, err
+	}
+	if !ok {
+		s.probeExhausted = true
+		return s.Next(ctx, dst)
+	}
+	if err := s.reserveOutput(ctx, int64(len(s.reader.pairs)), int64(s.reader.leftBatch.Rows)); err != nil {
+		return false, err
+	}
+	if err := materializeJoinBatch(dst, s.reader.owner, s.reader.leftBatch, s.reader.pairs); err != nil {
+		s.outputReservation.Release()
+		s.outputReservation = nil
 		return false, err
 	}
 	s.probeRows += int64(s.reader.lastSummary.ProbeRows)
