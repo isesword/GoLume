@@ -12,6 +12,8 @@ import (
 	"gocolumn/observer"
 	"gocolumn/optimizer"
 	"gocolumn/physical"
+	"gocolumn/pipeline"
+	"gocolumn/planner"
 	"gocolumn/source"
 	"io"
 	"strings"
@@ -21,10 +23,12 @@ import (
 // LazyFrame is an immutable logical query plan. Transformation methods only
 // append logical nodes; they never scan or decode input data.
 type LazyFrame struct {
-	session *Session
-	plan    logical.Plan
-	hints   expr.Hints
-	err     error
+	session            *Session
+	plan               logical.Plan
+	hints              expr.Hints
+	executionPolicy    engine.ExecutionPolicy
+	hasExecutionPolicy bool
+	err                error
 }
 
 // GroupedFrame is an intermediate lazy builder returned by GroupBy.
@@ -537,8 +541,25 @@ func (f LazyFrame) ExplainPhysical(ctx context.Context) (string, error) {
 	info := prepared.Plan()
 	var b strings.Builder
 	b.WriteString(logical.Explain(optimized))
+	summary, err := f.executionSummary()
+	if err != nil {
+		return "", err
+	}
+	fmt.Fprintf(&b, "\n%s", summary)
 	fmt.Fprintf(&b, "\nPHYSICAL strategy=%s workers=%d radix_bits=%d key_width=%d predicate_ops=%d feedback_samples=%d est_selectivity=%.4f est_cardinality=%d", info.Strategy.Kind, info.Strategy.Workers, info.Strategy.RadixBits, info.KeyWidthBytes, info.PredicateOps, info.FeedbackSamples, info.EstimatedSelectivity, info.EstimatedCardinality)
 	appendPushdownExplain(&b, report)
+	policy, policyErr := f.effectiveExecutionPolicy()
+	if policyErr != nil {
+		return "", policyErr
+	}
+	aggregateClass := source.StreamBlocking
+	if info.Strategy.Kind == planner.StrategySorted {
+		aggregateClass = source.StreamBounded
+	} else if policy == engine.ExecutionBounded || policy == engine.ExecutionAuto && f.session.engine.Memory().Limit() > 0 && f.session.engine.SpillConfigured() {
+		aggregateClass = source.StreamSpillable
+	}
+	streamRoot := source.StreamPlanNode{Operator: "Collect", Class: source.StreamMemorySink, Children: []source.StreamPlanNode{streamPlanForLogical(optimized, aggregateClass)}}
+	fmt.Fprintf(&b, "\n%s", source.FormatStreamPlan(streamRoot))
 	return b.String(), nil
 }
 
@@ -546,12 +567,20 @@ func (f LazyFrame) explainRowPhysical(ctx context.Context) (string, error) {
 	if f.session == nil || f.session.engine == nil {
 		return "", fmt.Errorf("lazy frame has no execution session")
 	}
+	policy, err := f.effectiveExecutionPolicy()
+	if err != nil {
+		return "", err
+	}
+	ctx = engine.WithExecutionPolicy(ctx, policy)
 	optimized, err := optimizer.Optimize(f.plan)
 	if err != nil {
 		return "", err
 	}
 	physicalPlan, report, err := applyPushdown(ctx, optimized.Plan)
 	if err != nil {
+		return "", err
+	}
+	if err := f.validateExecutionLogical(physicalPlan); err != nil {
 		return "", err
 	}
 	src, pending, closers, err := lowerSourcePipeline(ctx, physicalPlan, f.session.engine.Memory(), f.session.engine.KernelSet(), f.session.engine)
@@ -565,6 +594,9 @@ func (f LazyFrame) explainRowPhysical(ctx context.Context) (string, error) {
 			return "", err
 		}
 	}
+	if err := f.validateExecutionSource(src); err != nil {
+		return "", err
+	}
 	stats, err := src.Stats(ctx)
 	if err != nil {
 		return "", err
@@ -575,8 +607,21 @@ func (f LazyFrame) explainRowPhysical(ctx context.Context) (string, error) {
 	}
 	var b strings.Builder
 	b.WriteString(logical.Explain(physicalPlan))
+	summary, err := f.executionSummary()
+	if err != nil {
+		return "", err
+	}
+	fmt.Fprintf(&b, "\n%s", summary)
 	fmt.Fprintf(&b, "\nPHYSICAL row-pipeline partitions=%d rows=%d columns=[%s]", len(parts), stats.Rows, strings.Join(schemaColumnNames(src.Schema()), ", "))
 	appendPushdownExplain(&b, report)
+	streamRoot := source.StreamPlanNode{Operator: "Collect", Class: source.StreamMemorySink, Children: []source.StreamPlanNode{source.StreamPlanOf(src)}}
+	fmt.Fprintf(&b, "\n%s", source.FormatStreamPlan(streamRoot))
+	pipelineOpts := f.session.engine.PipelineOptions()
+	workers := pipeline.EffectiveWorkers(src, parts, pipelineOpts)
+	fmt.Fprintf(&b, "\nPIPELINE id=p00 workers=%d ordering=%s target_morsel_bytes=%d", workers, pipelineOpts.Ordering, pipelineOpts.TargetMorselBytes)
+	if workers > 1 {
+		fmt.Fprintf(&b, "\nEXCHANGE id=x00 pipeline=p00 max_in_flight_bytes=%d max_morsel_bytes=%d estimated_resident_bytes=%d", pipelineOpts.MaxInFlightBytes, pipelineOpts.MaxMorselBytes, pipelineOpts.MaxInFlightBytes)
+	}
 	return b.String(), nil
 }
 
@@ -663,6 +708,11 @@ func (f LazyFrame) prepare(ctx context.Context, opts engine.PrepareOptions) (*en
 	if f.session == nil || f.session.engine == nil {
 		return nil, nil, source.PushdownReport{}, nil, fmt.Errorf("lazy frame has no execution session")
 	}
+	policy, err := f.effectiveExecutionPolicy()
+	if err != nil {
+		return nil, nil, source.PushdownReport{}, nil, err
+	}
+	ctx = engine.WithExecutionPolicy(ctx, policy)
 	optimized, err := optimizer.Optimize(f.plan)
 	if err != nil {
 		return nil, nil, source.PushdownReport{}, nil, err
@@ -672,6 +722,9 @@ func (f LazyFrame) prepare(ctx context.Context, opts engine.PrepareOptions) (*en
 	}
 	physicalLogical, report, err := applyPushdown(ctx, optimized.Plan)
 	if err != nil {
+		return nil, nil, source.PushdownReport{}, nil, err
+	}
+	if err := f.validateExecutionLogical(physicalLogical); err != nil {
 		return nil, nil, source.PushdownReport{}, nil, err
 	}
 	var physicalSource source.Source
@@ -1166,7 +1219,9 @@ func lowerSourcePipeline(ctx context.Context, plan logical.Plan, manager memory.
 			_ = pq.Close()
 			return nil, nil, closers, err
 		}
-		aggSrc, err := newAggregateResultSource(ctx, pq, src, outSchema, n.GroupBy, n.Aggregates)
+		policy := engine.ExecutionPolicyFromContext(ctx, eng.ExecutionPolicy())
+		spillable := (policy == engine.ExecutionBounded || policy == engine.ExecutionAuto && eng.Memory().Limit() > 0 && eng.SpillConfigured()) && pq.Plan().Strategy.Kind != planner.StrategySorted
+		aggSrc, err := newAggregateResultSource(ctx, pq, src, outSchema, n.GroupBy, n.Aggregates, spillable)
 		if err != nil {
 			_ = pq.Close()
 			return nil, nil, closers, err

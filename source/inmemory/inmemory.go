@@ -16,6 +16,7 @@ type Source struct {
 	stats      source.Stats
 	dicts      map[string]source.Dictionary
 	projection []string
+	ordering   []source.OrderingColumn
 }
 
 // New constructs a zero-copy immutable source over batches.
@@ -69,8 +70,24 @@ func (s *Source) WithDictionary(column string, d source.Dictionary) *Source {
 	return s
 }
 
+// WithOrdering declares a global ordering contract for immutable batches.
+// Callers are responsible for ensuring the concatenated batch sequence obeys
+// it; aggregation and merge operators may rely on the declaration directly.
+func (s *Source) WithOrdering(columns ...source.OrderingColumn) *Source {
+	s.ordering = append([]source.OrderingColumn(nil), columns...)
+	return s
+}
+
+// Ordering returns the declared global ordering prefix.
+func (s *Source) Ordering() []source.OrderingColumn {
+	return append([]source.OrderingColumn(nil), s.ordering...)
+}
+
 // Schema returns the source schema.
 func (s *Source) Schema() memory.Schema { return s.schema }
+
+// Replayability reports that immutable in-memory batches are a stable snapshot.
+func (*Source) Replayability() source.Replayability { return source.ReplayStable }
 
 // Stats returns precomputed source statistics.
 func (s *Source) Stats(context.Context) (source.Stats, error) { return s.stats, nil }
@@ -109,6 +126,17 @@ func (s *Source) ApplyPushdown(_ context.Context, req source.PushdownRequest) (s
 	out := *s
 	out.schema = memory.NewSchema(fields...)
 	out.projection = projection
+	visible := make(map[string]struct{}, len(projection))
+	for _, name := range projection {
+		visible[name] = struct{}{}
+	}
+	out.ordering = nil
+	for _, key := range s.ordering {
+		if _, ok := visible[key.Name]; !ok {
+			break
+		}
+		out.ordering = append(out.ordering, key)
+	}
 	report := source.PushdownReport{Projection: append([]string(nil), projection...), TotalPartitions: len(s.parts), SelectedPartitions: len(s.parts), TotalRows: s.stats.Rows, SelectedRows: s.stats.Rows}
 	if req.Predicate != nil {
 		report.Predicate = req.Predicate.String()

@@ -148,6 +148,42 @@ func (t *U32Table) TryAddNullableValue(key uint32, keyValid bool, value int64, v
 	return created, nil
 }
 
+// TryMergeNullable combines a mergeable partial state into key.
+func (t *U32Table) TryMergeNullable(key uint32, keyValid bool, state aggregate.Int64Result) (bool, error) {
+	if !keyValid {
+		created := !t.nullSet
+		if created {
+			t.nullSet = true
+			t.nullState.InitResult(0, state)
+		} else {
+			t.nullState.MergeResult(0, state)
+		}
+		return created, nil
+	}
+	for {
+		p := Hash64(uint64(key)) & t.mask
+		for {
+			if t.epoch[p] != t.gen {
+				if t.size+1 > t.maxEntries {
+					if err := t.grow(); err != nil {
+						return false, err
+					}
+					break
+				}
+				t.epoch[p], t.keys[p] = t.gen, key
+				t.state.InitResult(int(p), state)
+				t.size++
+				return true, nil
+			}
+			if t.keys[p] == key {
+				t.state.MergeResult(int(p), state)
+				return false, nil
+			}
+			p = (p + 1) & t.mask
+		}
+	}
+}
+
 // AggregateSelected aggregates selected non-NULL keys and non-NULL values.
 func (t *U32Table) AggregateSelected(keys []uint32, vals []int64, sel memory.Bitmap) Summary {
 	out, err := t.AggregateSelectedNullableValues(keys, nil, vals, nil, sel)
@@ -209,6 +245,24 @@ func (t *U32Table) Materialize(dst []GroupU32) []GroupU32 {
 	return dst
 }
 
+// Visit calls fn once for every current group without materializing a slice.
+func (t *U32Table) Visit(fn func(key uint32, valid bool, state aggregate.Int64Result) error) error {
+	if fn == nil {
+		return nil
+	}
+	for i := range t.epoch {
+		if t.epoch[i] == t.gen {
+			if err := fn(t.keys[i], true, t.state.Result(i)); err != nil {
+				return err
+			}
+		}
+	}
+	if t.nullSet {
+		return fn(0, false, t.nullState.Result(0))
+	}
+	return nil
+}
+
 // Capacity returns the current number of hash slots.
 func (t *U32Table) Capacity() int { return len(t.keys) }
 
@@ -219,6 +273,11 @@ func (t *U32Table) Len() int {
 		n++
 	}
 	return n
+}
+
+// RetainedBytes returns the table-owned key, epoch, and aggregate-state bytes.
+func (t *U32Table) RetainedBytes() int64 {
+	return u32TableBytesForCapacity(len(t.keys), t.opts.Aggregates) + aggregate.Int64VectorBytesForSlots(1, t.opts.Aggregates)
 }
 
 func u32TableBytesForCapacity(capacity int, layout aggregate.Layout) int64 {

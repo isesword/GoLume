@@ -65,6 +65,38 @@ func NewDropColumnsSource(input source.Source, columns []string) (source.Source,
 // Schema returns the input schema without dropped columns.
 func (s *DropColumnsSource) Schema() memory.Schema { return s.schema }
 
+// Replayability forwards the child snapshot contract.
+func (s *DropColumnsSource) Replayability() source.Replayability {
+	return source.ReplayabilityOf(s.input)
+}
+
+// Ordering preserves child keys that remain visible after dropping internal
+// projection columns. The guaranteed prefix ends at the first removed key.
+func (s *DropColumnsSource) Ordering() []source.OrderingColumn {
+	provider, ok := s.input.(source.OrderingProvider)
+	if !ok {
+		return nil
+	}
+	out := provider.Ordering()
+	for index, key := range out {
+		if _, visible := s.schema.Field(key.Name); !visible {
+			return append([]source.OrderingColumn(nil), out[:index]...)
+		}
+	}
+	return append([]source.OrderingColumn(nil), out...)
+}
+
+// StreamPlan reports a zero-copy batch-local projection node.
+func (s *DropColumnsSource) StreamPlan() source.StreamPlanNode {
+	child := source.StreamPlanOf(s.input)
+	return source.StreamPlanNode{
+		Operator:          "DropColumns",
+		Class:             source.StreamPipeline,
+		PartitionParallel: child.PartitionParallel,
+		Children:          []source.StreamPlanNode{child},
+	}
+}
+
 // Stats preserves input row and partition statistics.
 func (s *DropColumnsSource) Stats(ctx context.Context) (source.Stats, error) {
 	return s.input.Stats(ctx)
@@ -87,10 +119,59 @@ func (s *DropColumnsSource) NewReader(ctx context.Context, opts source.ReadOptio
 	return &dropColumnsReader{child: reader, drop: append([]string(nil), s.drop...)}, nil
 }
 
+// NewBatchStream creates a zero-copy native stream over the child.
+func (s *DropColumnsSource) NewBatchStream(ctx context.Context, opts source.ReadOptions) (source.BatchStream, error) {
+	return s.newBatchStream(ctx, opts, nil, false)
+}
+
+// NewBatchStreamWithPartitions propagates prepared partition metadata.
+func (s *DropColumnsSource) NewBatchStreamWithPartitions(ctx context.Context, opts source.ReadOptions, parts []source.Partition) (source.BatchStream, error) {
+	return s.newBatchStream(ctx, opts, parts, true)
+}
+
+func (s *DropColumnsSource) newBatchStream(ctx context.Context, opts source.ReadOptions, parts []source.Partition, prepared bool) (source.BatchStream, error) {
+	if err := opts.Validate(); err != nil {
+		return nil, err
+	}
+	child, err := openUnaryInputStream(ctx, s.input, opts, parts, prepared)
+	if err != nil {
+		return nil, err
+	}
+	return &dropColumnsBatchStream{state: unaryStreamState{child: child}, drop: append([]string(nil), s.drop...)}, nil
+}
+
 type dropColumnsReader struct {
 	child source.Reader
 	drop  []string
 }
+
+type dropColumnsBatchStream struct {
+	state unaryStreamState
+	drop  []string
+}
+
+// Next returns the next child Batch after removing hidden bindings.
+func (s *dropColumnsBatchStream) Next(ctx context.Context, dst *memory.Batch) (bool, error) {
+	if stop, err := s.state.before(ctx, dst); stop {
+		return false, err
+	}
+	ok, err := s.state.child.Next(ctx, dst)
+	if err != nil {
+		dst.ClearColumns()
+		return false, s.state.fail(err)
+	}
+	if !ok {
+		dst.ClearColumns()
+		return false, s.state.finish()
+	}
+	for _, name := range s.drop {
+		removeColumn(dst, name)
+	}
+	return true, nil
+}
+
+// Close releases the child stream.
+func (s *dropColumnsBatchStream) Close() error { return s.state.Close() }
 
 // Close releases the wrapped source reader.
 func (r *dropColumnsReader) Close() error { return r.child.Close() }
@@ -205,6 +286,25 @@ func NewProjectSource(input source.Source, named []expr.NamedExpr, includeInput 
 // Schema returns the projected output schema.
 func (s *ProjectSource) Schema() memory.Schema { return s.schema }
 
+// Replayability forwards the child snapshot contract.
+func (s *ProjectSource) Replayability() source.Replayability { return source.ReplayabilityOf(s.input) }
+
+// StreamPlan reports a batch-local expression projection node.
+func (s *ProjectSource) StreamPlan() source.StreamPlanNode {
+	detail := fmt.Sprintf("outputs=%d", len(s.named))
+	if s.includeInput {
+		detail += " include_input=true"
+	}
+	child := source.StreamPlanOf(s.input)
+	return source.StreamPlanNode{
+		Operator:          "Project",
+		Class:             source.StreamPipeline,
+		Detail:            detail,
+		PartitionParallel: child.PartitionParallel,
+		Children:          []source.StreamPlanNode{child},
+	}
+}
+
 // Stats preserves child row and partition statistics.
 func (s *ProjectSource) Stats(ctx context.Context) (source.Stats, error) { return s.input.Stats(ctx) }
 
@@ -223,6 +323,33 @@ func (s *ProjectSource) NewReader(ctx context.Context, opts source.ReadOptions) 
 		return nil, err
 	}
 	return &projectReader{owner: s, child: r, input: memory.NewBatch(), kernels: opts.Kernels}, nil
+}
+
+// NewBatchStream creates a native fused projection stream.
+func (s *ProjectSource) NewBatchStream(ctx context.Context, opts source.ReadOptions) (source.BatchStream, error) {
+	return s.newBatchStream(ctx, opts, nil, false)
+}
+
+// NewBatchStreamWithPartitions propagates prepared partition metadata.
+func (s *ProjectSource) NewBatchStreamWithPartitions(ctx context.Context, opts source.ReadOptions, parts []source.Partition) (source.BatchStream, error) {
+	return s.newBatchStream(ctx, opts, parts, true)
+}
+
+func (s *ProjectSource) newBatchStream(ctx context.Context, opts source.ReadOptions, parts []source.Partition, prepared bool) (source.BatchStream, error) {
+	if err := opts.Validate(); err != nil {
+		return nil, err
+	}
+	child, err := openUnaryInputStream(ctx, s.input, opts, parts, prepared)
+	if err != nil {
+		return nil, err
+	}
+	stream := &projectBatchStream{owner: s, input: memory.NewBatch(), kernels: opts.Kernels}
+	stream.state.child = child
+	stream.state.closeOwn = func() error {
+		stream.input.ReleaseOwned()
+		return stream.workspace.Close()
+	}
+	return stream, nil
 }
 
 type projectReader struct {
@@ -244,27 +371,63 @@ func (r *projectReader) ReadPartition(ctx context.Context, p source.Partition, d
 	if err := r.child.ReadPartition(ctx, p, r.input); err != nil {
 		return err
 	}
-	r.workspace.SetMemoryManager(ctx, r.owner.manager)
-	values, err := r.owner.program.Evaluate(r.input, &r.workspace, r.kernels)
+	return applyProjectBatch(ctx, r.owner, r.input, dst, &r.workspace, r.kernels)
+}
+
+func applyProjectBatch(ctx context.Context, owner *ProjectSource, input, dst *memory.Batch, workspace *expr.ScalarWorkspace, kernels kernel.Set) error {
+	workspace.SetMemoryManager(ctx, owner.manager)
+	values, err := owner.program.Evaluate(input, workspace, kernels)
 	if err != nil {
 		return err
 	}
-	if len(values) != len(r.owner.program.Outputs) {
+	if len(values) != len(owner.program.Outputs) {
 		return fmt.Errorf("projection output count mismatch")
 	}
 	dst.ClearColumns()
-	if r.owner.includeInput {
-		bindAll(dst, r.input)
+	if owner.includeInput {
+		bindAll(dst, input)
 	}
-	for i, out := range r.owner.program.Outputs {
+	for i, out := range owner.program.Outputs {
 		removeColumn(dst, out.Name)
 		if err := bindScalarValue(dst, out.Name, values[i]); err != nil {
 			return err
 		}
 	}
-	dst.Reset(r.input.Rows)
+	dst.Reset(input.Rows)
 	return nil
 }
+
+type projectBatchStream struct {
+	state     unaryStreamState
+	owner     *ProjectSource
+	input     *memory.Batch
+	workspace expr.ScalarWorkspace
+	kernels   kernel.Set
+}
+
+// Next evaluates the fused projection over the next child Batch.
+func (s *projectBatchStream) Next(ctx context.Context, dst *memory.Batch) (bool, error) {
+	if stop, err := s.state.before(ctx, dst); stop {
+		return false, err
+	}
+	ok, err := s.state.child.Next(ctx, s.input)
+	if err != nil {
+		dst.ClearColumns()
+		return false, s.state.fail(err)
+	}
+	if !ok {
+		dst.ClearColumns()
+		return false, s.state.finish()
+	}
+	if err := applyProjectBatch(ctx, s.owner, s.input, dst, &s.workspace, s.kernels); err != nil {
+		dst.ClearColumns()
+		return false, s.state.fail(err)
+	}
+	return true, nil
+}
+
+// Close releases projection reservations and the child stream.
+func (s *projectBatchStream) Close() error { return s.state.Close() }
 
 func bindScalarValue(dst *memory.Batch, name string, v expr.ScalarValue) error {
 	switch {
@@ -368,6 +531,17 @@ func bindNamed(dst *memory.Batch, out string, src *memory.Batch, in string) erro
 	}
 	return fmt.Errorf("projection input column %q not present in batch", in)
 }
+
+var _ source.StreamPlanProvider = (*DropColumnsSource)(nil)
+var _ source.StreamPlanProvider = (*ProjectSource)(nil)
+var _ source.ReplayabilityProvider = (*DropColumnsSource)(nil)
+var _ source.ReplayabilityProvider = (*ProjectSource)(nil)
+var _ source.BatchStreamProvider = (*DropColumnsSource)(nil)
+var _ source.PreparedBatchStreamProvider = (*DropColumnsSource)(nil)
+var _ source.BatchStream = (*dropColumnsBatchStream)(nil)
+var _ source.BatchStreamProvider = (*ProjectSource)(nil)
+var _ source.PreparedBatchStreamProvider = (*ProjectSource)(nil)
+var _ source.BatchStream = (*projectBatchStream)(nil)
 
 func removeColumn(dst *memory.Batch, name string) {
 	delete(dst.Int64s, name)

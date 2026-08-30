@@ -7,6 +7,7 @@ import (
 	"gocolumn/logical"
 	"gocolumn/observer"
 	"runtime"
+	"sort"
 	"strings"
 	"time"
 )
@@ -63,7 +64,18 @@ func appendOperatorStats(b *strings.Builder, title string, stats []observer.Oper
 	b.WriteString("\n")
 	b.WriteString("id    kind        calls   input_rows   output_rows   output_bytes   inclusive      self           label\n")
 	for _, s := range stats {
-		fmt.Fprintf(b, "%-5s %-11s %5d %12d %13d %14d %13s %13s   %s\n", s.ID, s.Kind, s.Calls, s.InputRows, s.OutputRows, s.OutputBytes, s.Inclusive, s.SelfTime, s.Label)
+		fmt.Fprintf(b, "%-5s %-11s %5d %12d %13d %14d %13s %13s   %s", s.ID, s.Kind, s.Calls, s.InputRows, s.OutputRows, s.OutputBytes, s.Inclusive, s.SelfTime, s.Label)
+		if len(s.Attributes) != 0 {
+			keys := make([]string, 0, len(s.Attributes))
+			for key := range s.Attributes {
+				keys = append(keys, key)
+			}
+			sort.Strings(keys)
+			for _, key := range keys {
+				fmt.Fprintf(b, " %s=%s", key, s.Attributes[key])
+			}
+		}
+		b.WriteByte('\n')
 	}
 }
 
@@ -90,7 +102,14 @@ func (f LazyFrame) Analyze(ctx context.Context) (AnalyzeReport, error) {
 	trace := observer.NewOperatorTrace()
 	prepareCtx := observer.WithOperatorTrace(observer.WithPhase(ctx, observer.PhasePrepare), trace)
 
-	if _, ok := f.plan.(*logical.Aggregate); ok {
+	_, terminalAggregate := f.plan.(*logical.Aggregate)
+	policy, policyErr := f.effectiveExecutionPolicy()
+	if policyErr != nil {
+		return AnalyzeReport{}, policyErr
+	}
+	streamAggregate := terminalAggregate && (policy == engine.ExecutionBounded ||
+		policy == engine.ExecutionAuto && f.session.engine.Memory().Limit() > 0 && f.session.engine.SpillConfigured())
+	if terminalAggregate && !streamAggregate {
 		alloc0 := totalAlloc()
 		start := time.Now()
 		query, physicalLogical, pushdown, closers, err := f.prepare(prepareCtx, engine.PrepareOptions{})
@@ -154,6 +173,10 @@ func (f LazyFrame) Analyze(ctx context.Context) (AnalyzeReport, error) {
 		return AnalyzeReport{}, err
 	}
 	report.OutputRows = frame.Height()
+	if terminalAggregate {
+		report.GroupCount = int(frame.Height())
+		report.Strategy = "stream"
+	}
 	for _, batch := range frame.batches() {
 		report.MaterializedRows += batch.Rows
 	}

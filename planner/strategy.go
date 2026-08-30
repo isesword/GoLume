@@ -16,6 +16,9 @@ const (
 	StrategyBitmapDirect
 	// StrategyRadix partitions selected keys and executes partition-owned aggregation in parallel.
 	StrategyRadix
+	// StrategySorted aggregates adjacent equal keys with O(1) group state when
+	// the source proves a compatible global ordering prefix.
+	StrategySorted
 )
 
 // String returns the stable textual name of the strategy.
@@ -27,6 +30,8 @@ func (k Kind) String() string {
 		return "bitmap-direct"
 	case StrategyRadix:
 		return "radix"
+	case StrategySorted:
+		return "sorted"
 	default:
 		return "unknown"
 	}
@@ -57,6 +62,7 @@ type Input struct {
 	PredicateComplexity int
 	ComparisonID        kernel.KernelID
 	HasComparisonID     bool
+	SortedCapable       bool
 }
 
 // CostModel selects a physical aggregation strategy from runtime statistics.
@@ -97,9 +103,17 @@ func (Heuristic) Choose(in Input) (Strategy, error) {
 				return Strategy{}, fmt.Errorf("radix is not available for this key representation")
 			}
 			return Strategy{Kind: StrategyRadix, Workers: workers, RadixBits: bits, Reason: "forced"}, nil
+		case "sorted":
+			if !in.SortedCapable {
+				return Strategy{}, fmt.Errorf("sorted aggregation requires a proven group-key ordering prefix")
+			}
+			return Strategy{Kind: StrategySorted, Workers: 1, Reason: "forced ordered input"}, nil
 		default:
 			return Strategy{}, fmt.Errorf("unknown forced strategy %q", in.ForceStrategy)
 		}
+	}
+	if in.SortedCapable {
+		return Strategy{Kind: StrategySorted, Workers: 1, Reason: "input ordering matches group keys"}, nil
 	}
 	selected := float64(in.Rows) * in.Selectivity
 	if in.Selectivity <= 0 {

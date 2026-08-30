@@ -147,6 +147,40 @@ func (t *PairTable) TryAddNullableValue(k Key128, validMask uint8, v int64, valu
 	}
 }
 
+// TryMergeNullable combines a mergeable partial state into a nullable pair.
+func (t *PairTable) TryMergeNullable(k Key128, validMask uint8, state aggregate.Int64Result) (bool, error) {
+	validMask &= 3
+	if validMask&1 == 0 {
+		k.A = 0
+	}
+	if validMask&2 == 0 {
+		k.B = 0
+	}
+	for {
+		p := Hash128Nullable(k, validMask) & t.mask
+		for {
+			if t.epoch[p] != t.gen {
+				if t.size+1 > t.maxEntries {
+					if err := t.grow(); err != nil {
+						return false, err
+					}
+					break
+				}
+				t.epoch[p] = t.gen
+				t.a[p], t.b[p], t.validMask[p] = k.A, k.B, validMask
+				t.state.InitResult(int(p), state)
+				t.size++
+				return true, nil
+			}
+			if t.validMask[p] == validMask && t.a[p] == k.A && t.b[p] == k.B {
+				t.state.MergeResult(int(p), state)
+				return false, nil
+			}
+			p = (p + 1) & t.mask
+		}
+	}
+}
+
 // Add updates one fully valid pair group and panics if configured growth is rejected.
 func (t *PairTable) Add(k Key128, v int64) bool {
 	created, err := t.TryAdd(k, v)
@@ -194,11 +228,31 @@ func (t *PairTable) Materialize(dst []Group128) []Group128 {
 	return dst
 }
 
+// Visit calls fn once for every current group without materializing a slice.
+func (t *PairTable) Visit(fn func(key Key128, validMask uint8, state aggregate.Int64Result) error) error {
+	if fn == nil {
+		return nil
+	}
+	for i := range t.epoch {
+		if t.epoch[i] == t.gen {
+			if err := fn(Key128{A: t.a[i], B: t.b[i]}, t.validMask[i], t.state.Result(i)); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
 // Capacity returns the current number of hash slots.
 func (t *PairTable) Capacity() int { return len(t.a) }
 
 // Len returns the number of logical groups.
 func (t *PairTable) Len() int { return t.size }
+
+// RetainedBytes returns the table-owned key, validity, epoch, and state bytes.
+func (t *PairTable) RetainedBytes() int64 {
+	return pairTableBytesForCapacity(len(t.a), t.opts.Aggregates)
+}
 
 func pairTableBytesForCapacity(capacity int, layout aggregate.Layout) int64 {
 	return int64(capacity)*(8+8+1+4) + aggregate.Int64VectorBytesForSlots(capacity, layout)

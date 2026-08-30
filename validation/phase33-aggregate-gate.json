@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "phase": "3.3",
+  "date": "2026-08-30",
+  "environment": {
+    "os": "darwin",
+    "arch": "arm64",
+    "cpu": "Apple M4 Pro",
+    "go": "go1.27.0",
+    "base_commit": "8e550be"
+  },
+  "decisions": {
+    "logical_engine": "one LazyPlan and physical stream graph",
+    "sorted_strategy": "adjacent aggregation only with a proven complete group-key ordering prefix",
+    "spill_strategy": "4-bit radix state runs with recursive repartition over at most 64 hash bits",
+    "resident_strategy": "unlimited Auto and explicit MemoryOnly retain the one-pass input-sized radix performance path",
+    "bounded_radix_workspace": "finite-budget and Bounded legacy radix use workers times maximum morsel rows, never total input rows",
+    "output": "bounded aggregate state runs restored one output batch at a time",
+    "simd": "no new Auto candidate; fixed single-key partition hashing reuses the existing kernel.Set Hash64Batch allowlist"
+  },
+  "resident_radix_gate": {
+    "benchmark": "BenchmarkPreparedRadixW4",
+    "command": "go test ./engine -run '^$' -bench '^BenchmarkPreparedRadixW4$' -benchtime=1s -count=10 -benchmem",
+    "baseline_ns_per_op": [5130285, 4964344, 4933762, 5172389, 5402631, 4957386, 5023241, 4958968, 5737260, 4983466],
+    "candidate_ns_per_op": [5000270, 4945655, 4929374, 4971245, 4905503, 4903621, 6054712, 4944903, 5089731, 4971824],
+    "baseline_median_ns_per_op": 5003353.5,
+    "candidate_median_ns_per_op": 4958450,
+    "median_change_percent": -0.8975,
+    "baseline_allocs_per_op": "30811-30812",
+    "candidate_allocs_per_op": "30811-30812",
+    "gate": "end-to-end regression <= 3%",
+    "result": "pass"
+  },
+  "bounded_spill_benchmark": {
+    "benchmark": "BenchmarkPhase33SpillableAggregateDrain",
+    "input_rows": 65536,
+    "groups": 8192,
+    "hard_limit_bytes": 262144,
+    "samples_ns_per_op": [7891520361, 7803242028, 7881222806],
+    "samples_rows_per_second": [8305, 8399, 8315],
+    "peak_reserved_bytes": 68989,
+    "spill_bytes_per_op": 2355982,
+    "result": "pass"
+  },
+  "coverage": [
+    "SUM, COUNT rows, COUNT values, MIN, MAX, and AVG merge/finalize state",
+    "nullable fixed keys and values",
+    "plain string, dictionary domain, and fixed composite keys",
+    "sorted aggregation without a spill quota",
+    "result larger than memory budget through DrainBatchStream",
+    "recursive radix repartition under colliding low hash bits",
+    "version, shape, layout, validity, truncation, and trailing-byte codec corruption",
+    "Prepared repeated execution, pre-cancellation, cleanup, and idempotent Close",
+    "ExplainAnalyze spill, peak memory, radix depth, and partition-skew attributes"
+  ],
+  "validation": [
+    {
+      "command": "go test ./... -count=1",
+      "result": "pass"
+    },
+    {
+      "command": "go test -race ./aggregate ./hashagg ./radix ./engine ./lazy ./memory ./physical ./pipeline ./source ./planner",
+      "result": "pass"
+    },
+    {
+      "command": "./scripts/validate.sh",
+      "includes": [
+        "GoDoc",
+        "generator drift",
+        "scalar",
+        "Auto SIMD",
+        "forced SIMD",
+        "GODEBUG=simd=0",
+        "race",
+        "go vet",
+        "linux/amd64 cross build",
+        "lazy demo"
+      ],
+      "result": "pass"
+    },
+    {
+      "command": "git diff --check",
+      "result": "pass"
+    }
+  ]
+}

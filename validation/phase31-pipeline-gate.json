@@ -1,0 +1,127 @@
+{
+  "schema_version": 1,
+  "phase": "3.1",
+  "date": "2026-08-30",
+  "status": "pass",
+  "host": {
+    "goos": "darwin",
+    "goarch": "arm64",
+    "cpu": "Apple M4 Pro",
+    "logical_cpus": 12
+  },
+  "command": "go test ./pipeline -run '^$' -bench 'BenchmarkPipeline(SchedulingSmallBatches|WorkerScaling|WideTablePeakMemory)' -benchmem -benchtime=1s -count=10",
+  "samples_per_variant": 10,
+  "small_batch_auto_gate": {
+    "partitions": 256,
+    "rows_per_partition": 16,
+    "configured_workers": 4,
+    "effective_workers": 1,
+    "reason": "estimated partition bytes cannot amortize a byte-owned exchange",
+    "maximum_allowed_regression_percent": 3.0,
+    "direct_ns_per_op": [23159, 23270, 22942, 23144, 23145, 23205, 23327, 23334, 23237, 23142],
+    "auto_ns_per_op": [23470, 23383, 23401, 23547, 23289, 23514, 23494, 23633, 23671, 23352],
+    "direct_median_ns_per_op": 23182,
+    "auto_median_ns_per_op": 23482,
+    "time_delta_percent": 1.294,
+    "mann_whitney_p_value": 0.000043,
+    "direct_bytes_per_op": 888,
+    "auto_bytes_per_op": 888,
+    "direct_allocations_per_op": 14,
+    "auto_allocations_per_op": 14,
+    "status": "pass"
+  },
+  "worker_scaling": {
+    "input_rows": 262144,
+    "columns": 8,
+    "operation": "eight int64 projection expressions",
+    "ordering": "relaxed",
+    "variants": [
+      {
+        "workers": 1,
+        "median_ns_per_op": 2146973,
+        "speedup_vs_1": 1.0,
+        "median_peak_inflight_bytes": 0,
+        "bytes_per_op": 640362,
+        "allocations_per_op": 2165
+      },
+      {
+        "workers": 2,
+        "median_ns_per_op": 1897905,
+        "speedup_vs_1": 1.131,
+        "time_delta_vs_1_percent": -11.601,
+        "mann_whitney_p_value": 0.000011,
+        "median_peak_inflight_bytes": 1835008,
+        "bytes_per_op": 18067682,
+        "allocations_per_op": 4168
+      },
+      {
+        "workers": 4,
+        "median_ns_per_op": 1307708,
+        "speedup_vs_1": 1.642,
+        "time_delta_vs_1_percent": -39.091,
+        "mann_whitney_p_value": 0.000011,
+        "median_peak_inflight_bytes": 3145728,
+        "bytes_per_op": 19137015,
+        "allocations_per_op": 4265
+      },
+      {
+        "workers": 8,
+        "median_ns_per_op": 1331693.5,
+        "speedup_vs_1": 1.612,
+        "time_delta_vs_1_percent": -37.973,
+        "time_delta_vs_4_percent": 1.834,
+        "mann_whitney_vs_4_p_value": 0.000011,
+        "median_peak_inflight_bytes": 4980736,
+        "bytes_per_op": 21275933,
+        "allocations_per_op": 4457
+      }
+    ],
+    "production_default_worker_ceiling": 4,
+    "decision": "Do not default to 8 or GOMAXPROCS=12 because this measured workload is significantly slower at 8 than 4. Explicit configuration can still request more workers."
+  },
+  "wide_table_memory_gate": {
+    "input_rows": 16384,
+    "columns": 16,
+    "string_bytes_per_cell": 64,
+    "configured_max_inflight_bytes": 8388608,
+    "peak_inflight_samples_bytes": [4523392, 4523392, 4523392, 4523392, 4523392, 4523392, 4523392, 4523392, 4523392, 4523392],
+    "median_peak_inflight_bytes": 4523392,
+    "peak_to_limit_percent": 53.92,
+    "median_ns_per_op": 901598,
+    "reservation_after_close_bytes": 0,
+    "status": "pass"
+  },
+  "bounded_fanout_gate": {
+    "stable_snapshot_strategy": "rescan",
+    "unknown_source_strategy": "single-scan bounded-multiplexer",
+    "branch_quota": "independent byte quota per downstream",
+    "covered": [
+      "slow consumer backpressure",
+      "one source scan",
+      "stable branch results",
+      "early branch close",
+      "sibling continuation",
+      "fault propagation",
+      "cancellation",
+      "reservation release"
+    ],
+    "unbounded_shared_cache_allowed": false,
+    "status": "pass"
+  },
+  "correctness_gate": {
+    "full_validation_command": "./scripts/validate.sh",
+    "full_validation": "pass",
+    "target_race_command": "go test -race ./pipeline ./source ./physical ./lazy ./engine",
+    "target_race": "pass",
+    "godoc": "pass",
+    "generator_drift": "pass",
+    "go_vet": "pass",
+    "scalar": "pass",
+    "auto_simd": "pass",
+    "forced_simd": "pass",
+    "simd_disabled": "pass",
+    "linux_amd64_cross_build": "pass",
+    "git_diff_check": "pass"
+  },
+  "decision": "Phase 3.1 query-owned graph, byte backpressure, stable/relaxed fan-in, adaptive morsels, replay-aware fan-out, stage observation, and evidence-based worker selection satisfy the phase gates. SIMD remains inside existing batch kernels."
+}

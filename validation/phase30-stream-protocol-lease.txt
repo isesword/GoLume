@@ -1,0 +1,14 @@
+goos: darwin
+goarch: arm64
+pkg: gocolumn/source
+cpu: Apple M4 Pro
+BenchmarkPhase30StreamProtocol-12 177252 6857 ns/op 0 B/op 0 allocs/op
+BenchmarkPhase30StreamProtocol-12 178894 6823 ns/op 0 B/op 0 allocs/op
+BenchmarkPhase30StreamProtocol-12 178988 6789 ns/op 0 B/op 0 allocs/op
+BenchmarkPhase30StreamProtocol-12 178478 6833 ns/op 0 B/op 0 allocs/op
+BenchmarkPhase30StreamProtocol-12 179120 6909 ns/op 0 B/op 0 allocs/op
+BenchmarkPhase30StreamProtocol-12 171975 7463 ns/op 0 B/op 0 allocs/op
+BenchmarkPhase30StreamProtocol-12 170625 7163 ns/op 0 B/op 0 allocs/op
+BenchmarkPhase30StreamProtocol-12 167947 6908 ns/op 0 B/op 0 allocs/op
+BenchmarkPhase30StreamProtocol-12 174033 6824 ns/op 0 B/op 0 allocs/op
+BenchmarkPhase30StreamProtocol-12 172964 6864 ns/op 0 B/op 0 allocs/op

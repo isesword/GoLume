@@ -101,6 +101,16 @@ func (w *Workspace) nextGen() uint32 {
 // Aggregate radix-partitions keys and performs partition-owned SUM/COUNT aggregation.
 // It returns ErrLocalTableFull when a partition exceeds the pre-sized local table.
 func (w *Workspace) Aggregate(ctx context.Context, sched scheduler.Scheduler, keys []uint64, vals []int64, workers int) (Summary, error) {
+	w.Begin()
+	return w.AggregateChunk(ctx, sched, keys, vals, workers)
+}
+
+// Begin resets logical partition tables while retaining every allocation.
+func (w *Workspace) Begin() { w.nextGen() }
+
+// AggregateChunk merges one bounded key/value morsel into the current
+// generation. Call Begin once before the first chunk.
+func (w *Workspace) AggregateChunk(ctx context.Context, sched scheduler.Scheduler, keys []uint64, vals []int64, workers int) (Summary, error) {
 	if len(keys) != len(vals) {
 		panic("radix: key/value length mismatch")
 	}
@@ -163,7 +173,10 @@ func (w *Workspace) Aggregate(ctx context.Context, sched scheduler.Scheduler, ke
 		return Summary{}, err
 	}
 
-	gen := w.nextGen()
+	gen := w.gen
+	if gen == 0 {
+		gen = w.nextGen()
+	}
 	var next atomic.Uint32
 	partial := w.partial[:workers]
 	clear(partial)

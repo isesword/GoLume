@@ -6,6 +6,7 @@ import (
 	"gocolumn/engine"
 	"gocolumn/expr"
 	"gocolumn/memory"
+	"gocolumn/planner"
 	"gocolumn/source"
 )
 
@@ -14,15 +15,16 @@ import (
 // filter grouped aggregate output without changing the terminal aggregate fast
 // path used by ordinary Collect/Prepare.
 type aggregateResultSource struct {
-	query   *engine.PreparedQuery
-	schema  memory.Schema
-	groupBy []string
-	aggs    []expr.Aggregate
-	dicts   map[string]source.Dictionary
+	query     *engine.PreparedQuery
+	schema    memory.Schema
+	groupBy   []string
+	aggs      []expr.Aggregate
+	dicts     map[string]source.Dictionary
+	spillable bool
 }
 
-func newAggregateResultSource(ctx context.Context, query *engine.PreparedQuery, input source.Source, schema memory.Schema, groupBy []string, aggs []expr.Aggregate) (*aggregateResultSource, error) {
-	s := &aggregateResultSource{query: query, schema: schema, groupBy: append([]string(nil), groupBy...), aggs: append([]expr.Aggregate(nil), aggs...), dicts: make(map[string]source.Dictionary)}
+func newAggregateResultSource(ctx context.Context, query *engine.PreparedQuery, input source.Source, schema memory.Schema, groupBy []string, aggs []expr.Aggregate, spillable bool) (*aggregateResultSource, error) {
+	s := &aggregateResultSource{query: query, schema: schema, groupBy: append([]string(nil), groupBy...), aggs: append([]expr.Aggregate(nil), aggs...), dicts: make(map[string]source.Dictionary), spillable: spillable}
 	if dp, ok := input.(source.DictionaryProvider); ok {
 		for _, name := range groupBy {
 			f, _ := schema.Field(name)
@@ -40,6 +42,25 @@ func newAggregateResultSource(ctx context.Context, query *engine.PreparedQuery, 
 
 // Schema returns the materialized aggregate output schema.
 func (s *aggregateResultSource) Schema() memory.Schema { return s.schema }
+
+// StreamPlan reports whether lowering selected resident compatibility state or
+// the radix-partitioned spillable aggregate implementation.
+func (s *aggregateResultSource) StreamPlan() source.StreamPlanNode {
+	class := source.StreamBlocking
+	mode := "resident"
+	if s.spillable {
+		class = source.StreamSpillable
+		mode = "radix-spill"
+	} else if s.query.Plan().Strategy.Kind == planner.StrategySorted {
+		class = source.StreamBounded
+		mode = "sorted-adjacent"
+	}
+	return source.StreamPlanNode{
+		Operator: "Aggregate",
+		Class:    class,
+		Detail:   fmt.Sprintf("groups=%d aggregates=%d strategy=%s", len(s.groupBy), len(s.aggs), mode),
+	}
+}
 
 // Stats returns an upper-bound row estimate derived from the prepared aggregate plan.
 func (s *aggregateResultSource) Stats(context.Context) (source.Stats, error) {
@@ -65,6 +86,28 @@ func (s *aggregateResultSource) NewReader(_ context.Context, opts source.ReadOpt
 	return &aggregateResultReader{owner: s}, nil
 }
 
+// NewBatchStream selects the spillable state machine when physical lowering
+// proved a finite memory+disk contract. Resident mode keeps the existing
+// allocation-free prepared aggregate fast path.
+func (s *aggregateResultSource) NewBatchStream(ctx context.Context, opts source.ReadOptions) (source.BatchStream, error) {
+	if err := opts.Validate(); err != nil {
+		return nil, err
+	}
+	if s.spillable {
+		return s.query.NewSpillableAggregateStream(ctx, s.schema, 0)
+	}
+	if s.query.IsSortedAggregate() {
+		return s.query.NewSortedAggregateStream(ctx, s.schema, 0)
+	}
+	return &aggregateResultBatchStream{reader: &aggregateResultReader{owner: s}}, nil
+}
+
+// NewBatchStreamWithPartitions reuses the prepared aggregate and ignores the
+// synthetic single output partition; input partitions live in PreparedQuery.
+func (s *aggregateResultSource) NewBatchStreamWithPartitions(ctx context.Context, opts source.ReadOptions, _ []source.Partition) (source.BatchStream, error) {
+	return s.NewBatchStream(ctx, opts)
+}
+
 // Dictionary returns stable dictionary metadata preserved from grouped dictionary keys.
 func (s *aggregateResultSource) Dictionary(_ context.Context, column string) (source.Dictionary, error) {
 	d, ok := s.dicts[column]
@@ -77,6 +120,42 @@ func (s *aggregateResultSource) Dictionary(_ context.Context, column string) (so
 type aggregateResultReader struct {
 	owner *aggregateResultSource
 	done  bool
+}
+
+type aggregateResultBatchStream struct {
+	reader *aggregateResultReader
+	done   bool
+	closed bool
+}
+
+// Next materializes the resident compatibility result once.
+func (s *aggregateResultBatchStream) Next(ctx context.Context, dst *memory.Batch) (bool, error) {
+	if dst == nil {
+		return false, fmt.Errorf("aggregate stream destination is nil")
+	}
+	if s.closed {
+		dst.ClearColumns()
+		return false, source.ErrBatchStreamClosed
+	}
+	if s.done {
+		dst.ClearColumns()
+		return false, nil
+	}
+	s.done = true
+	if err := s.reader.ReadPartition(ctx, source.Partition{ID: 0}, dst); err != nil {
+		dst.ClearColumns()
+		return false, err
+	}
+	return true, nil
+}
+
+// Close releases the compatibility reader and is idempotent.
+func (s *aggregateResultBatchStream) Close() error {
+	if s == nil || s.closed {
+		return nil
+	}
+	s.closed = true
+	return s.reader.Close()
 }
 
 // Close releases reader resources; the aggregate result reader owns no additional resources.

@@ -83,6 +83,16 @@ type WindowSource struct {
 	manager     memory.Manager
 }
 
+// StreamPlan reports the current full-input materialization as blocking.
+func (s *WindowSource) StreamPlan() source.StreamPlanNode {
+	return source.StreamPlanNode{
+		Operator: "Window",
+		Class:    source.StreamBlocking,
+		Detail:   fmt.Sprintf("outputs=%d", len(s.expressions)),
+		Children: []source.StreamPlanNode{source.StreamPlanOf(s.input)},
+	}
+}
+
 // NewWindowSource validates a full-materialization analytic window source.
 // outputFields contain only named window results; input columns remain visible.
 func NewWindowSource(input source.Source, partitionBy []string, orderBy []SortKey, expressions []WindowExpression, outputFields []memory.Field, manager memory.Manager) (source.Source, error) {

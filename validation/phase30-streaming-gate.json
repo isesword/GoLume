@@ -1,0 +1,111 @@
+{
+  "schema_version": 1,
+  "phase": "3.0",
+  "date": "2026-08-30",
+  "status": "pass",
+  "host": {
+    "goos": "darwin",
+    "goarch": "arm64",
+    "cpu": "Apple M4 Pro"
+  },
+  "protocol_decision": {
+    "selected": "destination-fill",
+    "rejected": "reusable-lease",
+    "command": "go test ./source -run '^$' -bench '^BenchmarkPhase30StreamProtocol$' -benchmem -benchtime=1s -count=10",
+    "samples_per_candidate": 10,
+    "destination_fill": {
+      "median_seconds_per_op": 0.000006309,
+      "bytes_per_op": 0,
+      "allocations_per_op": 0
+    },
+    "reusable_lease": {
+      "median_seconds_per_op": 0.0000068605,
+      "bytes_per_op": 0,
+      "allocations_per_op": 0,
+      "time_delta_percent": 8.74,
+      "p_value": 0.000
+    },
+    "raw_samples": [
+      "phase30-stream-protocol-destination.txt",
+      "phase30-stream-protocol-lease.txt"
+    ]
+  },
+  "pipeline_gate": {
+    "query": "Scan -> Filter(int32, 50% selectivity) -> Projection(float64) -> sink",
+    "total_input_rows": 1048576,
+    "workers": 1,
+    "kernel_mode": "auto",
+    "command": "go test ./lazy -run '^$' -bench '^BenchmarkPhase30PipelineMorsels$' -benchmem -benchtime=1s -count=10",
+    "samples_per_variant": 10,
+    "maximum_allowed_regression_percent": 3.0,
+    "geomean_time_delta_percent": 0.15,
+    "fixed_stream_allocation_delta_per_query": 3,
+    "fixed_stream_byte_delta_per_query": 224,
+    "per_morsel_allocation_growth": 0,
+    "morsels": [
+      {
+        "rows": 1024,
+        "reader_median_seconds_per_op": 0.0062462935,
+        "stream_median_seconds_per_op": 0.006271242,
+        "time_delta_percent": 0.40,
+        "p_value": 0.009,
+        "reader_bytes_per_op": 183072,
+        "stream_bytes_per_op": 183296,
+        "reader_allocations_per_op": 3145,
+        "stream_allocations_per_op": 3148
+      },
+      {
+        "rows": 4096,
+        "reader_median_seconds_per_op": 0.0059998425,
+        "stream_median_seconds_per_op": 0.0060180155,
+        "time_delta_percent": 0.30,
+        "p_value": 0.218,
+        "reader_bytes_per_op": 131232,
+        "stream_bytes_per_op": 131456,
+        "reader_allocations_per_op": 845,
+        "stream_allocations_per_op": 848
+      },
+      {
+        "rows": 16384,
+        "reader_median_seconds_per_op": 0.0059113715,
+        "stream_median_seconds_per_op": 0.005917617,
+        "time_delta_percent": 0.11,
+        "p_value": 0.315,
+        "reader_bytes_per_op": 376608,
+        "stream_bytes_per_op": 376832,
+        "reader_allocations_per_op": 273,
+        "stream_allocations_per_op": 276
+      },
+      {
+        "rows": 65536,
+        "reader_median_seconds_per_op": 0.0058926285,
+        "stream_median_seconds_per_op": 0.005880111,
+        "time_delta_percent": -0.21,
+        "p_value": 0.353,
+        "reader_bytes_per_op": 1577249,
+        "stream_bytes_per_op": 1577473,
+        "reader_allocations_per_op": 134,
+        "stream_allocations_per_op": 137
+      }
+    ],
+    "raw_samples": [
+      "phase30-pipeline-reader.txt",
+      "phase30-pipeline-stream.txt"
+    ]
+  },
+  "correctness_gate": {
+    "full_validation_command": "./scripts/validate.sh",
+    "full_validation": "pass",
+    "target_race_command": "go test -race ./source ./physical ./lazy ./engine",
+    "target_race": "pass",
+    "godoc": "pass",
+    "generator_drift": "pass",
+    "go_vet": "pass",
+    "scalar": "pass",
+    "auto_simd": "pass",
+    "forced_simd": "pass",
+    "simd_disabled": "pass",
+    "linux_amd64_cross_build": "pass"
+  },
+  "decision": "Phase 3.0 streaming contract and vertical pipeline satisfy the correctness and <=3% single-worker performance gates. SIMD remains isolated inside kernel.Set."
+}

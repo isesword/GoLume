@@ -220,6 +220,26 @@
 - specialized Arrow Struct ingestion for the same bounded child set; recursive
   Struct/List, Map, dictionary children, and schema evolution remain rejected.
 
+### Phase 3.0–3.3 — streaming contract, pipeline, spill, and bounded aggregation
+
+- one destination-fill `BatchStream` physical protocol with explicit borrowing,
+  replay, cancellation, and idempotent close semantics;
+- demand-driven pipelines plus query-owned, byte-bounded Exchange/fan-in/fan-out
+  with stable sequence handling and source replay contracts;
+- `EngineBudget -> QueryBudget -> OperatorBudget` accounting across retained
+  state, in-flight batches, workspaces, output, and spill buffers;
+- serialized soft/hard-limit spill arbitration with an explicit finite disk
+  quota and lazily created query-scoped secure directories;
+- atomic, checksummed, versioned spill files and an Arrow-shaped columnar run
+  codec for fixed vectors, String/dictionary, `List<String>`, and Struct;
+- no spill-codec SIMD or default compression: both remain evidence-gated, while
+  existing batch kernels retain scalar/Auto/forced/no-SIMD validation.
+- one GroupBy logical path with sorted-adjacent, radix-spill, and resident
+  physical strategies; fixed-memory mode streams aggregate output by Batch and
+  recursively repartitions oversized state runs;
+- ExplainAnalyze reports aggregate spill, peak-memory, radix-depth, and skew
+  diagnostics without replacing the native stream with a compatibility reader.
+
 ## Next — richer analytical operators and calibrated planning
 
 Priority order:
@@ -238,14 +258,20 @@ Priority order:
    - platform-calibrated ARM/x86 thresholds;
    - planner confidence/sample decay and source-version invalidation.
 
-## Phase 3 — bounded memory and spill
+## Phase 3 — bounded streaming physical execution
 
-- query-level shared memory credits;
-- spillable group-by partitions;
-- spillable/radix joins;
-- external sort/merge;
-- streaming partial/final aggregation;
-- cancellation-safe spill cleanup.
+- demand-driven pipelines and byte-bounded backpressure;
+- query-level memory arbitration and cancellation-safe spill cleanup;
+- spillable GroupBy/Join/Sort and external merge;
+- streaming partial/final aggregation and batch/file sinks;
+- explicit pipeline, blocking, memory and spill state in Explain/Analyze;
+- operation-specialized SIMD kernels under architecture-specific benchmark
+  gates.
+
+The complete design and acceptance checklist is maintained in
+[PHASE3_STREAMING_ENGINE_TODO.md](PHASE3_STREAMING_ENGINE_TODO.md). Execution
+defaults, bounded-memory guarantees, fallback behavior, and public result APIs
+are fixed by [ADR_PHASE3_EXECUTION_UX.md](ADR_PHASE3_EXECUTION_UX.md).
 
 ## Phase 4 — user-facing analytical engine
 

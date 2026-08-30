@@ -78,6 +78,27 @@ func NewSortSourceWithOptions(input source.Source, keys []SortKey, manager memor
 // Schema preserves the input schema.
 func (s *SortSource) Schema() memory.Schema { return s.input.Schema() }
 
+// Ordering exposes the globally stable key order established by this source.
+func (s *SortSource) Ordering() []source.OrderingColumn {
+	out := make([]source.OrderingColumn, len(s.keys))
+	for index, key := range s.keys {
+		out[index] = source.OrderingColumn{Name: key.Column, Descending: key.Descending, NullsLast: key.NullsLast}
+	}
+	return out
+}
+
+// StreamPlan reports the current full-materialization implementation as
+// blocking. Phase 3.5 changes this node to spillable after external merge is
+// implemented and verified.
+func (s *SortSource) StreamPlan() source.StreamPlanNode {
+	return source.StreamPlanNode{
+		Operator: "Sort",
+		Class:    source.StreamBlocking,
+		Detail:   fmt.Sprintf("keys=%d", len(s.keys)),
+		Children: []source.StreamPlanNode{source.StreamPlanOf(s.input)},
+	}
+}
+
 // Stats preserves input row statistics.
 func (s *SortSource) Stats(ctx context.Context) (source.Stats, error) { return s.input.Stats(ctx) }
 
@@ -346,6 +367,16 @@ func NewTopKSourceWithKeyInput(input, keyInput source.Source, k int, keys []Sort
 
 // Schema preserves the input schema.
 func (s *TopKSource) Schema() memory.Schema { return s.input.Schema() }
+
+// StreamPlan reports the explicit O(K) state bound.
+func (s *TopKSource) StreamPlan() source.StreamPlanNode {
+	return source.StreamPlanNode{
+		Operator: "TopK",
+		Class:    source.StreamBounded,
+		Detail:   fmt.Sprintf("k=%d", s.k),
+		Children: []source.StreamPlanNode{source.StreamPlanOf(s.input)},
+	}
+}
 
 // Stats caps the input row upper bound at K.
 func (s *TopKSource) Stats(ctx context.Context) (source.Stats, error) {

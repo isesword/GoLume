@@ -54,6 +54,7 @@ type PreparedQuery struct {
 	dicts           map[string]source.Dictionary
 	feedbackKey     string
 	feedbackSamples uint64
+	executionPolicy ExecutionPolicy
 
 	lifeMu sync.Mutex
 	active sync.WaitGroup
@@ -62,6 +63,21 @@ type PreparedQuery struct {
 
 // Prepare compiles q for src and creates a reusable PreparedQuery.
 func (e *Engine) Prepare(ctx context.Context, src source.Source, q expr.Query, opts PrepareOptions) (*PreparedQuery, error) {
+	if e == nil {
+		return nil, fmt.Errorf("engine is nil")
+	}
+	policy := ExecutionPolicyFromContext(ctx, e.opts.ExecutionPolicy)
+	if err := policy.Validate(); err != nil {
+		return nil, err
+	}
+	if err := e.opts.Pipeline.Validate(); err != nil {
+		return nil, err
+	}
+	if policy == ExecutionBounded {
+		if e.memory.Limit() <= 0 {
+			return nil, ErrBoundedMemoryLimitRequired
+		}
+	}
 	if src == nil {
 		return nil, fmt.Errorf("source is nil")
 	}
@@ -101,10 +117,19 @@ func (e *Engine) Prepare(ctx context.Context, src source.Source, q expr.Query, o
 		ForceStrategy: cq.ForceStrategy, ForceRadixBits: cq.ForceRadixBits,
 		FusedCapable: cq.FusedCapable, RadixCapable: cq.RadixCapable,
 		ComparisonID: cq.ComparisonID, HasComparisonID: cq.HasComparisonID,
+		SortedCapable: source.OrderedByPrefix(src, q.GroupBy),
 		KeyWidthBytes: cq.KeyWidthBytes, PredicateComplexity: cq.Predicate.Complexity,
 	})
 	if err != nil {
 		return nil, err
+	}
+	if policy == ExecutionBounded && strategy.Kind != planner.StrategySorted && !e.SpillConfigured() {
+		return nil, &UnsupportedBoundedPlanError{
+			Operator: "Aggregate",
+			Path:     []string{"Aggregate"},
+			Detail:   ErrBoundedSpillRequired.Error() + "; configure engine.Options.Spill.MaxBytes or provide a proven group-key ordering",
+			Cause:    ErrBoundedSpillRequired,
+		}
 	}
 	if stats.Rows < 0 || stats.Rows > int64(^uint(0)>>1) {
 		return nil, fmt.Errorf("row count %d exceeds addressable workspace", stats.Rows)
@@ -124,7 +149,7 @@ func (e *Engine) Prepare(ctx context.Context, src source.Source, q expr.Query, o
 	if maxConc < 1 {
 		maxConc = 1
 	}
-	pq := &PreparedQuery{e: e, src: src, cq: cq, stats: stats, parts: parts, strategy: strategy, partBase: partBase, maxPartRows: maxPart, dicts: make(map[string]source.Dictionary), feedbackKey: opts.FeedbackKey, feedbackSamples: feedbackSamples}
+	pq := &PreparedQuery{e: e, src: src, cq: cq, stats: stats, parts: parts, strategy: strategy, partBase: partBase, maxPartRows: maxPart, dicts: make(map[string]source.Dictionary), feedbackKey: opts.FeedbackKey, feedbackSamples: feedbackSamples, executionPolicy: policy}
 	// Load source-level dictionaries once when available. Absence is allowed;
 	// materialized results will expose code+domain instead of decoded strings.
 	if dp, ok := src.(source.DictionaryProvider); ok {
@@ -165,6 +190,13 @@ type profileOperatorIDProvider interface{ OperatorID() string }
 
 // Execute runs the prepared physical plan using one leased workspace.
 func (p *PreparedQuery) Execute(ctx context.Context, opts ExecuteOptions) (Result, error) {
+	if p != nil && p.executionPolicy == ExecutionBounded && p.strategy.Kind != planner.StrategySorted {
+		return Result{}, &UnsupportedBoundedPlanError{
+			Operator: "CollectResult",
+			Path:     []string{"Aggregate", "CollectResult"},
+			Detail:   "CollectResult uses the resident compatibility result; use LazyFrame.Collect for spillable aggregation until the public batch sink lands",
+		}
+	}
 	if err := p.begin(); err != nil {
 		return Result{}, err
 	}
@@ -183,6 +215,8 @@ func (p *PreparedQuery) Execute(ctx context.Context, opts ExecuteOptions) (Resul
 		r, err = p.executeBitmapDirect(ctx, ws, opts)
 	case planner.StrategyRadix:
 		r, err = p.executeRadix(ctx, ws, opts)
+	case planner.StrategySorted:
+		r, err = p.executeSorted(ctx, ws, opts)
 	default:
 		err = fmt.Errorf("unsupported physical strategy %v", p.strategy.Kind)
 	}

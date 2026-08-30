@@ -8,6 +8,8 @@ import (
 	"gocolumn/expr"
 	"gocolumn/kernel"
 	"gocolumn/memory"
+	"gocolumn/observer"
+	"gocolumn/pipeline"
 	"gocolumn/scheduler"
 	"gocolumn/source"
 )
@@ -18,7 +20,7 @@ type Engine struct {
 	opts      Options
 	kernels   kernel.Set
 	scheduler scheduler.Scheduler
-	memory    memory.Manager
+	memory    *memory.EngineBudget
 	feedback  *feedbackStore
 }
 
@@ -40,6 +42,52 @@ func (e *Engine) KernelSet() kernel.Set { return e.kernels }
 
 // Memory returns the engine-level query memory manager.
 func (e *Engine) Memory() memory.Manager { return e.memory }
+
+// BeginQueryMemory creates one execution-scoped child of the shared engine
+// budget. Physical managers route reservations through it when bound to ctx.
+func (e *Engine) BeginQueryMemory() (*memory.QueryBudget, error) {
+	if e == nil || e.memory == nil {
+		return nil, fmt.Errorf("engine memory budget is nil")
+	}
+	return e.memory.BeginQuery(memory.BudgetOptions{SoftLimitBytes: e.opts.QueryMemorySoftLimitBytes, HardLimitBytes: e.opts.MemoryLimitBytes, Spill: e.opts.Spill})
+}
+
+// SpillConfigured reports whether queries may lazily create a spill store.
+func (e *Engine) SpillConfigured() bool {
+	return e != nil && e.opts.Spill.Enabled()
+}
+
+// SpillLimit returns the per-query disk quota; zero means spill is disabled.
+func (e *Engine) SpillLimit() int64 {
+	if e == nil || !e.opts.Spill.Enabled() {
+		return 0
+	}
+	return e.opts.Spill.MaxBytes
+}
+
+// ExecutionPolicy returns the session-wide physical execution default.
+func (e *Engine) ExecutionPolicy() ExecutionPolicy {
+	if e == nil {
+		return ExecutionAuto
+	}
+	return e.opts.ExecutionPolicy
+}
+
+// PipelineOptions returns the normalized query pipeline defaults.
+func (e *Engine) PipelineOptions() pipeline.Options {
+	if e == nil {
+		return (pipeline.Options{}).Normalize(1)
+	}
+	return e.opts.Pipeline
+}
+
+// Observer returns the session-wide stage observer.
+func (e *Engine) Observer() observer.Observer {
+	if e == nil || e.opts.Observer == nil {
+		return observer.Nop{}
+	}
+	return e.opts.Observer
+}
 
 // Execute is the convenience one-shot API. Repeated workloads should call
 // Prepare once and reuse PreparedQuery.Execute so readers, hash tables,

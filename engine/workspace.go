@@ -14,10 +14,17 @@ import (
 )
 
 type workerWorkspace struct {
-	reader    source.Reader
-	batch     *memory.Batch
-	selection memory.Bitmap
-	expr      expr.EvalWorkspace
+	reader            source.Reader
+	batch             *memory.Batch
+	selection         memory.Bitmap
+	expr              expr.EvalWorkspace
+	selectedKeys      []uint64
+	selectedPairs     []hashagg.Key128
+	selectedPairValid []uint8
+	selectedVals      []int64
+	selectedRows      int
+	nullRows          int
+	nullSum           int64
 }
 
 type queryWorkspace struct {
@@ -40,6 +47,7 @@ type queryWorkspace struct {
 	nullCounts        []int
 	radix64           *radix.Workspace
 	radixPair         *radix.PairWorkspace
+	radixBounded      bool
 	fallbackU64       *hashagg.U64Table
 	fallbackPair      *hashagg.PairTable
 }
@@ -101,30 +109,50 @@ func (p *PreparedQuery) newWorkspace(ctx context.Context) (*queryWorkspace, erro
 		w.workers[i].expr.Ensure(p.maxPartRows, len(p.cq.Predicate.Instructions))
 	}
 	if p.strategy.Kind == planner.StrategyRadix {
-		rows := int(p.stats.Rows)
-		w.chunkLens = make([]int, len(p.parts))
-		w.nullSums = make([]int64, len(p.parts))
-		w.nullCounts = make([]int, len(p.parts))
+		rows := p.maxPartRows
+		w.radixBounded = p.executionPolicy == ExecutionBounded || p.e.opts.MemoryLimitBytes > 0
+		waveRows := workers * rows
+		if !w.radixBounded {
+			waveRows = int(p.stats.Rows)
+			w.chunkLens = make([]int, len(p.parts))
+			w.nullSums = make([]int64, len(p.parts))
+			w.nullCounts = make([]int, len(p.parts))
+		}
 		switch p.cq.GroupShape {
 		case GroupShapeI32, GroupShapeI64, GroupShapeU32, GroupShapeDictionaryString:
-			if err := w.reserve(ctx, int64(rows)*(8+8)+radix.EstimateWorkspaceBytes(rows, p.cq.CardinalityHint, p.strategy.RadixBits, workers)); err != nil {
+			if err := w.reserve(ctx, int64(waveRows)*(8+8)+radix.EstimateWorkspaceBytes(waveRows, p.cq.CardinalityHint, p.strategy.RadixBits, workers)); err != nil {
 				return nil, fmt.Errorf("radix workspace: %w", err)
 			}
-			w.selectedKeys = make([]uint64, rows)
-			w.selectedVals = make([]int64, rows)
-			w.radix64 = radix.NewWorkspace(rows, p.cq.CardinalityHint, p.strategy.RadixBits, p.e.kernels)
+			w.selectedKeys = make([]uint64, waveRows)
+			w.selectedVals = make([]int64, waveRows)
+			if w.radixBounded {
+				for i := range w.workers {
+					start := i * rows
+					w.workers[i].selectedKeys = w.selectedKeys[start : start+rows]
+					w.workers[i].selectedVals = w.selectedVals[start : start+rows]
+				}
+			}
+			w.radix64 = radix.NewWorkspace(waveRows, p.cq.CardinalityHint, p.strategy.RadixBits, p.e.kernels)
 		case GroupShapePairFixed:
-			if err := w.reserve(ctx, int64(rows)*(16+1+8)+radix.EstimatePairWorkspaceBytes(rows, p.cq.CardinalityHint, p.strategy.RadixBits, workers)); err != nil {
+			if err := w.reserve(ctx, int64(waveRows)*(16+1+8)+radix.EstimatePairWorkspaceBytes(waveRows, p.cq.CardinalityHint, p.strategy.RadixBits, workers)); err != nil {
 				return nil, fmt.Errorf("pair radix workspace: %w", err)
 			}
-			w.selectedPairs = make([]hashagg.Key128, rows)
-			w.selectedPairValid = make([]uint8, rows)
-			w.selectedVals = make([]int64, rows)
-			w.radixPair = radix.NewPairWorkspace(rows, p.cq.CardinalityHint, p.strategy.RadixBits, p.e.kernels)
+			w.selectedPairs = make([]hashagg.Key128, waveRows)
+			w.selectedPairValid = make([]uint8, waveRows)
+			w.selectedVals = make([]int64, waveRows)
+			if w.radixBounded {
+				for i := range w.workers {
+					start := i * rows
+					w.workers[i].selectedPairs = w.selectedPairs[start : start+rows]
+					w.workers[i].selectedPairValid = w.selectedPairValid[start : start+rows]
+					w.workers[i].selectedVals = w.selectedVals[start : start+rows]
+				}
+			}
+			w.radixPair = radix.NewPairWorkspace(waveRows, p.cq.CardinalityHint, p.strategy.RadixBits, p.e.kernels)
 		default:
 			return nil, fmt.Errorf("radix workspace unsupported for group shape %d", p.cq.GroupShape)
 		}
-	} else {
+	} else if p.strategy.Kind != planner.StrategySorted {
 		switch p.cq.GroupShape {
 		case GroupShapeI32:
 			tableOpts := hashagg.TableOptions{Aggregates: p.cq.AggregateLayout, Reserve: func(n int64) error { return w.reserve(context.Background(), n) }}

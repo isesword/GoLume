@@ -397,6 +397,124 @@ func (v *Int64Vector) AddValue(slot int, value int64, valid bool) {
 	}
 }
 
+// InitResult initializes a newly occupied slot from a mergeable partial
+// result. Avg uses Sum and CountValues as its non-finalized state.
+func (v *Int64Vector) InitResult(slot int, result Int64Result) {
+	if v.layout.Sum || v.layout.Avg {
+		v.sums[slot] = result.Sum
+	}
+	if v.layout.Sum && !v.layout.Avg {
+		if result.SumValid {
+			v.sumValid[slot] = 1
+		} else {
+			v.sumValid[slot] = 0
+		}
+	}
+	if v.layout.CountRows {
+		v.countRows[slot] = result.CountRows
+	}
+	if v.layout.CountValues || v.layout.Avg {
+		v.countValues[slot] = result.CountValues
+	}
+	if v.layout.Min {
+		v.mins[slot] = result.Min
+		if result.MinValid {
+			v.minValid[slot] = 1
+		} else {
+			v.minValid[slot] = 0
+		}
+	}
+	if v.layout.Max {
+		v.maxs[slot] = result.Max
+		if result.MaxValid {
+			v.maxValid[slot] = 1
+		} else {
+			v.maxValid[slot] = 0
+		}
+	}
+}
+
+// MergeResult combines one partial result into an occupied slot without
+// finalizing Avg or dispatching through per-row interfaces.
+func (v *Int64Vector) MergeResult(slot int, result Int64Result) {
+	if v.layout.Sum || v.layout.Avg {
+		v.sums[slot] += result.Sum
+	}
+	if v.layout.Sum && !v.layout.Avg && result.SumValid {
+		v.sumValid[slot] = 1
+	}
+	if v.layout.CountRows {
+		v.countRows[slot] += result.CountRows
+	}
+	if v.layout.CountValues || v.layout.Avg {
+		v.countValues[slot] += result.CountValues
+	}
+	if v.layout.Min && result.MinValid && (v.minValid[slot] == 0 || result.Min < v.mins[slot]) {
+		v.mins[slot], v.minValid[slot] = result.Min, 1
+	}
+	if v.layout.Max && result.MaxValid && (v.maxValid[slot] == 0 || result.Max > v.maxs[slot]) {
+		v.maxs[slot], v.maxValid[slot] = result.Max, 1
+	}
+}
+
+// UpdateBatch applies already-grouped input values to occupied slots. A nil
+// validity slice means every value is valid; otherwise zero represents NULL.
+func (v *Int64Vector) UpdateBatch(slots []int, values []int64, validity []uint8) error {
+	if len(slots) != len(values) || validity != nil && len(validity) != len(values) {
+		return fmt.Errorf("aggregate: batch update length mismatch slots=%d values=%d validity=%d", len(slots), len(values), len(validity))
+	}
+	for i, slot := range slots {
+		if slot < 0 || slot >= v.slots() {
+			return fmt.Errorf("aggregate: update slot %d out of range", slot)
+		}
+		v.AddValue(slot, values[i], validity == nil || validity[i] != 0)
+	}
+	return nil
+}
+
+// MergeBatch combines partial states into occupied destination slots.
+func (v *Int64Vector) MergeBatch(slots []int, states []Int64Result) error {
+	if len(slots) != len(states) {
+		return fmt.Errorf("aggregate: merge batch length mismatch slots=%d states=%d", len(slots), len(states))
+	}
+	for i, slot := range slots {
+		if slot < 0 || slot >= v.slots() {
+			return fmt.Errorf("aggregate: merge slot %d out of range", slot)
+		}
+		v.MergeResult(slot, states[i])
+	}
+	return nil
+}
+
+// FinalizeBatch appends finalized results for slots to dst.
+func (v *Int64Vector) FinalizeBatch(dst []Int64Result, slots []int) ([]Int64Result, error) {
+	dst = dst[:0]
+	for _, slot := range slots {
+		if slot < 0 || slot >= v.slots() {
+			return nil, fmt.Errorf("aggregate: finalize slot %d out of range", slot)
+		}
+		dst = append(dst, v.Result(slot))
+	}
+	return dst, nil
+}
+
+func (v *Int64Vector) slots() int {
+	switch {
+	case len(v.sums) != 0:
+		return len(v.sums)
+	case len(v.countRows) != 0:
+		return len(v.countRows)
+	case len(v.countValues) != 0:
+		return len(v.countValues)
+	case len(v.mins) != 0:
+		return len(v.mins)
+	case len(v.maxs) != 0:
+		return len(v.maxs)
+	default:
+		return 0
+	}
+}
+
 // Copy copies one occupied slot into dst during hash-table rehash.
 func (v *Int64Vector) Copy(dst *Int64Vector, srcSlot, dstSlot int) {
 	if v.layout != dst.layout {

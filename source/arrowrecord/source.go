@@ -192,6 +192,9 @@ func (s *Source) Description() string { return "arrow-record-batches" }
 // Schema returns the current projected logical schema.
 func (s *Source) Schema() memory.Schema { return s.schema }
 
+// Replayability reports that retained RecordBatches are a stable snapshot.
+func (*Source) Replayability() source.Replayability { return source.ReplayStable }
+
 // Stats reports rows and retained RecordBatch partitions. Byte size is unknown
 // because Arrow buffers may be shared with caller-owned arrays.
 func (s *Source) Stats(context.Context) (source.Stats, error) {

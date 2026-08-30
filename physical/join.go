@@ -139,6 +139,18 @@ func NewJoinSourceWithOptions(ctx context.Context, left, right source.Source, ty
 // Schema returns the joined output schema.
 func (s *JoinSource) Schema() memory.Schema { return s.schema }
 
+// StreamPlan reports the current resident build-side hash table as blocking.
+// Phase 3.4 changes eligible strategies to spillable after partitioned join is
+// implemented and verified.
+func (s *JoinSource) StreamPlan() source.StreamPlanNode {
+	return source.StreamPlanNode{
+		Operator: "Join",
+		Class:    source.StreamBlocking,
+		Detail:   fmt.Sprintf("strategy=%s", s.strategy),
+		Children: []source.StreamPlanNode{source.StreamPlanOf(s.left), source.StreamPlanOf(s.right)},
+	}
+}
+
 // Stats returns partition count and a safe output-row upper bound. Join output
 // cardinality is discovered while probing, so RowsUpperBound is true.
 func (s *JoinSource) Stats(context.Context) (source.Stats, error) { return s.stats, nil }

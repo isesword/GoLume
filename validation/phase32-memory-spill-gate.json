@@ -1,0 +1,84 @@
+{
+  "schema_version": 1,
+  "phase": "3.2",
+  "date": "2026-08-30",
+  "environment": {
+    "os": "darwin",
+    "arch": "arm64",
+    "cpu": "Apple M4 Pro",
+    "go": "go1.27.0",
+    "base_commit": "8e550be"
+  },
+  "decisions": {
+    "memory_hierarchy": "EngineBudget -> QueryBudget -> OperatorBudget",
+    "memory_classes": [
+      "retained-state",
+      "in-flight-batch",
+      "workspace",
+      "output",
+      "spill-buffer"
+    ],
+    "spill_default": "disabled; query directory is created lazily only with MaxBytes > 0",
+    "spill_format": "versioned little-endian files with schema fingerprint and SHA-256 payload checksum",
+    "columnar_codec": "arrow-shaped-columnar-v1",
+    "compression": "disabled; no end-to-end evidence to justify CPU and buffer cost",
+    "encryption": "disabled; secure query-local permissions and lifecycle are the initial contract",
+    "simd": "no new candidate; spill lifecycle, scheduler, metadata, and variable-width encoding remain scalar"
+  },
+  "bounded_spill_operator": {
+    "test": "TestMinimalSpillOperatorArbitratesTenTimesBudgetWithoutRecursivePressure",
+    "hard_limit_bytes": 4096,
+    "soft_limit_bytes": 2800,
+    "processed_bytes": 51360,
+    "input_to_hard_limit_ratio": 12.5390625,
+    "peak_reserved_bytes": 3890,
+    "peak_to_hard_limit_ratio": 0.94970703125,
+    "spill_runs": 40,
+    "final_query_reserved_bytes": 0,
+    "final_engine_reserved_bytes": 0,
+    "final_spill_disk_bytes": 0,
+    "result": "pass"
+  },
+  "coverage": [
+    "soft and hard pressure arbitration",
+    "spill-buffer reserve during arbitration without recursive deadlock",
+    "plain and dictionary strings",
+    "NULL list, empty list, NULL list element",
+    "Struct parent validity and scalar/list children",
+    "cancelled spill, restore, and delete",
+    "disk quota, ENOSPC, short write, directory fsync failure, delete retry",
+    "magic, version, endianness, schema, checksum, truncation, trailing bytes, offsets, and row-count corruption",
+    "restore budget failure and idempotent Close/Delete",
+    "orphan cleanup ignores unrelated paths and symlinks"
+  ],
+  "validation": [
+    {
+      "command": "go test ./...",
+      "result": "pass"
+    },
+    {
+      "command": "go test -race ./memory ./engine ./lazy",
+      "result": "pass"
+    },
+    {
+      "command": "./scripts/validate.sh",
+      "includes": [
+        "GoDoc",
+        "generator drift",
+        "scalar",
+        "Auto SIMD",
+        "forced SIMD",
+        "GODEBUG=simd=0",
+        "race",
+        "go vet",
+        "linux/amd64 cross build",
+        "lazy demo"
+      ],
+      "result": "pass"
+    },
+    {
+      "command": "git diff --check",
+      "result": "pass"
+    }
+  ]
+}

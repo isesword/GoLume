@@ -114,13 +114,24 @@ func normalizePairKey(k hashagg.Key128, validMask uint8) hashagg.Key128 {
 // partition-owned SUM/COUNT aggregation. It returns ErrLocalTableFull when a
 // partition exceeds the estimated local cardinality.
 func (p *PairWorkspace) Aggregate(ctx context.Context, sched scheduler.Scheduler, keys []hashagg.Key128, vals []int64, workers int) (Summary, error) {
-	return p.AggregateNullable(ctx, sched, keys, nil, vals, workers)
+	p.Begin()
+	return p.AggregateNullableChunk(ctx, sched, keys, nil, vals, workers)
 }
 
 // AggregateNullable radix-partitions fixed-width pair keys while preserving
 // SQL GROUP BY NULL semantics. validMasks uses bit 0/1 for the validity of
 // Key.A/Key.B. A nil validMasks slice means every key component is valid.
 func (p *PairWorkspace) AggregateNullable(ctx context.Context, sched scheduler.Scheduler, keys []hashagg.Key128, validMasks []uint8, vals []int64, workers int) (Summary, error) {
+	p.Begin()
+	return p.AggregateNullableChunk(ctx, sched, keys, validMasks, vals, workers)
+}
+
+// Begin resets logical pair tables while retaining every allocation.
+func (p *PairWorkspace) Begin() { p.nextGen() }
+
+// AggregateNullableChunk merges one bounded pair-key morsel into the current
+// generation. Call Begin once before the first chunk.
+func (p *PairWorkspace) AggregateNullableChunk(ctx context.Context, sched scheduler.Scheduler, keys []hashagg.Key128, validMasks []uint8, vals []int64, workers int) (Summary, error) {
 	if len(keys) != len(vals) {
 		panic("radix: pair key/value length mismatch")
 	}
@@ -194,7 +205,10 @@ func (p *PairWorkspace) AggregateNullable(ctx context.Context, sched scheduler.S
 		return Summary{}, err
 	}
 
-	gen := p.nextGen()
+	gen := p.gen
+	if gen == 0 {
+		gen = p.nextGen()
+	}
 	var next atomic.Uint32
 	partial := p.partial
 	if err := sched.ParallelFor(ctx, workers, workers, func(w int) error {

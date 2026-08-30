@@ -137,7 +137,16 @@ func (f LazyFrame) Join(right LazyFrame, opts JoinOptions) LazyFrame {
 	for i := range keys {
 		keys[i] = logical.JoinKey{Left: opts.LeftOn[i], Right: opts.RightOn[i]}
 	}
-	return LazyFrame{session: f.session, plan: &logical.Join{Left: f.plan, Right: right.plan, Type: opts.Type, Keys: keys, Suffix: opts.Suffix, RadixBits: opts.RadixBits, Workers: opts.Workers}}
+	if f.hasExecutionPolicy && right.hasExecutionPolicy && f.executionPolicy != right.executionPolicy {
+		f.err = fmt.Errorf("lazy join inputs have conflicting execution policies %s and %s", f.executionPolicy, right.executionPolicy)
+		return f
+	}
+	if !f.hasExecutionPolicy && right.hasExecutionPolicy {
+		f.executionPolicy = right.executionPolicy
+		f.hasExecutionPolicy = true
+	}
+	f.plan = &logical.Join{Left: f.plan, Right: right.plan, Type: opts.Type, Keys: keys, Suffix: opts.Suffix, RadixBits: opts.RadixBits, Workers: opts.Workers}
+	return f
 }
 
 // PrepareJoin optimizes a terminal lazy join into reusable row-reference hash-join

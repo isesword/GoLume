@@ -1,0 +1,44 @@
+goos: darwin
+goarch: arm64
+pkg: gocolumn/lazy
+cpu: Apple M4 Pro
+BenchmarkPhase30PipelineMorsels/rows=1024-12 188 6264295 ns/op 183101 B/op 3145 allocs/op
+BenchmarkPhase30PipelineMorsels/rows=1024-12 192 6206325 ns/op 183072 B/op 3145 allocs/op
+BenchmarkPhase30PipelineMorsels/rows=1024-12 190 6234084 ns/op 183072 B/op 3145 allocs/op
+BenchmarkPhase30PipelineMorsels/rows=1024-12 189 6269049 ns/op 183072 B/op 3145 allocs/op
+BenchmarkPhase30PipelineMorsels/rows=1024-12 190 6242768 ns/op 183072 B/op 3145 allocs/op
+BenchmarkPhase30PipelineMorsels/rows=1024-12 192 6245689 ns/op 183073 B/op 3145 allocs/op
+BenchmarkPhase30PipelineMorsels/rows=1024-12 189 6275982 ns/op 183072 B/op 3145 allocs/op
+BenchmarkPhase30PipelineMorsels/rows=1024-12 192 6246898 ns/op 183072 B/op 3145 allocs/op
+BenchmarkPhase30PipelineMorsels/rows=1024-12 189 6236271 ns/op 183072 B/op 3145 allocs/op
+BenchmarkPhase30PipelineMorsels/rows=1024-12 189 6262279 ns/op 183072 B/op 3145 allocs/op
+BenchmarkPhase30PipelineMorsels/rows=4096-12 193 5934710 ns/op 131232 B/op 845 allocs/op
+BenchmarkPhase30PipelineMorsels/rows=4096-12 198 5949018 ns/op 131232 B/op 845 allocs/op
+BenchmarkPhase30PipelineMorsels/rows=4096-12 200 6002092 ns/op 131232 B/op 845 allocs/op
+BenchmarkPhase30PipelineMorsels/rows=4096-12 199 5974745 ns/op 131232 B/op 845 allocs/op
+BenchmarkPhase30PipelineMorsels/rows=4096-12 199 6008834 ns/op 131232 B/op 845 allocs/op
+BenchmarkPhase30PipelineMorsels/rows=4096-12 200 6024306 ns/op 131232 B/op 845 allocs/op
+BenchmarkPhase30PipelineMorsels/rows=4096-12 199 5997593 ns/op 131232 B/op 845 allocs/op
+BenchmarkPhase30PipelineMorsels/rows=4096-12 199 6019880 ns/op 131232 B/op 845 allocs/op
+BenchmarkPhase30PipelineMorsels/rows=4096-12 200 5992403 ns/op 131232 B/op 845 allocs/op
+BenchmarkPhase30PipelineMorsels/rows=4096-12 200 6028425 ns/op 131232 B/op 845 allocs/op
+BenchmarkPhase30PipelineMorsels/rows=16384-12 202 5870750 ns/op 376608 B/op 273 allocs/op
+BenchmarkPhase30PipelineMorsels/rows=16384-12 201 5922057 ns/op 376608 B/op 273 allocs/op
+BenchmarkPhase30PipelineMorsels/rows=16384-12 201 5918165 ns/op 376608 B/op 273 allocs/op
+BenchmarkPhase30PipelineMorsels/rows=16384-12 195 5869056 ns/op 376608 B/op 273 allocs/op
+BenchmarkPhase30PipelineMorsels/rows=16384-12 201 5896343 ns/op 376608 B/op 273 allocs/op
+BenchmarkPhase30PipelineMorsels/rows=16384-12 202 5906905 ns/op 376609 B/op 273 allocs/op
+BenchmarkPhase30PipelineMorsels/rows=16384-12 202 5932052 ns/op 376608 B/op 273 allocs/op
+BenchmarkPhase30PipelineMorsels/rows=16384-12 201 5921377 ns/op 376608 B/op 273 allocs/op
+BenchmarkPhase30PipelineMorsels/rows=16384-12 201 5898450 ns/op 376608 B/op 273 allocs/op
+BenchmarkPhase30PipelineMorsels/rows=16384-12 202 5915838 ns/op 376608 B/op 273 allocs/op
+BenchmarkPhase30PipelineMorsels/rows=65536-12 202 5856549 ns/op 1577249 B/op 134 allocs/op
+BenchmarkPhase30PipelineMorsels/rows=65536-12 204 5866481 ns/op 1577248 B/op 134 allocs/op
+BenchmarkPhase30PipelineMorsels/rows=65536-12 202 5835271 ns/op 1577249 B/op 134 allocs/op
+BenchmarkPhase30PipelineMorsels/rows=65536-12 202 5905139 ns/op 1577248 B/op 134 allocs/op
+BenchmarkPhase30PipelineMorsels/rows=65536-12 201 5885983 ns/op 1577249 B/op 134 allocs/op
+BenchmarkPhase30PipelineMorsels/rows=65536-12 204 5856988 ns/op 1577249 B/op 134 allocs/op
+BenchmarkPhase30PipelineMorsels/rows=65536-12 199 5944465 ns/op 1577249 B/op 134 allocs/op
+BenchmarkPhase30PipelineMorsels/rows=65536-12 196 6043643 ns/op 1577248 B/op 134 allocs/op
+BenchmarkPhase30PipelineMorsels/rows=65536-12 199 5919035 ns/op 1577248 B/op 134 allocs/op
+BenchmarkPhase30PipelineMorsels/rows=65536-12 202 5899274 ns/op 1577249 B/op 134 allocs/op

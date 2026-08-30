@@ -177,6 +177,50 @@ func (t *StringTable) AddNullableValue(key []byte, keyValid bool, value int64, v
 	return created, nil
 }
 
+// TryMergeNullable combines a mergeable partial state into a nullable string key.
+func (t *StringTable) TryMergeNullable(key []byte, keyValid bool, state aggregate.Int64Result) (bool, error) {
+	if !keyValid {
+		created := !t.nullSet
+		if created {
+			t.nullSet = true
+			t.nullState.InitResult(0, state)
+		} else {
+			t.nullState.MergeResult(0, state)
+		}
+		return created, nil
+	}
+	for {
+		h := HashBytes(key)
+		p := h & t.mask
+		for {
+			if t.epoch[p] != t.gen {
+				if t.size+1 > t.maxEntries {
+					if err := t.grow(); err != nil {
+						return false, err
+					}
+					break
+				}
+				if err := t.ensureArena(len(key)); err != nil {
+					return false, err
+				}
+				o := len(t.arena)
+				t.arena = append(t.arena, key...)
+				t.epoch[p] = t.gen
+				t.off[p], t.lens[p] = uint32(o), uint32(len(key))
+				t.state.InitResult(int(p), state)
+				t.size++
+				return true, nil
+			}
+			o, ln := t.off[p], t.lens[p]
+			if int(o+ln) <= len(t.arena) && bytes.Equal(t.arena[o:o+ln], key) {
+				t.state.MergeResult(int(p), state)
+				return false, nil
+			}
+			p = (p + 1) & t.mask
+		}
+	}
+}
+
 // Materialize appends all current groups, including the SQL NULL group, to dst.
 func (t *StringTable) Materialize(dst []GroupString) []GroupString {
 	dst = dst[:0]
@@ -194,6 +238,26 @@ func (t *StringTable) Materialize(dst []GroupString) []GroupString {
 	return dst
 }
 
+// Visit calls fn once for every current group without materializing keys.
+// key is borrowed from the table arena and is valid only during the callback.
+func (t *StringTable) Visit(fn func(key []byte, valid bool, state aggregate.Int64Result) error) error {
+	if fn == nil {
+		return nil
+	}
+	for i := range t.epoch {
+		if t.epoch[i] == t.gen {
+			o, ln := t.off[i], t.lens[i]
+			if err := fn(t.arena[o:o+ln], true, t.state.Result(i)); err != nil {
+				return err
+			}
+		}
+	}
+	if t.nullSet {
+		return fn(nil, false, t.nullState.Result(0))
+	}
+	return nil
+}
+
 // Capacity returns the current number of hash slots.
 func (t *StringTable) Capacity() int { return len(t.off) }
 
@@ -204,6 +268,11 @@ func (t *StringTable) Len() int {
 		n++
 	}
 	return n
+}
+
+// RetainedBytes returns slot/state bytes plus the owned key-arena capacity.
+func (t *StringTable) RetainedBytes() int64 {
+	return stringTableSlotBytesForCapacity(len(t.off), t.opts.Aggregates) + int64(cap(t.arena)) + aggregate.Int64VectorBytesForSlots(1, t.opts.Aggregates)
 }
 
 func stringTableSlotBytesForCapacity(capacity int, layout aggregate.Layout) int64 {

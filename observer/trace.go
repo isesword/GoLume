@@ -74,6 +74,28 @@ type OperatorStat struct {
 	OutputBytes int64
 	Inclusive   time.Duration
 	SelfTime    time.Duration
+	Attributes  map[string]string
+}
+
+// RecordAttributes merges cold-path execution diagnostics for one operator.
+// Values are copied so stream implementations may reuse their own maps.
+func (t *OperatorTrace) RecordAttributes(id string, phase Phase, attributes map[string]string) {
+	if t == nil || id == "" || len(attributes) == 0 {
+		return
+	}
+	t.mu.Lock()
+	k := operatorKey{id: id, phase: phase}
+	s := t.stats[k]
+	n := t.nodes[id]
+	s.ID, s.Kind, s.Label, s.Phase = id, n.Kind, n.Label, phase
+	if s.Attributes == nil {
+		s.Attributes = make(map[string]string, len(attributes))
+	}
+	for key, value := range attributes {
+		s.Attributes[key] = value
+	}
+	t.stats[k] = s
+	t.mu.Unlock()
 }
 
 type operatorKey struct {
@@ -178,6 +200,13 @@ func (t *OperatorTrace) Stats(phase Phase) []OperatorStat {
 			self = 0
 		}
 		s.SelfTime = self
+		if len(s.Attributes) != 0 {
+			attributes := make(map[string]string, len(s.Attributes))
+			for key, value := range s.Attributes {
+				attributes[key] = value
+			}
+			s.Attributes = attributes
+		}
 		out = append(out, s)
 	}
 	return out

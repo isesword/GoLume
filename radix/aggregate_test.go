@@ -30,6 +30,31 @@ func TestAggregate(t *testing.T) {
 	}
 }
 
+func TestAggregateChunksMergeAcrossMorsels(t *testing.T) {
+	p := scheduler.NewPool(2)
+	defer p.Close()
+	w := NewWorkspace(3, 4, 2, kernel.New(kernel.ModeScalar))
+	w.Begin()
+	first, err := w.AggregateChunk(context.Background(), p, []uint64{1, 2, 1}, []int64{2, 3, 4}, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := w.AggregateChunk(context.Background(), p, []uint64{2, 3}, []int64{5, 7}, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first.Groups+second.Groups != 3 || first.Rows+second.Rows != 5 || first.Checksum+second.Checksum != 21 {
+		t.Fatalf("first=%+v second=%+v", first, second)
+	}
+	groups := map[uint64]Group{}
+	for _, group := range w.Materialize(nil) {
+		groups[group.Key] = group
+	}
+	if groups[1].Sum != 6 || groups[2].Sum != 8 || groups[3].Sum != 7 {
+		t.Fatalf("groups=%v", groups)
+	}
+}
+
 func TestPairAggregateNullable(t *testing.T) {
 	p := scheduler.NewPool(3)
 	defer p.Close()

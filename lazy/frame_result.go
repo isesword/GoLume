@@ -4,11 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"gocolumn/engine"
 	"gocolumn/kernel"
 	"gocolumn/logical"
 	"gocolumn/memory"
+	"gocolumn/observer"
 	"gocolumn/optimizer"
 	"gocolumn/physical"
+	"gocolumn/pipeline"
 	"gocolumn/source"
 	"io"
 	"sync"
@@ -87,15 +90,18 @@ func (f DataFrame) batches() []*memory.Batch {
 // state, scalar programs, pushdown decisions, and source wrappers are prepared
 // once; each Execute creates only independent readers and owned result batches.
 type PreparedFrame struct {
-	src     source.Source
-	parts   []source.Partition
-	schema  memory.Schema
-	kernels kernel.Set
-	manager memory.Manager
-	closers []io.Closer
-	lifeMu  sync.Mutex
-	active  sync.WaitGroup
-	closed  bool
+	engine   *engine.Engine
+	src      source.Source
+	parts    []source.Partition
+	schema   memory.Schema
+	kernels  kernel.Set
+	manager  memory.Manager
+	pipeline pipeline.Options
+	observer observer.Observer
+	closers  []io.Closer
+	lifeMu   sync.Mutex
+	active   sync.WaitGroup
+	closed   bool
 }
 
 // PreparedDataFrame is the primary name for a reusable DataFrame-producing
@@ -133,12 +139,20 @@ func (f LazyFrame) prepareFrame(ctx context.Context) (*PreparedFrame, logical.Pl
 	if f.session == nil || f.session.engine == nil {
 		return nil, nil, source.PushdownReport{}, fmt.Errorf("lazy frame has no execution session")
 	}
+	policy, err := f.effectiveExecutionPolicy()
+	if err != nil {
+		return nil, nil, source.PushdownReport{}, err
+	}
+	ctx = engine.WithExecutionPolicy(ctx, policy)
 	optimized, err := optimizer.Optimize(f.plan)
 	if err != nil {
 		return nil, nil, source.PushdownReport{}, err
 	}
 	physicalPlan, report, err := applyPushdown(ctx, optimized.Plan)
 	if err != nil {
+		return nil, nil, source.PushdownReport{}, err
+	}
+	if err := f.validateExecutionLogical(physicalPlan); err != nil {
 		return nil, nil, source.PushdownReport{}, err
 	}
 	src, pending, closers, err := lowerSourcePipeline(ctx, physicalPlan, f.session.engine.Memory(), f.session.engine.KernelSet(), f.session.engine)
@@ -159,12 +173,21 @@ func (f LazyFrame) prepareFrame(ctx context.Context) (*PreparedFrame, logical.Pl
 		}
 		src = profileSource(ctx, src, "filter", "terminal residual filter", childID)
 	}
+	if err := f.validateExecutionSource(src); err != nil {
+		cleanup()
+		return nil, nil, source.PushdownReport{}, err
+	}
 	parts, err := src.Partitions(ctx)
 	if err != nil {
 		cleanup()
 		return nil, nil, source.PushdownReport{}, err
 	}
-	return &PreparedFrame{src: src, parts: parts, schema: src.Schema(), kernels: f.session.engine.KernelSet(), manager: f.session.engine.Memory(), closers: closers}, physicalPlan, report, nil
+	pipelineOpts := f.session.engine.PipelineOptions()
+	if err := pipelineOpts.Validate(); err != nil {
+		cleanup()
+		return nil, nil, source.PushdownReport{}, err
+	}
+	return &PreparedFrame{engine: f.session.engine, src: src, parts: parts, schema: src.Schema(), kernels: f.session.engine.KernelSet(), manager: f.session.engine.Memory(), pipeline: pipelineOpts, observer: f.session.engine.Observer(), closers: closers}, physicalPlan, report, nil
 }
 
 // CollectFrame is a compatibility spelling of Collect.
@@ -190,7 +213,7 @@ func (p *PreparedFrame) Schema() memory.Schema {
 // Execute reads every prepared partition and returns owned materialized columnar
 // batches. Multiple Execute calls may run concurrently using independent source
 // readers when the underlying source supports concurrent readers.
-func (p *PreparedFrame) Execute(ctx context.Context) (Frame, error) {
+func (p *PreparedFrame) Execute(ctx context.Context) (frame Frame, resultErr error) {
 	if p == nil {
 		return Frame{}, fmt.Errorf("nil PreparedFrame")
 	}
@@ -202,34 +225,63 @@ func (p *PreparedFrame) Execute(ctx context.Context) (Frame, error) {
 	p.active.Add(1)
 	p.lifeMu.Unlock()
 	defer p.active.Done()
-
-	r, err := p.src.NewReader(ctx, source.ReadOptions{Kernels: p.kernels})
+	if ctx == nil {
+		return Frame{}, fmt.Errorf("prepared frame context is nil")
+	}
+	queryBudget, err := p.engine.BeginQueryMemory()
 	if err != nil {
 		return Frame{}, err
 	}
-	defer r.Close()
+	ctx = memory.WithQueryBudget(ctx, queryBudget)
+	defer func() {
+		if closeErr := queryBudget.Close(); closeErr != nil {
+			if resultErr == nil {
+				_ = frame.Close()
+				frame = Frame{}
+			}
+			resultErr = errors.Join(resultErr, closeErr)
+		}
+	}()
+
+	exchangeManager := memory.ClassifiedManager(p.manager, "Exchange", memory.MemoryInFlightBatch)
+	stream, err := pipeline.OpenBatchStream(ctx, p.src, source.ReadOptions{Kernels: p.kernels}, p.parts, exchangeManager, p.pipeline, p.observer)
+	if err != nil {
+		return Frame{}, err
+	}
 	out := newDataFrame(p.schema)
 	scratch := memory.NewBatch()
+	outputManager := memory.ClassifiedManager(p.manager, "Collect", memory.MemoryOutput)
 	defer scratch.ReleaseOwned()
-	for _, part := range p.parts {
-		if err := r.ReadPartition(ctx, part, scratch); err != nil {
+	for {
+		ok, nextErr := stream.Next(ctx, scratch)
+		if nextErr != nil {
+			closeErr := stream.Close()
 			_ = out.Close()
-			return Frame{}, err
+			return Frame{}, errors.Join(nextErr, closeErr)
 		}
-		reservation, err := p.manager.Reserve(ctx, memory.BatchBytes(scratch))
+		if !ok {
+			break
+		}
+		reservation, err := outputManager.Reserve(ctx, memory.BatchBytes(scratch))
 		if err != nil {
+			closeErr := stream.Close()
 			_ = out.Close()
-			return Frame{}, err
+			return Frame{}, errors.Join(err, closeErr)
 		}
 		owned, err := memory.CloneBatch(scratch)
 		if err != nil {
 			reservation.Release()
+			closeErr := stream.Close()
 			_ = out.Close()
-			return Frame{}, err
+			return Frame{}, errors.Join(err, closeErr)
 		}
 		out.state.batches = append(out.state.batches, owned)
 		out.state.reservations = append(out.state.reservations, reservation)
 		out.state.rows += int64(owned.Rows)
+	}
+	if err := stream.Close(); err != nil {
+		_ = out.Close()
+		return Frame{}, err
 	}
 	return out, nil
 }
