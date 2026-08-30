@@ -147,7 +147,7 @@ const (
 df, err := lf.Collect(ctx)
 defer df.Close()
 
-err := lf.SinkParquet(ctx, "result.parquet", lazy.SinkOptions{})
+_, err := lf.SinkParquet(ctx, "result.parquet", lazy.ParquetSinkOptions{})
 ```
 
 资源配置放在 Session/Engine：
@@ -257,6 +257,9 @@ if err := batches.Err(); err != nil {
 原生 `SinkParquet` / `SinkIPC` 是大结果首选，因为可以直接使用编码器、字典和 I/O
 buffer，不需要每批跨通用 callback 边界。自定义 Batch Sink 是便利接口，不承诺快于
 原生 Sink。
+
+最终 Phase 3.6 API、借用生命周期、分片与原子提交语义见
+[`ADR_PHASE3_RESULT_SINKS.md`](ADR_PHASE3_RESULT_SINKS.md)。
 
 ### 6. 不使用静默 fallback
 

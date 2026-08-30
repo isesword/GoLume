@@ -1,0 +1,76 @@
+{
+  "phase": "3.6",
+  "date": "2026-08-30",
+  "status": "pass",
+  "platform": {
+    "goos": "darwin",
+    "goarch": "arm64",
+    "cpu": "Apple M4 Pro"
+  },
+  "baseline_commit": "e90606a",
+  "correctness": {
+    "borrowed_batch_generation": "pass",
+    "prepared_repeated_execution": "pass",
+    "early_close_and_idempotent_close": "pass",
+    "consumer_backpressure_error_and_panic": "pass",
+    "parquet_nested_round_trip": "pass",
+    "ipc_nested_round_trip": "pass",
+    "row_and_byte_sharding_semantics": "pass",
+    "atomic_failure_cleanup": "pass",
+    "empty_schema_file": "pass",
+    "budget_failure_no_leak": "pass",
+    "bounded_output_over_10x_memory_limit": "pass"
+  },
+  "benchmark": {
+    "command": "go test -mod=readonly ./lazy -run '^$' -bench '^BenchmarkPhase36ResultSinks' -benchtime=1s -count=10",
+    "samples": 10,
+    "collect_batches": {
+      "median_ns_per_op": 5700964.5,
+      "median_bytes_per_op": 437761,
+      "allocs_per_op": 801
+    },
+    "collect_dataframe": {
+      "median_ns_per_op": 5955846.5,
+      "median_bytes_per_op": 4678095,
+      "allocs_per_op": 1561
+    },
+    "sink_ipc": {
+      "median_ns_per_op": 26990680,
+      "median_bytes_per_op": 10592724.5,
+      "allocs_per_op": 6247,
+      "output_rows_per_op": 524288,
+      "uncompressed_value_throughput_mb_per_second": 155.4
+    }
+  },
+  "existing_pipeline_regression_gate": {
+    "benchmark": "BenchmarkPhase30PipelineMorsels/rows=16384/batch-stream",
+    "command": "go tool benchstat validation/phase36-pipeline-base.txt validation/phase36-pipeline-current.txt",
+    "baseline_median_ns_per_op": 5878371,
+    "current_median_ns_per_op": 5837103.5,
+    "change_percent": -0.702,
+    "p_value": 0.075,
+    "allocs_per_op_baseline": 276,
+    "allocs_per_op_current": 276,
+    "decision": "pass: no statistically significant regression and observed median is lower"
+  },
+  "simd": {
+    "new_auto_candidate": false,
+    "decision": "result iteration, filesystem, compression orchestration, and variable-width nested conversion remain scalar/control-plane; existing upstream kernel.Set dispatch remains active",
+    "validated_modes": [
+      "scalar",
+      "auto",
+      "forced-simd",
+      "GODEBUG=simd=0",
+      "linux-amd64-cross-build",
+      "race"
+    ]
+  },
+  "commands": [
+    "./scripts/validate.sh",
+    "GOEXPERIMENT=simd go run ./internal/cmd/gensimd -check",
+    "go test -race -mod=readonly ./lazy -run '^TestPhase36' -count=1",
+    "go test -race -mod=readonly ./memory -run '^TestArrow' -count=1",
+    "go test -mod=readonly ./lazy ./memory -run '^(TestPhase36|TestArrow)' -count=1",
+    "git diff --check"
+  ]
+}

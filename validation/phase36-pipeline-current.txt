@@ -1,0 +1,14 @@
+goos: darwin
+goarch: arm64
+pkg: gocolumn/lazy
+cpu: Apple M4 Pro
+BenchmarkPhase30PipelineMorsels/rows=16384/batch-stream-12 196 5803143 ns/op 376832 B/op 276 allocs/op
+BenchmarkPhase30PipelineMorsels/rows=16384/batch-stream-12 207 5820259 ns/op 376834 B/op 276 allocs/op
+BenchmarkPhase30PipelineMorsels/rows=16384/batch-stream-12 207 5843989 ns/op 376832 B/op 276 allocs/op
+BenchmarkPhase30PipelineMorsels/rows=16384/batch-stream-12 206 5830218 ns/op 376832 B/op 276 allocs/op
+BenchmarkPhase30PipelineMorsels/rows=16384/batch-stream-12 202 5808120 ns/op 376832 B/op 276 allocs/op
+BenchmarkPhase30PipelineMorsels/rows=16384/batch-stream-12 201 6187506 ns/op 376832 B/op 276 allocs/op
+BenchmarkPhase30PipelineMorsels/rows=16384/batch-stream-12 204 5863126 ns/op 376832 B/op 276 allocs/op
+BenchmarkPhase30PipelineMorsels/rows=16384/batch-stream-12 202 5880316 ns/op 376832 B/op 276 allocs/op
+BenchmarkPhase30PipelineMorsels/rows=16384/batch-stream-12 204 5803452 ns/op 376832 B/op 276 allocs/op
+BenchmarkPhase30PipelineMorsels/rows=16384/batch-stream-12 204 5898994 ns/op 376832 B/op 276 allocs/op

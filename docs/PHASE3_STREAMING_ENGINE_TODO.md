@@ -1,6 +1,6 @@
 # Phase 3：流式物理执行引擎改造 TODO
 
-状态：Phase 3.0–3.5 已完成；下一步为 Phase 3.6 流式结果 API 与 Sink。
+状态：Phase 3.0–3.6 已完成；下一步为 Phase 3.7 单引擎收口与旧路径删除。
 
 执行策略、默认行为、资源错误和用户 API 已由
 [ADR_PHASE3_EXECUTION_UX.md](ADR_PHASE3_EXECUTION_UX.md) 决定；本文件保留实施清单。
@@ -17,7 +17,7 @@ DataFrame 语义分叉的引擎。
 - [x] Scan、Filter、Projection、Limit 等流水算子可在输入尚未读完时持续产出。
 - [ ] GroupBy、Join、Sort 等状态型算子受统一内存预算约束，并在允许时 Spill。
 - [ ] `ExecutionBounded` 模式下，输入规模增长到内存数倍时，峰值内存保持在配置上限附近。
-- [ ] `Collect`、批次迭代和文件 Sink 共享同一套物理执行图；不建立 eager 第二引擎。
+- [x] `Collect`、批次迭代和文件 Sink 共享同一套物理执行图；不建立 eager 第二引擎。
 - [ ] 取消、预算失败、磁盘写满、解码失败和下游提前停止时，释放全部 Batch、reservation、临时文件和 worker。
 - [ ] SQL NULL、稳定排序、Join 重复行、聚合溢出、Dictionary domain 和嵌套值语义与当前引擎一致。
 - [ ] SIMD 只进入已证明有效的批内热路径，不能侵入 public API、调度协议或 Spill 生命周期。
@@ -311,13 +311,13 @@ spill run，峰值 reservation 为 3,890 bytes，结束后 query/engine/disk 使
 
 ### Phase 3.6：流式结果 API 与 Sink
 
-- [ ] `Collect` 保持 DataFrame memory sink，文档明确结果大小本身必须适合内存。
-- [ ] 增加借用式 pull Batch iterator；Batch 只在下一次 `Next` 或 `Close` 前有效，提前结束只需 Close。
-- [ ] 增加 push 型 Batch consumer，callback 返回后 Batch 默认失效。
-- [ ] 实现 Parquet Sink，再实现 IPC Sink；二者复用 optimizer、物理图、预算和取消。
-- [ ] Sink 写入临时目标并提交，失败不暴露半成品为成功结果。
-- [ ] 支持受控 sink multiplex；每个下游有独立背压，慢下游不能导致无界共享缓存。
-- [ ] 明确文件分片的最大行数、目标字节数、Schema 和顺序语义。
+- [x] `Collect` 保持 DataFrame memory sink，文档明确结果大小本身必须适合内存。
+- [x] 增加借用式 pull Batch iterator；Batch 只在下一次 `Next` 或 `Close` 前有效，提前结束只需 Close。
+- [x] 增加 push 型 Batch consumer，callback 返回后 Batch 默认失效。
+- [x] 实现 Parquet Sink，再实现 IPC Sink；二者复用 optimizer、物理图、预算和取消。
+- [x] Sink 写入临时目标并提交，失败不暴露半成品为成功结果。
+- [x] 支持受控 sink multiplex；每个下游有独立背压，慢下游不能导致无界共享缓存。
+- [x] 明确文件分片的最大行数、目标字节数、Schema 和顺序语义。
 
 候选 public API 在本阶段单独评审，不能直接暴露内部 lease：
 
@@ -334,12 +334,12 @@ if err := stream.Err(); err != nil {
 	return err
 }
 
-err := lf.SinkBatches(ctx, func(batch BatchView) error {
+err := lf.SinkBatches(ctx, BatchOptions{}, func(ctx context.Context, batch BatchView) error {
 	// batch 只在 callback 期间有效
 	return consume(batch)
 })
 
-err := lf.SinkParquet(ctx, path, SinkOptions{})
+_, err := lf.SinkParquet(ctx, path, ParquetSinkOptions{})
 ```
 
 验收：
@@ -348,6 +348,10 @@ err := lf.SinkParquet(ctx, path, SinkOptions{})
 - callback 慢、报错或 panic 时停止整个查询并释放资源；
 - `Collect`、Batch Sink 和文件 Sink 在相同输入上结果一致；
 - 不允许格式化或 `String()` 隐式触发任何 Lazy 执行。
+
+状态：完成。API、借用生命周期、文件提交、分片语义、预算 allocator、易用性和 SIMD
+决策见 [`ADR_PHASE3_RESULT_SINKS.md`](ADR_PHASE3_RESULT_SINKS.md)，机器验收见
+[`validation/phase36-result-sink-gate.json`](../validation/phase36-result-sink-gate.json)。
 
 ### Phase 3.7：单引擎收口与旧路径删除
 

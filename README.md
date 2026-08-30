@@ -1,4 +1,4 @@
-# Go Columnar Engine — Phase 2.21 Struct and Explicit-Schema JSON
+# Go Columnar Engine — Phase 3.6 Bounded Streaming and Native Sinks
 
 Go Columnar Engine 是一个面向 Go 原生服务、CLI 和嵌入式分析场景的 Polars-like 列式分析引擎。核心路线保持：
 
@@ -58,6 +58,36 @@ df, err := lf.
 Struct 能作为 Filter/Take/Sort/Join 的 payload，并通过分块只读 `Series` 和
 有界 DataFrame 显示访问；递归 Struct/List、Map 和 schema inference 仍明确
 留在后续阶段。
+
+Phase 3.6 已提供端到端有界结果出口。小结果继续用最简单的 DataFrame：
+
+```go
+df, err := lf.Collect(ctx) // Memory Sink：完整结果必须适合内存
+defer df.Close()
+```
+
+大结果可直接写原生文件，不先物化整张表：
+
+```go
+result, err := lf.
+    WithExecution(lazy.ExecutionOptions{Policy: lazy.ExecutionBounded}).
+    SinkParquet(ctx, "events.parquet", lazy.ParquetSinkOptions{})
+```
+
+自定义流式消费使用借用式 iterator；`BatchView` 只在下一次 `Next` 前有效：
+
+```go
+reader, err := lf.CollectBatches(ctx, lazy.BatchOptions{})
+defer reader.Close()
+for reader.Next(ctx) {
+    consume(reader.Batch())
+}
+err = reader.Err()
+```
+
+`Collect`、Batch iterator、`SinkBatches`、Parquet 和 IPC Sink 复用同一个 LazyPlan、
+optimizer、SIMD kernel dispatch、查询预算和 Spill 生命周期。文件 Sink 使用同目录 staging、
+fsync 和原子提交；失败不返回临时路径。
 
 ## Lazy ordering API
 

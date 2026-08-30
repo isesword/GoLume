@@ -220,7 +220,7 @@
 - specialized Arrow Struct ingestion for the same bounded child set; recursive
   Struct/List, Map, dictionary children, and schema evolution remain rejected.
 
-### Phase 3.0–3.4 — streaming contract, spill, bounded aggregation, and Join
+### Phase 3.0–3.6 — bounded streaming execution and native sinks
 
 - one destination-fill `BatchStream` physical protocol with explicit borrowing,
   replay, cancellation, and idempotent close semantics;
@@ -246,6 +246,12 @@
 - Join runtime feedback records build/probe bytes, multiplicity, amplification,
   skew, and spill; a partition-hash SIMD candidate was measured and rejected
   after a 3.389% end-to-end regression on darwin/arm64.
+- stable external Sort uses bounded run generation and hierarchical k-way merge;
+  Window lowering separates resident, ordered-state, external-sort restore, and
+  explicitly unsupported frames.
+- public borrowed `CollectBatches` / `SinkBatches` and atomic Parquet/IPC sinks
+  share the same physical graph; output can exceed the query memory limit without
+  turning `Collect` into an implicit disk-backed DataFrame.
 
 ## Next — richer analytical operators and calibrated planning
 
