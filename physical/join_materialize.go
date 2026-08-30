@@ -4,7 +4,208 @@ import (
 	"fmt"
 	"gocolumn/join"
 	"gocolumn/memory"
+	"math"
 )
+
+func addJoinEstimate(total *int64, value int64) error {
+	if value < 0 || *total > math.MaxInt64-value {
+		return fmt.Errorf("join materialization byte estimate overflows int64")
+	}
+	*total += value
+	return nil
+}
+
+func joinValidityEstimate(rows int) int64 {
+	return int64(memory.WordsFor(rows)) * 8
+}
+
+func estimateJoinListRows(s *JoinSource, left *memory.Batch, binding joinOutputBinding, pairs []join.Pair, child bool) (int64, error) {
+	var children, data int64
+	for _, pair := range pairs {
+		src, row, ok := joinSourceRow(s, left, binding, pair)
+		if !ok {
+			continue
+		}
+		var vector *memory.StringListVector
+		if child {
+			parent, err := src.Struct(binding.in)
+			if err != nil {
+				return 0, err
+			}
+			if !parent.IsValid(row) {
+				continue
+			}
+			vector = parent.Values.StringLists[binding.field.Name]
+		} else {
+			var err error
+			vector, err = src.StringList(binding.in)
+			if err != nil {
+				return 0, err
+			}
+		}
+		if vector == nil || !vector.IsValid(row) {
+			continue
+		}
+		start, end, ok := vector.ValueRange(row)
+		if !ok {
+			return 0, fmt.Errorf("join list %q row %d has malformed offsets", binding.in, row)
+		}
+		children += int64(end - start)
+		for element := start; element < end; element++ {
+			if vector.Values.IsValid(element) {
+				data += int64(len(vector.Values.ValueBytes(element)))
+			}
+		}
+	}
+	total := int64(len(pairs)+1)*4 + joinValidityEstimate(len(pairs))
+	if err := addJoinEstimate(&total, (children+1)*4+joinValidityEstimate(int(children))+data); err != nil {
+		return 0, err
+	}
+	return total, nil
+}
+
+func estimateJoinStructBytes(s *JoinSource, left *memory.Batch, binding joinOutputBinding, pairs []join.Pair) (int64, error) {
+	rows := len(pairs)
+	total := joinValidityEstimate(rows)
+	for _, childField := range binding.field.Children {
+		if err := addJoinEstimate(&total, joinValidityEstimate(rows)); err != nil {
+			return 0, err
+		}
+		switch childField.Type {
+		case memory.TypeInt8, memory.TypeInt16, memory.TypeInt32, memory.TypeDate32, memory.TypeTime32,
+			memory.TypeUint8, memory.TypeUint16, memory.TypeUint32, memory.TypeBool:
+			if err := addJoinEstimate(&total, int64(rows)*4); err != nil {
+				return 0, err
+			}
+		case memory.TypeInt64, memory.TypeDate64, memory.TypeTimestamp, memory.TypeTime64, memory.TypeDuration,
+			memory.TypeUint64, memory.TypeFloat32, memory.TypeFloat64:
+			if err := addJoinEstimate(&total, int64(rows)*8); err != nil {
+				return 0, err
+			}
+		case memory.TypeString:
+			if err := addJoinEstimate(&total, int64(rows+1)*4); err != nil {
+				return 0, err
+			}
+			for _, pair := range pairs {
+				src, row, ok := joinSourceRow(s, left, binding, pair)
+				if !ok {
+					continue
+				}
+				parent, err := src.Struct(binding.in)
+				if err != nil {
+					return 0, err
+				}
+				vector := parent.Values.Strings[childField.Name]
+				if parent.IsValid(row) && vector != nil && vector.IsValid(row) {
+					if err := addJoinEstimate(&total, int64(len(vector.ValueBytes(row)))); err != nil {
+						return 0, err
+					}
+				}
+			}
+		case memory.TypeList:
+			childBinding := binding
+			childBinding.field = childField
+			bytes, err := estimateJoinListRows(s, left, childBinding, pairs, true)
+			if err != nil {
+				return 0, err
+			}
+			// estimateJoinListRows already includes its child validity; the
+			// generic child validity added above is the list parent validity.
+			bytes -= joinValidityEstimate(rows)
+			if err := addJoinEstimate(&total, bytes); err != nil {
+				return 0, err
+			}
+		default:
+			return 0, fmt.Errorf("join struct child %q type %s has no byte estimator", childField.Name, childField.Type)
+		}
+	}
+	return total, nil
+}
+
+// estimateJoinMaterializationBytes returns a conservative reservation made
+// before materializeJoinBatch allocates. The factor of two covers Go's append
+// growth for variable-width List/Struct buffers; fixed vectors are exact.
+func estimateJoinMaterializationBytes(s *JoinSource, left *memory.Batch, pairs []join.Pair) (int64, error) {
+	rows := len(pairs)
+	var total int64
+	for _, binding := range s.bindings {
+		if binding.field.Nullable {
+			if err := addJoinEstimate(&total, joinValidityEstimate(rows)); err != nil {
+				return 0, err
+			}
+		}
+		switch binding.field.Type {
+		case memory.TypeInt8, memory.TypeInt16, memory.TypeInt32, memory.TypeDate32, memory.TypeTime32,
+			memory.TypeUint8, memory.TypeUint16, memory.TypeUint32, memory.TypeBool:
+			if err := addJoinEstimate(&total, int64(rows)*4); err != nil {
+				return 0, err
+			}
+		case memory.TypeInt64, memory.TypeDate64, memory.TypeTimestamp, memory.TypeTime64, memory.TypeDuration,
+			memory.TypeUint64, memory.TypeFloat32, memory.TypeFloat64:
+			if err := addJoinEstimate(&total, int64(rows)*8); err != nil {
+				return 0, err
+			}
+		case memory.TypeString:
+			if binding.field.Encoding == memory.EncodingDictionary {
+				if err := addJoinEstimate(&total, int64(rows)*4+int64(len(binding.dict.Offsets))*4+int64(len(binding.dict.Data))); err != nil {
+					return 0, err
+				}
+				continue
+			}
+			if err := addJoinEstimate(&total, int64(rows+1)*4); err != nil {
+				return 0, err
+			}
+			for _, pair := range pairs {
+				value, valid, err := joinStringValue(s, left, binding, pair)
+				if err != nil {
+					return 0, err
+				}
+				if valid {
+					if err := addJoinEstimate(&total, int64(len(value))); err != nil {
+						return 0, err
+					}
+				}
+			}
+		case memory.TypeBinary:
+			if err := addJoinEstimate(&total, int64(rows+1)*4); err != nil {
+				return 0, err
+			}
+			for _, pair := range pairs {
+				value, valid, err := joinStringValue(s, left, binding, pair)
+				if err != nil {
+					return 0, err
+				}
+				if valid {
+					if err := addJoinEstimate(&total, int64(len(value))); err != nil {
+						return 0, err
+					}
+				}
+			}
+		case memory.TypeList:
+			bytes, err := estimateJoinListRows(s, left, binding, pairs, false)
+			if err != nil {
+				return 0, err
+			}
+			if err := addJoinEstimate(&total, bytes); err != nil {
+				return 0, err
+			}
+		case memory.TypeStruct:
+			bytes, err := estimateJoinStructBytes(s, left, binding, pairs)
+			if err != nil {
+				return 0, err
+			}
+			if err := addJoinEstimate(&total, bytes); err != nil {
+				return 0, err
+			}
+		default:
+			return 0, fmt.Errorf("joined payload type %s for %q has no byte estimator", binding.field.Type, binding.out)
+		}
+	}
+	if total > (math.MaxInt64-1024)/2 {
+		return 0, fmt.Errorf("join materialization byte estimate overflows int64")
+	}
+	return total*2 + 1024, nil
+}
 
 func estimateBatchBytes(b *memory.Batch) int64 {
 	return memory.BatchBytes(b)
@@ -300,6 +501,9 @@ func joinValidity(current memory.Bitmap, nullable bool, rows int) memory.Bitmap 
 
 func joinSourceRow(s *JoinSource, left *memory.Batch, b joinOutputBinding, p join.Pair) (*memory.Batch, int, bool) {
 	if !b.right {
+		if p.ProbeRow < 0 || left == nil {
+			return nil, 0, false
+		}
 		return left, p.ProbeRow, true
 	}
 	if p.BuildRow < 0 {

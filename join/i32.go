@@ -17,6 +17,10 @@ const (
 	Semi
 	// Anti emits probe rows that have no build-side match.
 	Anti
+	// Right emits matching pairs and unmatched build rows after probing.
+	Right
+	// Full emits matches plus unmatched rows from both sides.
+	Full
 )
 
 // String returns the stable textual name of the join type.
@@ -30,6 +34,10 @@ func (t Type) String() string {
 		return "semi"
 	case Anti:
 		return "anti"
+	case Right:
+		return "right"
+	case Full:
+		return "full"
 	default:
 		return "unknown"
 	}
@@ -180,7 +188,7 @@ func (t *I32Table) Probe(keys []int32, validity memory.Bitmap, typ Type, emit Em
 			s.MatchedProbeRows++
 		}
 		switch typ {
-		case Inner, Left:
+		case Inner, Left, Right, Full:
 			if matched {
 				for n := head; n != 0; n = t.next[n-1] {
 					s.OutputRows++
@@ -190,7 +198,7 @@ func (t *I32Table) Probe(keys []int32, validity memory.Bitmap, typ Type, emit Em
 						}
 					}
 				}
-			} else if typ == Left {
+			} else if typ == Left || typ == Full {
 				s.OutputRows++
 				if emit != nil {
 					if err := emit(Pair{ProbeRow: row, BuildRow: -1}); err != nil {

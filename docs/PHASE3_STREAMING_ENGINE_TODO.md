@@ -1,6 +1,6 @@
 # Phase 3：流式物理执行引擎改造 TODO
 
-状态：Phase 3.0–3.3 已完成；下一步为 Phase 3.4 Spillable Join。
+状态：Phase 3.0–3.4 已完成；下一步为 Phase 3.5 External Sort 与 Window 分级。
 
 执行策略、默认行为、资源错误和用户 API 已由
 [ADR_PHASE3_EXECUTION_UX.md](ADR_PHASE3_EXECUTION_UX.md) 决定；本文件保留实施清单。
@@ -267,15 +267,15 @@ spill run，峰值 reservation 为 3,890 bytes，结束后 query/engine/disk 使
 
 ### Phase 3.4：流式/Spillable Join
 
-- [ ] planner 在 Broadcast Hash、Partitioned Hash 和 Merge Join 中选择策略。
-- [ ] 小 Build 侧走现有驻留 Hash 快路径，并按实际字节而不是只按行数判断。
-- [ ] 大 Build/Probe 双侧按兼容 hash/radix 分区；不能驻留的分区 Spill 后逐对处理。
-- [ ] 已排序输入可选择 Merge Join，避免构建 Hash 表。
-- [ ] 一个输入行匹配大量结果时分多个输出 Batch，不能形成无界单 Batch。
-- [ ] 维护 Inner/Left/Right/Full 的未匹配状态和稳定输出契约。
-- [ ] 递归 repartition 必须设置最大深度；极端单 key skew 进入专用处理或明确失败，不能无限递归。
-- [ ] 支持现有 scalar、dictionary、fixed composite key 和 Struct/List payload Spill/Restore。
-- [ ] 将 build bytes、probe bytes、重复倍数和 skew 写入 runtime feedback。
+- [x] planner 在 Broadcast Hash、Partitioned Hash 和 Merge Join 中选择策略。
+- [x] 小 Build 侧走现有驻留 Hash 快路径，并按实际字节而不是只按行数判断。
+- [x] 大 Build/Probe 双侧按兼容 hash/radix 分区；不能驻留的分区 Spill 后逐对处理。
+- [x] 已排序输入可选择 Merge Join，避免构建 Hash 表。
+- [x] 一个输入行匹配大量结果时分多个输出 Batch，不能形成无界单 Batch。
+- [x] 维护 Inner/Left/Right/Full 的未匹配状态和稳定输出契约。
+- [x] 递归 repartition 必须设置最大深度；极端单 key skew 进入专用处理或明确失败，不能无限递归。
+- [x] 支持现有 scalar、dictionary、fixed composite key 和 Struct/List payload Spill/Restore。
+- [x] 将 build bytes、probe bytes、重复倍数和 skew 写入 runtime feedback。
 
 验收：
 
@@ -283,6 +283,10 @@ spill run，峰值 reservation 为 3,890 bytes，结束后 query/engine/disk 使
 - 强制 1 次、多次和递归分区 Spill，结果与 InMemory Join 一致；
 - 输出放大到远大于 RAM 时可经 Batch Sink 完成；
 - 预算、磁盘和取消错误不遗留 build table、Batch lease 或文件。
+
+状态：完成。策略、易用性、外连接生命周期、12× 输入 bounded 验收和 SIMD 候选拒绝依据见
+[`ADR_PHASE3_JOIN.md`](ADR_PHASE3_JOIN.md)，机器验收见
+[`validation/phase34-join-gate.json`](../validation/phase34-join-gate.json)。
 
 ### Phase 3.5：External Sort 与 Window 分级
 

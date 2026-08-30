@@ -38,3 +38,20 @@ func ReplayabilityOf(src Source) Replayability {
 	}
 	return ReplayUnknown
 }
+
+// PlanIdentityProvider exposes a stable, non-sensitive identity shared by
+// immutable pushdown clones of one logical source. It is hashed into runtime
+// feedback keys and is never rendered directly.
+type PlanIdentityProvider interface {
+	PlanIdentity() string
+}
+
+// PlanIdentityOf returns a source's stable planning identity when available.
+func PlanIdentityOf(src Source) (string, bool) {
+	provider, ok := src.(PlanIdentityProvider)
+	if !ok {
+		return "", false
+	}
+	identity := provider.PlanIdentity()
+	return identity, identity != ""
+}

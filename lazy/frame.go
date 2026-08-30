@@ -576,6 +576,7 @@ func (f LazyFrame) explainRowPhysical(ctx context.Context) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	ctx = withJoinFeedbackKey(ctx, planFeedbackKey(optimized.Plan))
 	physicalPlan, report, err := applyPushdown(ctx, optimized.Plan)
 	if err != nil {
 		return "", err
@@ -720,6 +721,7 @@ func (f LazyFrame) prepare(ctx context.Context, opts engine.PrepareOptions) (*en
 	if opts.FeedbackKey == "" {
 		opts.FeedbackKey = planFeedbackKey(optimized.Plan)
 	}
+	ctx = withJoinFeedbackKey(ctx, planFeedbackKey(optimized.Plan))
 	physicalLogical, report, err := applyPushdown(ctx, optimized.Plan)
 	if err != nil {
 		return nil, nil, source.PushdownReport{}, nil, err
@@ -1312,7 +1314,37 @@ func lowerSourcePipeline(ctx context.Context, plan logical.Plan, manager memory.
 			workers = exec.MaxWorkers()
 		}
 		joinStart := time.Now()
-		joined, err := physical.NewJoinSourceWithOptions(ctx, left, right, n.Type, keys, n.Suffix, manager, physical.JoinSourceOptions{Kernels: kernels, RadixBits: n.RadixBits, Workers: workers, Executor: exec, AutoParallelRadix: n.RadixBits == 0})
+		policy := engine.ExecutionPolicyFromContext(ctx, engine.ExecutionAuto)
+		engineExecutor, _ := exec.(*engine.Engine)
+		spillConfigured := engineExecutor != nil && engineExecutor.SpillConfigured()
+		finiteMemory := engineExecutor != nil && engineExecutor.Memory().Limit() > 0
+		joinObserver := observer.Observer(observer.Nop{})
+		var joinFeedback func(physical.JoinRuntimeFeedback)
+		if engineExecutor != nil {
+			joinObserver = engineExecutor.Observer()
+			feedbackKey := joinFeedbackKeyFromContext(ctx)
+			if feedbackKey == "" {
+				feedbackKey = planFeedbackKey(n)
+			}
+			joinFeedback = func(stats physical.JoinRuntimeFeedback) {
+				engineExecutor.ObserveJoinFeedback(
+					feedbackKey, stats.BuildBytes, stats.ProbeBytes, stats.ProbeRows,
+					stats.OutputRows, stats.SpillBytes, stats.MaxMultiplicity,
+				)
+			}
+		}
+		spillable := policy == engine.ExecutionBounded || policy == engine.ExecutionAuto && finiteMemory && spillConfigured
+		joined, err := physical.NewJoinSourceWithOptions(ctx, left, right, n.Type, keys, n.Suffix, manager, physical.JoinSourceOptions{
+			Kernels: kernels, RadixBits: n.RadixBits, Workers: workers, Executor: exec, AutoParallelRadix: n.RadixBits == 0,
+			Spillable: spillable, RequireBounded: policy == engine.ExecutionBounded, SpillConfigured: spillConfigured, Observer: joinObserver,
+			Feedback: joinFeedback,
+			MemoryLimitBytes: func() int64 {
+				if engineExecutor != nil {
+					return engineExecutor.Memory().Limit()
+				}
+				return 0
+			}(),
+		})
 		joinPrepare := time.Since(joinStart)
 		if err != nil {
 			for i := len(rc) - 1; i >= 0; i-- {

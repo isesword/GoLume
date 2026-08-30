@@ -2,11 +2,14 @@ package physical
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"gocolumn/hashagg"
 	"gocolumn/join"
 	"gocolumn/kernel"
 	"gocolumn/memory"
+	"gocolumn/observer"
+	"gocolumn/planner"
 	"gocolumn/source"
 )
 
@@ -17,30 +20,48 @@ type JoinKey struct{ Left, Right string }
 // once during physical preparation; each reader probes left partitions and
 // emits joined columnar batches that can feed downstream operators.
 type JoinSource struct {
-	left, right  source.Source
-	typ          join.Type
-	keys         []JoinKey
-	suffix       string
-	schema       memory.Schema
-	bindings     []joinOutputBinding
-	leftParts    []source.Partition
-	parts        []source.Partition
-	stats        source.Stats
-	shape        joinShape
-	pair         *join.PairTable
-	radixPair    *join.RadixPairTable
-	dict         *join.DictionaryTable
-	strategy     string
-	radixBits    uint8
-	radixWorkers int
-	radixExec    join.ParallelExecutor
-	leftDict     join.Dictionary
-	rightDict    join.Dictionary
-	rightBatches []*memory.Batch
-	buildLoc     []rowLocation
-	reservations []memory.Reservation
-	closed       bool
-	kernels      kernel.Set
+	left, right    source.Source
+	typ            join.Type
+	keys           []JoinKey
+	suffix         string
+	schema         memory.Schema
+	bindings       []joinOutputBinding
+	leftParts      []source.Partition
+	parts          []source.Partition
+	stats          source.Stats
+	shape          joinShape
+	pair           *join.PairTable
+	radixPair      *join.RadixPairTable
+	dict           *join.DictionaryTable
+	strategy       string
+	strategyReason string
+	spillable      bool
+	merge          bool
+	boundedBuild   bool
+	radixBits      uint8
+	radixWorkers   int
+	radixExec      join.ParallelExecutor
+	leftDict       join.Dictionary
+	rightDict      join.Dictionary
+	rightBatches   []*memory.Batch
+	buildLoc       []rowLocation
+	buildBytes     int64
+	reservations   []memory.Reservation
+	closed         bool
+	kernels        kernel.Set
+	observer       observer.Observer
+	feedback       func(JoinRuntimeFeedback)
+}
+
+// JoinRuntimeFeedback is one completed physical join's resource and skew
+// observation. It is emitted outside row hot loops.
+type JoinRuntimeFeedback struct {
+	BuildBytes      int64
+	ProbeBytes      int64
+	ProbeRows       int64
+	OutputRows      int64
+	SpillBytes      int64
+	MaxMultiplicity int
 }
 
 type joinShape uint8
@@ -76,6 +97,21 @@ type JoinSourceOptions struct {
 	// AutoParallelRadix enables the benchmark-backed large fixed-key heuristic
 	// when RadixBits is zero. Explicit RadixBits always wins.
 	AutoParallelRadix bool
+	// Spillable selects execution-scoped radix partitioning and columnar runs
+	// instead of retaining the complete build side during preparation.
+	Spillable bool
+	// RequireBounded rejects any physical fallback without a finite contract.
+	RequireBounded bool
+	// SpillConfigured reports whether the owning query can create finite runs.
+	SpillConfigured bool
+	// Observer receives one aggregate stage event outside row hot loops.
+	Observer observer.Observer
+	// MemoryLimitBytes is the finite per-query hard limit used only for
+	// conservative adaptive-broadcast thresholds.
+	MemoryLimitBytes int64
+	// Feedback receives one aggregate runtime observation when a stream owns
+	// the complete join execution.
+	Feedback func(JoinRuntimeFeedback)
 }
 
 // NewJoinSource prepares a right-build hash table and derives safe output-row
@@ -100,7 +136,11 @@ func NewJoinSourceWithOptions(ctx context.Context, left, right source.Source, ty
 	if len(keys) < 1 || len(keys) > 2 {
 		return nil, fmt.Errorf("physical join requires one or two equality keys")
 	}
-	s := &JoinSource{left: left, right: right, typ: typ, keys: append([]JoinKey(nil), keys...), suffix: suffix, radixBits: opts.RadixBits, radixWorkers: opts.Workers, radixExec: opts.Executor, kernels: opts.Kernels}
+	joinObserver := opts.Observer
+	if joinObserver == nil {
+		joinObserver = observer.Nop{}
+	}
+	s := &JoinSource{left: left, right: right, typ: typ, keys: append([]JoinKey(nil), keys...), suffix: suffix, radixBits: opts.RadixBits, radixWorkers: opts.Workers, radixExec: opts.Executor, kernels: opts.Kernels, spillable: opts.Spillable, observer: joinObserver, feedback: opts.Feedback}
 	if s.radixBits > 8 {
 		return nil, fmt.Errorf("physical join radix bits %d exceed 8", s.radixBits)
 	}
@@ -119,6 +159,20 @@ func NewJoinSourceWithOptions(ctx context.Context, left, right source.Source, ty
 	if err := s.compileBindings(ctx); err != nil {
 		return nil, err
 	}
+	if s.spillable && !opts.SpillConfigured {
+		return nil, fmt.Errorf("spillable join requires an explicit finite spill quota")
+	}
+	ordered := s.radixBits == 0 && mergeJoinOrdering(left, right, keys)
+	initial, err := planner.ChooseJoin(planner.JoinInput{
+		Ordered: ordered, Spillable: s.spillable, RequireBounded: opts.RequireBounded, MemoryLimitBytes: opts.MemoryLimitBytes,
+	})
+	if err != nil {
+		return nil, err
+	}
+	if initial.Kind == planner.JoinMerge {
+		s.merge, s.spillable = true, false
+		s.strategy, s.strategyReason = initial.Kind.String(), initial.Reason
+	}
 	if s.radixBits == 0 && opts.AutoParallelRadix && s.shape == joinFixed && s.radixWorkers >= 4 && s.radixExec != nil {
 		leftStats, lerr := left.Stats(ctx)
 		rightStats, rerr := right.Stats(ctx)
@@ -126,10 +180,44 @@ func NewJoinSourceWithOptions(ctx context.Context, left, right source.Source, ty
 			s.radixBits = 8
 		}
 	}
-	if err := s.buildRight(ctx, manager); err != nil {
-		return nil, err
+	if s.spillable {
+		if s.canAttemptBoundedBroadcast(ctx, opts.MemoryLimitBytes) {
+			s.spillable = false
+			if buildErr := s.buildRight(ctx, manager); buildErr != nil {
+				s.release()
+				if !errors.Is(buildErr, memory.ErrBudgetExceeded) {
+					return nil, buildErr
+				}
+				s.spillable = true
+			} else {
+				decision, chooseErr := planner.ChooseJoin(planner.JoinInput{
+					Spillable: true, RequireBounded: opts.RequireBounded, StableReplay: true,
+					MemoryLimitBytes: opts.MemoryLimitBytes, BuildBytes: s.residentStateBytes(), MaxOutputBatchBytes: s.maxResidentOutputBytes(ctx),
+				})
+				if chooseErr != nil {
+					return nil, chooseErr
+				}
+				if decision.Kind == planner.JoinBroadcastHash {
+					s.boundedBuild = true
+					s.strategy, s.strategyReason = decision.Kind.String(), decision.Reason
+				} else {
+					s.release()
+					s.spillable = true
+				}
+			}
+		}
+		if s.spillable {
+			s.strategy, s.strategyReason = "partitioned-hash-spill", initial.Reason
+		}
+	} else if !s.merge {
+		if err := s.buildRight(ctx, manager); err != nil {
+			s.release()
+			return nil, err
+		}
+		s.strategyReason = "resident memory-only fast path"
 	}
 	if err := s.initStreamingPartitions(ctx); err != nil {
+		s.release()
 		return nil, err
 	}
 	ok = true
@@ -143,12 +231,136 @@ func (s *JoinSource) Schema() memory.Schema { return s.schema }
 // Phase 3.4 changes eligible strategies to spillable after partitioned join is
 // implemented and verified.
 func (s *JoinSource) StreamPlan() source.StreamPlanNode {
+	class := source.StreamBlocking
+	if s.spillable {
+		class = source.StreamSpillable
+	} else if s.boundedBuild {
+		class = source.StreamBounded
+	}
 	return source.StreamPlanNode{
 		Operator: "Join",
-		Class:    source.StreamBlocking,
-		Detail:   fmt.Sprintf("strategy=%s", s.strategy),
-		Children: []source.StreamPlanNode{source.StreamPlanOf(s.left), source.StreamPlanOf(s.right)},
+		Class:    class,
+		Detail:   fmt.Sprintf("strategy=%s reason=%q", s.strategy, s.strategyReason),
+		// Right and Full need one query-wide matched-build bitmap before their
+		// unmatched build rows can be emitted. Running one stream per probe
+		// partition would duplicate those rows or require an unbounded merge.
+		PartitionParallel: !s.spillable && !s.merge && s.typ != join.Right && s.typ != join.Full,
+		Children:          []source.StreamPlanNode{source.StreamPlanOf(s.left), source.StreamPlanOf(s.right)},
 	}
+}
+
+func fixedJoinSchemaWidth(schema memory.Schema) (int64, bool) {
+	var bytes int64
+	for _, field := range schema.Fields {
+		switch field.Type {
+		case memory.TypeInt8, memory.TypeInt16, memory.TypeInt32, memory.TypeDate32, memory.TypeTime32,
+			memory.TypeUint8, memory.TypeUint16, memory.TypeUint32, memory.TypeBool:
+			bytes += 4
+		case memory.TypeInt64, memory.TypeDate64, memory.TypeTimestamp, memory.TypeTime64, memory.TypeDuration,
+			memory.TypeUint64, memory.TypeFloat32, memory.TypeFloat64:
+			bytes += 8
+		case memory.TypeString:
+			if field.Encoding != memory.EncodingDictionary {
+				return 0, false
+			}
+			bytes += 4
+		default:
+			return 0, false
+		}
+		if field.Nullable {
+			bytes++
+		}
+	}
+	return bytes, true
+}
+
+func (s *JoinSource) canAttemptBoundedBroadcast(ctx context.Context, limit int64) bool {
+	if limit <= 0 || s.radixBits != 0 || source.ReplayabilityOf(s.right) != source.ReplayStable {
+		return false
+	}
+	rightWidth, rightFixed := fixedJoinSchemaWidth(s.right.Schema())
+	_, outputFixed := fixedJoinSchemaWidth(s.schema)
+	if !rightFixed || !outputFixed {
+		return false
+	}
+	stats, err := s.right.Stats(ctx)
+	if err != nil || stats.Rows < 0 {
+		return false
+	}
+	estimate := stats.Bytes
+	const maxInt64 = int64(^uint64(0) >> 1)
+	if estimate <= 0 && (rightWidth <= 0 || stats.Rows > maxInt64/rightWidth) {
+		return false
+	}
+	if estimate <= 0 {
+		estimate = stats.Rows * rightWidth
+	}
+	return estimate > 0 && estimate <= limit/4
+}
+
+func (s *JoinSource) residentStateBytes() int64 {
+	rows := len(s.buildLoc)
+	tableBytes := join.EstimatePairTableBytes(maxInt(8, rows), rows)
+	if s.shape == joinDictionary {
+		tableBytes = join.EstimateI32TableBytes(maxInt(rows, s.rightDict.Len()), rows)
+	}
+	const rowLocationBytes = int64(16)
+	if int64(rows) > int64(^uint64(0)>>1)/rowLocationBytes {
+		return int64(^uint64(0) >> 1)
+	}
+	total := int64(0)
+	for _, bytes := range []int64{s.buildBytes, tableBytes, int64(rows) * rowLocationBytes, int64(len(s.rightBatches)) * 8} {
+		if err := addJoinEstimate(&total, bytes); err != nil {
+			return int64(^uint64(0) >> 1)
+		}
+	}
+	return total
+}
+
+func (s *JoinSource) maxResidentOutputBytes(ctx context.Context) int64 {
+	width, ok := fixedJoinSchemaWidth(s.schema)
+	if !ok || width <= 0 {
+		return 0
+	}
+	parts, err := s.left.Partitions(ctx)
+	if err != nil {
+		return 0
+	}
+	var maxBytes int64
+	for _, part := range parts {
+		rows, mulErr := safeMulRows(part.Rows, int64(s.maxOutputMultiplicity()))
+		if mulErr != nil {
+			return 0
+		}
+		const maxInt64 = int64(^uint64(0) >> 1)
+		perOutput := width*2 + 16
+		if rows > maxInt64/perOutput || part.Rows > (maxInt64-rows*perOutput)/17 {
+			return 0
+		}
+		bytes := rows*perOutput + part.Rows*17 + 1024
+		if bytes > maxBytes {
+			maxBytes = bytes
+		}
+	}
+	if s.typ == join.Right || s.typ == join.Full {
+		unmatched := int64(len(s.buildLoc))
+		if unmatched > 4096 {
+			unmatched = 4096
+		}
+		const maxInt64 = int64(^uint64(0) >> 1)
+		perOutput := width*2 + 16
+		if unmatched > maxInt64/perOutput {
+			return 0
+		}
+		bytes := unmatched*perOutput + 1024
+		if bytes > maxBytes {
+			maxBytes = bytes
+		}
+	}
+	if maxBytes <= 0 {
+		return 0
+	}
+	return maxBytes
 }
 
 // Stats returns partition count and a safe output-row upper bound. Join output
@@ -176,6 +388,12 @@ func (s *JoinSource) NewReader(ctx context.Context, opts source.ReadOptions) (so
 	}
 	if s.closed {
 		return nil, fmt.Errorf("physical join source closed")
+	}
+	if s.spillable || s.merge {
+		return nil, fmt.Errorf("%s join requires BatchStream execution", s.strategy)
+	}
+	if s.typ == join.Right || s.typ == join.Full {
+		return nil, fmt.Errorf("%s join requires BatchStream execution to track unmatched build rows", s.typ)
 	}
 	r, err := s.left.NewReader(ctx, opts)
 	if err != nil {
@@ -249,7 +467,12 @@ func (s *JoinSource) compileBindings(ctx context.Context) error {
 		if !joinMaterializableField(f) {
 			return fmt.Errorf("left join payload %q type %s is not materializable; project it away before join", f.Name, f.Type)
 		}
-		b := joinOutputBinding{out: f.Name, in: f.Name, field: f}
+		of := f
+		if s.typ == join.Right || s.typ == join.Full {
+			of.Nullable = true
+		}
+		fields[len(fields)-len(ls.Fields)+len(s.bindings)] = of
+		b := joinOutputBinding{out: f.Name, in: f.Name, field: of}
 		if f.Type == memory.TypeString && f.Encoding == memory.EncodingDictionary {
 			if dp, ok := s.left.(source.DictionaryProvider); ok {
 				d, _ := dp.Dictionary(ctx, f.Name)
@@ -281,7 +504,7 @@ func (s *JoinSource) compileBindings(ctx context.Context) error {
 			seen[out] = struct{}{}
 			of := f
 			of.Name = out
-			if s.typ == join.Left {
+			if s.typ == join.Left || s.typ == join.Full {
 				of.Nullable = true
 			}
 			fields = append(fields, of)
@@ -304,24 +527,76 @@ func (s *JoinSource) buildRight(ctx context.Context, manager memory.Manager) err
 	if err != nil {
 		return err
 	}
+	var totalRows int64
+	for _, part := range parts {
+		if part.Rows < 0 || totalRows > int64(^uint64(0)>>1)-part.Rows {
+			return fmt.Errorf("join build row count overflows int64")
+		}
+		totalRows += part.Rows
+	}
+	if totalRows > int64(int(^uint(0)>>1)) {
+		return fmt.Errorf("join build has %d rows beyond platform capacity", totalRows)
+	}
+	const rowLocationBytes = int64(16)
+	if totalRows > (int64(^uint64(0)>>1)-int64(len(parts))*8)/rowLocationBytes {
+		return fmt.Errorf("join build metadata byte estimate overflows int64")
+	}
+	if manager != nil {
+		persistentBytes := totalRows*rowLocationBytes + int64(len(parts))*8
+		reservation, reserveErr := manager.Reserve(ctx, persistentBytes)
+		if reserveErr != nil {
+			return fmt.Errorf("join build location memory: %w", reserveErr)
+		}
+		s.reservations = append(s.reservations, reservation)
+	}
+	var scratch memory.Reservation
+	if manager != nil && totalRows > 0 {
+		// A fixed key uses 16 bytes plus one validity byte. Dictionary builds
+		// need less, so this is conservative and also covers their validity
+		// bitmap while the temporary code/valid slices remain live.
+		if totalRows > int64(^uint64(0)>>1)/17 {
+			return fmt.Errorf("join build scratch byte estimate overflows int64")
+		}
+		scratch, err = manager.Reserve(ctx, totalRows*17)
+		if err != nil {
+			return fmt.Errorf("join build key scratch memory: %w", err)
+		}
+		defer scratch.Release()
+	}
 	rd, err := s.right.NewReader(ctx, source.ReadOptions{Kernels: s.kernels})
 	if err != nil {
 		return err
 	}
 	defer rd.Close()
+	s.rightBatches = make([]*memory.Batch, 0, len(parts))
+	s.buildLoc = make([]rowLocation, 0, int(totalRows))
 	var fixed []hashagg.Key128
 	var masks []uint8
 	var dictCodes []uint32
-	var dictValid memory.Bitmap
+	var dictValidRows []bool
+	if s.shape == joinDictionary {
+		dictCodes = make([]uint32, 0, int(totalRows))
+		dictValidRows = make([]bool, 0, int(totalRows))
+	} else {
+		fixed = make([]hashagg.Key128, 0, int(totalRows))
+		masks = make([]uint8, 0, int(totalRows))
+	}
+	allDictValid := true
+	actualRows := int64(0)
 	for _, part := range parts {
 		b := memory.NewBatch()
 		if err := rd.ReadPartition(ctx, part, b); err != nil {
 			return err
 		}
+		if actualRows > totalRows-int64(b.Rows) {
+			return fmt.Errorf("join build source emitted more rows than its partition contract")
+		}
+		actualRows += int64(b.Rows)
 		if len(b.Opaque) != 0 {
 			return fmt.Errorf("joined payload contains opaque Arrow columns; project them away before join")
 		}
 		bytes := estimateBatchBytes(b)
+		s.buildBytes += bytes
 		if manager != nil && bytes > 0 {
 			r, e := manager.Reserve(ctx, bytes)
 			if e != nil {
@@ -343,10 +618,9 @@ func (s *JoinSource) buildRight(ctx context.Context, manager memory.Manager) err
 					return e
 				}
 				dictCodes = append(dictCodes, v.Indices[row])
-				dictValid = memory.EnsureBitmap(dictValid, len(dictCodes))
-				if v.IsValid(row) {
-					memory.Set(dictValid, len(dictCodes)-1)
-				}
+				valid := v.IsValid(row)
+				dictValidRows = append(dictValidRows, valid)
+				allDictValid = allDictValid && valid
 			} else {
 				k, m, e := encodePhysicalKey(b, s.keys, false, row)
 				if e != nil {
@@ -357,9 +631,21 @@ func (s *JoinSource) buildRight(ctx context.Context, manager memory.Manager) err
 			}
 		}
 	}
+	if actualRows != totalRows {
+		return fmt.Errorf("join build source emitted %d rows, partition contract declared %d", actualRows, totalRows)
+	}
 	if s.shape == joinDictionary {
 		s.strategy = "dictionary-hash"
 		s.dict = join.NewDictionaryTable(maxInt(8, len(dictCodes)))
+		var dictValid memory.Bitmap
+		if !allDictValid {
+			dictValid = memory.EnsureBitmap(nil, len(dictValidRows))
+			for row, valid := range dictValidRows {
+				if valid {
+					memory.Set(dictValid, row)
+				}
+			}
+		}
 		if manager != nil {
 			r, e := manager.Reserve(ctx, join.EstimateI32TableBytes(maxInt(len(dictCodes), s.rightDict.Len()), len(dictCodes)))
 			if e != nil {
@@ -401,6 +687,33 @@ func (s *JoinSource) buildRight(ctx context.Context, manager memory.Manager) err
 }
 
 func (s *JoinSource) initStreamingPartitions(ctx context.Context) error {
+	if s.spillable || s.merge {
+		leftStats, err := s.left.Stats(ctx)
+		if err != nil {
+			return err
+		}
+		rightStats, err := s.right.Stats(ctx)
+		if err != nil {
+			return err
+		}
+		rows := leftStats.Rows
+		if s.typ == join.Inner || s.typ == join.Left || s.typ == join.Right || s.typ == join.Full {
+			var mulErr error
+			rows, mulErr = safeMulRows(leftStats.Rows, rightStats.Rows)
+			if mulErr != nil {
+				rows = int64(^uint64(0) >> 1)
+			}
+			if s.typ == join.Right || s.typ == join.Full {
+				if rows <= int64(^uint64(0)>>1)-rightStats.Rows {
+					rows += rightStats.Rows
+				}
+			}
+		}
+		s.leftParts, _ = s.left.Partitions(ctx)
+		s.parts = []source.Partition{{ID: 0, Rows: rows}}
+		s.stats = source.Stats{Rows: rows, Partitions: 1, RowsUpperBound: true}
+		return nil
+	}
 	parts, err := s.left.Partitions(ctx)
 	if err != nil {
 		return err
@@ -419,6 +732,12 @@ func (s *JoinSource) initStreamingPartitions(ctx context.Context) error {
 		s.stats.Rows += rows
 	}
 	s.stats.Partitions = len(s.parts)
+	if s.typ == join.Right || s.typ == join.Full {
+		if int64(len(s.buildLoc)) > int64(^uint64(0)>>1)-s.stats.Rows {
+			return fmt.Errorf("join output row upper bound overflows int64")
+		}
+		s.stats.Rows += int64(len(s.buildLoc))
+	}
 	s.stats.RowsUpperBound = true
 	return nil
 }
@@ -434,9 +753,9 @@ func (s *JoinSource) maxOutputMultiplicity() int {
 		maxDup = s.pair.MaxMultiplicity()
 	}
 	switch s.typ {
-	case join.Inner:
+	case join.Inner, join.Right:
 		return maxDup
-	case join.Left:
+	case join.Left, join.Full:
 		if maxDup < 1 {
 			return 1
 		}
@@ -513,6 +832,8 @@ func (s *JoinSource) release() {
 	s.reservations = nil
 	s.rightBatches = nil
 	s.buildLoc = nil
+	s.buildBytes = 0
+	s.pair, s.radixPair, s.dict = nil, nil, nil
 }
 
 type joinReader struct {
@@ -524,6 +845,7 @@ type joinReader struct {
 	parallelRadixWorkspace join.ParallelRadixProbeWorkspace
 	keys                   []hashagg.Key128
 	masks                  []uint8
+	lastSummary            join.Summary
 }
 
 // Close releases the left-side probe reader owned by this join reader.
@@ -538,7 +860,8 @@ func (r *joinReader) ReadPartition(ctx context.Context, p source.Partition, dst 
 		return err
 	}
 	r.pairs = r.pairs[:0]
-	_, err := r.owner.probe(ctx, r.leftBatch, func(pair join.Pair) error { r.pairs = append(r.pairs, pair); return nil }, &r.radixWorkspace, &r.parallelRadixWorkspace, &r.keys, &r.masks)
+	var err error
+	r.lastSummary, err = r.owner.probe(ctx, r.leftBatch, func(pair join.Pair) error { r.pairs = append(r.pairs, pair); return nil }, &r.radixWorkspace, &r.parallelRadixWorkspace, &r.keys, &r.masks)
 	if err != nil {
 		return err
 	}

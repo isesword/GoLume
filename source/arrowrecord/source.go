@@ -195,6 +195,9 @@ func (s *Source) Schema() memory.Schema { return s.schema }
 // Replayability reports that retained RecordBatches are a stable snapshot.
 func (*Source) Replayability() source.Replayability { return source.ReplayStable }
 
+// PlanIdentity is stable across immutable projection/pushdown clones.
+func (s *Source) PlanIdentity() string { return fmt.Sprintf("arrowrecord:%p", s.owner) }
+
 // Stats reports rows and retained RecordBatch partitions. Byte size is unknown
 // because Arrow buffers may be shared with caller-owned arrays.
 func (s *Source) Stats(context.Context) (source.Stats, error) {

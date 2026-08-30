@@ -1,10 +1,26 @@
 package lazy
 
 import (
+	"context"
 	"crypto/sha256"
 	"fmt"
 	"gocolumn/logical"
+	"gocolumn/source"
 )
+
+type joinFeedbackContextKey struct{}
+
+func withJoinFeedbackKey(ctx context.Context, key string) context.Context {
+	if key == "" {
+		return ctx
+	}
+	return context.WithValue(ctx, joinFeedbackContextKey{}, key)
+}
+
+func joinFeedbackKeyFromContext(ctx context.Context) string {
+	key, _ := ctx.Value(joinFeedbackContextKey{}).(string)
+	return key
+}
 
 func planFeedbackKey(plan logical.Plan) string {
 	h := sha256.New()
@@ -18,7 +34,11 @@ type byteWriter interface{ Write([]byte) (int, error) }
 func writeSourceIdentity(w byteWriter, plan logical.Plan) {
 	switch n := plan.(type) {
 	case *logical.Scan:
-		_, _ = fmt.Fprintf(w, "|source=%T:%p", n.Source, n.Source)
+		if identity, ok := source.PlanIdentityOf(n.Source); ok {
+			_, _ = fmt.Fprintf(w, "|source=%T:%s", n.Source, identity)
+		} else {
+			_, _ = fmt.Fprintf(w, "|source=%T:%p", n.Source, n.Source)
+		}
 	case *logical.Filter:
 		writeSourceIdentity(w, n.Input)
 	case *logical.Projection:

@@ -220,7 +220,7 @@
 - specialized Arrow Struct ingestion for the same bounded child set; recursive
   Struct/List, Map, dictionary children, and schema evolution remain rejected.
 
-### Phase 3.0–3.3 — streaming contract, pipeline, spill, and bounded aggregation
+### Phase 3.0–3.4 — streaming contract, spill, bounded aggregation, and Join
 
 - one destination-fill `BatchStream` physical protocol with explicit borrowing,
   replay, cancellation, and idempotent close semantics;
@@ -239,6 +239,13 @@
   recursively repartitions oversized state runs;
 - ExplainAnalyze reports aggregate spill, peak-memory, radix-depth, and skew
   diagnostics without replacing the native stream with a compatibility reader.
+- adaptive Join planning selects byte-proven Broadcast Hash, ordering-proven
+  Merge, or recursive Partitioned Hash Spill in the same physical graph;
+- all six equality Join types preserve SQL NULL, dictionary-domain, composite
+  key, and nested payload semantics while chunking high-amplification output;
+- Join runtime feedback records build/probe bytes, multiplicity, amplification,
+  skew, and spill; a partition-hash SIMD candidate was measured and rejected
+  after a 3.389% end-to-end regression on darwin/arm64.
 
 ## Next — richer analytical operators and calibrated planning
 
@@ -254,7 +261,6 @@ Priority order:
    - dictionary-aware/collation-aware ordering hooks;
 
 3. **Runtime planning feedback breadth**
-   - feed build/probe bytes, skew and duplicate multiplicity into Join planning;
    - platform-calibrated ARM/x86 thresholds;
    - planner confidence/sample decay and source-version invalidation.
 

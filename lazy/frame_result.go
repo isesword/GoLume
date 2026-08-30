@@ -148,6 +148,7 @@ func (f LazyFrame) prepareFrame(ctx context.Context) (*PreparedFrame, logical.Pl
 	if err != nil {
 		return nil, nil, source.PushdownReport{}, err
 	}
+	ctx = withJoinFeedbackKey(ctx, planFeedbackKey(optimized.Plan))
 	physicalPlan, report, err := applyPushdown(ctx, optimized.Plan)
 	if err != nil {
 		return nil, nil, source.PushdownReport{}, err

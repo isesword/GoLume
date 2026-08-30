@@ -76,17 +76,17 @@ func (f LazyFrame) validateExecutionLogical(plan logical.Plan) error {
 	if f.session == nil || f.session.engine == nil || f.session.engine.Memory().Limit() <= 0 {
 		return ErrBoundedMemoryLimitRequired
 	}
-	aggregateSpillable := f.session.engine.SpillConfigured()
-	operator, path, ok := firstLogicalBlocking(plan, nil, aggregateSpillable)
+	spillConfigured := f.session.engine.SpillConfigured()
+	operator, path, ok := firstLogicalBlocking(plan, nil, spillConfigured)
 	if !ok {
 		return nil
 	}
 	detail := ""
-	if operator == "Aggregate" && !aggregateSpillable {
+	if (operator == "Aggregate" || operator == "Join") && !spillConfigured {
 		detail = ErrBoundedSpillRequired.Error() + "; configure engine.Options.Spill.MaxBytes"
 	}
 	var cause error
-	if operator == "Aggregate" && !aggregateSpillable {
+	if (operator == "Aggregate" || operator == "Join") && !spillConfigured {
 		cause = ErrBoundedSpillRequired
 	}
 	return &UnsupportedBoundedPlanError{Operator: operator, Path: path, Detail: detail, Cause: cause}
@@ -122,7 +122,11 @@ func firstLogicalBlocking(plan logical.Plan, path []string, aggregateSpillable b
 		// child here so unsupported Sort/Join/Window nodes fail early.
 		name, children = "Aggregate", []logical.Plan{node.Input}
 	case *logical.Join:
-		name, children, blocking = "Join", []logical.Plan{node.Left, node.Right}, true
+		// Join strategy depends on ordering proof and configured spill after both
+		// inputs are lowered. Without a spill quota strict Bounded execution
+		// rejects it before any side is read; sorted merge remains an Auto/
+		// MemoryOnly optimization because one duplicate group is unbounded.
+		name, children, blocking = "Join", []logical.Plan{node.Left, node.Right}, !aggregateSpillable
 	default:
 		name, blocking = fmt.Sprintf("%T", plan), true
 	}

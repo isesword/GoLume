@@ -30,6 +30,10 @@ const (
 	SemiJoin JoinType = join.Semi
 	// AntiJoin emits left rows that have no right-side match.
 	AntiJoin JoinType = join.Anti
+	// RightJoin emits all right rows and NULL left payloads for misses.
+	RightJoin JoinType = join.Right
+	// FullJoin emits matched rows and unmatched rows from both inputs.
+	FullJoin JoinType = join.Full
 )
 
 // JoinOptions configures a lazy equality join. LeftOn and RightOn must contain
@@ -218,6 +222,7 @@ func (p *PreparedJoin) Execute(ctx context.Context) (JoinResult, error) {
 		return JoinResult{}, err
 	}
 	result := JoinResult{Type: p.typ, RightRows: len(p.build.refs), LeftPushdown: p.left.report, RightPushdown: p.right.report}
+	matchedBuild := make([]bool, len(p.build.refs))
 	reader, err := p.left.src.NewReader(ctx, source.ReadOptions{Kernels: p.kernel})
 	if err != nil {
 		return JoinResult{}, err
@@ -240,8 +245,9 @@ func (p *PreparedJoin) Execute(ctx context.Context) (JoinResult, error) {
 		}
 		summary, err := p.probeBatch(batch, selected, func(pair join.Pair) error {
 			jr := JoinedRow{Left: leftRefs[pair.ProbeRow], Right: RowRef{Valid: false}}
-			if (p.typ == InnerJoin || p.typ == LeftJoin) && pair.BuildRow >= 0 {
+			if (p.typ == InnerJoin || p.typ == LeftJoin || p.typ == RightJoin || p.typ == FullJoin) && pair.BuildRow >= 0 {
 				jr.Right = p.build.refs[pair.BuildRow]
+				matchedBuild[pair.BuildRow] = true
 			}
 			result.Rows = append(result.Rows, jr)
 			return nil
@@ -251,6 +257,15 @@ func (p *PreparedJoin) Execute(ctx context.Context) (JoinResult, error) {
 		}
 		result.MatchedLeftRows += summary.MatchedProbeRows
 		result.OutputRows += summary.OutputRows
+	}
+	if p.typ == RightJoin || p.typ == FullJoin {
+		for buildRow, matched := range matchedBuild {
+			if matched {
+				continue
+			}
+			result.Rows = append(result.Rows, JoinedRow{Left: RowRef{Valid: false}, Right: p.build.refs[buildRow]})
+			result.OutputRows++
+		}
 	}
 	return result, nil
 }

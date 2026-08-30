@@ -235,6 +235,16 @@ type QueryBudget struct {
 	closeErr   error
 }
 
+// RecordSpilledBytes adds bytes written by a physical algorithm that performs
+// planned external partitioning rather than reacting to arbiter pressure.
+// Negative and zero values are ignored.
+func (q *QueryBudget) RecordSpilledBytes(bytes int64) {
+	if q == nil || q.arbiter == nil || bytes <= 0 {
+		return
+	}
+	q.arbiter.spilled.Add(bytes)
+}
+
 // Operator returns a stable per-query child budget. The same name/class pair
 // reuses its counters and spill registration identity.
 func (q *QueryBudget) Operator(name string, class MemoryClass) *OperatorBudget {

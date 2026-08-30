@@ -1,0 +1,107 @@
+{
+  "schema_version": 1,
+  "phase": "3.4",
+  "date": "2026-08-30",
+  "environment": {
+    "os": "darwin",
+    "arch": "arm64",
+    "cpu": "Apple M4 Pro",
+    "go": "go1.27.0",
+    "base_commit": "f7b1415"
+  },
+  "decisions": {
+    "logical_engine": "one LazyPlan and native BatchStream physical graph",
+    "broadcast_strategy": "stable replay plus actual/conservative build and maximum output morsel bytes each within one quarter of the query hard limit",
+    "merge_strategy": "complete compatible ordering proof and non-strict bounded execution",
+    "spill_strategy": "both inputs use compatible 4-bit radix columnar runs with recursive repartition over at most 64 hash bits",
+    "skew_strategy": "single exact key uses run-by-run cross matching; distinct all-bit collisions fail with ErrJoinSkewExhausted",
+    "output": "at most 4096 rows per materialized run, further reduced from schema width and query budget",
+    "simd": "partition Hash64Batch candidate rejected; final partitioner uses scalar hashagg.Hash128 while other admitted kernels retain their existing mode dispatch"
+  },
+  "resident_broadcast_gate": {
+    "benchmark": "BenchmarkJoinFramePreparationComparison/prepared-frame",
+    "command": "go test ./lazy -run '^$' -bench '^BenchmarkJoinFramePreparationComparison/prepared-frame$' -benchtime=1s -count=10 -benchmem",
+    "baseline_ns_per_op": [3615650, 3531428, 3561056, 3509181, 3560282, 3577622, 3487924, 3537392, 3534170, 3544980],
+    "candidate_ns_per_op": [3910874, 3570493, 3548548, 3567764, 3569300, 3537252, 3522319, 3525589, 3562458, 3554525],
+    "baseline_median_ns_per_op": 3541186,
+    "candidate_median_ns_per_op": 3558491.5,
+    "median_change_percent": 0.488692,
+    "baseline_allocs_per_op": 146,
+    "candidate_allocs_per_op": 147,
+    "gate": "end-to-end regression <= 3%",
+    "result": "pass"
+  },
+  "rejected_partition_hash_simd_gate": {
+    "benchmark": "BenchmarkPhase34SpillableJoinDrain",
+    "command": "go test ./lazy -run '^$' -bench '^BenchmarkPhase34SpillableJoinDrain/(scalar|auto)$' -benchtime=1x -count=10 -benchmem",
+    "candidate": "allocate pair pre-mix, validity, and output hash vectors and dispatch Hash64Batch",
+    "scalar_ns_per_op": [765242208, 794327792, 777596958, 771488333, 772263250, 774434625, 788873417, 765880417, 764364458, 774003750],
+    "auto_ns_per_op": [775206209, 1394067166, 776842500, 795228333, 811260583, 829707458, 803445500, 785908750, 819343792, 791041625],
+    "scalar_median_ns_per_op": 773133500,
+    "auto_median_ns_per_op": 799336916.5,
+    "median_change_percent": 3.389249,
+    "gate": "Auto end-to-end regression <= 3% and microbenchmark evidence of a stable win before admission",
+    "result": "reject",
+    "final_action": "removed vector scratch and Hash64Batch dispatch from the spill Join partitioner"
+  },
+  "bounded_spill_benchmark": {
+    "benchmark": "BenchmarkPhase34SpillableJoinDrain/scalar",
+    "input_rows": 65536,
+    "output_rows": 131072,
+    "hard_limit_bytes": 2097152,
+    "samples_ns_per_op": [804770792, 773484084, 750954583],
+    "samples_rows_per_second": [81434, 84728, 87270],
+    "peak_reserved_bytes": 1420054,
+    "spill_bytes_per_op": 3984168,
+    "result": "pass"
+  },
+  "bounded_scale_gate": {
+    "test": "TestBoundedSpillJoinInputOverTenTimesBudgetDrains",
+    "right_input_rows": 262144,
+    "right_input_bytes": 3145728,
+    "hard_limit_bytes": 262144,
+    "input_to_budget_ratio": 12,
+    "result": "pass"
+  },
+  "coverage": [
+    "Inner, Left, Right, Full, Semi, and Anti joins",
+    "SQL NULL and all-NULL equality keys",
+    "cross-domain dictionaries and fixed composite nullable keys",
+    "List<String> and Struct payload spill and restore",
+    "ordering-proven merge across batches and oversized duplicate-group budget failure",
+    "recursive radix repartition and dedicated single-key skew",
+    "output larger than memory through DrainBatchStream",
+    "Prepared repeated execution, cancellation, disk quota, memory budget, checksum corruption, cleanup, and idempotent Close",
+    "ExplainAnalyze and stable-identity runtime feedback"
+  ],
+  "validation": [
+    {
+      "command": "go test ./... -count=1",
+      "result": "pass"
+    },
+    {
+      "command": "go test -race ./engine ./join ./lazy ./memory ./physical ./planner ./source ./source/inmemory ./source/arrowrecord ./source/parquet -count=1",
+      "result": "pass"
+    },
+    {
+      "command": "./scripts/validate.sh",
+      "includes": [
+        "GoDoc",
+        "generator drift",
+        "scalar",
+        "Auto SIMD",
+        "forced SIMD",
+        "GODEBUG=simd=0",
+        "race",
+        "go vet",
+        "linux/amd64 cross build",
+        "lazy demo"
+      ],
+      "result": "pass"
+    },
+    {
+      "command": "git diff --check",
+      "result": "pass"
+    }
+  ]
+}

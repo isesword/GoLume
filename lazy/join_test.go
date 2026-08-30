@@ -18,7 +18,7 @@ func TestLazyJoinFixedWidthSemantics(t *testing.T) {
 	for _, tc := range []struct {
 		typ  JoinType
 		want int
-	}{{InnerJoin, 4}, {LeftJoin, 6}, {SemiJoin, 2}, {AntiJoin, 2}} {
+	}{{InnerJoin, 4}, {LeftJoin, 6}, {RightJoin, 5}, {FullJoin, 7}, {SemiJoin, 2}, {AntiJoin, 2}} {
 		lf := s.FromSource(left).Join(s.FromSource(right), JoinOptions{Type: tc.typ, LeftOn: []string{"key"}, RightOn: []string{"key"}})
 		got, err := lf.CollectJoin(context.Background())
 		if err != nil {

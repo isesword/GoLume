@@ -207,3 +207,42 @@ func TestParallelRadixJoinHeuristic(t *testing.T) {
 		t.Fatal("large fixed join should select parallel radix")
 	}
 }
+
+func TestBoundedBroadcastDictionaryJoinNormalizesDomains(t *testing.T) {
+	leftDictionary := source.Dictionary{Domain: "left", Offsets: []uint32{0, 3, 7}, Data: []byte("redblue")}
+	rightDictionary := source.Dictionary{Domain: "right", Offsets: []uint32{0, 4, 7, 12}, Data: []byte("blueredgreen")}
+	leftBatch := memory.NewBatch()
+	leftBatch.DictStrings["key"] = &memory.DictionaryStringVector{Indices: []uint32{0, 1, 0}, Offsets: leftDictionary.Offsets, Data: leftDictionary.Data, DictionaryDomain: leftDictionary.Domain, Encoding: memory.EncodingDictionary}
+	leftBatch.Reset(3)
+	rightBatch := memory.NewBatch()
+	rightBatch.DictStrings["key"] = &memory.DictionaryStringVector{Indices: []uint32{0, 1, 2}, Offsets: rightDictionary.Offsets, Data: rightDictionary.Data, DictionaryDomain: rightDictionary.Domain, Encoding: memory.EncodingDictionary}
+	rightBatch.Reset(3)
+	left, _ := inmemory.New(memory.NewSchema(memory.Field{Name: "key", Type: memory.TypeString, Encoding: memory.EncodingDictionary, DictionaryDomain: leftDictionary.Domain}), leftBatch)
+	right, _ := inmemory.New(memory.NewSchema(memory.Field{Name: "key", Type: memory.TypeString, Encoding: memory.EncodingDictionary, DictionaryDomain: rightDictionary.Domain}), rightBatch)
+	left.WithDictionary("key", leftDictionary)
+	right.WithDictionary("key", rightDictionary)
+	kernels := kernel.New(kernel.ModeScalar)
+	joinSource, err := NewJoinSourceWithOptions(context.Background(), left, right, join.Inner, []JoinKey{{Left: "key", Right: "key"}}, "", memory.NewBudgetManager(256<<10), JoinSourceOptions{
+		Kernels: kernels, Spillable: true, RequireBounded: true, SpillConfigured: true, MemoryLimitBytes: 256 << 10,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer joinSource.Close()
+	if joinSource.strategy != "broadcast-hash" || joinSource.dict == nil {
+		t.Fatalf("strategy=%s dict=%v", joinSource.strategy, joinSource.dict != nil)
+	}
+	stream, err := joinSource.NewBatchStream(context.Background(), source.ReadOptions{Kernels: kernels})
+	if err != nil {
+		t.Fatal(err)
+	}
+	batch := memory.NewBatch()
+	ok, err := stream.Next(context.Background(), batch)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !ok || batch.Rows != 3 {
+		t.Fatalf("ok=%v rows=%d diagnostics=%v", ok, batch.Rows, stream.(source.BatchStreamDiagnostics).StreamDiagnostics())
+	}
+	_ = stream.Close()
+}

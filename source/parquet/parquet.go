@@ -45,6 +45,9 @@ type Source struct {
 	report      source.PushdownReport
 }
 
+// PlanIdentity is stable across immutable row-group/projection pushdown clones.
+func (s *Source) PlanIdentity() string { return fmt.Sprintf("parquet:%p", s.meta) }
+
 // OpenFile discovers a flat primitive Parquet schema and exposes supported
 // integer, UTF-8 string, date, and UTC timestamp columns. Repeated/nested
 // columns and unsupported physical or logical types are rejected rather than

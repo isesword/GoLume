@@ -10,6 +10,7 @@ import (
 // Source is a zero-copy test/embedding source. Batches are treated as immutable
 // and Reader exposes shallow vector views into them.
 type Source struct {
+	identity   *byte
 	schema     memory.Schema
 	batches    []*memory.Batch
 	parts      []source.Partition
@@ -21,7 +22,7 @@ type Source struct {
 
 // New constructs a zero-copy immutable source over batches.
 func New(schema memory.Schema, batches ...*memory.Batch) (*Source, error) {
-	s := &Source{schema: schema, batches: append([]*memory.Batch(nil), batches...), dicts: make(map[string]source.Dictionary)}
+	s := &Source{identity: new(byte), schema: schema, batches: append([]*memory.Batch(nil), batches...), dicts: make(map[string]source.Dictionary)}
 	for i, b := range s.batches {
 		if b == nil {
 			return nil, fmt.Errorf("batch %d is nil", i)
@@ -59,6 +60,7 @@ func New(schema memory.Schema, batches ...*memory.Batch) (*Source, error) {
 		}
 		s.parts = append(s.parts, source.Partition{ID: i, Rows: int64(b.Rows)})
 		s.stats.Rows += int64(b.Rows)
+		s.stats.Bytes += memory.BatchBytes(b)
 	}
 	s.stats.Partitions = len(s.parts)
 	return s, nil
@@ -88,6 +90,9 @@ func (s *Source) Schema() memory.Schema { return s.schema }
 
 // Replayability reports that immutable in-memory batches are a stable snapshot.
 func (*Source) Replayability() source.Replayability { return source.ReplayStable }
+
+// PlanIdentity is stable across immutable projection/pushdown clones.
+func (s *Source) PlanIdentity() string { return fmt.Sprintf("inmemory:%p", s.identity) }
 
 // Stats returns precomputed source statistics.
 func (s *Source) Stats(context.Context) (source.Stats, error) { return s.stats, nil }
@@ -137,7 +142,10 @@ func (s *Source) ApplyPushdown(_ context.Context, req source.PushdownRequest) (s
 		}
 		out.ordering = append(out.ordering, key)
 	}
-	report := source.PushdownReport{Projection: append([]string(nil), projection...), TotalPartitions: len(s.parts), SelectedPartitions: len(s.parts), TotalRows: s.stats.Rows, SelectedRows: s.stats.Rows}
+	report := source.PushdownReport{
+		Projection: append([]string(nil), projection...), TotalPartitions: len(s.parts), SelectedPartitions: len(s.parts),
+		TotalRows: s.stats.Rows, SelectedRows: s.stats.Rows, TotalBytes: s.stats.Bytes, SelectedBytes: s.stats.Bytes,
+	}
 	if req.Predicate != nil {
 		report.Predicate = req.Predicate.String()
 	}

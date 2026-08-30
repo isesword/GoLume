@@ -153,7 +153,7 @@ func (t *PairTable) Probe(keys []hashagg.Key128, validMasks []uint8, typ Type, e
 			s.MatchedProbeRows++
 		}
 		switch typ {
-		case Inner, Left:
+		case Inner, Left, Right, Full:
 			if matched {
 				for n := head; n != 0; n = t.next[n-1] {
 					s.OutputRows++
@@ -163,7 +163,7 @@ func (t *PairTable) Probe(keys []hashagg.Key128, validMasks []uint8, typ Type, e
 						}
 					}
 				}
-			} else if typ == Left {
+			} else if typ == Left || typ == Full {
 				s.OutputRows++
 				if emit != nil {
 					if err := emit(Pair{ProbeRow: row, BuildRow: -1}); err != nil {
