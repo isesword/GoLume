@@ -1,6 +1,6 @@
 # Phase 3：流式物理执行引擎改造 TODO
 
-状态：Phase 3.0–3.4 已完成；下一步为 Phase 3.5 External Sort 与 Window 分级。
+状态：Phase 3.0–3.5 已完成；下一步为 Phase 3.6 流式结果 API 与 Sink。
 
 执行策略、默认行为、资源错误和用户 API 已由
 [ADR_PHASE3_EXECUTION_UX.md](ADR_PHASE3_EXECUTION_UX.md) 决定；本文件保留实施清单。
@@ -290,13 +290,13 @@ spill run，峰值 reservation 为 3,890 bytes，结束后 query/engine/disk 使
 
 ### Phase 3.5：External Sort 与 Window 分级
 
-- [ ] 根据预算生成多个稳定 sorted run，每个 run 记录原始 `RowOrdinal` 作为最终 tie-breaker。
-- [ ] run 可在内存或 Spill store 中，最终使用有界 k-way merge 流式输出。
-- [ ] merge fan-in 受打开文件数和 buffer 预算限制；run 太多时执行分层 merge。
-- [ ] 保留现有 Top-K 路径；当 K 的实际状态超预算时给出明确策略或错误。
-- [ ] Window lowering 将能力分成：可流水、分区有界、需排序 Spill、暂不支持。
-- [ ] rolling 窗口只保留 frame 所需状态；无界/排序窗口复用 External Sort。
-- [ ] 在 `ExecutionBounded` 下，暂不支持的 window frame 在 Prepare 阶段失败。
+- [x] 根据预算生成多个稳定 sorted run，每个 run 记录原始 `RowOrdinal` 作为最终 tie-breaker。
+- [x] run 可在内存或 Spill store 中，最终使用有界 k-way merge 流式输出。
+- [x] merge fan-in 受打开文件数和 buffer 预算限制；run 太多时执行分层 merge。
+- [x] 保留现有 Top-K 路径；当 K 的实际状态超预算时给出明确策略或错误。
+- [x] Window lowering 将能力分成：可流水、分区有界、需排序 Spill、暂不支持。
+- [x] rolling 窗口只保留 frame 所需状态；无界/排序窗口复用 External Sort。
+- [x] 在 `ExecutionBounded` 下，暂不支持的 window frame 在 Prepare 阶段失败。
 
 验收：
 
@@ -304,6 +304,10 @@ spill run，峰值 reservation 为 3,890 bytes，结束后 query/engine/disk 使
 - 小预算、多 run、多级 merge、取消、损坏 run 和打开文件上限有测试；
 - 输入为预算 10 倍以上时，Sort → Batch Sink 峰值内存受限；
 - Top-K 小 K 性能不因 External Sort 抽象而回退超过 3%。
+
+状态：完成。外排稳定性、Window 原序恢复、易用性边界、预算与 SIMD 决策见
+[`ADR_PHASE3_EXTERNAL_SORT_WINDOW.md`](ADR_PHASE3_EXTERNAL_SORT_WINDOW.md)，机器验收见
+[`validation/phase35-sort-window-gate.json`](../validation/phase35-sort-window-gate.json)。
 
 ### Phase 3.6：流式结果 API 与 Sink
 

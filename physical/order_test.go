@@ -118,6 +118,50 @@ func TestTopKReleasesMemoryReservationOnClose(t *testing.T) {
 	}
 }
 
+func TestTopKRejectsActualVariableKeyStateOverBudget(t *testing.T) {
+	schema := memory.NewSchema(
+		memory.Field{Name: "key", Type: memory.TypeString},
+		memory.Field{Name: "id", Type: memory.TypeInt64},
+	)
+	batch := memory.NewBatch()
+	batch.Strings["key"] = &memory.StringViewVector{Offsets: []uint32{0, 8 << 10}, Data: make([]byte, 8<<10), Encoding: memory.EncodingView}
+	batch.Int64s["id"] = &memory.Int64Vector{Values: []int64{1}}
+	batch.Reset(1)
+	base, err := inmemory.New(schema, batch)
+	if err != nil {
+		t.Fatal(err)
+	}
+	manager := memory.NewBudgetManager(4 << 10)
+	top, err := NewTopKSourceWithManager(base, 1, []SortKey{{Column: "key"}}, manager)
+	if err != nil {
+		t.Fatal(err)
+	}
+	reader, err := top.NewReader(context.Background(), testReadOptions())
+	if err != nil {
+		t.Fatal(err)
+	}
+	parts, err := top.Partitions(context.Background())
+	if err != nil {
+		_ = reader.Close()
+		t.Fatal(err)
+	}
+	err = reader.ReadPartition(context.Background(), parts[0], memory.NewBatch())
+	if !errors.Is(err, memory.ErrBudgetExceeded) {
+		_ = reader.Close()
+		t.Fatalf("top-k error=%v, want ErrBudgetExceeded for retained string key", err)
+	}
+	if manager.Used() == 0 {
+		_ = reader.Close()
+		t.Fatal("top-k should retain its accepted base reservation until Close")
+	}
+	if err := reader.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if used := manager.Used(); used != 0 {
+		t.Fatalf("memory used=%d after Close, want 0", used)
+	}
+}
+
 func TestDescendingOrderKeepsNullPlacementForSortAndTopK(t *testing.T) {
 	schema := memory.NewSchema(
 		memory.Field{Name: "id", Type: memory.TypeInt64},

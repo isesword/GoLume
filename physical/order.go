@@ -29,16 +29,20 @@ type SortKey struct {
 type SortSourceOptions struct {
 	Workers  int
 	Executor join.ParallelExecutor
+	// Spillable selects execution-scoped stable run generation and bounded
+	// external merge instead of retaining the complete input in memory.
+	Spillable bool
 }
 
 // SortSource globally sorts all input rows. Sort materializes the full input
 // and therefore charges an execution-time memory reservation.
 type SortSource struct {
-	input    source.Source
-	keys     []SortKey
-	manager  memory.Manager
-	workers  int
-	executor join.ParallelExecutor
+	input     source.Source
+	keys      []SortKey
+	manager   memory.Manager
+	workers   int
+	executor  join.ParallelExecutor
+	spillable bool
 }
 
 // NewSortSource validates sort keys and returns a full-materialization sort.
@@ -67,11 +71,12 @@ func NewSortSourceWithOptions(input source.Source, keys []SortKey, manager memor
 		return nil, fmt.Errorf("parallel sort requires executor")
 	}
 	return &SortSource{
-		input:    input,
-		keys:     append([]SortKey(nil), keys...),
-		manager:  manager,
-		workers:  opts.Workers,
-		executor: opts.Executor,
+		input:     input,
+		keys:      append([]SortKey(nil), keys...),
+		manager:   manager,
+		workers:   opts.Workers,
+		executor:  opts.Executor,
+		spillable: opts.Spillable,
 	}, nil
 }
 
@@ -91,10 +96,16 @@ func (s *SortSource) Ordering() []source.OrderingColumn {
 // blocking. Phase 3.5 changes this node to spillable after external merge is
 // implemented and verified.
 func (s *SortSource) StreamPlan() source.StreamPlanNode {
+	class := source.StreamBlocking
+	detail := fmt.Sprintf("strategy=resident-stable keys=%d", len(s.keys))
+	if s.spillable {
+		class = source.StreamSpillable
+		detail = fmt.Sprintf("strategy=external-stable keys=%d", len(s.keys))
+	}
 	return source.StreamPlanNode{
 		Operator: "Sort",
-		Class:    source.StreamBlocking,
-		Detail:   fmt.Sprintf("keys=%d", len(s.keys)),
+		Class:    class,
+		Detail:   detail,
 		Children: []source.StreamPlanNode{source.StreamPlanOf(s.input)},
 	}
 }
@@ -115,6 +126,9 @@ func (s *SortSource) Partitions(ctx context.Context) ([]source.Partition, error)
 func (s *SortSource) NewReader(ctx context.Context, opts source.ReadOptions) (source.Reader, error) {
 	if err := opts.Validate(); err != nil {
 		return nil, err
+	}
+	if s.spillable {
+		return nil, fmt.Errorf("external sort requires BatchStream execution")
 	}
 	child, err := s.input.NewReader(ctx, opts)
 	if err != nil {
@@ -423,14 +437,18 @@ func (s *TopKSource) NewReader(ctx context.Context, opts source.ReadOptions) (so
 }
 
 type topKReader struct {
-	owner        *TopKSource
-	first        source.Reader
-	parts        []source.Partition
-	payloadParts []source.Partition
-	scratch      *memory.Batch
-	reservation  memory.Reservation
-	done         bool
-	readOpts     source.ReadOptions
+	owner         *TopKSource
+	first         source.Reader
+	parts         []source.Partition
+	payloadParts  []source.Partition
+	scratch       *memory.Batch
+	reservation   memory.Reservation
+	extra         []memory.Reservation
+	baseBytes     int64
+	reservedBytes int64
+	candidateText int64
+	done          bool
+	readOpts      source.ReadOptions
 }
 
 // Close releases reader-local resources.
@@ -439,6 +457,12 @@ func (r *topKReader) Close() error {
 		r.reservation.Release()
 		r.reservation = nil
 	}
+	for _, reservation := range r.extra {
+		reservation.Release()
+	}
+	r.extra = nil
+	r.baseBytes = 0
+	r.reservedBytes = 0
 	r.scratch.ReleaseOwned()
 	return r.first.Close()
 }
@@ -461,6 +485,7 @@ func (r *topKReader) ReadPartition(ctx context.Context, p source.Partition, dst 
 	}
 	h := &candidateHeap{keys: r.owner.keys}
 	heap.Init(h)
+	trackActual := r.tracksActualMemory()
 	var ordinal int64
 	for _, part := range r.parts {
 		if err := r.first.ReadPartition(ctx, part, r.scratch); err != nil {
@@ -468,11 +493,23 @@ func (r *topKReader) ReadPartition(ctx context.Context, p source.Partition, dst 
 		}
 		for row := 0; row < r.scratch.Rows; row++ {
 			if h.Len() < r.owner.k {
+				var textBytes int64
+				if trackActual {
+					var keyErr error
+					textBytes, keyErr = sortKeyVariableBytes(r.scratch, r.owner.keyInput.Schema(), r.owner.keys, row)
+					if keyErr != nil {
+						return keyErr
+					}
+					if err := r.growReservation(ctx, r.baseBytes+r.candidateText+textBytes); err != nil {
+						return fmt.Errorf("top-k candidate key memory: %w", err)
+					}
+				}
 				cand := rowCandidate{cells: make([]sortCell, len(r.owner.keys))}
 				if err := snapshotCandidateInto(&cand, r.scratch, r.owner.keyInput.Schema(), r.owner.keys, part.ID, row, ordinal); err != nil {
 					return err
 				}
 				heap.Push(h, cand)
+				r.candidateText += textBytes
 				ordinal++
 				continue
 			}
@@ -481,9 +518,22 @@ func (r *topKReader) ReadPartition(ctx context.Context, p source.Partition, dst 
 				return err
 			}
 			if better {
+				candidateText := r.candidateText
+				if trackActual {
+					textBytes, err := sortKeyVariableBytes(r.scratch, r.owner.keyInput.Schema(), r.owner.keys, row)
+					if err != nil {
+						return err
+					}
+					oldTextBytes := candidateVariableBytes(h.items[0])
+					candidateText = r.candidateText - oldTextBytes + textBytes
+					if err := r.growReservation(ctx, r.baseBytes+candidateText); err != nil {
+						return fmt.Errorf("top-k candidate key memory: %w", err)
+					}
+				}
 				if err := snapshotCandidateInto(&h.items[0], r.scratch, r.owner.keyInput.Schema(), r.owner.keys, part.ID, row, ordinal); err != nil {
 					return err
 				}
+				r.candidateText = candidateText
 				heap.Fix(h, 0)
 			}
 			ordinal++
@@ -514,6 +564,7 @@ func (r *topKReader) ReadPartition(ctx context.Context, p source.Partition, dst 
 	for _, part := range r.payloadParts {
 		partByID[part.ID] = part
 	}
+	var payloadBytes int64
 	for partID, rows := range byPart {
 		part, ok := partByID[partID]
 		if !ok {
@@ -525,6 +576,24 @@ func (r *topKReader) ReadPartition(ctx context.Context, p source.Partition, dst 
 		uniq := append([]int(nil), rows...)
 		sort.Ints(uniq)
 		uniq = uniqueInts(uniq)
+		if trackActual {
+			for _, row := range uniq {
+				bytes, estimateErr := memory.EstimateBatchRangeBytes(r.scratch, row, 1)
+				if estimateErr != nil {
+					return estimateErr
+				}
+				if bytes > math.MaxInt64-payloadBytes {
+					return fmt.Errorf("top-k payload byte estimate overflows int64")
+				}
+				payloadBytes += bytes
+			}
+			if r.baseBytes > math.MaxInt64-r.candidateText || payloadBytes > (math.MaxInt64-r.baseBytes-r.candidateText)/2 {
+				return fmt.Errorf("top-k payload reservation overflows int64")
+			}
+			if err := r.growReservation(ctx, r.baseBytes+r.candidateText+payloadBytes*2); err != nil {
+				return fmt.Errorf("top-k winner payload memory: %w", err)
+			}
+		}
 		mini := memory.NewBatch()
 		if err := takeRows(ctx, mini, r.scratch, uniq); err != nil {
 			return err
@@ -596,7 +665,50 @@ func (r *topKReader) reserve(ctx context.Context) error {
 		return err
 	}
 	r.reservation = res
+	r.baseBytes = res.Bytes()
+	r.reservedBytes = res.Bytes()
 	return nil
+}
+
+func (r *topKReader) growReservation(ctx context.Context, total int64) error {
+	if r.owner.manager == nil || r.owner.manager.Limit() <= 0 || total <= r.reservedBytes {
+		return nil
+	}
+	delta := total - r.reservedBytes
+	reservation, err := r.owner.manager.Reserve(ctx, delta)
+	if err != nil {
+		return err
+	}
+	r.extra = append(r.extra, reservation)
+	r.reservedBytes += delta
+	return nil
+}
+
+func (r *topKReader) tracksActualMemory() bool {
+	return r.owner.manager != nil && r.owner.manager.Limit() > 0
+}
+
+func sortKeyVariableBytes(batch *memory.Batch, schema memory.Schema, keys []SortKey, row int) (int64, error) {
+	var bytes int64
+	for _, key := range keys {
+		cell, err := snapshotCell(batch, schema, key.Column, row)
+		if err != nil {
+			return 0, err
+		}
+		if int64(len(cell.text)) > math.MaxInt64-bytes {
+			return 0, fmt.Errorf("top-k candidate string bytes overflow int64")
+		}
+		bytes += int64(len(cell.text))
+	}
+	return bytes, nil
+}
+
+func candidateVariableBytes(candidate rowCandidate) int64 {
+	var bytes int64
+	for _, cell := range candidate.cells {
+		bytes += int64(len(cell.text))
+	}
+	return bytes
 }
 
 // Dictionary forwards stable dictionary metadata from the input.

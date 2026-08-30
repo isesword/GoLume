@@ -82,11 +82,11 @@ func (f LazyFrame) validateExecutionLogical(plan logical.Plan) error {
 		return nil
 	}
 	detail := ""
-	if (operator == "Aggregate" || operator == "Join") && !spillConfigured {
+	if (operator == "Aggregate" || operator == "Join" || operator == "Sort" || operator == "Window") && !spillConfigured {
 		detail = ErrBoundedSpillRequired.Error() + "; configure engine.Options.Spill.MaxBytes"
 	}
 	var cause error
-	if (operator == "Aggregate" || operator == "Join") && !spillConfigured {
+	if (operator == "Aggregate" || operator == "Join" || operator == "Sort" || operator == "Window") && !spillConfigured {
 		cause = ErrBoundedSpillRequired
 	}
 	return &UnsupportedBoundedPlanError{Operator: operator, Path: path, Detail: detail, Cause: cause}
@@ -113,9 +113,9 @@ func firstLogicalBlocking(plan logical.Plan, path []string, aggregateSpillable b
 	case *logical.TopK:
 		name, children = "TopK", []logical.Plan{node.Input}
 	case *logical.Sort:
-		name, children, blocking = "Sort", []logical.Plan{node.Input}, true
+		name, children, blocking = "Sort", []logical.Plan{node.Input}, !aggregateSpillable
 	case *logical.Window:
-		name, children, blocking = "Window", []logical.Plan{node.Input}, true
+		name, children, blocking = "Window", []logical.Plan{node.Input}, !logicalWindowBoundedCapable(node.Exprs)
 	case *logical.Aggregate:
 		// Aggregate capability depends on proven physical ordering or configured
 		// spill and is decided by engine.Prepare after lowering. Still inspect its
@@ -164,7 +164,12 @@ func streamPlanForLogical(plan logical.Plan, aggregateClass source.StreamClass) 
 	case *logical.Sort:
 		node.Operator, node.Class, children = "Sort", source.StreamBlocking, []logical.Plan{value.Input}
 	case *logical.Window:
-		node.Operator, node.Class, children = "Window", source.StreamBlocking, []logical.Plan{value.Input}
+		node.Operator, children = "Window", []logical.Plan{value.Input}
+		if logicalWindowBoundedCapable(value.Exprs) {
+			node.Class = source.StreamSpillable
+		} else {
+			node.Class = source.StreamBlocking
+		}
 	case *logical.Aggregate:
 		node.Operator, children = "Aggregate", []logical.Plan{value.Input}
 		node.Class = aggregateClass
@@ -188,7 +193,31 @@ func (f LazyFrame) validateExecutionSource(src source.Source) error {
 	if !ok {
 		return nil
 	}
-	return &UnsupportedBoundedPlanError{Operator: node.Operator, Path: path, Detail: node.Detail}
+	detail := node.Detail
+	var cause error
+	if node.Operator == "Window" {
+		detail += "; unordered bounded windows require engine.Options.Spill.MaxBytes"
+		cause = ErrBoundedSpillRequired
+	}
+	return &UnsupportedBoundedPlanError{Operator: node.Operator, Path: path, Detail: detail, Cause: cause}
+}
+
+func logicalWindowBoundedCapable(expressions []logical.WindowExpr) bool {
+	for _, expression := range expressions {
+		switch expression.Function {
+		case logical.WindowRowNumber, logical.WindowRank, logical.WindowDenseRank:
+			continue
+		}
+		if expression.Frame.End.Kind != logical.RowCurrent {
+			return false
+		}
+		switch expression.Frame.Start.Kind {
+		case logical.RowUnboundedPreceding, logical.RowPreceding, logical.RowCurrent:
+		default:
+			return false
+		}
+	}
+	return true
 }
 
 func (f LazyFrame) executionSummary() (string, error) {

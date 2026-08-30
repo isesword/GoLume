@@ -16,6 +16,7 @@ import (
 	"gocolumn/planner"
 	"gocolumn/source"
 	"io"
+	"math"
 	"strings"
 	"time"
 )
@@ -1125,7 +1126,13 @@ func lowerSourcePipeline(ctx context.Context, plan logical.Plan, manager memory.
 		if exec != nil {
 			workers = exec.MaxWorkers()
 		}
-		sorted, err := physical.NewSortSourceWithOptions(keyed, order.keys, manager, physical.SortSourceOptions{Workers: workers, Executor: exec})
+		spillable := false
+		if eng, ok := exec.(*engine.Engine); ok && eng != nil {
+			policy := engine.ExecutionPolicyFromContext(ctx, eng.ExecutionPolicy())
+			spillable = policy == engine.ExecutionBounded && eng.SpillConfigured() ||
+				policy == engine.ExecutionAuto && eng.SpillConfigured() && shouldUseExternalOrder(ctx, keyed, eng.Memory().Limit())
+		}
+		sorted, err := physical.NewSortSourceWithOptions(keyed, order.keys, manager, physical.SortSourceOptions{Workers: workers, Executor: exec, Spillable: spillable})
 		if err != nil {
 			return nil, nil, closers, err
 		}
@@ -1267,11 +1274,24 @@ func lowerSourcePipeline(ctx context.Context, plan logical.Plan, manager memory.
 			}
 			outputFields[i] = field
 		}
-		windowed, err := physical.NewWindowSource(keyed, n.Spec.PartitionBy, order.keys, lowerWindowExpressions(n.Exprs), outputFields, manager)
+		mode := physical.WindowExecutionResident
+		capable := logicalWindowBoundedCapable(n.Exprs)
+		if capable && windowInputOrdered(keyed, n.Spec.PartitionBy, order.keys) {
+			mode = physical.WindowExecutionOrdered
+		} else if capable {
+			if eng, ok := exec.(*engine.Engine); ok && eng != nil {
+				policy := engine.ExecutionPolicyFromContext(ctx, eng.ExecutionPolicy())
+				if policy == engine.ExecutionBounded && eng.SpillConfigured() ||
+					policy == engine.ExecutionAuto && eng.SpillConfigured() && shouldUseExternalOrder(ctx, keyed, eng.Memory().Limit()) {
+					mode = physical.WindowExecutionExternalSort
+				}
+			}
+		}
+		windowed, err := physical.NewWindowSourceWithOptions(keyed, n.Spec.PartitionBy, order.keys, lowerWindowExpressions(n.Exprs), outputFields, manager, physical.WindowSourceOptions{Mode: mode})
 		if err != nil {
 			return nil, nil, closers, err
 		}
-		windowed = profileSource(ctx, windowed, "window", "global analytic window", profileSourceID(keyed))
+		windowed = profileSource(ctx, windowed, "window", fmt.Sprintf("analytic window mode=%d", mode), profileSourceID(keyed))
 		out, err := order.hide(windowed)
 		if err != nil {
 			return nil, nil, closers, err
@@ -1385,6 +1405,51 @@ func lowerWindowExpressions(expressions []logical.WindowExpr) []physical.WindowE
 		}
 	}
 	return out
+}
+
+func windowInputOrdered(input source.Source, partitionBy []string, orderBy []physical.SortKey) bool {
+	provider, ok := input.(source.OrderingProvider)
+	if !ok {
+		return false
+	}
+	ordering := provider.Ordering()
+	if len(ordering) < len(partitionBy)+len(orderBy) {
+		return false
+	}
+	for index, column := range partitionBy {
+		key := ordering[index]
+		if key.Name != column || key.Descending || key.NullsLast {
+			return false
+		}
+	}
+	for index, expected := range orderBy {
+		key := ordering[len(partitionBy)+index]
+		if key.Name != expected.Column || key.Descending != expected.Descending || key.NullsLast != expected.NullsLast {
+			return false
+		}
+	}
+	return true
+}
+
+func shouldUseExternalOrder(ctx context.Context, input source.Source, limit int64) bool {
+	if limit <= 0 {
+		return false
+	}
+	stats, err := input.Stats(ctx)
+	if err != nil || stats.Rows < 0 {
+		return true
+	}
+	estimated := stats.Bytes
+	if estimated <= 0 {
+		rowBytes := pipeline.EstimateSchemaRowBytes(input.Schema())
+		if rowBytes <= 0 || stats.Rows > math.MaxInt64/rowBytes {
+			return true
+		}
+		estimated = stats.Rows * rowBytes
+	}
+	// Resident sorting simultaneously retains input, row ordinals, and gathered
+	// output. Keep a conservative four-times headroom before Auto avoids Spill.
+	return estimated > limit/4
 }
 
 type profileIDProvider interface{ OperatorID() string }

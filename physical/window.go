@@ -75,20 +75,50 @@ type WindowExpression struct {
 // result back to its original input row. It intentionally exposes one global
 // output partition while preserving input row order.
 type WindowSource struct {
-	input       source.Source
-	partitionBy []string
-	orderBy     []SortKey
-	expressions []WindowExpression
-	output      memory.Schema
-	manager     memory.Manager
+	input        source.Source
+	partitionBy  []string
+	orderBy      []SortKey
+	expressions  []WindowExpression
+	outputFields []memory.Field
+	output       memory.Schema
+	manager      memory.Manager
+	mode         WindowExecutionMode
 }
 
-// StreamPlan reports the current full-input materialization as blocking.
+// WindowExecutionMode selects resident compatibility, ordered bounded state,
+// or the external-sort pipeline used by strict bounded execution.
+type WindowExecutionMode uint8
+
+const (
+	// WindowExecutionResident retains the compatibility full-input algorithm.
+	WindowExecutionResident WindowExecutionMode = iota
+	// WindowExecutionOrdered consumes already ordered input with bounded state.
+	WindowExecutionOrdered
+	// WindowExecutionExternalSort sorts, evaluates, and restores input order.
+	WindowExecutionExternalSort
+)
+
+// WindowSourceOptions controls the physical window execution strategy.
+type WindowSourceOptions struct {
+	Mode WindowExecutionMode
+}
+
+// StreamPlan reports the selected capability tier.
 func (s *WindowSource) StreamPlan() source.StreamPlanNode {
+	class := source.StreamBlocking
+	detail := fmt.Sprintf("strategy=resident outputs=%d", len(s.expressions))
+	switch s.mode {
+	case WindowExecutionOrdered:
+		class = source.StreamBounded
+		detail = fmt.Sprintf("strategy=ordered-state outputs=%d", len(s.expressions))
+	case WindowExecutionExternalSort:
+		class = source.StreamSpillable
+		detail = fmt.Sprintf("strategy=external-sort-restore outputs=%d", len(s.expressions))
+	}
 	return source.StreamPlanNode{
 		Operator: "Window",
-		Class:    source.StreamBlocking,
-		Detail:   fmt.Sprintf("outputs=%d", len(s.expressions)),
+		Class:    class,
+		Detail:   detail,
 		Children: []source.StreamPlanNode{source.StreamPlanOf(s.input)},
 	}
 }
@@ -96,8 +126,17 @@ func (s *WindowSource) StreamPlan() source.StreamPlanNode {
 // NewWindowSource validates a full-materialization analytic window source.
 // outputFields contain only named window results; input columns remain visible.
 func NewWindowSource(input source.Source, partitionBy []string, orderBy []SortKey, expressions []WindowExpression, outputFields []memory.Field, manager memory.Manager) (source.Source, error) {
+	return NewWindowSourceWithOptions(input, partitionBy, orderBy, expressions, outputFields, manager, WindowSourceOptions{})
+}
+
+// NewWindowSourceWithOptions validates an analytic window source and selects
+// its resident, already-ordered, or external-sort implementation.
+func NewWindowSourceWithOptions(input source.Source, partitionBy []string, orderBy []SortKey, expressions []WindowExpression, outputFields []memory.Field, manager memory.Manager, options WindowSourceOptions) (source.Source, error) {
 	if input == nil {
 		return nil, fmt.Errorf("window input is nil")
+	}
+	if options.Mode > WindowExecutionExternalSort {
+		return nil, fmt.Errorf("invalid window execution mode %d", options.Mode)
 	}
 	if len(orderBy) == 0 {
 		return nil, fmt.Errorf("window requires at least one ordering key")
@@ -118,13 +157,20 @@ func NewWindowSource(input source.Source, partitionBy []string, orderBy []SortKe
 	if err != nil {
 		return nil, err
 	}
+	if options.Mode != WindowExecutionResident {
+		if err := validateBoundedWindowExpressions(expressions); err != nil {
+			return nil, err
+		}
+	}
 	return &WindowSource{
-		input:       input,
-		partitionBy: append([]string(nil), partitionBy...),
-		orderBy:     append([]SortKey(nil), orderBy...),
-		expressions: append([]WindowExpression(nil), expressions...),
-		output:      output,
-		manager:     manager,
+		input:        input,
+		partitionBy:  append([]string(nil), partitionBy...),
+		orderBy:      append([]SortKey(nil), orderBy...),
+		expressions:  append([]WindowExpression(nil), expressions...),
+		outputFields: append([]memory.Field(nil), outputFields...),
+		output:       output,
+		manager:      manager,
+		mode:         options.Mode,
 	}, nil
 }
 
@@ -156,6 +202,18 @@ func windowOutputSchema(input memory.Schema, fields []memory.Field) (memory.Sche
 // Schema returns the input columns plus named analytic results.
 func (s *WindowSource) Schema() memory.Schema { return s.output }
 
+// Replayability forwards the child snapshot contract.
+func (s *WindowSource) Replayability() source.Replayability { return source.ReplayabilityOf(s.input) }
+
+// Ordering is preserved because every strategy restores original input order.
+func (s *WindowSource) Ordering() []source.OrderingColumn {
+	provider, ok := s.input.(source.OrderingProvider)
+	if !ok {
+		return nil
+	}
+	return append([]source.OrderingColumn(nil), provider.Ordering()...)
+}
+
 // Stats retains source row statistics; window outputs add only a small fixed
 // vector payload that is reserved at execution time.
 func (s *WindowSource) Stats(ctx context.Context) (source.Stats, error) { return s.input.Stats(ctx) }
@@ -174,6 +232,9 @@ func (s *WindowSource) Partitions(ctx context.Context) ([]source.Partition, erro
 func (s *WindowSource) NewReader(ctx context.Context, opts source.ReadOptions) (source.Reader, error) {
 	if err := opts.Validate(); err != nil {
 		return nil, err
+	}
+	if s.mode != WindowExecutionResident {
+		return nil, fmt.Errorf("bounded window requires BatchStream execution")
 	}
 	child, err := s.input.NewReader(ctx, opts)
 	if err != nil {

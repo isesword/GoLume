@@ -1,0 +1,45 @@
+{
+  "phase": "3.5",
+  "status": "pass",
+  "environment": {
+    "goos": "darwin",
+    "goarch": "arm64",
+    "cpu": "Apple M4 Pro",
+    "samples": 10,
+    "benchtime": "1s"
+  },
+  "bounded_sort": {
+    "input_fixed_bytes": 3145728,
+    "memory_limit_bytes": 262144,
+    "input_to_budget_ratio": 12,
+    "result": "pass"
+  },
+  "merge": {
+    "fan_in": 4,
+    "hierarchical": true,
+    "stable_tie_breaker": "uint64 RowOrdinal"
+  },
+  "resident_regression": {
+    "baseline_revision": "1120428",
+    "benchmark": "BenchmarkGlobalSort262K",
+    "baseline_median_ns_per_op": 332678012.5,
+    "phase35_median_ns_per_op": 334174481,
+    "change_percent": 0.4498,
+    "maximum_regression_percent": 3,
+    "result": "pass"
+  },
+  "topk_regression": {
+    "baseline_revision": "1120428",
+    "benchmark": "BenchmarkTopK100Of262K",
+    "baseline_median_ns_per_op": 6981059,
+    "phase35_median_ns_per_op": 6940588,
+    "change_percent": -0.5797,
+    "maximum_regression_percent": 3,
+    "result": "pass"
+  },
+  "simd": {
+    "auto_candidate_added": false,
+    "reason": "comparison heaps and rolling state are cross-row branch-heavy; upstream gated SIMD kernels remain in use"
+  },
+  "raw_samples": "phase35-sort-window-bench.csv"
+}
