@@ -73,24 +73,32 @@ func (p *PreparedQuery) NewResidentAggregateStream(ctx context.Context, schema m
 		outputRows: outputRows, inputBatch: memory.NewBatch(), started: time.Now(), active: true,
 	}
 	stream.formatter = spillableAggregateStream{query: p, schema: schema}
+	stream.workspace.SetReserveHook(func(n int64) error {
+		r, err := budget.Reserve(context.Background(), n)
+		if err == nil {
+			stream.dynamicReservations = append(stream.dynamicReservations, r)
+		}
+		return err
+	})
 	active = false
 	return stream, nil
 }
 
 type residentAggregateStream struct {
-	query       *PreparedQuery
-	schema      memory.Schema
-	budget      *memory.QueryBudget
-	input       source.BatchStream
-	table       *aggregateTableOwner
-	output      *memory.OperatorBudget
-	outputRows  int
-	inputBatch  *memory.Batch
-	formatter   spillableAggregateStream
-	workspace   expr.EvalWorkspace
-	cursor      int
-	outputLease memory.Reservation
-	recordLease memory.Reservation
+	query               *PreparedQuery
+	schema              memory.Schema
+	budget              *memory.QueryBudget
+	input               source.BatchStream
+	table               *aggregateTableOwner
+	output              *memory.OperatorBudget
+	outputRows          int
+	inputBatch          *memory.Batch
+	formatter           spillableAggregateStream
+	workspace           expr.EvalWorkspace
+	dynamicReservations []memory.Reservation
+	cursor              int
+	outputLease         memory.Reservation
+	recordLease         memory.Reservation
 
 	selectedRows int
 	checksum     int64
@@ -284,6 +292,7 @@ func (s *residentAggregateStream) StreamDiagnostics() map[string]string {
 	return map[string]string{
 		"strategy": "resident-stream", "groups": fmt.Sprint(s.groups),
 		"selected_rows": fmt.Sprint(s.selectedRows), "checksum": fmt.Sprint(s.checksum), "peak_memory_bytes": fmt.Sprint(peak), "spill_runs": "0",
+		"kernel_mode": s.query.e.kernels.Capabilities().Mode().String(), "kernel_arch": s.query.e.kernels.Capabilities().Arch(),
 	}
 }
 
@@ -297,6 +306,10 @@ func (s *residentAggregateStream) Close() error {
 		return s.closeErr
 	}
 	s.closed = true
+	for _, r := range s.dynamicReservations {
+		r.Release()
+	}
+	s.dynamicReservations = nil
 	var err error
 	if s.input != nil {
 		err = errors.Join(err, s.input.Close())

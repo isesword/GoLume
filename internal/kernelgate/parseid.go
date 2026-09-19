@@ -1,0 +1,78 @@
+package kernelgate
+
+import (
+	"fmt"
+	"strings"
+)
+
+// kernelFamilies are the KernelKind names as rendered by
+// kernel.KernelKind.String; they double as the registry's family
+// vocabulary.
+var kernelFamilies = map[string]bool{
+	"comparison":    true,
+	"arithmetic":    true,
+	"boolean":       true,
+	"hash":          true,
+	"scale":         true,
+	"string-length": true,
+	"compact":       true,
+	"string-match":  true,
+}
+
+// ParseKernelID splits a kernel.KernelID string (for example
+// "compare-uint32-ge" or "string-match-prefix") into its family, data
+// type, and operation. Type or operation are empty for kernels whose
+// identity carries neither (for example "boolean-and").
+func ParseKernelID(id string) (family, typ, op string, err error) {
+	if id == "" {
+		return "", "", "", fmt.Errorf("kernelgate: empty kernel id")
+	}
+	if rest, ok := strings.CutPrefix(id, "compare-"); ok {
+		typ, op, ok = cutLast(rest)
+		if !ok {
+			return "", "", "", fmt.Errorf("kernelgate: malformed comparison id %q", id)
+		}
+		return "comparison", typ, op, nil
+	}
+	if rest, ok := strings.CutPrefix(id, "arithmetic-"); ok {
+		typ, op, ok = cutLast(rest)
+		if !ok {
+			return "", "", "", fmt.Errorf("kernelgate: malformed arithmetic id %q", id)
+		}
+		return "arithmetic", typ, op, nil
+	}
+	if rest, ok := strings.CutPrefix(id, "boolean-"); ok && rest != "" {
+		return "boolean", "", rest, nil
+	}
+	if rest, ok := strings.CutPrefix(id, "string-match-"); ok && rest != "" {
+		return "string-match", "string", rest, nil
+	}
+	if rest, ok := strings.CutPrefix(id, "compact-"); ok && rest != "" {
+		return "compact", rest, "", nil
+	}
+	switch id {
+	case "hash64-batch":
+		return "hash", "uint64", "batch", nil
+	case "hash128-batch":
+		return "hash", "uint64", "batch128", nil
+	case "int64-scale":
+		return "scale", "int64", "scale", nil
+	case "string-byte-length":
+		return "string-length", "string", "byte-length", nil
+	case "string-utf8-length":
+		return "string-length", "string", "utf8-length", nil
+	}
+	return "", "", "", fmt.Errorf("kernelgate: unrecognized kernel id %q", id)
+}
+
+// cutLast splits s at its final dash, requiring both halves non-empty.
+func cutLast(s string) (head, tail string, ok bool) {
+	i := strings.LastIndexByte(s, '-')
+	if i <= 0 || i == len(s)-1 {
+		return "", "", false
+	}
+	return s[:i], s[i+1:], true
+}
+
+// ValidFamily reports whether name is a known kernel family.
+func ValidFamily(name string) bool { return kernelFamilies[name] }

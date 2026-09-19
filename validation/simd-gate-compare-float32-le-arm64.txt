@@ -1,0 +1,26 @@
+goos: darwin
+goarch: arm64
+pkg: gocolumn/kernel
+cpu: Apple M4 Pro
+BenchmarkKernelID/compare-float32-le/mode=scalar-12         	   13228	     89623 ns/op	       0 B/op	       0 allocs/op
+BenchmarkKernelID/compare-float32-le/mode=scalar-12         	   13494	     87283 ns/op	       0 B/op	       0 allocs/op
+BenchmarkKernelID/compare-float32-le/mode=scalar-12         	   13440	     88089 ns/op	       0 B/op	       0 allocs/op
+BenchmarkKernelID/compare-float32-le/mode=scalar-12         	   13612	     88326 ns/op	       0 B/op	       0 allocs/op
+BenchmarkKernelID/compare-float32-le/mode=scalar-12         	   13386	     90170 ns/op	       0 B/op	       0 allocs/op
+BenchmarkKernelID/compare-float32-le/mode=scalar-12         	   13376	     87810 ns/op	       0 B/op	       0 allocs/op
+BenchmarkKernelID/compare-float32-le/mode=scalar-12         	   13750	     89089 ns/op	       0 B/op	       0 allocs/op
+BenchmarkKernelID/compare-float32-le/mode=scalar-12         	   13705	     88139 ns/op	       0 B/op	       0 allocs/op
+BenchmarkKernelID/compare-float32-le/mode=scalar-12         	   13398	     87742 ns/op	       0 B/op	       0 allocs/op
+BenchmarkKernelID/compare-float32-le/mode=scalar-12         	   13414	     88476 ns/op	       0 B/op	       0 allocs/op
+BenchmarkKernelID/compare-float32-le/mode=simd-12           	   29238	     40875 ns/op	       0 B/op	       0 allocs/op
+BenchmarkKernelID/compare-float32-le/mode=simd-12           	   29980	     40481 ns/op	       0 B/op	       0 allocs/op
+BenchmarkKernelID/compare-float32-le/mode=simd-12           	   29647	     40386 ns/op	       0 B/op	       0 allocs/op
+BenchmarkKernelID/compare-float32-le/mode=simd-12           	   29649	     40701 ns/op	       0 B/op	       0 allocs/op
+BenchmarkKernelID/compare-float32-le/mode=simd-12           	   29922	     40979 ns/op	       0 B/op	       0 allocs/op
+BenchmarkKernelID/compare-float32-le/mode=simd-12           	   29751	     40604 ns/op	       0 B/op	       0 allocs/op
+BenchmarkKernelID/compare-float32-le/mode=simd-12           	   29311	     40376 ns/op	       0 B/op	       0 allocs/op
+BenchmarkKernelID/compare-float32-le/mode=simd-12           	   29772	     40695 ns/op	       0 B/op	       0 allocs/op
+BenchmarkKernelID/compare-float32-le/mode=simd-12           	   29691	     41092 ns/op	       0 B/op	       0 allocs/op
+BenchmarkKernelID/compare-float32-le/mode=simd-12           	   28124	     43289 ns/op	       0 B/op	       0 allocs/op
+PASS
+ok  	gocolumn/kernel	37.370s

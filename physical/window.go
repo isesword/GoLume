@@ -834,19 +834,34 @@ func windowValueValid(batch *memory.Batch, schema memory.Schema, column string, 
 		return false, fmt.Errorf("window column %q not found", column)
 	}
 	switch field.Type {
-	case memory.TypeInt8, memory.TypeInt16, memory.TypeInt32, memory.TypeDate32, memory.TypeTime32:
+	case memory.TypeInt8:
+		v, err := batch.Int8(column)
+		return err == nil && v.IsValid(row), err
+	case memory.TypeInt16:
+		v, err := batch.Int16(column)
+		return err == nil && v.IsValid(row), err
+	case memory.TypeInt32, memory.TypeDate32, memory.TypeTime32:
 		v, err := batch.Int32(column)
 		return err == nil && v.IsValid(row), err
 	case memory.TypeInt64, memory.TypeDate64, memory.TypeTimestamp, memory.TypeTime64, memory.TypeDuration:
 		v, err := batch.Int64(column)
 		return err == nil && v.IsValid(row), err
-	case memory.TypeUint8, memory.TypeUint16, memory.TypeUint32:
+	case memory.TypeUint8:
+		v, err := batch.Uint8(column)
+		return err == nil && v.IsValid(row), err
+	case memory.TypeUint16:
+		v, err := batch.Uint16(column)
+		return err == nil && v.IsValid(row), err
+	case memory.TypeUint32:
 		v, err := batch.Uint32(column)
 		return err == nil && v.IsValid(row), err
 	case memory.TypeUint64:
 		v, err := batch.Uint64(column)
 		return err == nil && v.IsValid(row), err
-	case memory.TypeFloat32, memory.TypeFloat64:
+	case memory.TypeFloat32:
+		v, err := batch.Float32(column)
+		return err == nil && v.IsValid(row), err
+	case memory.TypeFloat64:
 		v, err := batch.Float64(column)
 		return err == nil && v.IsValid(row), err
 	case memory.TypeString, memory.TypeBinary:
@@ -877,6 +892,20 @@ func windowInt64(batch *memory.Batch, schema memory.Schema, column string, row i
 		}
 		return v.Values[row], v.IsValid(row), nil
 	}
+	if field.Type == memory.TypeInt8 {
+		v, err := batch.Int8(column)
+		if err != nil {
+			return 0, false, err
+		}
+		return int64(v.Values[row]), v.IsValid(row), nil
+	}
+	if field.Type == memory.TypeInt16 {
+		v, err := batch.Int16(column)
+		if err != nil {
+			return 0, false, err
+		}
+		return int64(v.Values[row]), v.IsValid(row), nil
+	}
 	v, err := batch.Int32(column)
 	if err != nil {
 		return 0, false, err
@@ -895,6 +924,20 @@ func windowUint64(batch *memory.Batch, schema memory.Schema, column string, row 
 		}
 		return v.Values[row], v.IsValid(row), nil
 	}
+	if field.Type == memory.TypeUint8 {
+		v, err := batch.Uint8(column)
+		if err != nil {
+			return 0, false, err
+		}
+		return uint64(v.Values[row]), v.IsValid(row), nil
+	}
+	if field.Type == memory.TypeUint16 {
+		v, err := batch.Uint16(column)
+		if err != nil {
+			return 0, false, err
+		}
+		return uint64(v.Values[row]), v.IsValid(row), nil
+	}
 	v, err := batch.Uint32(column)
 	if err != nil {
 		return 0, false, err
@@ -902,6 +945,9 @@ func windowUint64(batch *memory.Batch, schema memory.Schema, column string, row 
 	return uint64(v.Values[row]), v.IsValid(row), nil
 }
 func windowFloat64(batch *memory.Batch, _ memory.Schema, column string, row int) (float64, bool, error) {
+	if v, ok := batch.Float32s[column]; ok {
+		return float64(v.Values[row]), v.IsValid(row), nil
+	}
 	v, err := batch.Float64(column)
 	if err != nil {
 		return 0, false, err

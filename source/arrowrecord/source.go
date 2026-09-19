@@ -313,36 +313,9 @@ func (s *Source) ApplyPushdown(_ context.Context, req source.PushdownRequest) (s
 
 func cachePhysicalValues(b *binding, partition int, arr arrow.Array) error {
 	switch a := arr.(type) {
-	case *array.Int8:
-		out := make([]int32, len(a.Values()))
-		for i, v := range a.Values() {
-			out[i] = int32(v)
-		}
-		b.i32[partition] = out
-	case *array.Int16:
-		out := make([]int32, len(a.Values()))
-		for i, v := range a.Values() {
-			out[i] = int32(v)
-		}
-		b.i32[partition] = out
-	case *array.Uint8:
-		out := make([]uint32, len(a.Values()))
-		for i, v := range a.Values() {
-			out[i] = uint32(v)
-		}
-		b.u32[partition] = out
-	case *array.Uint16:
-		out := make([]uint32, len(a.Values()))
-		for i, v := range a.Values() {
-			out[i] = uint32(v)
-		}
-		b.u32[partition] = out
-	case *array.Float32:
-		out := make([]float64, len(a.Values()))
-		for i, v := range a.Values() {
-			out[i] = float64(v)
-		}
-		b.f64[partition] = out
+	case *array.Int8, *array.Int16, *array.Uint8, *array.Uint16, *array.Float32:
+		// Native-width arrays are bound directly by bindTyped; no widened cache
+		// is retained here.
 	case *array.Date32:
 		out := make([]int32, len(a.Values()))
 		for i, v := range a.Values() {

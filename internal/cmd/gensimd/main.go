@@ -8,6 +8,7 @@ import (
 	"go/format"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 )
 
@@ -25,7 +26,9 @@ type operation struct {
 
 var (
 	check           = flag.Bool("check", false, "fail when generated files are stale")
+	list            = flag.Bool("list", false, "print the kernel IDs whose scalar implementation is generated, one per line")
 	comparisonTypes = []numericType{
+		{"Int8", "int8", "compareInt8"},
 		{"Int32", "int32", "compareInt32"},
 		{"Int64", "int64", "compareInt64"},
 		{"Uint32", "uint32", "compareUint32"},
@@ -43,6 +46,12 @@ var (
 
 func main() {
 	flag.Parse()
+	if *list {
+		for _, id := range generatedKernelIDs() {
+			fmt.Println(id)
+		}
+		return
+	}
 	root, err := repositoryRoot()
 	if err != nil {
 		panic(err)
@@ -51,6 +60,7 @@ func main() {
 		panic(err)
 	}
 	outputs := map[string][]byte{
+		"memory/zz_generated_numeric.go":         generateNumericVectors(),
 		"kernel/zz_generated_scalar.go":          generateScalar(),
 		"kernel/zz_generated_simd.go":            generatePortableSIMD(),
 		"kernel/zz_generated_simd_arm64.go":      generateArm64SIMD(),
@@ -126,6 +136,7 @@ func generateScalar() []byte {
 	}
 	for _, op := range []operation{{"Add", "ArithmeticAdd", "+"}, {"Sub", "ArithmeticSub", "-"}, {"Mul", "ArithmeticMul", "*"}, {"Div", "ArithmeticDiv", "/"}} {
 		fmt.Fprintf(b, "\td.arithmeticFloat64[%s] = scalarFloat64%s\n", op.constant, op.name)
+		fmt.Fprintf(b, "\td.arithmeticFloat32[%s] = scalarFloat32%s\n", op.constant, op.name)
 	}
 	for _, op := range comparisonOps {
 		fmt.Fprintf(b, "\td.stringByteLength[%s] = scalarStringByteLength%s\n", op.constant, op.name)
@@ -163,6 +174,19 @@ func generateScalar() []byte {
 			out[row] = 0
 			continue
 		}
+		out[row] = a %s right[row]
+	}
+}
+
+`, op.name, op.symbol)
+	}
+	for _, op := range []operation{{"Add", "ArithmeticAdd", "+"}, {"Sub", "ArithmeticSub", "-"}, {"Mul", "ArithmeticMul", "*"}, {"Div", "ArithmeticDiv", "/"}} {
+		fmt.Fprintf(b, `func scalarFloat32%s(left, right, out []float32, validity memory.Bitmap) {
+	if len(left) != len(right) || len(out) < len(left) {
+		panic("kernel: float32 arithmetic length mismatch")
+	}
+	for row, a := range left {
+		if !validAt(validity, row) { out[row] = 0; continue }
 		out[row] = a %s right[row]
 	}
 }
@@ -283,7 +307,7 @@ func integerArithmetic(typ numericType, op operation) string {
 
 func generatePortableSIMD() []byte {
 	b := header("goexperiment.simd")
-	b.WriteString("import (\n\t\"gocolumn/memory\"\n\t\"simd\"\n)\n\n")
+	b.WriteString("import (\n\t\"gocolumn/memory\"\n\t\"math/bits\"\n\t\"simd\"\n)\n\n")
 	b.WriteString(`func installGeneratedPortableSIMD(set *Set, mode Mode, vectorBits int) {
 	if mode != ModeSIMD {
 		return
@@ -293,6 +317,10 @@ func generatePortableSIMD() []byte {
 	for _, op := range []operation{{"Sub", "ArithmeticSub", "-"}, {"Mul", "ArithmeticMul", "*"}, {"Div", "ArithmeticDiv", "/"}} {
 		fmt.Fprintf(b, "\tset.d.arithmeticFloat64[%s] = simdFloat64%s\n", op.constant, op.name)
 		fmt.Fprintf(b, "\tid%s, _ := ArithmeticID(memory.TypeFloat64, %s)\n\tset.setCapability(id%s, capability)\n", op.name, op.constant, op.name)
+	}
+	for _, op := range comparisonOps {
+		fmt.Fprintf(b, "\tset.d.compareFloat32[%s] = simdFloat32%s\n", op.constant, op.name)
+		fmt.Fprintf(b, "\tidFloat32%s, _ := ComparisonID(memory.TypeFloat32, %s)\n\tset.setCapability(idFloat32%s, capability)\n", op.name, op.constant, op.name)
 	}
 	b.WriteString("}\n\n")
 	for _, op := range []operation{{"Sub", "ArithmeticSub", "-"}, {"Mul", "ArithmeticMul", "*"}, {"Div", "ArithmeticDiv", "/"}} {
@@ -312,6 +340,39 @@ func generatePortableSIMD() []byte {
 }
 
 `, op.name, op.name, op.symbol)
+	}
+	for _, op := range comparisonOps {
+		fmt.Fprintf(b, `func simdFloat32%s(values []float32, validity memory.Bitmap, out memory.Bitmap, threshold float32) int {
+	words := prepareComparison(len(values), out)
+	vectorThreshold := simd.BroadcastFloat32s(threshold)
+	lanes := simd.Float32s{}.Len()
+	laneMask := make([]int32, lanes)
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		wordRows := min(64, len(values)-base)
+		var selectedWord uint64
+		off := 0
+		for ; off+lanes <= wordRows; off += lanes {
+			simd.LoadFloat32s(values[base+off:]).%s(vectorThreshold).ToInt32s().Store(laneMask)
+			for lane := 0; lane < lanes; lane++ {
+				if uint32(laneMask[lane])>>31 != 0 {
+					selectedWord |= uint64(1) << uint(off+lane)
+				}
+			}
+		}
+		for ; off < wordRows; off++ {
+			if values[base+off] %s threshold { selectedWord |= uint64(1) << uint(off) }
+		}
+		selectedWord &= bitmapWord(validity, wi)
+		if wordRows < 64 { selectedWord &= memory.TailMask(wordRows) }
+		out[wi] = selectedWord
+		selected += bits.OnesCount64(selectedWord)
+	}
+	return selected
+}
+
+`, op.name, map[string]string{"GT": "Greater", "GE": "GreaterEqual", "LT": "Less", "LE": "LessEqual", "EQ": "Equal"}[op.name], op.symbol)
 	}
 	return []byte(b.String())
 }
@@ -411,4 +472,30 @@ func (op operation) nameForArch() string {
 	default:
 		panic(op.name)
 	}
+}
+
+// generatedKernelIDs returns the sorted kernel IDs whose scalar
+// implementation is emitted into kernel/zz_generated_scalar.go. The
+// list is derived from the same type and operation tables that drive
+// generateScalar, so it cannot drift from the generated code.
+func generatedKernelIDs() []string {
+	var ids []string
+	for _, typ := range comparisonTypes {
+		for _, op := range comparisonOps {
+			ids = append(ids, "compare-"+strings.ToLower(typ.name)+"-"+strings.ToLower(op.name))
+		}
+	}
+	for _, typ := range []string{"int32", "int64", "uint32", "uint64"} {
+		for _, op := range []string{"add", "sub", "mul"} {
+			ids = append(ids, "arithmetic-"+typ+"-"+op)
+		}
+	}
+	for _, typ := range []string{"float64", "float32"} {
+		for _, op := range []string{"add", "sub", "mul", "div"} {
+			ids = append(ids, "arithmetic-"+typ+"-"+op)
+		}
+	}
+	ids = append(ids, "string-byte-length", "string-utf8-length")
+	sort.Strings(ids)
+	return ids
 }

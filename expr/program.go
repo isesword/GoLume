@@ -7,6 +7,7 @@ import (
 	"gocolumn/memory"
 	"regexp"
 	"unicode/utf8"
+	"unsafe"
 )
 
 // Opcode identifies a physical predicate-program instruction.
@@ -29,6 +30,7 @@ type Instruction struct {
 	Code          Opcode
 	Op            Op
 	Column        string
+	RightColumn   string
 	Type          memory.DataType
 	LiteralI64    int64
 	LiteralU64    uint64
@@ -64,6 +66,8 @@ type dictionaryPredicateCache struct {
 	domain      string
 	instruction Instruction
 	matches     []bool
+	reserve     func(int64) error
+	reserveErr  error
 }
 
 // EvalWorkspace retains predicate registers and dictionary predicate results
@@ -71,6 +75,32 @@ type dictionaryPredicateCache struct {
 type EvalWorkspace struct {
 	regs       []BoolVector
 	dictionary []dictionaryPredicateCache
+	literals   [][]byte
+	literalKey []string
+	reserve    func(int64) error
+}
+
+// SetReserveHook charges dynamic dictionary-cache growth to the owning query.
+func (w *EvalWorkspace) SetReserveHook(fn func(int64) error) { w.reserve = fn }
+
+// MemoryBytes reports the retained workspace capacity that should be charged
+// to an execution budget. It includes bitmap registers, cached literals, and
+// dictionary match buffers; it intentionally excludes the input batch.
+func (w *EvalWorkspace) MemoryBytes() int64 {
+	if w == nil {
+		return 0
+	}
+	n := int64(cap(w.regs))*int64(unsafe.Sizeof(BoolVector{})) + int64(cap(w.dictionary))*int64(unsafe.Sizeof(dictionaryPredicateCache{})) + int64(cap(w.literals))*int64(unsafe.Sizeof([]byte(nil))) + int64(cap(w.literalKey))*int64(unsafe.Sizeof(""))
+	for _, r := range w.regs[:cap(w.regs)] {
+		n += int64(cap(r.Truth)+cap(r.Validity)) * 8
+	}
+	for _, literal := range w.literals[:cap(w.literals)] {
+		n += int64(cap(literal))
+	}
+	for _, cache := range w.dictionary[:cap(w.dictionary)] {
+		n += int64(cap(cache.matches))
+	}
+	return n
 }
 
 // Ensure sizes retained predicate registers for rows and regs.
@@ -90,6 +120,16 @@ func (w *EvalWorkspace) Ensure(rows, regs int) {
 		copy(w.dictionary, previous)
 	} else {
 		w.dictionary = w.dictionary[:regs]
+	}
+	if cap(w.literals) < regs {
+		w.literals = make([][]byte, regs)
+	} else {
+		w.literals = w.literals[:regs]
+	}
+	if cap(w.literalKey) < regs {
+		w.literalKey = make([]string, regs)
+	} else {
+		w.literalKey = w.literalKey[:regs]
 	}
 }
 
@@ -181,7 +221,7 @@ func CompilePredicate(schema memory.Schema, e Expr) (Program, *SimpleComparison,
 	var simple *SimpleComparison
 	if len(p.Instructions) == 1 {
 		in := p.Instructions[0]
-		if in.Code == codeCmpScalar && familyOf(in.Type) != familyString {
+		if in.Code == codeCmpScalar && in.RightColumn == "" && familyOf(in.Type) != familyString {
 			simple = &SimpleComparison{Column: in.Column, Type: in.Type, Op: in.Op, LiteralI64: in.LiteralI64, LiteralU64: in.LiteralU64, LiteralF64: in.LiteralF64}
 		}
 	}
@@ -204,6 +244,17 @@ func compileComparison(schema memory.Schema, n Binary) (Instruction, error) {
 		return Instruction{}, fmt.Errorf("column %q not found", c.Name)
 	}
 	in := Instruction{Code: codeCmpScalar, Op: n.Op, Column: c.Name, Type: f.Type}
+	if right, ok := n.Right.(Column); ok {
+		rf, exists := schema.Field(right.Name)
+		if !exists {
+			return Instruction{}, fmt.Errorf("column %q not found", right.Name)
+		}
+		if (f.Type != memory.TypeFloat32 || rf.Type != memory.TypeFloat32) && (f.Type != memory.TypeFloat64 || rf.Type != memory.TypeFloat64) && (f.Type != memory.TypeInt8 || rf.Type != memory.TypeInt8) && (f.Type != memory.TypeInt16 || rf.Type != memory.TypeInt16) && (f.Type != memory.TypeInt32 || rf.Type != memory.TypeInt32) && (f.Type != memory.TypeUint8 || rf.Type != memory.TypeUint8) && (f.Type != memory.TypeUint16 || rf.Type != memory.TypeUint16) && (f.Type != memory.TypeUint32 || rf.Type != memory.TypeUint32) && (f.Type != memory.TypeInt64 || rf.Type != memory.TypeInt64) && (f.Type != memory.TypeUint64 || rf.Type != memory.TypeUint64) {
+			return Instruction{}, fmt.Errorf("column-column comparison currently supports all fixed-width numeric types")
+		}
+		in.RightColumn = right.Name
+		return in, nil
+	}
 	switch familyOf(f.Type) {
 	case familyI32, familyI64:
 		switch lit := n.Right.(type) {
@@ -341,8 +392,21 @@ func (p Program) Evaluate(batch *memory.Batch, w *EvalWorkspace, kernels kernel.
 		return BoolVector{}, fmt.Errorf("invalid predicate program root")
 	}
 	w.Ensure(batch.Rows, len(p.Instructions))
+	for i := range w.dictionary {
+		w.dictionary[i].reserve = w.reserve
+		w.dictionary[i].reserveErr = nil
+	}
 	for i, in := range p.Instructions {
 		out := &w.regs[i]
+		var literal []byte
+		if in.LiteralString != "" {
+			literal = w.literals[i]
+			if w.literalKey[i] != in.LiteralString {
+				literal = []byte(in.LiteralString)
+				w.literals[i] = literal
+				w.literalKey[i] = in.LiteralString
+			}
+		}
 		switch in.Code {
 		case codeConstTrue:
 			fillAll(out.Truth, batch.Rows)
@@ -353,6 +417,13 @@ func (p Program) Evaluate(batch *memory.Batch, w *EvalWorkspace, kernels kernel.
 				return BoolVector{}, err
 			}
 			fillValidity(out.Validity, validity, batch.Rows)
+			if in.RightColumn != "" {
+				rightValidity, err := columnValidity(batch, in.RightColumn, in.Type)
+				if err != nil {
+					return BoolVector{}, err
+				}
+				andValidity(out.Validity, rightValidity, batch.Rows)
+			}
 			if err := evalKernelComparison(batch, in, out.Truth, kernels, &w.dictionary[i]); err != nil {
 				return BoolVector{}, err
 			}
@@ -362,7 +433,7 @@ func (p Program) Evaluate(batch *memory.Batch, w *EvalWorkspace, kernels kernel.
 				return BoolVector{}, err
 			}
 			fillValidity(out.Validity, validity, batch.Rows)
-			if err := evalStringMatch(batch, in, out.Truth, &w.dictionary[i]); err != nil {
+			if err := evalStringMatch(batch, in, literal, out.Truth, kernels, &w.dictionary[i]); err != nil {
 				return BoolVector{}, err
 			}
 		case codeCmpExtract:
@@ -371,7 +442,7 @@ func (p Program) Evaluate(batch *memory.Batch, w *EvalWorkspace, kernels kernel.
 				return BoolVector{}, err
 			}
 			fillValidity(out.Validity, validity, batch.Rows)
-			if err := evalExtractComparison(batch, in, out.Truth, kernels, &w.dictionary[i]); err != nil {
+			if err := evalExtractComparison(batch, in, literal, out.Truth, kernels, &w.dictionary[i]); err != nil {
 				return BoolVector{}, err
 			}
 		case codeIsNull, codeIsNotNull:
@@ -406,6 +477,9 @@ func (p Program) Evaluate(batch *memory.Batch, w *EvalWorkspace, kernels kernel.
 		default:
 			return BoolVector{}, fmt.Errorf("unknown predicate opcode %d", in.Code)
 		}
+		if w.dictionary[i].reserveErr != nil {
+			return BoolVector{}, w.dictionary[i].reserveErr
+		}
 	}
 	return w.regs[p.Root], nil
 }
@@ -417,9 +491,49 @@ func evalKernelComparison(batch *memory.Batch, in Instruction, out memory.Bitmap
 	}
 	switch familyOf(in.Type) {
 	case familyI32:
+		switch in.Type {
+		case memory.TypeInt8:
+			v, err := batch.Int8(in.Column)
+			if err != nil {
+				return err
+			}
+			if in.RightColumn != "" {
+				right, err := batch.Int8(in.RightColumn)
+				if err != nil {
+					return err
+				}
+				kernels.CompareInt8Columns(v.Values, right.Values, v.Validity, right.Validity, out, op)
+				return nil
+			}
+			kernels.CompareInt8(v.Values, v.Validity, out, int8(in.LiteralI64), op)
+			return nil
+		case memory.TypeInt16:
+			v, err := batch.Int16(in.Column)
+			if err != nil {
+				return err
+			}
+			if in.RightColumn != "" {
+				right, err := batch.Int16(in.RightColumn)
+				if err != nil {
+					return err
+				}
+				kernels.CompareInt16Columns(v.Values, right.Values, v.Validity, right.Validity, out, op)
+				return nil
+			}
+			kernels.CompareInt16(v.Values, v.Validity, out, int16(in.LiteralI64), op)
+			return nil
+		}
 		v, err := batch.Int32(in.Column)
 		if err != nil {
 			return err
+		}
+		if in.RightColumn != "" {
+			right, err := batch.Int32(in.RightColumn)
+			if err != nil {
+				return err
+			}
+			kernels.CompareInt32Columns(v.Values, right.Values, v.Validity, right.Validity, out, op)
+			return nil
 		}
 		kernels.CompareInt32(v.Values, v.Validity, out, int32(in.LiteralI64), op)
 	case familyI64:
@@ -427,11 +541,59 @@ func evalKernelComparison(batch *memory.Batch, in Instruction, out memory.Bitmap
 		if err != nil {
 			return err
 		}
+		if in.RightColumn != "" {
+			right, err := batch.Int64(in.RightColumn)
+			if err != nil {
+				return err
+			}
+			kernels.CompareInt64Columns(v.Values, right.Values, v.Validity, right.Validity, out, op)
+			return nil
+		}
 		kernels.CompareInt64(v.Values, v.Validity, out, in.LiteralI64, op)
 	case familyU32:
+		switch in.Type {
+		case memory.TypeUint8:
+			v, err := batch.Uint8(in.Column)
+			if err != nil {
+				return err
+			}
+			if in.RightColumn != "" {
+				right, err := batch.Uint8(in.RightColumn)
+				if err != nil {
+					return err
+				}
+				kernels.CompareUint8Columns(v.Values, right.Values, v.Validity, right.Validity, out, op)
+				return nil
+			}
+			kernels.CompareUint8(v.Values, v.Validity, out, uint8(in.LiteralU64), op)
+			return nil
+		case memory.TypeUint16:
+			v, err := batch.Uint16(in.Column)
+			if err != nil {
+				return err
+			}
+			if in.RightColumn != "" {
+				right, err := batch.Uint16(in.RightColumn)
+				if err != nil {
+					return err
+				}
+				kernels.CompareUint16Columns(v.Values, right.Values, v.Validity, right.Validity, out, op)
+				return nil
+			}
+			kernels.CompareUint16(v.Values, v.Validity, out, uint16(in.LiteralU64), op)
+			return nil
+		}
 		v, err := batch.Uint32(in.Column)
 		if err != nil {
 			return err
+		}
+		if in.RightColumn != "" {
+			right, err := batch.Uint32(in.RightColumn)
+			if err != nil {
+				return err
+			}
+			kernels.CompareUint32Columns(v.Values, right.Values, v.Validity, right.Validity, out, op)
+			return nil
 		}
 		kernels.CompareUint32(v.Values, v.Validity, out, uint32(in.LiteralU64), op)
 	case familyU64:
@@ -439,15 +601,47 @@ func evalKernelComparison(batch *memory.Batch, in Instruction, out memory.Bitmap
 		if err != nil {
 			return err
 		}
+		if in.RightColumn != "" {
+			right, err := batch.Uint64(in.RightColumn)
+			if err != nil {
+				return err
+			}
+			kernels.CompareUint64Columns(v.Values, right.Values, v.Validity, right.Validity, out, op)
+			return nil
+		}
 		kernels.CompareUint64(v.Values, v.Validity, out, in.LiteralU64, op)
 	case familyF64:
+		if in.Type == memory.TypeFloat32 {
+			v, err := batch.Float32(in.Column)
+			if err != nil {
+				return err
+			}
+			if in.RightColumn != "" {
+				right, err := batch.Float32(in.RightColumn)
+				if err != nil {
+					return err
+				}
+				kernels.CompareFloat32Columns(v.Values, right.Values, v.Validity, right.Validity, out, op)
+				return nil
+			}
+			kernels.CompareFloat32(v.Values, v.Validity, out, float32(in.LiteralF64), op)
+			return nil
+		}
 		v, err := batch.Float64(in.Column)
 		if err != nil {
 			return err
 		}
+		if in.RightColumn != "" {
+			right, err := batch.Float64(in.RightColumn)
+			if err != nil {
+				return err
+			}
+			kernels.CompareFloat64Columns(v.Values, right.Values, v.Validity, right.Validity, out, op)
+			return nil
+		}
 		kernels.CompareFloat64(v.Values, v.Validity, out, in.LiteralF64, op)
 	case familyString:
-		return evalTypedComparison(batch, in, out, cache)
+		return evalTypedComparison(batch, in, out, kernels, cache)
 	default:
 		return fmt.Errorf("comparison type %s unsupported", in.Type)
 	}
@@ -471,7 +665,7 @@ func physicalCompareOp(op Op) (kernel.CompareOp, error) {
 	}
 }
 
-func evalTypedComparison(batch *memory.Batch, in Instruction, out memory.Bitmap, cache *dictionaryPredicateCache) error {
+func evalTypedComparison(batch *memory.Batch, in Instruction, out memory.Bitmap, kernels kernel.Set, cache *dictionaryPredicateCache) error {
 	clear(out)
 	switch familyOf(in.Type) {
 	case familyI32:
@@ -527,6 +721,10 @@ func evalTypedComparison(batch *memory.Batch, in Instruction, out memory.Bitmap,
 	case familyString:
 		lit := []byte(in.LiteralString)
 		if v, ok := batch.Strings[in.Column]; ok {
+			if matchOp, ok := physicalStringMatchOp(in.Op); ok {
+				kernels.CompareStringMatch(v.Offsets, v.Data, v.Validity, out, lit, matchOp)
+				return nil
+			}
 			for row := 0; row < v.Len(); row++ {
 				if v.IsValid(row) && compareBytes(v.ValueBytes(row), lit, in.Op) {
 					memory.Set(out, row)
@@ -545,45 +743,81 @@ func evalTypedComparison(batch *memory.Batch, in Instruction, out memory.Bitmap,
 	return nil
 }
 
-func evalStringMatch(batch *memory.Batch, in Instruction, out memory.Bitmap, cache *dictionaryPredicateCache) error {
+func evalStringMatch(batch *memory.Batch, in Instruction, literal []byte, out memory.Bitmap, kernels kernel.Set, cache *dictionaryPredicateCache) error {
 	clear(out)
-	needle := []byte(in.LiteralString)
-	match := func(value []byte) bool {
-		switch in.Op {
-		case OpContains:
-			return bytes.Contains(value, needle)
-		case OpStartsWith:
-			return bytes.HasPrefix(value, needle)
-		case OpEndsWith:
-			return bytes.HasSuffix(value, needle)
-		case OpRegexMatch:
-			return in.Regex != nil && in.Regex.Match(value)
-		default:
-			return false
-		}
-	}
 	if v, ok := batch.Strings[in.Column]; ok {
-		for row := 0; row < v.Len(); row++ {
-			if v.IsValid(row) && match(v.ValueBytes(row)) {
-				memory.Set(out, row)
-			}
-		}
-		return nil
+		lit := literal
+		return evalPlainStringMatch(v, in, out, kernels, lit)
 	}
 	if v, ok := batch.DictStrings[in.Column]; ok {
+		needle := literal
+		match := func(value []byte) bool {
+			switch in.Op {
+			case OpContains:
+				return bytes.Contains(value, needle)
+			case OpStartsWith:
+				return bytes.HasPrefix(value, needle)
+			case OpEndsWith:
+				return bytes.HasSuffix(value, needle)
+			case OpRegexMatch:
+				return in.Regex != nil && in.Regex.Match(value)
+			default:
+				return false
+			}
+		}
 		selectDictionary(v, out, in, cache, match)
 		return nil
 	}
 	return fmt.Errorf("string column %q not present", in.Column)
 }
 
-func evalExtractComparison(batch *memory.Batch, in Instruction, out memory.Bitmap, kernels kernel.Set, cache *dictionaryPredicateCache) error {
+func evalPlainStringMatch(v *memory.StringViewVector, in Instruction, out memory.Bitmap, kernels kernel.Set, needle []byte) error {
+	if matchOp, ok := physicalStringMatchOp(in.Op); ok {
+		kernels.CompareStringMatch(v.Offsets, v.Data, v.Validity, out, needle, matchOp)
+		return nil
+	}
+	for row := 0; row < v.Len(); row++ {
+		value := v.ValueBytes(row)
+		match := false
+		switch in.Op {
+		case OpContains:
+			match = bytes.Contains(value, needle)
+		case OpStartsWith:
+			match = bytes.HasPrefix(value, needle)
+		case OpEndsWith:
+			match = bytes.HasSuffix(value, needle)
+		case OpRegexMatch:
+			match = in.Regex != nil && in.Regex.Match(value)
+		}
+		if v.IsValid(row) && match {
+			memory.Set(out, row)
+		}
+	}
+	return nil
+}
+
+func physicalStringMatchOp(op Op) (kernel.StringMatchOp, bool) {
+	switch op {
+	case OpEQ:
+		return kernel.StringEqual, true
+	case OpStartsWith:
+		return kernel.StringPrefix, true
+	case OpEndsWith:
+		return kernel.StringSuffix, true
+	case OpContains:
+		return kernel.StringContains, true
+	default:
+		return 0, false
+	}
+}
+
+func evalExtractComparison(batch *memory.Batch, in Instruction, literal []byte, out memory.Bitmap, kernels kernel.Set, cache *dictionaryPredicateCache) error {
 	clear(out)
 	if in.Extract == OpLength || in.Extract == OpByteLength {
 		return evalLengthComparison(batch, in, out, kernels, cache)
 	}
 	if in.Extract == OpFind {
-		return evalFindComparison(batch, in, out, cache)
+		return evalFindComparison(batch, in, literal, out, cache)
 	}
 	if familyOf(in.Type) == familyI32 {
 		v, err := batch.Int32(in.Column)
@@ -649,9 +883,9 @@ func evalLengthComparison(batch *memory.Batch, in Instruction, out memory.Bitmap
 	return fmt.Errorf("string column %q not present", in.Column)
 }
 
-func evalFindComparison(batch *memory.Batch, in Instruction, out memory.Bitmap, cache *dictionaryPredicateCache) error {
+func evalFindComparison(batch *memory.Batch, in Instruction, literal []byte, out memory.Bitmap, cache *dictionaryPredicateCache) error {
 	compare := func(value []byte) bool {
-		byteIndex := bytes.Index(value, []byte(in.LiteralString))
+		byteIndex := bytes.Index(value, literal)
 		index := int64(-1)
 		if byteIndex >= 0 {
 			index = int64(utf8.RuneCount(value[:byteIndex]))
@@ -680,6 +914,12 @@ func selectDictionary(v *memory.DictionaryStringVector, out memory.Bitmap, in In
 	dictionaryLen := v.DictionaryLen()
 	if !cache.valid || cache.domain != v.DictionaryDomain || cache.instruction != in || len(cache.matches) != dictionaryLen {
 		if cap(cache.matches) < dictionaryLen {
+			if cache.reserve != nil {
+				if err := cache.reserve(int64(dictionaryLen - cap(cache.matches))); err != nil {
+					cache.reserveErr = err
+					return
+				}
+			}
 			cache.matches = make([]bool, dictionaryLen)
 		} else {
 			cache.matches = cache.matches[:dictionaryLen]
@@ -778,6 +1018,21 @@ func fillValidity(dst, src memory.Bitmap, rows int) {
 	}
 	maskTail(dst, rows)
 }
+
+func andValidity(dst, src memory.Bitmap, rows int) {
+	if src == nil {
+		return
+	}
+	for i := range dst {
+		if i < len(src) {
+			dst[i] &= src[i]
+		} else {
+			dst[i] = 0
+		}
+	}
+	maskTail(dst, rows)
+}
+
 func fillAll(dst memory.Bitmap, rows int) {
 	for i := range dst {
 		dst[i] = ^uint64(0)
@@ -793,6 +1048,20 @@ func maskTail(b memory.Bitmap, rows int) {
 func columnValidity(batch *memory.Batch, name string, typ memory.DataType) (memory.Bitmap, error) {
 	switch familyOf(typ) {
 	case familyI32:
+		switch typ {
+		case memory.TypeInt8:
+			v, e := batch.Int8(name)
+			if e != nil {
+				return nil, e
+			}
+			return v.Validity, nil
+		case memory.TypeInt16:
+			v, e := batch.Int16(name)
+			if e != nil {
+				return nil, e
+			}
+			return v.Validity, nil
+		}
 		v, e := batch.Int32(name)
 		if e != nil {
 			return nil, e
@@ -805,6 +1074,20 @@ func columnValidity(batch *memory.Batch, name string, typ memory.DataType) (memo
 		}
 		return v.Validity, nil
 	case familyU32:
+		switch typ {
+		case memory.TypeUint8:
+			v, e := batch.Uint8(name)
+			if e != nil {
+				return nil, e
+			}
+			return v.Validity, nil
+		case memory.TypeUint16:
+			v, e := batch.Uint16(name)
+			if e != nil {
+				return nil, e
+			}
+			return v.Validity, nil
+		}
 		v, e := batch.Uint32(name)
 		if e != nil {
 			return nil, e
@@ -817,6 +1100,13 @@ func columnValidity(batch *memory.Batch, name string, typ memory.DataType) (memo
 		}
 		return v.Validity, nil
 	case familyF64:
+		if typ == memory.TypeFloat32 {
+			v, e := batch.Float32(name)
+			if e != nil {
+				return nil, e
+			}
+			return v.Validity, nil
+		}
 		v, e := batch.Float64(name)
 		if e != nil {
 			return nil, e

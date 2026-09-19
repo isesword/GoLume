@@ -203,6 +203,10 @@ func pushPredicates(plan logical.Plan, inherited expr.Expr, rules *[]string) log
 
 // pushProjection propagates the columns required by each operator to the scan.
 // nil means the caller requires every output column from the current node.
+// Projection nodes are narrowed to the columns their parent actually consumes
+// so the node column list always matches what its pruned child provides, and
+// WithColumns replacements whose original input column was pruned are ordered
+// back into their original position.
 func pushProjection(plan logical.Plan, required map[string]struct{}, rules *[]string) (logical.Plan, error) {
 	switch n := plan.(type) {
 	case *logical.Window:
@@ -263,7 +267,10 @@ func pushProjection(plan logical.Plan, required map[string]struct{}, rules *[]st
 		if len(kept) != len(n.Exprs) {
 			*rules = append(*rules, "window-expression-pruning")
 		}
-		return cloneWindowExprs(n, child, kept), nil
+		// A kept expression whose alias overwrites an input column replaces it
+		// in place; restore the original position when pruning removed the
+		// overwritten column from the child.
+		return restoreReplacementOrder(cloneWindowExprs(n, child, kept), inSchema, "window-reorder", rules)
 	case *logical.Aggregate:
 		childRequired := make(map[string]struct{})
 		for _, name := range n.GroupBy {
@@ -315,7 +322,20 @@ func pushProjection(plan logical.Plan, required map[string]struct{}, rules *[]st
 		if err != nil {
 			return nil, err
 		}
-		return &logical.Projection{Input: child, Columns: append([]string(nil), n.Columns...)}, nil
+		columns := append([]string(nil), n.Columns...)
+		if required != nil {
+			// The child was pruned to the intersection, so this node must
+			// project exactly that intersection or its column list would
+			// reference columns the child no longer outputs.
+			kept := make([]string, 0, len(childRequired))
+			for _, name := range n.Columns {
+				if _, ok := childRequired[name]; ok {
+					kept = append(kept, name)
+				}
+			}
+			columns = kept
+		}
+		return &logical.Projection{Input: child, Columns: columns}, nil
 
 	case *logical.ExprProjection:
 		inSchema, err := logical.InferSchema(n.Input)
@@ -370,7 +390,11 @@ func pushProjection(plan logical.Plan, required map[string]struct{}, rules *[]st
 		if len(kept) != len(n.Exprs) {
 			*rules = append(*rules, "expression-pruning")
 		}
-		return &logical.ExprProjection{Input: child, Exprs: kept, IncludeInput: n.IncludeInput}, nil
+		projected := &logical.ExprProjection{Input: child, Exprs: kept, IncludeInput: n.IncludeInput}
+		if n.IncludeInput {
+			return restoreReplacementOrder(projected, inSchema, "expression-projection-reorder", rules)
+		}
+		return projected, nil
 
 	case *logical.Sort:
 		childRequired := cloneSet(required)
@@ -492,6 +516,64 @@ func pushProjection(plan logical.Plan, required map[string]struct{}, rules *[]st
 	default:
 		return nil, fmt.Errorf("unsupported logical node %T", plan)
 	}
+}
+
+// restoreReplacementOrder wraps a pruned node with a column-only reorder when
+// pruning displaced an in-place replacement. It covers both WithColumns
+// (ExprProjection IncludeInput) replacements and window expressions whose
+// alias overwrites an input column: a kept replacement loses that column's
+// original position whenever the column itself was pruned from the child
+// (because the replacement does not depend on it, or a later projection
+// replaced it again): the pruned child no longer carries the column, so
+// replace-in-place semantics would append the replacement at the end. Both
+// node kinds replace in place, so the output is reordered to keep every
+// surviving input column at its original position while new columns stay
+// appended at the end. The reorder is a pure permutation of the node output;
+// it never resurrects pruned expressions or dead input columns. rule names
+// the AppliedRules entry recorded when a reorder is inserted.
+func restoreReplacementOrder(node logical.Plan, inSchema memory.Schema, rule string, rules *[]string) (logical.Plan, error) {
+	schema, err := logical.InferSchema(node)
+	if err != nil {
+		return nil, err
+	}
+	actual := schemaNames(schema)
+	inPositions := make(map[string]int, len(inSchema.Fields))
+	for i, f := range inSchema.Fields {
+		inPositions[f.Name] = i
+	}
+	stable := true
+	last := -1
+	for _, name := range actual {
+		pos, ok := inPositions[name]
+		if !ok {
+			continue
+		}
+		if pos < last {
+			stable = false
+			break
+		}
+		last = pos
+	}
+	if stable {
+		return node, nil
+	}
+	present := make(map[string]struct{}, len(actual))
+	for _, name := range actual {
+		present[name] = struct{}{}
+	}
+	ordered := make([]string, 0, len(actual))
+	for _, f := range inSchema.Fields {
+		if _, ok := present[f.Name]; ok {
+			ordered = append(ordered, f.Name)
+		}
+	}
+	for _, name := range actual {
+		if _, ok := inPositions[name]; !ok {
+			ordered = append(ordered, name)
+		}
+	}
+	*rules = append(*rules, rule)
+	return &logical.Projection{Input: node, Columns: ordered}, nil
 }
 
 func removeNoopProjections(plan logical.Plan, rules *[]string) logical.Plan {

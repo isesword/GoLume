@@ -29,8 +29,9 @@ type columnBinding struct {
 }
 
 // Source exposes projected flat Parquet columns as row-group partitions. It
-// supports integers, UTF-8 strings, dates, and UTC timestamps. Pushdown clones
-// are immutable and safe to prepare independently from the same base source.
+// supports integers, floats, booleans, UTF-8 strings, dates, and UTC
+// timestamps. Pushdown clones are immutable and safe to prepare independently
+// from the same base source.
 type Source struct {
 	path        string
 	meta        *metadata.FileMetaData
@@ -49,9 +50,9 @@ type Source struct {
 func (s *Source) PlanIdentity() string { return fmt.Sprintf("parquet:%p", s.meta) }
 
 // OpenFile discovers a flat primitive Parquet schema and exposes supported
-// integer, UTF-8 string, date, and UTC timestamp columns. Repeated/nested
-// columns and unsupported physical or logical types are rejected rather than
-// silently decoded incorrectly.
+// integer, float, boolean, UTF-8 string, date, and UTC timestamp columns.
+// Repeated/nested columns and unsupported physical or logical types are
+// rejected rather than silently decoded incorrectly.
 func OpenFile(path string) (*Source, error) {
 	base, err := openMetadata(path)
 	if err != nil {
@@ -117,9 +118,32 @@ func bindingAt(meta *metadata.FileMetaData, index int, logicalName string) (colu
 	d := meta.Schema.Column(index)
 	binding := columnBinding{Name: logicalName, Index: index, Nullable: d.MaxDefinitionLevel() > 0, TimestampScale: 1}
 	switch d.PhysicalType() {
+	case arrowparquet.Types.Boolean:
+		binding.Type = memory.TypeBool
+	case arrowparquet.Types.Float:
+		binding.Type = memory.TypeFloat32
+	case arrowparquet.Types.Double:
+		binding.Type = memory.TypeFloat64
 	case arrowparquet.Types.Int32:
 		if _, ok := d.LogicalType().(schema.DateLogicalType); ok {
 			binding.Type = memory.TypeDate32
+		} else if integer, ok := d.LogicalType().(schema.IntLogicalType); ok {
+			switch integer.BitWidth() {
+			case 8:
+				if integer.IsSigned() {
+					binding.Type = memory.TypeInt8
+				} else {
+					binding.Type = memory.TypeUint8
+				}
+			case 16:
+				if integer.IsSigned() {
+					binding.Type = memory.TypeInt16
+				} else {
+					binding.Type = memory.TypeUint16
+				}
+			default:
+				binding.Type = memory.TypeInt32
+			}
 		} else {
 			binding.Type = memory.TypeInt32
 		}
@@ -323,6 +347,9 @@ type reader struct {
 	kernels    kernel.Set
 	dense64    []int64
 	dense32    []int32
+	denseF32   []float32
+	denseF64   []float64
+	denseBool  []bool
 	denseBytes []arrowparquet.ByteArray
 	defs       []int16
 }
@@ -359,8 +386,20 @@ func (r *reader) ReadPartition(ctx context.Context, p source.Partition, dst *mem
 			if err := r.readInt64(chunk, b, rows, dst); err != nil {
 				return err
 			}
-		case memory.TypeInt32, memory.TypeDate32:
+		case memory.TypeInt8, memory.TypeInt16, memory.TypeUint8, memory.TypeUint16, memory.TypeInt32, memory.TypeDate32:
 			if err := r.readInt32(chunk, b, rows, dst); err != nil {
+				return err
+			}
+		case memory.TypeFloat32:
+			if err := r.readFloat32(chunk, b, rows, dst); err != nil {
+				return err
+			}
+		case memory.TypeFloat64:
+			if err := r.readFloat64(chunk, b, rows, dst); err != nil {
+				return err
+			}
+		case memory.TypeBool:
+			if err := r.readBool(chunk, b, rows, dst); err != nil {
 				return err
 			}
 		case memory.TypeString:
@@ -428,6 +467,9 @@ func (r *reader) readInt64(chunk file.ColumnChunkReader, b columnBinding, rows i
 }
 
 func (r *reader) readInt32(chunk file.ColumnChunkReader, b columnBinding, rows int, dst *memory.Batch) error {
+	if b.Type != memory.TypeInt32 && b.Type != memory.TypeDate32 {
+		return r.readNarrowInt32(chunk, b, rows, dst)
+	}
 	v := dst.Int32s[b.Name]
 	if v == nil {
 		v = &memory.Int32Vector{}
@@ -470,6 +512,247 @@ func (r *reader) readInt32(chunk file.ColumnChunkReader, b columnBinding, rows i
 			return fmt.Errorf("column %q dense overflow", b.Name)
 		}
 		v.Values[i] = r.dense32[dense]
+		dense++
+		memory.Set(v.Validity, i)
+	}
+	if dense != values {
+		return fmt.Errorf("column %q dense mismatch got=%d want=%d", b.Name, dense, values)
+	}
+	return nil
+}
+
+func (r *reader) readNarrowInt32(chunk file.ColumnChunkReader, b columnBinding, rows int, dst *memory.Batch) error {
+	c, ok := chunk.(*file.Int32ColumnChunkReader)
+	if !ok {
+		return fmt.Errorf("column %q is not an int32 chunk reader", b.Name)
+	}
+	r.dense32 = resize(r.dense32, rows)
+	r.defs = resize(r.defs, rows)
+	var validity memory.Bitmap
+	if b.Nullable {
+		validity = memory.EnsureBitmap(nil, rows)
+	}
+	var total int64
+	var values int
+	var err error
+	if b.Nullable {
+		total, values, err = c.ReadBatch(int64(rows), r.dense32[:rows], r.defs[:rows], nil)
+	} else {
+		total, values, err = c.ReadBatch(int64(rows), r.dense32[:rows], nil, nil)
+	}
+	if err != nil {
+		return err
+	}
+	if int(total) != rows || values != rows && !b.Nullable {
+		return fmt.Errorf("column %q row count mismatch total=%d values=%d want=%d", b.Name, total, values, rows)
+	}
+	put := func(i int, dense int32) {
+		if validity != nil {
+			memory.Set(validity, i)
+		}
+		switch b.Type {
+		case memory.TypeInt8:
+			dst.Int8s[b.Name].Values[i] = int8(dense)
+		case memory.TypeInt16:
+			dst.Int16s[b.Name].Values[i] = int16(dense)
+		case memory.TypeUint8:
+			dst.Uint8s[b.Name].Values[i] = uint8(dense)
+		case memory.TypeUint16:
+			dst.Uint16s[b.Name].Values[i] = uint16(dense)
+		}
+	}
+	switch b.Type {
+	case memory.TypeInt8:
+		dst.Int8s[b.Name] = &memory.Int8Vector{Values: resize(make([]int8, 0), rows), Validity: validity, Encoding: memory.EncodingPlain}
+	case memory.TypeInt16:
+		dst.Int16s[b.Name] = &memory.Int16Vector{Values: make([]int16, rows), Validity: validity, Encoding: memory.EncodingPlain}
+	case memory.TypeUint8:
+		dst.Uint8s[b.Name] = &memory.Uint8Vector{Values: make([]uint8, rows), Validity: validity, Encoding: memory.EncodingPlain}
+	case memory.TypeUint16:
+		dst.Uint16s[b.Name] = &memory.Uint16Vector{Values: make([]uint16, rows), Validity: validity, Encoding: memory.EncodingPlain}
+	}
+	dense := 0
+	for i := 0; i < rows; i++ {
+		if b.Nullable && r.defs[i] == 0 {
+			continue
+		}
+		if dense >= values {
+			return fmt.Errorf("column %q dense overflow", b.Name)
+		}
+		raw := r.dense32[dense]
+		if (b.Type == memory.TypeInt8 && (raw < math.MinInt8 || raw > math.MaxInt8)) || (b.Type == memory.TypeInt16 && (raw < math.MinInt16 || raw > math.MaxInt16)) || (b.Type == memory.TypeUint8 && (raw < 0 || raw > math.MaxUint8)) || (b.Type == memory.TypeUint16 && (raw < 0 || raw > math.MaxUint16)) {
+			return fmt.Errorf("column %q value %d exceeds logical width %s", b.Name, raw, b.Type)
+		}
+		put(i, raw)
+		dense++
+	}
+	if dense != values {
+		return fmt.Errorf("column %q dense mismatch got=%d want=%d", b.Name, dense, values)
+	}
+	return nil
+}
+
+func (r *reader) readFloat32(chunk file.ColumnChunkReader, b columnBinding, rows int, dst *memory.Batch) error {
+	v := dst.Float32s[b.Name]
+	if v == nil {
+		v = &memory.Float32Vector{}
+		dst.Float32s[b.Name] = v
+	}
+	v.Values = resize(v.Values, rows)
+	v.Encoding = memory.EncodingPlain
+	c, ok := chunk.(*file.Float32ColumnChunkReader)
+	if !ok {
+		return fmt.Errorf("column %q is not a float32 chunk reader", b.Name)
+	}
+	if !b.Nullable {
+		v.Validity = nil
+		total, values, err := c.ReadBatch(int64(rows), v.Values, nil, nil)
+		if err != nil {
+			return err
+		}
+		if int(total) != rows || values != rows {
+			return fmt.Errorf("column %q row count mismatch total=%d values=%d want=%d", b.Name, total, values, rows)
+		}
+		return nil
+	}
+	r.denseF32 = resize(r.denseF32, rows)
+	r.defs = resize(r.defs, rows)
+	v.Validity = memory.EnsureBitmap(v.Validity, rows)
+	total, values, err := c.ReadBatch(int64(rows), r.denseF32[:rows], r.defs[:rows], nil)
+	if err != nil {
+		return err
+	}
+	if int(total) != rows {
+		return fmt.Errorf("column %q row count mismatch total=%d want=%d", b.Name, total, rows)
+	}
+	dense := 0
+	for i := 0; i < rows; i++ {
+		if r.defs[i] == 0 {
+			v.Values[i] = 0
+			continue
+		}
+		if dense >= values {
+			return fmt.Errorf("column %q dense overflow", b.Name)
+		}
+		v.Values[i] = r.denseF32[dense]
+		dense++
+		memory.Set(v.Validity, i)
+	}
+	if dense != values {
+		return fmt.Errorf("column %q dense mismatch got=%d want=%d", b.Name, dense, values)
+	}
+	return nil
+}
+
+func (r *reader) readFloat64(chunk file.ColumnChunkReader, b columnBinding, rows int, dst *memory.Batch) error {
+	v := dst.Float64s[b.Name]
+	if v == nil {
+		v = &memory.Float64Vector{}
+		dst.Float64s[b.Name] = v
+	}
+	v.Values = resize(v.Values, rows)
+	v.Encoding = memory.EncodingPlain
+	c, ok := chunk.(*file.Float64ColumnChunkReader)
+	if !ok {
+		return fmt.Errorf("column %q is not a float64 chunk reader", b.Name)
+	}
+	if !b.Nullable {
+		v.Validity = nil
+		total, values, err := c.ReadBatch(int64(rows), v.Values, nil, nil)
+		if err != nil {
+			return err
+		}
+		if int(total) != rows || values != rows {
+			return fmt.Errorf("column %q row count mismatch total=%d values=%d want=%d", b.Name, total, values, rows)
+		}
+		return nil
+	}
+	r.denseF64 = resize(r.denseF64, rows)
+	r.defs = resize(r.defs, rows)
+	v.Validity = memory.EnsureBitmap(v.Validity, rows)
+	total, values, err := c.ReadBatch(int64(rows), r.denseF64[:rows], r.defs[:rows], nil)
+	if err != nil {
+		return err
+	}
+	if int(total) != rows {
+		return fmt.Errorf("column %q row count mismatch total=%d want=%d", b.Name, total, rows)
+	}
+	dense := 0
+	for i := 0; i < rows; i++ {
+		if r.defs[i] == 0 {
+			v.Values[i] = 0
+			continue
+		}
+		if dense >= values {
+			return fmt.Errorf("column %q dense overflow", b.Name)
+		}
+		v.Values[i] = r.denseF64[dense]
+		dense++
+		memory.Set(v.Validity, i)
+	}
+	if dense != values {
+		return fmt.Errorf("column %q dense mismatch got=%d want=%d", b.Name, dense, values)
+	}
+	return nil
+}
+
+// readBool decodes a Parquet boolean column into the engine bool physical
+// representation: a uint32 vector of 0/1 values under a TypeBool schema field.
+func (r *reader) readBool(chunk file.ColumnChunkReader, b columnBinding, rows int, dst *memory.Batch) error {
+	v := dst.Uint32s[b.Name]
+	if v == nil {
+		v = &memory.Uint32Vector{}
+		dst.Uint32s[b.Name] = v
+	}
+	v.Values = resize(v.Values, rows)
+	v.Encoding = memory.EncodingPlain
+	c, ok := chunk.(*file.BooleanColumnChunkReader)
+	if !ok {
+		return fmt.Errorf("column %q is not a boolean chunk reader", b.Name)
+	}
+	if !b.Nullable {
+		v.Validity = nil
+		r.denseBool = resize(r.denseBool, rows)
+		total, values, err := c.ReadBatch(int64(rows), r.denseBool[:rows], nil, nil)
+		if err != nil {
+			return err
+		}
+		if int(total) != rows || values != rows {
+			return fmt.Errorf("column %q row count mismatch total=%d values=%d want=%d", b.Name, total, values, rows)
+		}
+		for i, value := range r.denseBool[:rows] {
+			if value {
+				v.Values[i] = 1
+			} else {
+				v.Values[i] = 0
+			}
+		}
+		return nil
+	}
+	r.denseBool = resize(r.denseBool, rows)
+	r.defs = resize(r.defs, rows)
+	v.Validity = memory.EnsureBitmap(v.Validity, rows)
+	total, values, err := c.ReadBatch(int64(rows), r.denseBool[:rows], r.defs[:rows], nil)
+	if err != nil {
+		return err
+	}
+	if int(total) != rows {
+		return fmt.Errorf("column %q row count mismatch total=%d want=%d", b.Name, total, rows)
+	}
+	dense := 0
+	for i := 0; i < rows; i++ {
+		if r.defs[i] == 0 {
+			v.Values[i] = 0
+			continue
+		}
+		if dense >= values {
+			return fmt.Errorf("column %q dense overflow", b.Name)
+		}
+		if r.denseBool[dense] {
+			v.Values[i] = 1
+		} else {
+			v.Values[i] = 0
+		}
 		dense++
 		memory.Set(v.Validity, i)
 	}
@@ -653,6 +936,9 @@ func comparisonTruth(rg *metadata.RowGroupMetaData, b expr.Binary, bindings map[
 		}
 		return truthAny, nil
 	}
+	if binding.Type == memory.TypeFloat64 {
+		return floatComparisonTruth(rg, stats, literal, op)
+	}
 	literalValue, ok, err := comparisonLiteral(binding, literal)
 	if err != nil || !ok {
 		if err != nil {
@@ -756,9 +1042,90 @@ func numericStatistics(binding columnBinding, stats metadata.TypedStatistics) (i
 			return 0, 0, false, err
 		}
 		return min, max, true, nil
+	case memory.TypeBool:
+		v, ok := stats.(*metadata.BooleanStatistics)
+		if !ok {
+			return 0, 0, false, nil
+		}
+		return boolStatistic(v.Min()), boolStatistic(v.Max()), true, nil
 	default:
 		return 0, 0, false, nil
 	}
+}
+
+// boolStatistic maps a boolean statistic bound to the engine 0/1 physical
+// representation.
+func boolStatistic(value bool) int64 {
+	if value {
+		return 1
+	}
+	return 0
+}
+
+// floatComparisonTruth prunes a float64 column comparison against a numeric
+// literal using float64 min/max statistics. NaN bounds or literals make all
+// range reasoning unsound under SQL comparison semantics, so they degrade to
+// null-count-only pruning instead of risking false negatives.
+func floatComparisonTruth(rg *metadata.RowGroupMetaData, stats metadata.TypedStatistics, literal expr.Expr, op expr.Op) (truthSet, error) {
+	value, ok := floatComparisonLiteral(literal)
+	if !ok {
+		return truthAny, nil
+	}
+	var min, max float64
+	hasMinMax := false
+	if stats.HasMinMax() {
+		if v, ok := stats.(*metadata.Float64Statistics); ok {
+			min, max = v.Min(), v.Max()
+			hasMinMax = !math.IsNaN(min) && !math.IsNaN(max)
+		}
+	}
+	return floatRangeTruth(rg, stats, hasMinMax, min, max, value, op), nil
+}
+
+// floatComparisonLiteral accepts float64 literals and int64 literals as
+// float64 comparison bounds. The int64-to-float64 conversion matches the
+// engine's own predicate evaluation, keeping pruning semantics aligned.
+func floatComparisonLiteral(literal expr.Expr) (float64, bool) {
+	switch v := literal.(type) {
+	case expr.Float64Literal:
+		return v.Value, true
+	case expr.Int64Literal:
+		return float64(v.Value), true
+	default:
+		return 0, false
+	}
+}
+
+// floatRangeTruth mirrors rangeTruth for float64 bounds and literals.
+func floatRangeTruth(rg *metadata.RowGroupMetaData, stats metadata.TypedStatistics, hasMinMax bool, min, max, literal float64, op expr.Op) truthSet {
+	out := nullOnlyTruth(stats)
+	if stats.HasNullCount() && stats.NullCount() >= rg.NumRows() {
+		return out
+	}
+	if !hasMinMax {
+		return out | truthTrue | truthFalse
+	}
+	var mayTrue, mayFalse bool
+	switch op {
+	case expr.OpGT:
+		mayTrue, mayFalse = max > literal, min <= literal
+	case expr.OpGE:
+		mayTrue, mayFalse = max >= literal, min < literal
+	case expr.OpLT:
+		mayTrue, mayFalse = min < literal, max >= literal
+	case expr.OpLE:
+		mayTrue, mayFalse = min <= literal, max > literal
+	case expr.OpEQ:
+		mayTrue = min <= literal && literal <= max
+		mayFalse = min != literal || max != literal
+	}
+	if mayTrue {
+		out |= truthTrue
+	}
+	if mayFalse {
+		out |= truthFalse
+	}
+	return out
 }
 
 func normalizeTimestampStatistic(binding columnBinding, value int64) (int64, error) {

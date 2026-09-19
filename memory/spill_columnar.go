@@ -9,7 +9,10 @@ import (
 )
 
 const (
-	columnarRunVersion = uint16(1)
+	// Version 2 stores the narrow numeric vectors at their native physical
+	// widths. Version 1 was an internal spill representation which widened
+	// those columns, so it must not be decoded as this layout.
+	columnarRunVersion = uint16(2)
 	columnarRunHeader  = 22
 )
 
@@ -442,7 +445,19 @@ func validateRunField(batch *Batch, field Field, rows int) error {
 
 func fixedRunField(batch *Batch, field Field, rows int) (Bitmap, int, error) {
 	switch field.Type {
-	case TypeInt8, TypeInt16, TypeInt32, TypeDate32, TypeTime32:
+	case TypeInt8:
+		v := batch.Int8s[field.Name]
+		if v == nil || len(v.Values) != rows {
+			return nil, 0, fmt.Errorf("int8 physical field %q rows mismatch", field.Name)
+		}
+		return v.Validity, 1, nil
+	case TypeInt16:
+		v := batch.Int16s[field.Name]
+		if v == nil || len(v.Values) != rows {
+			return nil, 0, fmt.Errorf("int16 physical field %q rows mismatch", field.Name)
+		}
+		return v.Validity, 2, nil
+	case TypeInt32, TypeDate32, TypeTime32:
 		v := batch.Int32s[field.Name]
 		if v == nil || len(v.Values) != rows {
 			return nil, 0, fmt.Errorf("int32 physical field %q rows mismatch", field.Name)
@@ -454,7 +469,19 @@ func fixedRunField(batch *Batch, field Field, rows int) (Bitmap, int, error) {
 			return nil, 0, fmt.Errorf("int64 physical field %q rows mismatch", field.Name)
 		}
 		return v.Validity, 8, nil
-	case TypeUint8, TypeUint16, TypeUint32, TypeBool:
+	case TypeUint8:
+		v := batch.Uint8s[field.Name]
+		if v == nil || len(v.Values) != rows {
+			return nil, 0, fmt.Errorf("uint8 physical field %q rows mismatch", field.Name)
+		}
+		return v.Validity, 1, nil
+	case TypeUint16:
+		v := batch.Uint16s[field.Name]
+		if v == nil || len(v.Values) != rows {
+			return nil, 0, fmt.Errorf("uint16 physical field %q rows mismatch", field.Name)
+		}
+		return v.Validity, 2, nil
+	case TypeUint32, TypeBool:
 		v := batch.Uint32s[field.Name]
 		if v == nil || len(v.Values) != rows {
 			return nil, 0, fmt.Errorf("uint32 physical field %q rows mismatch", field.Name)
@@ -466,7 +493,13 @@ func fixedRunField(batch *Batch, field Field, rows int) (Bitmap, int, error) {
 			return nil, 0, fmt.Errorf("uint64 physical field %q rows mismatch", field.Name)
 		}
 		return v.Validity, 8, nil
-	case TypeFloat32, TypeFloat64:
+	case TypeFloat32:
+		v := batch.Float32s[field.Name]
+		if v == nil || len(v.Values) != rows {
+			return nil, 0, fmt.Errorf("float32 physical field %q rows mismatch", field.Name)
+		}
+		return v.Validity, 4, nil
+	case TypeFloat64:
 		v := batch.Float64s[field.Name]
 		if v == nil || len(v.Values) != rows {
 			return nil, 0, fmt.Errorf("float64 physical field %q rows mismatch", field.Name)
@@ -522,7 +555,15 @@ func encodeRunField(writer *runWriter, batch *Batch, field Field, rows int) erro
 	}
 	encodeValidity(writer, validity, rows)
 	switch field.Type {
-	case TypeInt8, TypeInt16, TypeInt32, TypeDate32, TypeTime32:
+	case TypeInt8:
+		for _, value := range batch.Int8s[field.Name].Values {
+			writer.u8(uint8(value))
+		}
+	case TypeInt16:
+		for _, value := range batch.Int16s[field.Name].Values {
+			writer.u16(uint16(value))
+		}
+	case TypeInt32, TypeDate32, TypeTime32:
 		for _, value := range batch.Int32s[field.Name].Values {
 			writer.u32(uint32(value))
 		}
@@ -530,7 +571,15 @@ func encodeRunField(writer *runWriter, batch *Batch, field Field, rows int) erro
 		for _, value := range batch.Int64s[field.Name].Values {
 			writer.u64(uint64(value))
 		}
-	case TypeUint8, TypeUint16, TypeUint32, TypeBool:
+	case TypeUint8:
+		for _, value := range batch.Uint8s[field.Name].Values {
+			writer.u8(value)
+		}
+	case TypeUint16:
+		for _, value := range batch.Uint16s[field.Name].Values {
+			writer.u16(value)
+		}
+	case TypeUint32, TypeBool:
 		for _, value := range batch.Uint32s[field.Name].Values {
 			writer.u32(value)
 		}
@@ -538,7 +587,11 @@ func encodeRunField(writer *runWriter, batch *Batch, field Field, rows int) erro
 		for _, value := range batch.Uint64s[field.Name].Values {
 			writer.u64(value)
 		}
-	case TypeFloat32, TypeFloat64:
+	case TypeFloat32:
+		for _, value := range batch.Float32s[field.Name].Values {
+			writer.u32(math.Float32bits(value))
+		}
+	case TypeFloat64:
 		for _, value := range batch.Float64s[field.Name].Values {
 			writer.u64(math.Float64bits(value))
 		}
@@ -625,7 +678,25 @@ func decodeRunField(reader *runReader, batch *Batch, field Field, rows int) erro
 	}
 	validity := decodeValidity(reader, rows)
 	switch field.Type {
-	case TypeInt8, TypeInt16, TypeInt32, TypeDate32, TypeTime32:
+	case TypeInt8:
+		if !reader.requireArray(rows, 1, "int8 values exceed remaining payload") {
+			return reader.err
+		}
+		values := make([]int8, rows)
+		for i := range values {
+			values[i] = int8(reader.u8())
+		}
+		batch.Int8s[field.Name] = &Int8Vector{Values: values, Validity: validity, Encoding: field.Encoding}
+	case TypeInt16:
+		if !reader.requireArray(rows, 2, "int16 values exceed remaining payload") {
+			return reader.err
+		}
+		values := make([]int16, rows)
+		for i := range values {
+			values[i] = int16(reader.u16())
+		}
+		batch.Int16s[field.Name] = &Int16Vector{Values: values, Validity: validity, Encoding: field.Encoding}
+	case TypeInt32, TypeDate32, TypeTime32:
 		if !reader.requireArray(rows, 4, "int32 values exceed remaining payload") {
 			return reader.err
 		}
@@ -643,7 +714,25 @@ func decodeRunField(reader *runReader, batch *Batch, field Field, rows int) erro
 			values[i] = int64(reader.u64())
 		}
 		batch.Int64s[field.Name] = &Int64Vector{Values: values, Validity: validity, Encoding: field.Encoding}
-	case TypeUint8, TypeUint16, TypeUint32, TypeBool:
+	case TypeUint8:
+		if !reader.requireArray(rows, 1, "uint8 values exceed remaining payload") {
+			return reader.err
+		}
+		values := make([]uint8, rows)
+		for i := range values {
+			values[i] = reader.u8()
+		}
+		batch.Uint8s[field.Name] = &Uint8Vector{Values: values, Validity: validity, Encoding: field.Encoding}
+	case TypeUint16:
+		if !reader.requireArray(rows, 2, "uint16 values exceed remaining payload") {
+			return reader.err
+		}
+		values := make([]uint16, rows)
+		for i := range values {
+			values[i] = reader.u16()
+		}
+		batch.Uint16s[field.Name] = &Uint16Vector{Values: values, Validity: validity, Encoding: field.Encoding}
+	case TypeUint32, TypeBool:
 		if !reader.requireArray(rows, 4, "uint32 values exceed remaining payload") {
 			return reader.err
 		}
@@ -661,7 +750,16 @@ func decodeRunField(reader *runReader, batch *Batch, field Field, rows int) erro
 			values[i] = reader.u64()
 		}
 		batch.Uint64s[field.Name] = &Uint64Vector{Values: values, Validity: validity, Encoding: field.Encoding}
-	case TypeFloat32, TypeFloat64:
+	case TypeFloat32:
+		if !reader.requireArray(rows, 4, "float32 values exceed remaining payload") {
+			return reader.err
+		}
+		values := make([]float32, rows)
+		for i := range values {
+			values[i] = math.Float32frombits(reader.u32())
+		}
+		batch.Float32s[field.Name] = &Float32Vector{Values: values, Validity: validity, Encoding: field.Encoding}
+	case TypeFloat64:
 		if !reader.requireArray(rows, 8, "float64 values exceed remaining payload") {
 			return reader.err
 		}
@@ -709,6 +807,15 @@ func (w *runWriter) bytes(value []byte) {
 	copy(w.buf[w.pos:], value)
 	w.pos += len(value)
 }
+
+func (w *runWriter) u8(value uint8) {
+	if w.err != nil || len(w.buf)-w.pos < 1 {
+		w.err = fmt.Errorf("columnar encoder buffer overflow")
+		return
+	}
+	w.buf[w.pos] = value
+	w.pos++
+}
 func (w *runWriter) u16(value uint16) {
 	var buf [2]byte
 	binary.LittleEndian.PutUint16(buf[:], value)
@@ -748,6 +855,16 @@ func (r *runReader) bytes(length int) []byte {
 	out := r.buf[r.pos : r.pos+length]
 	r.pos += length
 	return out
+}
+
+func (r *runReader) u8() uint8 {
+	if r.err != nil || len(r.buf)-r.pos < 1 {
+		r.fail("uint8 exceeds remaining payload")
+		return 0
+	}
+	v := r.buf[r.pos]
+	r.pos++
+	return v
 }
 func (r *runReader) u16() uint16 {
 	value := r.bytes(2)

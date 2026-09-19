@@ -366,16 +366,26 @@ func (s *projectBatchStream) Close() error { return s.state.Close() }
 
 func bindScalarValue(dst *memory.Batch, name string, v expr.ScalarValue) error {
 	switch {
+	case v.Int8 != nil:
+		dst.Int8s[name] = v.Int8
+	case v.Int16 != nil:
+		dst.Int16s[name] = v.Int16
 	case v.Int32 != nil:
 		dst.Int32s[name] = v.Int32
 	case v.Int64 != nil:
 		dst.Int64s[name] = v.Int64
 	case v.Uint32 != nil:
 		dst.Uint32s[name] = v.Uint32
+	case v.Uint8 != nil:
+		dst.Uint8s[name] = v.Uint8
+	case v.Uint16 != nil:
+		dst.Uint16s[name] = v.Uint16
 	case v.Uint64 != nil:
 		dst.Uint64s[name] = v.Uint64
 	case v.Float64 != nil:
 		dst.Float64s[name] = v.Float64
+	case v.Float32 != nil:
+		dst.Float32s[name] = v.Float32
 	case v.DictionaryString != nil:
 		dst.DictStrings[name] = v.DictionaryString
 	case v.String != nil:
@@ -391,6 +401,22 @@ func bindScalarValue(dst *memory.Batch, name string, v expr.ScalarValue) error {
 }
 
 func bindAll(dst, src *memory.Batch) {
+	for k, v := range src.Int8s {
+		dst.Int8s[k] = v
+	}
+	for k, v := range src.Int16s {
+		dst.Int16s[k] = v
+	}
+	for k, v := range src.Uint8s {
+		dst.Uint8s[k] = v
+	}
+	for k, v := range src.Uint16s {
+		dst.Uint16s[k] = v
+	}
+	for k, v := range src.Float32s {
+		dst.Float32s[k] = v
+	}
+
 	for k, v := range src.Int64s {
 		dst.Int64s[k] = v
 	}
@@ -424,6 +450,27 @@ func bindAll(dst, src *memory.Batch) {
 }
 
 func bindNamed(dst *memory.Batch, out string, src *memory.Batch, in string) error {
+	if v, ok := src.Int8s[in]; ok {
+		dst.Int8s[out] = v
+		return nil
+	}
+	if v, ok := src.Int16s[in]; ok {
+		dst.Int16s[out] = v
+		return nil
+	}
+	if v, ok := src.Uint8s[in]; ok {
+		dst.Uint8s[out] = v
+		return nil
+	}
+	if v, ok := src.Uint16s[in]; ok {
+		dst.Uint16s[out] = v
+		return nil
+	}
+	if v, ok := src.Float32s[in]; ok {
+		dst.Float32s[out] = v
+		return nil
+	}
+
 	if v, ok := src.Int64s[in]; ok {
 		dst.Int64s[out] = v
 		return nil
@@ -479,6 +526,12 @@ var _ source.PreparedBatchStreamProvider = (*ProjectSource)(nil)
 var _ source.BatchStream = (*projectBatchStream)(nil)
 
 func removeColumn(dst *memory.Batch, name string) {
+	delete(dst.Int8s, name)
+	delete(dst.Int16s, name)
+	delete(dst.Uint8s, name)
+	delete(dst.Uint16s, name)
+	delete(dst.Float32s, name)
+
 	delete(dst.Int64s, name)
 	delete(dst.Int32s, name)
 	delete(dst.Uint32s, name)

@@ -892,8 +892,20 @@ func encodePhysicalKey(batch *memory.Batch, keys []JoinKey, left bool, row int) 
 	return out, mask, nil
 }
 func fixedPhysicalValue(batch *memory.Batch, name string, row int) (uint64, bool, error) {
+	if v, ok := batch.Int8s[name]; ok {
+		return uint64(uint32(int32(v.Values[row]))), v.IsValid(row), nil
+	}
+	if v, ok := batch.Int16s[name]; ok {
+		return uint64(uint32(int32(v.Values[row]))), v.IsValid(row), nil
+	}
 	if v, ok := batch.Int32s[name]; ok {
 		return uint64(uint32(v.Values[row])), v.IsValid(row), nil
+	}
+	if v, ok := batch.Uint8s[name]; ok {
+		return uint64(v.Values[row]), v.IsValid(row), nil
+	}
+	if v, ok := batch.Uint16s[name]; ok {
+		return uint64(v.Values[row]), v.IsValid(row), nil
 	}
 	if v, ok := batch.Int64s[name]; ok {
 		return uint64(v.Values[row]), v.IsValid(row), nil
@@ -904,7 +916,7 @@ func fixedPhysicalValue(batch *memory.Batch, name string, row int) (uint64, bool
 	if v, ok := batch.Uint64s[name]; ok {
 		return v.Values[row], v.IsValid(row), nil
 	}
-	return 0, false, fmt.Errorf("join key %q must be int32/int64/uint32/uint64", name)
+	return 0, false, fmt.Errorf("join key %q must be a fixed-width integer", name)
 }
 func maxInt(a, b int) int {
 	if a > b {

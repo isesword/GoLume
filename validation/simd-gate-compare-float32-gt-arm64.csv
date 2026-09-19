@@ -1,0 +1,18 @@
+goos: darwin
+goarch: arm64
+pkg: gocolumn/kernel
+cpu: Apple M4 Pro
+,scalar,,simd,,,
+,sec/op,CI,sec/op,CI,vs base,P
+KernelID/compare-float32-gt-12,7.7883e-05,3%,4.1218500000000005e-05,3%,-47.08%,p=0.000 n=10
+geomean,7.788300000000005e-05,,4.121849999999998e-05,,-47.08%,
+
+,scalar,,simd,,,
+,B/op,CI,B/op,CI,vs base,P
+KernelID/compare-float32-gt-12,0,0%,0,0%,~,p=1.000 n=10
+geomean,,,,,+0.00%,
+
+,scalar,,simd,,,
+,allocs/op,CI,allocs/op,CI,vs base,P
+KernelID/compare-float32-gt-12,0,0%,0,0%,~,p=1.000 n=10
+geomean,,,,,+0.00%,

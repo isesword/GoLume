@@ -157,6 +157,167 @@ func TestExpressionProjectionPushesDependenciesAndPrunesUnused(t *testing.T) {
 	}
 }
 
+func TestProjectionPushdownNarrowsIntermediateProjection(t *testing.T) {
+	src := &testSource{schema: memory.NewSchema(
+		memory.Field{Name: "c0", Type: memory.TypeInt64},
+		memory.Field{Name: "c1", Type: memory.TypeInt64},
+		memory.Field{Name: "c2", Type: memory.TypeInt64},
+		memory.Field{Name: "c3", Type: memory.TypeInt64},
+	)}
+	plan := &logical.Aggregate{
+		Input:      &logical.Projection{Input: &logical.Scan{Source: src}, Columns: []string{"c0", "c1", "c2", "c3"}},
+		GroupBy:    []string{"c1", "c2"},
+		Aggregates: []expr.Aggregate{expr.Sum("c3", "total")},
+	}
+	got, err := Optimize(plan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	scan := findScan(t, got.Plan)
+	if want := []string{"c1", "c2", "c3"}; !equalStrings(scan.Projection, want) {
+		t.Fatalf("scan projection=%v want=%v", scan.Projection, want)
+	}
+	schema, err := logical.InferSchema(got.Plan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := []string{"c1", "c2", "total"}; !equalStrings(schemaNames(schema), want) {
+		t.Fatalf("schema=%v want=%v", schemaNames(schema), want)
+	}
+}
+
+func TestStackedProjectionsSeparatedByFilterStayConsistent(t *testing.T) {
+	src := &testSource{schema: memory.NewSchema(
+		memory.Field{Name: "c0", Type: memory.TypeInt64},
+		memory.Field{Name: "c1", Type: memory.TypeInt64},
+		memory.Field{Name: "c2", Type: memory.TypeInt64},
+		memory.Field{Name: "c3", Type: memory.TypeInt64},
+	)}
+	plan := &logical.Projection{
+		Input: &logical.Filter{
+			Input:     &logical.Projection{Input: &logical.Scan{Source: src}, Columns: []string{"c0", "c1", "c2", "c3"}},
+			Predicate: expr.GT(expr.Col("c0"), expr.Lit(0)),
+		},
+		Columns: []string{"c0", "c1"},
+	}
+	got, err := Optimize(plan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	scan := findScan(t, got.Plan)
+	if want := []string{"c0", "c1"}; !equalStrings(scan.Projection, want) {
+		t.Fatalf("scan projection=%v want=%v", scan.Projection, want)
+	}
+	schema, err := logical.InferSchema(got.Plan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := []string{"c0", "c1"}; !equalStrings(schemaNames(schema), want) {
+		t.Fatalf("schema=%v want=%v", schemaNames(schema), want)
+	}
+}
+
+func TestWithColumnsReplacementPreservesColumnOrder(t *testing.T) {
+	src := &testSource{schema: memory.NewSchema(
+		memory.Field{Name: "a", Type: memory.TypeInt64},
+		memory.Field{Name: "b", Type: memory.TypeInt64},
+		memory.Field{Name: "c", Type: memory.TypeInt64},
+	)}
+	plan := &logical.ExprProjection{
+		Input:        &logical.Scan{Source: src},
+		IncludeInput: true,
+		Exprs:        []expr.NamedExpr{expr.Named(expr.Col("b").Add(expr.Lit(1)), "a")},
+	}
+	got, err := Optimize(plan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	schema, err := logical.InferSchema(got.Plan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := []string{"a", "b", "c"}; !equalStrings(schemaNames(schema), want) {
+		t.Fatalf("schema=%v want=%v: replaced column must keep its original position", schemaNames(schema), want)
+	}
+	scan := findScan(t, got.Plan)
+	if want := []string{"b", "c"}; !equalStrings(scan.Projection, want) {
+		t.Fatalf("scan projection=%v want=%v: overwritten input column must stay pruned", scan.Projection, want)
+	}
+}
+
+func TestChainedWithColumnsReplacementKeepsOriginalPosition(t *testing.T) {
+	src := &testSource{schema: memory.NewSchema(
+		memory.Field{Name: "a", Type: memory.TypeInt64},
+		memory.Field{Name: "b", Type: memory.TypeInt64},
+		memory.Field{Name: "c", Type: memory.TypeInt64},
+	)}
+	plan := &logical.ExprProjection{
+		Input: &logical.ExprProjection{
+			Input:        &logical.Scan{Source: src},
+			IncludeInput: true,
+			Exprs:        []expr.NamedExpr{expr.Named(expr.Col("b").Add(expr.Lit(1)), "a")},
+		},
+		IncludeInput: true,
+		Exprs:        []expr.NamedExpr{expr.Named(expr.Col("c").Mul(expr.Lit(2)), "a")},
+	}
+	got, err := Optimize(plan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	schema, err := logical.InferSchema(got.Plan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := []string{"a", "b", "c"}; !equalStrings(schemaNames(schema), want) {
+		t.Fatalf("schema=%v want=%v: chained replacement must keep the original position", schemaNames(schema), want)
+	}
+	scan := findScan(t, got.Plan)
+	if want := []string{"b", "c"}; !equalStrings(scan.Projection, want) {
+		t.Fatalf("scan projection=%v want=%v", scan.Projection, want)
+	}
+	projection, ok := got.Plan.(*logical.Projection)
+	if !ok {
+		t.Fatalf("plan=%T want *logical.Projection restoring replaced column order", got.Plan)
+	}
+	replacement, ok := projection.Input.(*logical.ExprProjection)
+	if !ok {
+		t.Fatalf("projection input=%T want *logical.ExprProjection", projection.Input)
+	}
+	if len(replacement.Exprs) != 1 || replacement.Exprs[0].Expr.String() != "(c * 2)" {
+		t.Fatalf("replacement exprs=%v: dead first replacement must be eliminated", replacement.Exprs)
+	}
+	if !contains(got.AppliedRules, "expression-projection-elimination") {
+		t.Fatalf("rules=%v missing expression-projection-elimination", got.AppliedRules)
+	}
+}
+
+func TestSelectOverWithColumnsReplacementPreservesOrder(t *testing.T) {
+	src := &testSource{schema: memory.NewSchema(
+		memory.Field{Name: "a", Type: memory.TypeInt64},
+		memory.Field{Name: "b", Type: memory.TypeInt64},
+		memory.Field{Name: "c", Type: memory.TypeInt64},
+	)}
+	plan := &logical.Projection{
+		Input: &logical.ExprProjection{
+			Input:        &logical.Scan{Source: src},
+			IncludeInput: true,
+			Exprs:        []expr.NamedExpr{expr.Named(expr.Col("b").Add(expr.Lit(1)), "a")},
+		},
+		Columns: []string{"a", "b"},
+	}
+	got, err := Optimize(plan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	schema, err := logical.InferSchema(got.Plan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := []string{"a", "b"}; !equalStrings(schemaNames(schema), want) {
+		t.Fatalf("schema=%v want=%v", schemaNames(schema), want)
+	}
+}
+
 func TestPredicateAboveComputedProjectionRemainsResidual(t *testing.T) {
 	src := &testSource{schema: memory.NewSchema(
 		memory.Field{Name: "a", Type: memory.TypeInt64},

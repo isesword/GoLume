@@ -5,6 +5,7 @@ cd "$ROOT"
 
 go run ./tools/checkgodoc .
 GOEXPERIMENT=simd go run ./internal/cmd/gensimd -check
+GOEXPERIMENT=simd go run ./tools/kernelgate check
 bash -n ./scripts/bench_hotpaths.sh
 ./scripts/check_simd_structure.sh
 go test ./...

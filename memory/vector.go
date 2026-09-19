@@ -5,45 +5,6 @@ import (
 	"math"
 )
 
-// Int64Vector stores a nullable int64 column in a contiguous value buffer plus validity bitmap.
-type Int64Vector struct {
-	Values   []int64
-	Validity Bitmap // nil means all valid
-	Encoding Encoding
-}
-
-// Len returns the logical row count.
-func (v *Int64Vector) Len() int { return len(v.Values) }
-
-// IsValid reports whether row i is non-NULL.
-func (v *Int64Vector) IsValid(i int) bool { return v.Validity == nil || IsSet(v.Validity, i) }
-
-// Int32Vector stores a nullable int32 column in a contiguous value buffer plus validity bitmap.
-type Int32Vector struct {
-	Values   []int32
-	Validity Bitmap
-	Encoding Encoding
-}
-
-// Len returns the logical row count.
-func (v *Int32Vector) Len() int { return len(v.Values) }
-
-// IsValid reports whether row i is non-NULL.
-func (v *Int32Vector) IsValid(i int) bool { return v.Validity == nil || IsSet(v.Validity, i) }
-
-// Uint32Vector stores a nullable uint32 column in a contiguous value buffer plus validity bitmap.
-type Uint32Vector struct {
-	Values   []uint32
-	Validity Bitmap
-	Encoding Encoding
-}
-
-// Len returns the logical row count.
-func (v *Uint32Vector) Len() int { return len(v.Values) }
-
-// IsValid reports whether row i is non-NULL.
-func (v *Uint32Vector) IsValid(i int) bool { return v.Validity == nil || IsSet(v.Validity, i) }
-
 // StringViewVector is a pointer-free UTF-8/binary physical representation.
 // Offsets must contain Len()+1 entries. Values are slices of Data and no Go
 // string headers are retained in the hot column buffer.
@@ -300,32 +261,6 @@ func (v *DictionaryStringVector) Validate(rows int) error {
 	}
 	return nil
 }
-
-// Uint64Vector stores a nullable uint64 column in a contiguous value buffer.
-type Uint64Vector struct {
-	Values   []uint64
-	Validity Bitmap
-	Encoding Encoding
-}
-
-// Len returns the logical row count.
-func (v *Uint64Vector) Len() int { return len(v.Values) }
-
-// IsValid reports whether row i is non-NULL.
-func (v *Uint64Vector) IsValid(i int) bool { return v.Validity == nil || IsSet(v.Validity, i) }
-
-// Float64Vector stores a nullable float64 column in a contiguous value buffer.
-type Float64Vector struct {
-	Values   []float64
-	Validity Bitmap
-	Encoding Encoding
-}
-
-// Len returns the logical row count.
-func (v *Float64Vector) Len() int { return len(v.Values) }
-
-// IsValid reports whether row i is non-NULL.
-func (v *Float64Vector) IsValid(i int) bool { return v.Validity == nil || IsSet(v.Validity, i) }
 
 // OpaqueVector preserves a source-native column that has no specialized engine
 // representation yet. Value is source-owned and valid until the next read on

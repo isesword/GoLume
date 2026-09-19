@@ -9,6 +9,11 @@ import (
 )
 
 func installGeneratedScalar(d *dispatch) {
+	d.compareInt8[CompareGT] = scalarInt8GT
+	d.compareInt8[CompareGE] = scalarInt8GE
+	d.compareInt8[CompareLT] = scalarInt8LT
+	d.compareInt8[CompareLE] = scalarInt8LE
+	d.compareInt8[CompareEQ] = scalarInt8EQ
 	d.compareInt32[CompareGT] = scalarInt32GT
 	d.compareInt32[CompareGE] = scalarInt32GE
 	d.compareInt32[CompareLT] = scalarInt32LT
@@ -47,9 +52,13 @@ func installGeneratedScalar(d *dispatch) {
 	d.arithmeticUint64[ArithmeticSub] = scalarUint64Sub
 	d.arithmeticUint64[ArithmeticMul] = scalarUint64Mul
 	d.arithmeticFloat64[ArithmeticAdd] = scalarFloat64Add
+	d.arithmeticFloat32[ArithmeticAdd] = scalarFloat32Add
 	d.arithmeticFloat64[ArithmeticSub] = scalarFloat64Sub
+	d.arithmeticFloat32[ArithmeticSub] = scalarFloat32Sub
 	d.arithmeticFloat64[ArithmeticMul] = scalarFloat64Mul
+	d.arithmeticFloat32[ArithmeticMul] = scalarFloat32Mul
 	d.arithmeticFloat64[ArithmeticDiv] = scalarFloat64Div
+	d.arithmeticFloat32[ArithmeticDiv] = scalarFloat32Div
 	d.stringByteLength[CompareGT] = scalarStringByteLengthGT
 	d.stringUTF8Length[CompareGT] = scalarStringUTF8LengthGT
 	d.stringByteLength[CompareGE] = scalarStringByteLengthGE
@@ -60,6 +69,61 @@ func installGeneratedScalar(d *dispatch) {
 	d.stringUTF8Length[CompareLE] = scalarStringUTF8LengthLE
 	d.stringByteLength[CompareEQ] = scalarStringByteLengthEQ
 	d.stringUTF8Length[CompareEQ] = scalarStringUTF8LengthEQ
+}
+
+func scalarInt8GT(values []int8, validity memory.Bitmap, out memory.Bitmap, threshold int8) int {
+	prepareComparison(len(values), out)
+	selected := 0
+	for row, value := range values {
+		if validAt(validity, row) && value > threshold {
+			setSelected(out, row, &selected)
+		}
+	}
+	return selected
+}
+
+func scalarInt8GE(values []int8, validity memory.Bitmap, out memory.Bitmap, threshold int8) int {
+	prepareComparison(len(values), out)
+	selected := 0
+	for row, value := range values {
+		if validAt(validity, row) && value >= threshold {
+			setSelected(out, row, &selected)
+		}
+	}
+	return selected
+}
+
+func scalarInt8LT(values []int8, validity memory.Bitmap, out memory.Bitmap, threshold int8) int {
+	prepareComparison(len(values), out)
+	selected := 0
+	for row, value := range values {
+		if validAt(validity, row) && value < threshold {
+			setSelected(out, row, &selected)
+		}
+	}
+	return selected
+}
+
+func scalarInt8LE(values []int8, validity memory.Bitmap, out memory.Bitmap, threshold int8) int {
+	prepareComparison(len(values), out)
+	selected := 0
+	for row, value := range values {
+		if validAt(validity, row) && value <= threshold {
+			setSelected(out, row, &selected)
+		}
+	}
+	return selected
+}
+
+func scalarInt8EQ(values []int8, validity memory.Bitmap, out memory.Bitmap, threshold int8) int {
+	prepareComparison(len(values), out)
+	selected := 0
+	for row, value := range values {
+		if validAt(validity, row) && value == threshold {
+			setSelected(out, row, &selected)
+		}
+	}
+	return selected
 }
 
 func scalarInt32GT(values []int32, validity memory.Bitmap, out memory.Bitmap, threshold int32) int {
@@ -961,6 +1025,58 @@ func scalarFloat64Mul(left, right, out []float64, validity memory.Bitmap) {
 func scalarFloat64Div(left, right, out []float64, validity memory.Bitmap) {
 	if len(left) != len(right) || len(out) < len(left) {
 		panic("kernel: float64 arithmetic length mismatch")
+	}
+	for row, a := range left {
+		if !validAt(validity, row) {
+			out[row] = 0
+			continue
+		}
+		out[row] = a / right[row]
+	}
+}
+
+func scalarFloat32Add(left, right, out []float32, validity memory.Bitmap) {
+	if len(left) != len(right) || len(out) < len(left) {
+		panic("kernel: float32 arithmetic length mismatch")
+	}
+	for row, a := range left {
+		if !validAt(validity, row) {
+			out[row] = 0
+			continue
+		}
+		out[row] = a + right[row]
+	}
+}
+
+func scalarFloat32Sub(left, right, out []float32, validity memory.Bitmap) {
+	if len(left) != len(right) || len(out) < len(left) {
+		panic("kernel: float32 arithmetic length mismatch")
+	}
+	for row, a := range left {
+		if !validAt(validity, row) {
+			out[row] = 0
+			continue
+		}
+		out[row] = a - right[row]
+	}
+}
+
+func scalarFloat32Mul(left, right, out []float32, validity memory.Bitmap) {
+	if len(left) != len(right) || len(out) < len(left) {
+		panic("kernel: float32 arithmetic length mismatch")
+	}
+	for row, a := range left {
+		if !validAt(validity, row) {
+			out[row] = 0
+			continue
+		}
+		out[row] = a * right[row]
+	}
+}
+
+func scalarFloat32Div(left, right, out []float32, validity memory.Bitmap) {
+	if len(left) != len(right) || len(out) < len(left) {
+		panic("kernel: float32 arithmetic length mismatch")
 	}
 	for row, a := range left {
 		if !validAt(validity, row) {

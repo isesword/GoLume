@@ -54,7 +54,19 @@ func (s *JoinSource) mergeKey(batch *memory.Batch, left bool, row int) (mergeKey
 		}
 		part := mergeKeyPart{typ: field.Type}
 		switch field.Type {
-		case memory.TypeInt8, memory.TypeInt16, memory.TypeInt32, memory.TypeDate32, memory.TypeTime32:
+		case memory.TypeInt8:
+			vector, err := batch.Int8(name)
+			if err != nil {
+				return mergeKey{}, err
+			}
+			part.valid, part.i64 = vector.IsValid(row), int64(vector.Values[row])
+		case memory.TypeInt16:
+			vector, err := batch.Int16(name)
+			if err != nil {
+				return mergeKey{}, err
+			}
+			part.valid, part.i64 = vector.IsValid(row), int64(vector.Values[row])
+		case memory.TypeInt32, memory.TypeDate32, memory.TypeTime32:
 			vector, err := batch.Int32(name)
 			if err != nil {
 				return mergeKey{}, err
@@ -66,7 +78,19 @@ func (s *JoinSource) mergeKey(batch *memory.Batch, left bool, row int) (mergeKey
 				return mergeKey{}, err
 			}
 			part.valid, part.i64 = vector.IsValid(row), vector.Values[row]
-		case memory.TypeUint8, memory.TypeUint16, memory.TypeUint32:
+		case memory.TypeUint8:
+			vector, err := batch.Uint8(name)
+			if err != nil {
+				return mergeKey{}, err
+			}
+			part.valid, part.u64 = vector.IsValid(row), uint64(vector.Values[row])
+		case memory.TypeUint16:
+			vector, err := batch.Uint16(name)
+			if err != nil {
+				return mergeKey{}, err
+			}
+			part.valid, part.u64 = vector.IsValid(row), uint64(vector.Values[row])
+		case memory.TypeUint32:
 			vector, err := batch.Uint32(name)
 			if err != nil {
 				return mergeKey{}, err

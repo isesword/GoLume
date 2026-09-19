@@ -470,28 +470,36 @@ func (p *PreparedQuery) executeBitmapDirect(ctx context.Context, w *queryWorkspa
 			if err != nil {
 				return Result{}, err
 			}
-			err = forSelected(sel, ww.batch.Rows, func(i int) error {
-				validMask := uint8(0)
+			if ww.batch.Rows > len(ww.selectedPairs) {
+				return Result{}, fmt.Errorf("pair aggregation batch rows %d exceed workspace capacity %d", ww.batch.Rows, len(ww.selectedPairs))
+			}
+			keys := ww.selectedPairs[:ww.batch.Rows]
+			keyValidity := ww.selectedPairValid[:ww.batch.Rows]
+			clear(keyValidity)
+			for i := 0; i < ww.batch.Rows; i++ {
+				keys[i] = hashagg.Key128{A: a.at(i), B: b.at(i)}
 				if a.valid(i) {
-					validMask |= 1
+					keyValidity[i] |= 1
 				}
 				if b.valid(i) {
-					validMask |= 2
+					keyValidity[i] |= 2
 				}
-				v, vv := aggregateValueAt(vals, i)
-				created, e := w.pair.TryAddNullableValue(hashagg.Key128{A: a.at(i), B: b.at(i)}, validMask, v, vv)
-				if e != nil {
-					return e
-				}
-				if created {
-					out.GroupCount++
-				}
-				if vv {
-					out.Checksum += v
-				}
-				return nil
-			})
-			if err != nil {
+			}
+			valueValues := ww.selectedVals[:ww.batch.Rows]
+			var valueValidity memory.Bitmap
+			if vals.Validity != nil {
+				valueValidity = vals.Validity
+			}
+			for i := range valueValues {
+				valueValues[i], _ = aggregateValueAt(vals, i)
+			}
+			s, e := w.pair.AggregateSelectedNullableValues(keys, keyValidity, valueValues, valueValidity, sel)
+			if e != nil {
+				return Result{}, e
+			}
+			out.GroupCount += s.Groups
+			out.Checksum += s.Checksum
+			if e != nil {
 				return Result{}, err
 			}
 		}

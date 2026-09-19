@@ -8,6 +8,12 @@ func BatchBytes(b *Batch) int64 {
 		return 0
 	}
 	var n int64
+	for _, v := range b.Int8s {
+		n += int64(len(v.Values)) + int64(len(v.Validity))*8
+	}
+	for _, v := range b.Int16s {
+		n += int64(len(v.Values))*2 + int64(len(v.Validity))*8
+	}
 	for _, v := range b.Int64s {
 		n += int64(len(v.Values))*8 + int64(len(v.Validity))*8
 	}
@@ -17,11 +23,20 @@ func BatchBytes(b *Batch) int64 {
 	for _, v := range b.Uint32s {
 		n += int64(len(v.Values))*4 + int64(len(v.Validity))*8
 	}
+	for _, v := range b.Uint8s {
+		n += int64(len(v.Values)) + int64(len(v.Validity))*8
+	}
+	for _, v := range b.Uint16s {
+		n += int64(len(v.Values))*2 + int64(len(v.Validity))*8
+	}
 	for _, v := range b.Uint64s {
 		n += int64(len(v.Values))*8 + int64(len(v.Validity))*8
 	}
 	for _, v := range b.Float64s {
 		n += int64(len(v.Values))*8 + int64(len(v.Validity))*8
+	}
+	for _, v := range b.Float32s {
+		n += int64(len(v.Values))*4 + int64(len(v.Validity))*8
 	}
 	for _, v := range b.Strings {
 		n += int64(len(v.Offsets))*4 + int64(len(v.Data)) + int64(len(v.Validity))*8

@@ -12,6 +12,51 @@ func compactSelected(ctx context.Context, dst, src *memory.Batch, rows []int, se
 		return err
 	}
 	n := len(rows)
+	for name, v := range src.Int8s {
+		out := ensureI8(dst.Int8s[name], n)
+		if got := kernels.CompactInt8(v.Values, selection, out.Values); got != n {
+			return fmt.Errorf("compact int8 column %q selected %d rows, want %d", name, got, n)
+		}
+		out.Validity = compactValidity(out.Validity, v.Validity, rows)
+		out.Encoding = v.Encoding
+		dst.Int8s[name] = out
+	}
+	for name, v := range src.Int16s {
+		out := ensureI16(dst.Int16s[name], n)
+		if got := kernels.CompactInt16(v.Values, selection, out.Values); got != n {
+			return fmt.Errorf("compact int16 column %q selected %d rows, want %d", name, got, n)
+		}
+		out.Validity = compactValidity(out.Validity, v.Validity, rows)
+		out.Encoding = v.Encoding
+		dst.Int16s[name] = out
+	}
+	for name, v := range src.Uint8s {
+		out := ensureU8(dst.Uint8s[name], n)
+		if got := kernels.CompactUint8(v.Values, selection, out.Values); got != n {
+			return fmt.Errorf("compact uint8 column %q selected %d rows, want %d", name, got, n)
+		}
+		out.Validity = compactValidity(out.Validity, v.Validity, rows)
+		out.Encoding = v.Encoding
+		dst.Uint8s[name] = out
+	}
+	for name, v := range src.Uint16s {
+		out := ensureU16(dst.Uint16s[name], n)
+		if got := kernels.CompactUint16(v.Values, selection, out.Values); got != n {
+			return fmt.Errorf("compact uint16 column %q selected %d rows, want %d", name, got, n)
+		}
+		out.Validity = compactValidity(out.Validity, v.Validity, rows)
+		out.Encoding = v.Encoding
+		dst.Uint16s[name] = out
+	}
+	for name, v := range src.Float32s {
+		out := ensureF32(dst.Float32s[name], n)
+		if got := kernels.CompactFloat32(v.Values, selection, out.Values); got != n {
+			return fmt.Errorf("compact float32 column %q selected %d rows, want %d", name, got, n)
+		}
+		out.Validity = compactValidity(out.Validity, v.Validity, rows)
+		out.Encoding = v.Encoding
+		dst.Float32s[name] = out
+	}
 	for name, v := range src.Int64s {
 		out := ensureI64(dst.Int64s[name], n)
 		if got := kernels.CompactInt64(v.Values, selection, out.Values); got != n {
@@ -217,4 +262,64 @@ func ensureU32Slice(v []uint32, n int) []uint32 {
 		return make([]uint32, n)
 	}
 	return v[:n]
+}
+
+func ensureI8(v *memory.Int8Vector, n int) *memory.Int8Vector {
+	if v == nil {
+		v = &memory.Int8Vector{}
+	}
+	if cap(v.Values) < n {
+		v.Values = make([]int8, n)
+	} else {
+		v.Values = v.Values[:n]
+	}
+	return v
+}
+
+func ensureI16(v *memory.Int16Vector, n int) *memory.Int16Vector {
+	if v == nil {
+		v = &memory.Int16Vector{}
+	}
+	if cap(v.Values) < n {
+		v.Values = make([]int16, n)
+	} else {
+		v.Values = v.Values[:n]
+	}
+	return v
+}
+
+func ensureU8(v *memory.Uint8Vector, n int) *memory.Uint8Vector {
+	if v == nil {
+		v = &memory.Uint8Vector{}
+	}
+	if cap(v.Values) < n {
+		v.Values = make([]uint8, n)
+	} else {
+		v.Values = v.Values[:n]
+	}
+	return v
+}
+
+func ensureU16(v *memory.Uint16Vector, n int) *memory.Uint16Vector {
+	if v == nil {
+		v = &memory.Uint16Vector{}
+	}
+	if cap(v.Values) < n {
+		v.Values = make([]uint16, n)
+	} else {
+		v.Values = v.Values[:n]
+	}
+	return v
+}
+
+func ensureF32(v *memory.Float32Vector, n int) *memory.Float32Vector {
+	if v == nil {
+		v = &memory.Float32Vector{}
+	}
+	if cap(v.Values) < n {
+		v.Values = make([]float32, n)
+	} else {
+		v.Values = v.Values[:n]
+	}
+	return v
 }

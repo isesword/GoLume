@@ -51,6 +51,10 @@ func (r *reader) ReadPartition(ctx context.Context, p source.Partition, dst *mem
 
 func bindTyped(dst *memory.Batch, b binding, arr arrow.Array, partition int, validity memory.Bitmap) (bool, error) {
 	switch a := arr.(type) {
+	case *array.Int8:
+		dst.Int8s[b.name] = &memory.Int8Vector{Values: a.Values(), Validity: validity, Encoding: b.field.Encoding}
+	case *array.Int16:
+		dst.Int16s[b.name] = &memory.Int16Vector{Values: a.Values(), Validity: validity, Encoding: b.field.Encoding}
 	case *array.Int32:
 		dst.Int32s[b.name] = &memory.Int32Vector{Values: a.Values(), Validity: validity, Encoding: b.field.Encoding}
 	case *array.Int64:
@@ -61,24 +65,18 @@ func bindTyped(dst *memory.Batch, b binding, arr arrow.Array, partition int, val
 		dst.Uint64s[b.name] = &memory.Uint64Vector{Values: a.Values(), Validity: validity, Encoding: b.field.Encoding}
 	case *array.Float64:
 		dst.Float64s[b.name] = &memory.Float64Vector{Values: a.Values(), Validity: validity, Encoding: b.field.Encoding}
-	case *array.Int8, *array.Int16, *array.Date32, *array.Time32:
+	case *array.Date32, *array.Time32:
 		if partition < len(b.i32) && b.i32[partition] != nil {
 			dst.Int32s[b.name] = &memory.Int32Vector{Values: b.i32[partition], Validity: validity, Encoding: b.field.Encoding}
 		} else {
 			return false, nil
 		}
-	case *array.Uint8, *array.Uint16:
-		if partition < len(b.u32) && b.u32[partition] != nil {
-			dst.Uint32s[b.name] = &memory.Uint32Vector{Values: b.u32[partition], Validity: validity, Encoding: b.field.Encoding}
-		} else {
-			return false, nil
-		}
+	case *array.Uint8:
+		dst.Uint8s[b.name] = &memory.Uint8Vector{Values: a.Values(), Validity: validity, Encoding: b.field.Encoding}
+	case *array.Uint16:
+		dst.Uint16s[b.name] = &memory.Uint16Vector{Values: a.Values(), Validity: validity, Encoding: b.field.Encoding}
 	case *array.Float32:
-		if partition < len(b.f64) && b.f64[partition] != nil {
-			dst.Float64s[b.name] = &memory.Float64Vector{Values: b.f64[partition], Validity: validity, Encoding: b.field.Encoding}
-		} else {
-			return false, nil
-		}
+		dst.Float32s[b.name] = &memory.Float32Vector{Values: a.Values(), Validity: validity, Encoding: b.field.Encoding}
 	case *array.Date64, *array.Timestamp, *array.Time64, *array.Duration:
 		if partition < len(b.i64) && b.i64[partition] != nil {
 			dst.Int64s[b.name] = &memory.Int64Vector{Values: b.i64[partition], Validity: validity, Encoding: b.field.Encoding}

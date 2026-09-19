@@ -77,10 +77,15 @@ type scalarRegister struct {
 	typ      memory.DataType
 	validity memory.Bitmap
 
+	i8  []int8
+	i16 []int16
 	i32 []int32
 	i64 []int64
+	u8  []uint8
+	u16 []uint16
 	u32 []uint32
 	u64 []uint64
+	f32 []float32
 	f64 []float64
 
 	strView *memory.StringViewVector
@@ -390,10 +395,15 @@ func (p ProjectionProgram) Evaluate(batch *memory.Batch, w *ScalarWorkspace, ker
 // one specialized vector field is non-nil according to Type.
 type ScalarValue struct {
 	Type             memory.DataType
+	Int8             *memory.Int8Vector
+	Int16            *memory.Int16Vector
 	Int32            *memory.Int32Vector
 	Int64            *memory.Int64Vector
+	Uint8            *memory.Uint8Vector
+	Uint16           *memory.Uint16Vector
 	Uint32           *memory.Uint32Vector
 	Uint64           *memory.Uint64Vector
+	Float32          *memory.Float32Vector
 	Float64          *memory.Float64Vector
 	String           *memory.StringViewVector
 	DictionaryString *memory.DictionaryStringVector
@@ -403,6 +413,23 @@ type ScalarValue struct {
 
 func scalarValue(r *scalarRegister, rows int) ScalarValue {
 	v := ScalarValue{Type: r.typ}
+	switch r.typ {
+	case memory.TypeInt8:
+		v.Int8 = &memory.Int8Vector{Values: r.i8[:rows], Validity: r.validity, Encoding: memory.EncodingPlain}
+		return v
+	case memory.TypeInt16:
+		v.Int16 = &memory.Int16Vector{Values: r.i16[:rows], Validity: r.validity, Encoding: memory.EncodingPlain}
+		return v
+	case memory.TypeUint8:
+		v.Uint8 = &memory.Uint8Vector{Values: r.u8[:rows], Validity: r.validity, Encoding: memory.EncodingPlain}
+		return v
+	case memory.TypeUint16:
+		v.Uint16 = &memory.Uint16Vector{Values: r.u16[:rows], Validity: r.validity, Encoding: memory.EncodingPlain}
+		return v
+	case memory.TypeFloat32:
+		v.Float32 = &memory.Float32Vector{Values: r.f32[:rows], Validity: r.validity, Encoding: memory.EncodingPlain}
+		return v
+	}
 	switch familyOf(r.typ) {
 	case familyI32:
 		v.Int32 = &memory.Int32Vector{Values: r.i32[:rows], Validity: r.validity, Encoding: memory.EncodingPlain}
@@ -543,6 +570,43 @@ func evaluateInstructions(instructions []ScalarInstruction, batch *memory.Batch,
 
 func bindScalarColumn(r *scalarRegister, batch *memory.Batch, name string, typ memory.DataType) error {
 	r.constant = false
+	switch typ {
+	case memory.TypeInt8:
+		v, err := batch.Int8(name)
+		if err != nil {
+			return err
+		}
+		r.i8, r.validity = v.Values, v.Validity
+		return nil
+	case memory.TypeInt16:
+		v, err := batch.Int16(name)
+		if err != nil {
+			return err
+		}
+		r.i16, r.validity = v.Values, v.Validity
+		return nil
+	case memory.TypeUint8:
+		v, err := batch.Uint8(name)
+		if err != nil {
+			return err
+		}
+		r.u8, r.validity = v.Values, v.Validity
+		return nil
+	case memory.TypeUint16:
+		v, err := batch.Uint16(name)
+		if err != nil {
+			return err
+		}
+		r.u16, r.validity = v.Values, v.Validity
+		return nil
+	case memory.TypeFloat32:
+		v, err := batch.Float32(name)
+		if err != nil {
+			return err
+		}
+		r.f32, r.validity = v.Values, v.Validity
+		return nil
+	}
 	switch familyOf(typ) {
 	case familyI32:
 		v, err := batch.Int32(name)
@@ -680,6 +744,22 @@ func ensureI32(r *scalarRegister, rows int) []int32 {
 	}
 	return r.i32
 }
+func ensureI8(r *scalarRegister, rows int) []int8 {
+	if cap(r.i8) < rows {
+		r.i8 = make([]int8, rows)
+	} else {
+		r.i8 = r.i8[:rows]
+	}
+	return r.i8
+}
+func ensureI16(r *scalarRegister, rows int) []int16 {
+	if cap(r.i16) < rows {
+		r.i16 = make([]int16, rows)
+	} else {
+		r.i16 = r.i16[:rows]
+	}
+	return r.i16
+}
 func ensureI64(r *scalarRegister, rows int) []int64 {
 	if cap(r.i64) < rows {
 		r.i64 = make([]int64, rows)
@@ -696,6 +776,22 @@ func ensureU32(r *scalarRegister, rows int) []uint32 {
 	}
 	return r.u32
 }
+func ensureU8(r *scalarRegister, rows int) []uint8 {
+	if cap(r.u8) < rows {
+		r.u8 = make([]uint8, rows)
+	} else {
+		r.u8 = r.u8[:rows]
+	}
+	return r.u8
+}
+func ensureU16(r *scalarRegister, rows int) []uint16 {
+	if cap(r.u16) < rows {
+		r.u16 = make([]uint16, rows)
+	} else {
+		r.u16 = r.u16[:rows]
+	}
+	return r.u16
+}
 func ensureU64(r *scalarRegister, rows int) []uint64 {
 	if cap(r.u64) < rows {
 		r.u64 = make([]uint64, rows)
@@ -711,6 +807,14 @@ func ensureF64(r *scalarRegister, rows int) []float64 {
 		r.f64 = r.f64[:rows]
 	}
 	return r.f64
+}
+func ensureF32(r *scalarRegister, rows int) []float32 {
+	if cap(r.f32) < rows {
+		r.f32 = make([]float32, rows)
+	} else {
+		r.f32 = r.f32[:rows]
+	}
+	return r.f32
 }
 func ensureOffsets(r *scalarRegister, rows int) []uint32 {
 	if cap(r.offsets) < rows+1 {
@@ -831,7 +935,7 @@ func evalBinary(out, a, b *scalarRegister, op Op, result memory.DataType, rows i
 		}
 	case familyF64:
 		values := ensureF64(out, rows)
-		if familyOf(a.typ) == familyF64 && familyOf(b.typ) == familyF64 {
+		if a.typ == memory.TypeFloat64 && b.typ == memory.TypeFloat64 {
 			arithmetic, ok := physicalArithmeticOp(op)
 			if !ok {
 				return fmt.Errorf("operator %s does not produce float64", op)
@@ -1569,6 +1673,70 @@ func evalCast(out, in *scalarRegister, from, to memory.DataType, rows int) error
 	if from == memory.TypeString && (to == memory.TypeTimestamp || to == memory.TypeDuration) {
 		return evalStringTemporalCast(out, in, to, rows)
 	}
+	// Narrow numeric targets retain their native physical width. This matters
+	// for direct projections and keeps explicit casts consistent with input
+	// column storage instead of routing through the legacy widened families.
+	switch to {
+	case memory.TypeInt8, memory.TypeInt16:
+		for row := 0; row < rows; row++ {
+			if !isValidRegister(out, row) {
+				continue
+			}
+			v, err := registerInt64(in, row)
+			if err != nil {
+				return err
+			}
+			if (to == memory.TypeInt8 && (v < math.MinInt8 || v > math.MaxInt8)) || (to == memory.TypeInt16 && (v < math.MinInt16 || v > math.MaxInt16)) {
+				return fmt.Errorf("cast %s to %s overflows at row %d", from, to, row)
+			}
+			if to == memory.TypeInt8 {
+				ensureI8(out, rows)[row] = int8(v)
+			} else {
+				ensureI16(out, rows)[row] = int16(v)
+			}
+		}
+		return nil
+	case memory.TypeUint8, memory.TypeUint16:
+		for row := 0; row < rows; row++ {
+			if !isValidRegister(out, row) {
+				continue
+			}
+			v, err := registerUint64(in, row)
+			if err != nil {
+				return err
+			}
+			max := uint64(math.MaxUint16)
+			if to == memory.TypeUint8 {
+				max = math.MaxUint8
+			}
+			if v > max {
+				return fmt.Errorf("cast %s to %s overflows at row %d", from, to, row)
+			}
+			if to == memory.TypeUint8 {
+				ensureU8(out, rows)[row] = uint8(v)
+			} else {
+				ensureU16(out, rows)[row] = uint16(v)
+			}
+		}
+		return nil
+	case memory.TypeFloat32:
+		values := ensureF32(out, rows)
+		for row := 0; row < rows; row++ {
+			if !isValidRegister(out, row) {
+				values[row] = 0
+				continue
+			}
+			v, err := registerFloat64(in, row)
+			if err != nil {
+				return err
+			}
+			if math.IsInf(v, 0) || math.Abs(v) > math.MaxFloat32 {
+				return fmt.Errorf("cast %s to %s overflows at row %d", from, to, row)
+			}
+			values[row] = float32(v)
+		}
+		return nil
+	}
 	switch familyOf(to) {
 	case familyI32:
 		values := ensureI32(out, rows)
@@ -1727,11 +1895,25 @@ func registerInt64(r *scalarRegister, row int) (int64, error) {
 	}
 	switch familyOf(r.typ) {
 	case familyI32:
-		return int64(r.i32[row]), nil
+		switch r.typ {
+		case memory.TypeInt8:
+			return int64(r.i8[row]), nil
+		case memory.TypeInt16:
+			return int64(r.i16[row]), nil
+		default:
+			return int64(r.i32[row]), nil
+		}
 	case familyI64:
 		return r.i64[row], nil
 	case familyU32:
-		return int64(r.u32[row]), nil
+		switch r.typ {
+		case memory.TypeUint8:
+			return int64(r.u8[row]), nil
+		case memory.TypeUint16:
+			return int64(r.u16[row]), nil
+		default:
+			return int64(r.u32[row]), nil
+		}
 	case familyU64:
 		if r.u64[row] > math.MaxInt64 {
 			return 0, fmt.Errorf("uint64 value overflows int64 at row %d", row)
@@ -1762,17 +1944,25 @@ func registerUint64(r *scalarRegister, row int) (uint64, error) {
 	}
 	switch familyOf(r.typ) {
 	case familyI32:
-		if r.i32[row] < 0 {
+		v, _ := registerInt64(r, row)
+		if v < 0 {
 			return 0, fmt.Errorf("negative value cannot convert to uint64 at row %d", row)
 		}
-		return uint64(r.i32[row]), nil
+		return uint64(v), nil
 	case familyI64:
 		if r.i64[row] < 0 {
 			return 0, fmt.Errorf("negative value cannot convert to uint64 at row %d", row)
 		}
 		return uint64(r.i64[row]), nil
 	case familyU32:
-		return uint64(r.u32[row]), nil
+		switch r.typ {
+		case memory.TypeUint8:
+			return uint64(r.u8[row]), nil
+		case memory.TypeUint16:
+			return uint64(r.u16[row]), nil
+		default:
+			return uint64(r.u32[row]), nil
+		}
 	case familyU64:
 		return r.u64[row], nil
 	case familyF64:
@@ -1794,14 +1984,25 @@ func registerFloat64(r *scalarRegister, row int) (float64, error) {
 	}
 	switch familyOf(r.typ) {
 	case familyI32:
-		return float64(r.i32[row]), nil
+		v, _ := registerInt64(r, row)
+		return float64(v), nil
 	case familyI64:
 		return float64(r.i64[row]), nil
 	case familyU32:
-		return float64(r.u32[row]), nil
+		switch r.typ {
+		case memory.TypeUint8:
+			return float64(r.u8[row]), nil
+		case memory.TypeUint16:
+			return float64(r.u16[row]), nil
+		default:
+			return float64(r.u32[row]), nil
+		}
 	case familyU64:
 		return float64(r.u64[row]), nil
 	case familyF64:
+		if r.typ == memory.TypeFloat32 {
+			return float64(r.f32[row]), nil
+		}
 		return r.f64[row], nil
 	default:
 		return 0, fmt.Errorf("type %s cannot be converted to float64", r.typ)

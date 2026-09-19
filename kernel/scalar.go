@@ -240,6 +240,14 @@ func scalarInt32Compact(values []int32, selection memory.Bitmap, out []int32) in
 	return scalarCompact(values, selection, out)
 }
 
+func scalarInt8Compact(values []int8, selection memory.Bitmap, out []int8) int {
+	return scalarCompact(values, selection, out)
+}
+
+func scalarInt16Compact(values []int16, selection memory.Bitmap, out []int16) int {
+	return scalarCompact(values, selection, out)
+}
+
 func scalarInt64Compact(values []int64, selection memory.Bitmap, out []int64) int {
 	return scalarCompact(values, selection, out)
 }
@@ -248,10 +256,22 @@ func scalarUint32Compact(values []uint32, selection memory.Bitmap, out []uint32)
 	return scalarCompact(values, selection, out)
 }
 
+func scalarUint8Compact(values []uint8, selection memory.Bitmap, out []uint8) int {
+	return scalarCompact(values, selection, out)
+}
+
+func scalarUint16Compact(values []uint16, selection memory.Bitmap, out []uint16) int {
+	return scalarCompact(values, selection, out)
+}
+
 func scalarUint64Compact(values []uint64, selection memory.Bitmap, out []uint64) int {
 	return scalarCompact(values, selection, out)
 }
 
 func scalarFloat64Compact(values []float64, selection memory.Bitmap, out []float64) int {
+	return scalarCompact(values, selection, out)
+}
+
+func scalarFloat32Compact(values []float32, selection memory.Bitmap, out []float32) int {
 	return scalarCompact(values, selection, out)
 }

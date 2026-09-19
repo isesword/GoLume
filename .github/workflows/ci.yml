@@ -1,0 +1,77 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  validate:
+    name: validate (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.27'
+          cache: true
+
+      - name: GoDoc check
+        run: go run ./tools/checkgodoc .
+
+      - name: SIMD codegen check
+        run: GOEXPERIMENT=simd go run ./internal/cmd/gensimd -check
+        shell: bash
+
+      - name: Kernel registry consistency
+        run: GOEXPERIMENT=simd go run ./tools/kernelgate check
+        shell: bash
+
+      - name: SIMD structure check
+        run: bash scripts/check_simd_structure.sh
+
+      - name: Test (scalar)
+        run: go test ./...
+
+      - name: Test (SIMD)
+        run: GOEXPERIMENT=simd go test ./...
+        shell: bash
+
+      - name: Test (SIMD disabled at runtime)
+        run: GOEXPERIMENT=simd GODEBUG=simd=0 go test ./kernel ./expr ./physical ./engine ./lazy ./optimizer ./memory ./source/arrowrecord
+        shell: bash
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Test (race, SIMD)
+        run: GOEXPERIMENT=simd go test -race ./engine ./hashagg ./join ./radix ./scheduler ./lazy ./physical ./optimizer ./memory ./source/parquet ./source/arrowrecord
+        shell: bash
+
+      - name: Cross-compile (linux/amd64, SIMD)
+        if: runner.os == 'Linux'
+        run: GOOS=linux GOARCH=amd64 GOEXPERIMENT=simd go build ./...
+        shell: bash
+
+      - name: Test (SIMD +256, if supported)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$(go env GOARCH)" == "amd64" ]]; then
+            BITS="$(GOEXPERIMENT=simd go run ./cmd/kernel-info -mode simd | awk '/compare-int64/ {print $3}' | cut -d= -f2)"
+            if [[ -n "$BITS" ]] && (( BITS >= 256 )); then
+              GOEXPERIMENT=simd GODEBUG=simd=+256 go test ./kernel ./expr ./engine ./radix
+            else
+              echo "compare-int64 width ${BITS:-unknown} < 256, skipping +256 gate"
+            fi
+          fi

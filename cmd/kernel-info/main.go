@@ -2,38 +2,86 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"gocolumn/kernel"
+	"io"
 	"os"
 )
 
 func main() {
-	modeName := flag.String("mode", "auto", "kernel dispatch mode: scalar, auto, or simd")
-	flag.Parse()
+	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr))
+}
+
+type capabilityReport struct {
+	ID               string `json:"id"`
+	SelectedBackend  string `json:"selected_backend"`
+	AvailableBackend string `json:"available_backend"`
+	AutoAdmitted     bool   `json:"auto_admitted"`
+	VectorBits       int    `json:"vector_bits"`
+	HardwareSIMD     bool   `json:"hardware_simd"`
+	Emulated         bool   `json:"emulated"`
+}
+
+type report struct {
+	Arch    string             `json:"arch"`
+	Mode    string             `json:"mode"`
+	Kernels []capabilityReport `json:"kernels"`
+}
+
+func run(args []string, stdout, stderr io.Writer) int {
+	flags := flag.NewFlagSet("kernel-info", flag.ContinueOnError)
+	flags.SetOutput(stderr)
+	modeName := flags.String("mode", "auto", "kernel dispatch mode: scalar, auto, or simd")
+	jsonOutput := flags.Bool("json", false, "emit the selected per-kernel capabilities as JSON")
+	if err := flags.Parse(args); err != nil {
+		return 2
+	}
 	mode, err := parseMode(*modeName)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(2)
+		fmt.Fprintln(stderr, err)
+		return 2
 	}
 	set := kernel.New(mode)
-	fmt.Printf("arch=%s mode=%s\n", set.Arch(), set.Mode())
+	autoSet := kernel.New(kernel.ModeAuto)
+	forcedSet := kernel.New(kernel.ModeSIMD)
+	entries := make([]capabilityReport, 0, len(kernel.KernelIDs()))
 	for _, id := range kernel.KernelIDs() {
 		capability, ok := set.Capability(id)
 		if !ok {
-			fmt.Fprintf(os.Stderr, "missing capability for %s\n", id)
-			os.Exit(1)
+			fmt.Fprintf(stderr, "missing capability for %s\n", id)
+			return 1
 		}
-		state := "scalar"
-		if capability.Backend != "scalar" {
-			state = "forced"
-			if mode == kernel.ModeAuto {
-				state = "auto-approved"
-			}
+		autoCapability, autoOK := autoSet.Capability(id)
+		forcedCapability, forcedOK := forcedSet.Capability(id)
+		if !autoOK || !forcedOK {
+			fmt.Fprintf(stderr, "missing comparison capability for %s\n", id)
+			return 1
 		}
-		fmt.Printf("%-30s backend=%-28s vector=%3d hardware=%-5t emulated=%-5t state=%s\n",
-			id, capability.Backend, capability.VectorBits, capability.HardwareSIMD, capability.Emulated, state)
+		entries = append(entries, capabilityReport{
+			ID:               id.String(),
+			SelectedBackend:  capability.Backend,
+			VectorBits:       capability.VectorBits,
+			HardwareSIMD:     capability.HardwareSIMD,
+			Emulated:         capability.Emulated,
+			AvailableBackend: forcedCapability.Backend,
+			AutoAdmitted:     autoCapability.Backend != "scalar",
+		})
 	}
+	if *jsonOutput {
+		if err := json.NewEncoder(stdout).Encode(report{Arch: set.Arch(), Mode: set.Mode().String(), Kernels: entries}); err != nil {
+			fmt.Fprintln(stderr, err)
+			return 1
+		}
+		return 0
+	}
+	fmt.Fprintf(stdout, "arch=%s mode=%s\n", set.Arch(), set.Mode())
+	for _, entry := range entries {
+		fmt.Fprintf(stdout, "%-30s backend=%-28s vector=%3d hardware=%-5t emulated=%-5t\n",
+			entry.ID, entry.SelectedBackend, entry.VectorBits, entry.HardwareSIMD, entry.Emulated)
+	}
+	return 0
 }
 
 func parseMode(name string) (kernel.Mode, error) {

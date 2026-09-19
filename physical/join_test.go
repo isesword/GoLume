@@ -62,6 +62,54 @@ func TestJoinSourceFeedsColumnarPayload(t *testing.T) {
 	}
 }
 
+func TestJoinSourceNativeInt8KeyAndPayload(t *testing.T) {
+	leftSchema := memory.NewSchema(memory.Field{Name: "id", Type: memory.TypeInt8}, memory.Field{Name: "amount", Type: memory.TypeInt64})
+	lb := memory.NewBatch()
+	lb.Int8s["id"] = &memory.Int8Vector{Values: []int8{1, 2, 2}}
+	lb.Int64s["amount"] = &memory.Int64Vector{Values: []int64{10, 20, 30}}
+	lb.Reset(3)
+	left, err := inmemory.New(leftSchema, lb)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rightSchema := memory.NewSchema(memory.Field{Name: "id", Type: memory.TypeInt8}, memory.Field{Name: "bonus", Type: memory.TypeFloat32})
+	rb := memory.NewBatch()
+	rb.Int8s["id"] = &memory.Int8Vector{Values: []int8{2, 2}}
+	rb.Float32s["bonus"] = &memory.Float32Vector{Values: []float32{1.5, 2.5}}
+	rb.Reset(2)
+	right, err := inmemory.New(rightSchema, rb)
+	if err != nil {
+		t.Fatal(err)
+	}
+	kernels := kernel.New(kernel.ModeScalar)
+	js, err := NewJoinSource(context.Background(), left, right, join.Inner, []JoinKey{{Left: "id", Right: "id"}}, "_r", memory.NewBudgetManager(1<<20), kernels)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer js.Close()
+	parts, _ := js.Partitions(context.Background())
+	r, err := openTestReader(context.Background(), js, source.ReadOptions{Kernels: kernels})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer r.Close()
+	out := memory.NewBatch()
+	if err := r.ReadPartition(context.Background(), parts[0], out); err != nil {
+		t.Fatal(err)
+	}
+	ids, err := out.Int8("id")
+	if err != nil {
+		t.Fatal(err)
+	}
+	bonus, err := out.Float32("bonus")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out.Rows != 4 || len(ids.Values) != 4 || len(bonus.Values) != 4 {
+		t.Fatalf("rows=%d ids=%v bonus=%v", out.Rows, ids.Values, bonus.Values)
+	}
+}
+
 type countingSource struct {
 	source.Source
 	reads int

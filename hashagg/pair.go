@@ -1,6 +1,7 @@
 package hashagg
 
 import (
+	"fmt"
 	"gocolumn/aggregate"
 	"gocolumn/internal/hashmix"
 	"gocolumn/memory"
@@ -214,6 +215,59 @@ func (t *PairTable) AggregateSelected(keys []Key128, vals []int64, sel memory.Bi
 		}
 	}
 	return out
+}
+
+// AggregateSelectedNullableValues aggregates selected pair keys while
+// preserving independent key-component and aggregate-value validity. A nil
+// key mask means both components are valid for every row; a nil value
+// validity bitmap means every selected value is non-NULL. Invalid key
+// components are normalized by TryAddNullableValue, so their payload bytes do
+// not create distinct SQL groups.
+func (t *PairTable) AggregateSelectedNullableValues(keys []Key128, keyValidity []uint8, vals []int64, valueValidity memory.Bitmap, sel memory.Bitmap) (Summary, error) {
+	if len(vals) != len(keys) {
+		return Summary{}, fmt.Errorf("pair aggregate: key/value length mismatch: keys=%d values=%d", len(keys), len(vals))
+	}
+	if keyValidity != nil && len(keyValidity) != len(keys) {
+		return Summary{}, fmt.Errorf("pair aggregate: key validity length mismatch: keys=%d validity=%d", len(keys), len(keyValidity))
+	}
+	if valueValidity != nil && len(valueValidity) < memory.WordsFor(len(keys)) {
+		return Summary{}, fmt.Errorf("pair aggregate: value validity bitmap too short: words=%d got=%d", memory.WordsFor(len(keys)), len(valueValidity))
+	}
+	var out Summary
+	for wi, word := range sel {
+		base := wi << 6
+		for word != 0 {
+			bit := bits.TrailingZeros64(word)
+			i := base + bit
+			if i >= len(keys) {
+				break
+			}
+			mask := uint8(3)
+			if keyValidity != nil {
+				mask = keyValidity[i] & 3
+			}
+			valueValid := valueValidity == nil || memory.IsSet(valueValidity, i)
+			created, err := t.TryAddNullableValue(keys[i], mask, vals[i], valueValid)
+			if err != nil {
+				return out, err
+			}
+			if created {
+				out.Groups++
+			}
+			if valueValid {
+				out.Checksum += vals[i]
+			}
+			out.Rows++
+			word &= word - 1
+		}
+	}
+	return out, nil
+}
+
+// AggregateSelectedNullable is the common nullable-key shorthand for pair
+// keys whose aggregate values are all non-NULL.
+func (t *PairTable) AggregateSelectedNullable(keys []Key128, keyValidity []uint8, vals []int64, sel memory.Bitmap) (Summary, error) {
+	return t.AggregateSelectedNullableValues(keys, keyValidity, vals, nil, sel)
 }
 
 // Materialize appends all current groups to dst.

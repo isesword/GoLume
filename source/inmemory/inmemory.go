@@ -177,6 +177,21 @@ func (r *reader) ReadPartition(ctx context.Context, p source.Partition, dst *mem
 	src := r.s.batches[p.ID]
 	dst.ClearColumns()
 	dst.Rows = src.Rows
+	for k, v := range src.Int8s {
+		dst.Int8s[k] = v
+	}
+	for k, v := range src.Int16s {
+		dst.Int16s[k] = v
+	}
+	for k, v := range src.Uint8s {
+		dst.Uint8s[k] = v
+	}
+	for k, v := range src.Uint16s {
+		dst.Uint16s[k] = v
+	}
+	for k, v := range src.Float32s {
+		dst.Float32s[k] = v
+	}
 	if len(r.s.projection) == 0 {
 		for k, v := range src.Int64s {
 			dst.Int64s[k] = v
@@ -211,6 +226,26 @@ func (r *reader) ReadPartition(ctx context.Context, p source.Partition, dst *mem
 		return nil
 	}
 	for _, k := range r.s.projection {
+		if v, ok := src.Int8s[k]; ok {
+			dst.Int8s[k] = v
+			continue
+		}
+		if v, ok := src.Int16s[k]; ok {
+			dst.Int16s[k] = v
+			continue
+		}
+		if v, ok := src.Uint8s[k]; ok {
+			dst.Uint8s[k] = v
+			continue
+		}
+		if v, ok := src.Uint16s[k]; ok {
+			dst.Uint16s[k] = v
+			continue
+		}
+		if v, ok := src.Float32s[k]; ok {
+			dst.Float32s[k] = v
+			continue
+		}
 		if v, ok := src.Int64s[k]; ok {
 			dst.Int64s[k] = v
 			continue

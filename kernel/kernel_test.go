@@ -5,8 +5,69 @@ import (
 	"gocolumn/memory"
 	"math"
 	"math/rand/v2"
+	"reflect"
 	"testing"
 )
+
+func TestFloat32ComparisonScalarSemantics(t *testing.T) {
+	values := []float32{float32(math.NaN()), -0, 1.5, 2.5, float32(math.Inf(1))}
+	valid := memory.Bitmap{0b11101}
+	for _, op := range []CompareOp{CompareGT, CompareGE, CompareLT, CompareLE, CompareEQ} {
+		out := make(memory.Bitmap, memory.WordsFor(len(values)))
+		got := New(ModeScalar).CompareFloat32(values, valid, out, 1.5, op)
+		want := 0
+		ref := make(memory.Bitmap, len(out))
+		for i, v := range values {
+			if !memory.IsSet(valid, i) {
+				continue
+			}
+			match := false
+			switch op {
+			case CompareGT:
+				match = v > 1.5
+			case CompareGE:
+				match = v >= 1.5
+			case CompareLT:
+				match = v < 1.5
+			case CompareLE:
+				match = v <= 1.5
+			case CompareEQ:
+				match = v == 1.5
+			}
+			if match {
+				memory.Set(ref, i)
+				want++
+			}
+		}
+		if got != want || !reflect.DeepEqual(out, ref) {
+			t.Fatalf("op %s got (%d,%v), want (%d,%v)", op, got, out, want, ref)
+		}
+	}
+}
+
+func TestNativeWidthCompactionPreservesSelectionOrder(t *testing.T) {
+	sel := memory.Bitmap{0b101101}
+	s := New(ModeScalar)
+	if got := s.CompactInt8([]int8{-3, -2, -1, 0, 1, 2}, sel, make([]int8, 4)); got != 4 {
+		t.Fatalf("int8 count=%d", got)
+	}
+	i16 := make([]int16, 4)
+	if got := s.CompactInt16([]int16{1, 2, 3, 4, 5, 6}, sel, i16); got != 4 || !reflect.DeepEqual(i16, []int16{1, 3, 4, 6}) {
+		t.Fatalf("int16=(%d,%v)", got, i16)
+	}
+	u8 := make([]uint8, 4)
+	if got := s.CompactUint8([]uint8{1, 2, 3, 4, 5, 6}, sel, u8); got != 4 || !reflect.DeepEqual(u8, []uint8{1, 3, 4, 6}) {
+		t.Fatalf("uint8=(%d,%v)", got, u8)
+	}
+	u16 := make([]uint16, 4)
+	if got := s.CompactUint16([]uint16{1, 2, 3, 4, 5, 6}, sel, u16); got != 4 || !reflect.DeepEqual(u16, []uint16{1, 3, 4, 6}) {
+		t.Fatalf("uint16=(%d,%v)", got, u16)
+	}
+	f32 := make([]float32, 4)
+	if got := s.CompactFloat32([]float32{1, 2, 3, 4, 5, 6}, sel, f32); got != 4 || !reflect.DeepEqual(f32, []float32{1, 3, 4, 6}) {
+		t.Fatalf("float32=(%d,%v)", got, f32)
+	}
+}
 
 func TestKernelCapabilitiesAreExactAndAutoIsAllowlisted(t *testing.T) {
 	auto := New(ModeAuto)
@@ -47,6 +108,36 @@ func TestKernelCapabilitiesAreExactAndAutoIsAllowlisted(t *testing.T) {
 		capability, ok := forced.Capability(id)
 		if !ok || capability.Backend != "scalar" {
 			t.Fatalf("forced scalar fallback %s=%+v ok=%t", id, capability, ok)
+		}
+	}
+}
+
+func TestNativeCompactKernelIDsHaveScalarCapabilities(t *testing.T) {
+	s := New(ModeScalar)
+	for _, id := range []KernelID{KernelCompactInt8, KernelCompactInt16, KernelCompactInt32, KernelCompactInt64, KernelCompactUint8, KernelCompactUint16, KernelCompactUint32, KernelCompactUint64, KernelCompactFloat32, KernelCompactFloat64} {
+		capability, ok := s.Capability(id)
+		if !ok || capability.Backend != "scalar" || capability.HardwareSIMD || capability.VectorBits != 0 {
+			t.Fatalf("compact capability %s=%+v ok=%t", id, capability, ok)
+		}
+	}
+}
+
+func TestKernelIDsHaveNoDuplicatePhysicalEntries(t *testing.T) {
+	seen := make(map[KernelID]struct{})
+	for _, id := range KernelIDs() {
+		if _, ok := seen[id]; ok {
+			t.Fatalf("duplicate kernel id %s", id)
+		}
+		seen[id] = struct{}{}
+	}
+}
+
+func TestStringMatchKernelIDsHaveScalarCapabilities(t *testing.T) {
+	set := New(ModeScalar)
+	for _, id := range []KernelID{KernelStringEqual, KernelStringPrefix, KernelStringSuffix, KernelStringContains} {
+		capability, ok := set.Capability(id)
+		if !ok || capability.Backend != "scalar" {
+			t.Fatalf("id=%s capability=%+v ok=%t", id, capability, ok)
 		}
 	}
 }
@@ -579,6 +670,32 @@ func TestUTF8LengthASCIIUnicodeAndMalformedInputs(t *testing.T) {
 				t.Fatalf("op=%s literal=%d got=(%d,%x) want=(%d,%x)", op, literal, gn, got, wn, want)
 			}
 		}
+	}
+}
+
+func TestStringMatchKernelPreservesValidityAndTail(t *testing.T) {
+	offsets := []uint32{0, 5, 9, 14, 14}
+	data := []byte("alphabetaomega")
+	valid := memory.Bitmap{0b1011}
+	wants := map[StringMatchOp]uint64{StringEqual: 0, StringPrefix: 1, StringSuffix: 3, StringContains: 3}
+	for _, op := range []StringMatchOp{StringEqual, StringPrefix, StringSuffix, StringContains} {
+		got := make(memory.Bitmap, 1)
+		selected := New(ModeScalar).CompareStringMatch(offsets, data, valid, got, []byte("a"), op)
+		if selected != memory.CountBitmap(got) || got[0] != wants[op] {
+			t.Fatalf("op=%s selected=%d bitmap=%x", op, selected, got)
+		}
+	}
+}
+
+func TestStringMatchKernelSharedBufferAndNonZeroOffsets(t *testing.T) {
+	// The offsets address a shared data buffer with a non-zero logical start.
+	data := []byte("prefix|alpha|beta|🙂|suffix")
+	offsets := []uint32{7, 12, 17, 22, 22}
+	valid := memory.Bitmap{0b1111}
+	got := make(memory.Bitmap, 1)
+	selected := New(ModeScalar).CompareStringMatch(offsets, data, valid, got, []byte("a"), StringContains)
+	if selected != 2 || got[0]&3 != 3 || got[0]&4 != 0 {
+		t.Fatalf("selected=%d bitmap=%x", selected, got)
 	}
 }
 

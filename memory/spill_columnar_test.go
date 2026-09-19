@@ -10,6 +10,137 @@ import (
 	"testing"
 )
 
+func TestColumnarRunRoundTripPreservesNativeWidths(t *testing.T) {
+	schema := NewSchema(
+		Field{Name: "i8", Type: TypeInt8, Nullable: true}, Field{Name: "i16", Type: TypeInt16, Nullable: true},
+		Field{Name: "u8", Type: TypeUint8, Nullable: true}, Field{Name: "u16", Type: TypeUint16, Nullable: true},
+		Field{Name: "f32", Type: TypeFloat32, Nullable: true},
+	)
+	b := NewBatch()
+	b.Rows = 3
+	validity := Bitmap{0b101}
+	b.Int8s["i8"] = &Int8Vector{Values: []int8{-1, 99, 2}, Validity: validity}
+	b.Int16s["i16"] = &Int16Vector{Values: []int16{-3, 99, 4}, Validity: validity}
+	b.Uint8s["u8"] = &Uint8Vector{Values: []uint8{5, 99, 6}, Validity: validity}
+	b.Uint16s["u16"] = &Uint16Vector{Values: []uint16{7, 99, 8}, Validity: validity}
+	b.Float32s["f32"] = &Float32Vector{Values: []float32{
+		math.Float32frombits(0x80000000), math.Float32frombits(0x7fc01234), math.Float32frombits(0x7fa00001),
+	}, Validity: validity}
+	engine := NewEngineBudget(1 << 20)
+	q, err := engine.BeginQuery(BudgetOptions{HardLimitBytes: 1 << 20})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := WithQueryBudget(context.Background(), q)
+	encoded, err := EncodeColumnarRun(ctx, schema, b, q.Operator("encode", MemorySpillBuffer))
+	if err != nil {
+		t.Fatal(err)
+	}
+	decoded, err := DecodeColumnarRun(ctx, schema, &RestoredSpill{Object: SpillObject{Codec: ColumnarRunCodec, Payload: encoded.Payload}}, q.Operator("decode", MemoryWorkspace))
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Header plus one validity word and native-width values for every field.
+	const wantPayloadBytes = columnarRunHeader + (4 + 8 + 3) + (4 + 8 + 6) + (4 + 8 + 3) + (4 + 8 + 6) + (4 + 8 + 12)
+	if got := len(encoded.Payload); got != wantPayloadBytes {
+		t.Fatalf("native-width payload bytes=%d want=%d", got, wantPayloadBytes)
+	}
+	if got := decoded.Batch.Int8s["i8"].Values; got[0] != -1 || got[1] != 99 || got[2] != 2 {
+		t.Fatalf("i8=%v", got)
+	}
+	if got := decoded.Batch.Int16s["i16"].Values; got[0] != -3 || got[1] != 99 || got[2] != 4 {
+		t.Fatalf("i16=%v", got)
+	}
+	if got := decoded.Batch.Uint8s["u8"].Values; got[0] != 5 || got[1] != 99 || got[2] != 6 {
+		t.Fatalf("u8=%v", got)
+	}
+	if got := decoded.Batch.Uint16s["u16"].Values; got[0] != 7 || got[1] != 99 || got[2] != 8 {
+		t.Fatalf("u16=%v", got)
+	}
+	for _, name := range []string{"i8", "i16", "u8", "u16", "f32"} {
+		var got Bitmap
+		switch name {
+		case "i8":
+			got = decoded.Batch.Int8s[name].Validity
+		case "i16":
+			got = decoded.Batch.Int16s[name].Validity
+		case "u8":
+			got = decoded.Batch.Uint8s[name].Validity
+		case "u16":
+			got = decoded.Batch.Uint16s[name].Validity
+		case "f32":
+			got = decoded.Batch.Float32s[name].Validity
+		}
+		if len(got) != 1 || got[0] != validity[0] {
+			t.Fatalf("%s validity=%v want=%v", name, got, validity)
+		}
+	}
+	for row, want := range b.Float32s["f32"].Values {
+		if got := math.Float32bits(decoded.Batch.Float32s["f32"].Values[row]); got != math.Float32bits(want) {
+			t.Fatalf("f32 row %d bits=%#08x want=%#08x", row, got, math.Float32bits(want))
+		}
+	}
+	if err := encoded.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := decoded.Close(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestColumnarRunRejectsPreviousInternalLayout(t *testing.T) {
+	schema := NewSchema(Field{Name: "value", Type: TypeInt8})
+	batch := NewBatch()
+	batch.Rows = 1
+	batch.Int8s["value"] = &Int8Vector{Values: []int8{7}}
+	encoded, err := EncodeColumnarRun(context.Background(), schema, batch, NewBudgetManager(1<<20))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer encoded.Close()
+	payload := append([]byte(nil), encoded.Payload...)
+	binary.LittleEndian.PutUint16(payload[len(columnarRunMagic):], 1)
+	manager := NewBudgetManager(1 << 20)
+	_, err = DecodeColumnarRun(context.Background(), schema, &RestoredSpill{Object: SpillObject{Codec: ColumnarRunCodec, Payload: payload}}, manager)
+	if !errors.Is(err, ErrSpillCorrupt) {
+		t.Fatalf("decode previous layout error=%v", err)
+	}
+	if manager.Used() != 0 {
+		t.Fatalf("decode previous layout reservation leak=%d", manager.Used())
+	}
+}
+
+func TestColumnarRunRejectsTruncatedNativeValues(t *testing.T) {
+	schema := NewSchema(
+		Field{Name: "i8", Type: TypeInt8}, Field{Name: "i16", Type: TypeInt16},
+		Field{Name: "u8", Type: TypeUint8}, Field{Name: "u16", Type: TypeUint16},
+		Field{Name: "f32", Type: TypeFloat32},
+	)
+	batch := NewBatch()
+	batch.Rows = 3
+	batch.Int8s["i8"] = &Int8Vector{Values: []int8{1, 2, 3}}
+	batch.Int16s["i16"] = &Int16Vector{Values: []int16{4, 5, 6}}
+	batch.Uint8s["u8"] = &Uint8Vector{Values: []uint8{7, 8, 9}}
+	batch.Uint16s["u16"] = &Uint16Vector{Values: []uint16{10, 11, 12}}
+	batch.Float32s["f32"] = &Float32Vector{Values: []float32{13, 14, 15}}
+	encoded, err := EncodeColumnarRun(context.Background(), schema, batch, NewBudgetManager(1<<20))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer encoded.Close()
+	for cut := columnarRunHeader; cut < len(encoded.Payload); cut++ {
+		manager := NewBudgetManager(1 << 20)
+		payload := encoded.Payload[:cut]
+		_, err := DecodeColumnarRun(context.Background(), schema, &RestoredSpill{Object: SpillObject{Codec: ColumnarRunCodec, Payload: payload}}, manager)
+		if !errors.Is(err, ErrSpillCorrupt) {
+			t.Fatalf("cut=%d decode error=%v", cut, err)
+		}
+		if manager.Used() != 0 {
+			t.Fatalf("cut=%d reservation leak=%d", cut, manager.Used())
+		}
+	}
+}
+
 func TestColumnarRunRoundTripNestedVectorsAndReservations(t *testing.T) {
 	schema, batch := nestedSpillFixture()
 	engine := NewEngineBudget(1 << 20)

@@ -217,6 +217,21 @@ func cloneBatch(src *memory.Batch) (*memory.Batch, error) {
 	}
 	dst := memory.NewBatch()
 	dst.Reset(src.Rows)
+	for k, v := range src.Int8s {
+		dst.Int8s[k] = &memory.Int8Vector{Values: append([]int8(nil), v.Values...), Validity: append(memory.Bitmap(nil), v.Validity...), Encoding: v.Encoding}
+	}
+	for k, v := range src.Int16s {
+		dst.Int16s[k] = &memory.Int16Vector{Values: append([]int16(nil), v.Values...), Validity: append(memory.Bitmap(nil), v.Validity...), Encoding: v.Encoding}
+	}
+	for k, v := range src.Uint8s {
+		dst.Uint8s[k] = &memory.Uint8Vector{Values: append([]uint8(nil), v.Values...), Validity: append(memory.Bitmap(nil), v.Validity...), Encoding: v.Encoding}
+	}
+	for k, v := range src.Uint16s {
+		dst.Uint16s[k] = &memory.Uint16Vector{Values: append([]uint16(nil), v.Values...), Validity: append(memory.Bitmap(nil), v.Validity...), Encoding: v.Encoding}
+	}
+	for k, v := range src.Float32s {
+		dst.Float32s[k] = &memory.Float32Vector{Values: append([]float32(nil), v.Values...), Validity: append(memory.Bitmap(nil), v.Validity...), Encoding: v.Encoding}
+	}
 	for k, v := range src.Int64s {
 		x := &memory.Int64Vector{Values: append([]int64(nil), v.Values...), Validity: append(memory.Bitmap(nil), v.Validity...), Encoding: v.Encoding}
 		dst.Int64s[k] = x
@@ -287,7 +302,37 @@ func materializeJoinBatch(dst *memory.Batch, s *JoinSource, left *memory.Batch, 
 				}
 			}
 			dst.Int64s[b.out] = out
-		case memory.TypeInt8, memory.TypeInt16, memory.TypeInt32, memory.TypeDate32, memory.TypeTime32:
+		case memory.TypeInt8:
+			out := ensureI8(dst.Int8s[b.out], n)
+			out.Encoding = b.field.Encoding
+			out.Validity = joinValidity(out.Validity, b.field.Nullable, n)
+			for i, p := range pairs {
+				v, valid, err := joinI8Value(s, left, b, p)
+				if err != nil {
+					return err
+				}
+				out.Values[i] = v
+				if valid && out.Validity != nil {
+					memory.Set(out.Validity, i)
+				}
+			}
+			dst.Int8s[b.out] = out
+		case memory.TypeInt16:
+			out := ensureI16(dst.Int16s[b.out], n)
+			out.Encoding = b.field.Encoding
+			out.Validity = joinValidity(out.Validity, b.field.Nullable, n)
+			for i, p := range pairs {
+				v, valid, err := joinI16Value(s, left, b, p)
+				if err != nil {
+					return err
+				}
+				out.Values[i] = v
+				if valid && out.Validity != nil {
+					memory.Set(out.Validity, i)
+				}
+			}
+			dst.Int16s[b.out] = out
+		case memory.TypeInt32, memory.TypeDate32, memory.TypeTime32:
 			out := ensureI32(dst.Int32s[b.out], n)
 			out.Encoding = b.field.Encoding
 			out.Validity = joinValidity(out.Validity, b.field.Nullable, n)
@@ -302,7 +347,37 @@ func materializeJoinBatch(dst *memory.Batch, s *JoinSource, left *memory.Batch, 
 				}
 			}
 			dst.Int32s[b.out] = out
-		case memory.TypeUint8, memory.TypeUint16, memory.TypeUint32:
+		case memory.TypeUint8:
+			out := ensureU8(dst.Uint8s[b.out], n)
+			out.Encoding = b.field.Encoding
+			out.Validity = joinValidity(out.Validity, b.field.Nullable, n)
+			for i, p := range pairs {
+				v, valid, err := joinU8Value(s, left, b, p)
+				if err != nil {
+					return err
+				}
+				out.Values[i] = v
+				if valid && out.Validity != nil {
+					memory.Set(out.Validity, i)
+				}
+			}
+			dst.Uint8s[b.out] = out
+		case memory.TypeUint16:
+			out := ensureU16(dst.Uint16s[b.out], n)
+			out.Encoding = b.field.Encoding
+			out.Validity = joinValidity(out.Validity, b.field.Nullable, n)
+			for i, p := range pairs {
+				v, valid, err := joinU16Value(s, left, b, p)
+				if err != nil {
+					return err
+				}
+				out.Values[i] = v
+				if valid && out.Validity != nil {
+					memory.Set(out.Validity, i)
+				}
+			}
+			dst.Uint16s[b.out] = out
+		case memory.TypeUint32:
 			out := ensureU32(dst.Uint32s[b.out], n)
 			out.Encoding = b.field.Encoding
 			out.Validity = joinValidity(out.Validity, b.field.Nullable, n)
@@ -332,7 +407,22 @@ func materializeJoinBatch(dst *memory.Batch, s *JoinSource, left *memory.Batch, 
 				}
 			}
 			dst.Uint64s[b.out] = out
-		case memory.TypeFloat32, memory.TypeFloat64:
+		case memory.TypeFloat32:
+			out := ensureF32(dst.Float32s[b.out], n)
+			out.Encoding = b.field.Encoding
+			out.Validity = joinValidity(out.Validity, b.field.Nullable, n)
+			for i, p := range pairs {
+				v, valid, err := joinF32Value(s, left, b, p)
+				if err != nil {
+					return err
+				}
+				out.Values[i] = v
+				if valid && out.Validity != nil {
+					memory.Set(out.Validity, i)
+				}
+			}
+			dst.Float32s[b.out] = out
+		case memory.TypeFloat64:
 			out := ensureF64(dst.Float64s[b.out], n)
 			out.Encoding = b.field.Encoding
 			out.Validity = joinValidity(out.Validity, b.field.Nullable, n)
@@ -534,12 +624,56 @@ func joinI32Value(s *JoinSource, l *memory.Batch, b joinOutputBinding, p join.Pa
 	}
 	return v.Values[row], v.IsValid(row), nil
 }
+func joinI8Value(s *JoinSource, l *memory.Batch, b joinOutputBinding, p join.Pair) (int8, bool, error) {
+	src, row, ok := joinSourceRow(s, l, b, p)
+	if !ok {
+		return 0, false, nil
+	}
+	v, e := src.Int8(b.in)
+	if e != nil {
+		return 0, false, e
+	}
+	return v.Values[row], v.IsValid(row), nil
+}
+func joinI16Value(s *JoinSource, l *memory.Batch, b joinOutputBinding, p join.Pair) (int16, bool, error) {
+	src, row, ok := joinSourceRow(s, l, b, p)
+	if !ok {
+		return 0, false, nil
+	}
+	v, e := src.Int16(b.in)
+	if e != nil {
+		return 0, false, e
+	}
+	return v.Values[row], v.IsValid(row), nil
+}
 func joinU32Value(s *JoinSource, l *memory.Batch, b joinOutputBinding, p join.Pair) (uint32, bool, error) {
 	src, row, ok := joinSourceRow(s, l, b, p)
 	if !ok {
 		return 0, false, nil
 	}
 	v, e := src.Uint32(b.in)
+	if e != nil {
+		return 0, false, e
+	}
+	return v.Values[row], v.IsValid(row), nil
+}
+func joinU8Value(s *JoinSource, l *memory.Batch, b joinOutputBinding, p join.Pair) (uint8, bool, error) {
+	src, row, ok := joinSourceRow(s, l, b, p)
+	if !ok {
+		return 0, false, nil
+	}
+	v, e := src.Uint8(b.in)
+	if e != nil {
+		return 0, false, e
+	}
+	return v.Values[row], v.IsValid(row), nil
+}
+func joinU16Value(s *JoinSource, l *memory.Batch, b joinOutputBinding, p join.Pair) (uint16, bool, error) {
+	src, row, ok := joinSourceRow(s, l, b, p)
+	if !ok {
+		return 0, false, nil
+	}
+	v, e := src.Uint16(b.in)
 	if e != nil {
 		return 0, false, e
 	}
@@ -562,6 +696,17 @@ func joinF64Value(s *JoinSource, l *memory.Batch, b joinOutputBinding, p join.Pa
 		return 0, false, nil
 	}
 	v, e := src.Float64(b.in)
+	if e != nil {
+		return 0, false, e
+	}
+	return v.Values[row], v.IsValid(row), nil
+}
+func joinF32Value(s *JoinSource, l *memory.Batch, b joinOutputBinding, p join.Pair) (float32, bool, error) {
+	src, row, ok := joinSourceRow(s, l, b, p)
+	if !ok {
+		return 0, false, nil
+	}
+	v, e := src.Float32(b.in)
 	if e != nil {
 		return 0, false, e
 	}

@@ -13,4 +13,7 @@ func installSIMD(set *Set, mode Mode) {
 	installGeneratedArchSIMD(set, mode, vectorBits)
 	installArchSIMDHash(set, mode, vectorBits)
 	installArchSIMDCompact(set, mode, vectorBits)
+	installFloat32ColumnSIMD(set, mode, vectorBits)
+	installInt32ColumnSIMD(set, mode, vectorBits)
+	installUint32ColumnSIMD(set, mode, vectorBits)
 }

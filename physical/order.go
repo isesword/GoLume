@@ -113,6 +113,13 @@ func (s *SortSource) StreamPlan() source.StreamPlanNode {
 // Stats preserves input row statistics.
 func (s *SortSource) Stats(ctx context.Context) (source.Stats, error) { return s.input.Stats(ctx) }
 
+// Replayability forwards the child snapshot contract. Sorting is a
+// deterministic function of the input row sequence: the stable ordinal
+// tie-breaker (including the parallel run merge) makes the output identical
+// for identical input, so a replay-stable input yields a replay-stable sorted
+// output.
+func (s *SortSource) Replayability() source.Replayability { return source.ReplayabilityOf(s.input) }
+
 // Partitions exposes one global output partition because ordering crosses child boundaries.
 func (s *SortSource) Partitions(ctx context.Context) ([]source.Partition, error) {
 	st, err := s.input.Stats(ctx)
@@ -388,21 +395,38 @@ func (s *TopKSource) Partitions(context.Context) ([]source.Partition, error) {
 	return []source.Partition{{ID: 0, Rows: int64(s.k)}}, nil
 }
 
-// NewBatchStream creates an independent two-pass O(K) stream. The input must
-// promise stable replay so both passes observe identical batch boundaries and
-// row ordinals.
+// Replayability forwards the payload input snapshot contract. Candidate
+// admission and the final winner ordering both break ties by the global input
+// ordinal, so the Top-K output is a deterministic function of the input row
+// sequence and replays identically whenever the input does.
+func (s *TopKSource) Replayability() source.Replayability { return source.ReplayabilityOf(s.input) }
+
+// NewBatchStream creates an independent two-pass O(K) stream. When both inputs
+// promise stable replay the first pass scans only ordering keys and the second
+// pass replays the payload source for winner batches. Otherwise the payload
+// input is materialized exactly once inside the stream and both passes run
+// over that snapshot, so Top-K never depends on replay the input cannot
+// provide.
 func (s *TopKSource) NewBatchStream(ctx context.Context, opts source.ReadOptions) (source.BatchStream, error) {
 	if err := opts.Validate(); err != nil {
 		return nil, err
 	}
+	r := &topKReader{owner: s, scratch: memory.NewBatch(), readOpts: opts}
+	passInput := s.keyInput
 	if source.ReplayabilityOf(s.input) != source.ReplayStable || source.ReplayabilityOf(s.keyInput) != source.ReplayStable {
-		return nil, fmt.Errorf("top-k requires replay-stable input streams")
+		// The two-pass split requires identical batch boundaries and row
+		// ordinals on both passes. A non-replayable input is snapshotted once
+		// and supplies both passes, trading the O(K) first pass for one
+		// full-payload materialization.
+		passInput = s.input
+		r.materialize = true
 	}
-	first, err := source.OpenBatchStream(ctx, s.keyInput, opts)
+	first, err := source.OpenBatchStream(ctx, passInput, opts)
 	if err != nil {
 		return nil, err
 	}
-	return &topKReader{owner: s, first: first, scratch: memory.NewBatch(), readOpts: opts}, nil
+	r.first = first
+	return r, nil
 }
 
 // NewBatchStreamWithPartitions keeps Top-K on the native stream graph. Its
@@ -421,6 +445,7 @@ type topKReader struct {
 	reservedBytes int64
 	candidateText int64
 	done          bool
+	materialize   bool
 	readOpts      source.ReadOptions
 }
 
@@ -441,7 +466,9 @@ func (r *topKReader) Close() error {
 }
 
 // Next scans ordering keys, maintains a bounded heap, then replays only the
-// selected rows from winning source batches.
+// selected rows from winning source batches. For a non-replayable input the
+// reader first snapshots the payload input into one materialized batch and
+// runs both passes over that snapshot.
 func (r *topKReader) Next(ctx context.Context, dst *memory.Batch) (bool, error) {
 	if r.done || r.owner.k == 0 {
 		r.done = true
@@ -452,12 +479,23 @@ func (r *topKReader) Next(ctx context.Context, dst *memory.Batch) (bool, error) 
 	if err := r.reserve(ctx); err != nil {
 		return false, err
 	}
+	first := r.first
+	var snapshot *memory.Batch
+	if r.materialize {
+		var err error
+		snapshot, err = materializeStream(ctx, r.owner.input.Schema(), r.first, r.scratch)
+		if err != nil {
+			return false, err
+		}
+		defer snapshot.ReleaseOwned()
+		first = &materializedBatchStream{batch: snapshot}
+	}
 	h := &candidateHeap{keys: r.owner.keys}
 	heap.Init(h)
 	trackActual := r.tracksActualMemory()
 	var ordinal int64
 	for batchID := 0; ; batchID++ {
-		ok, err := r.first.Next(ctx, r.scratch)
+		ok, err := first.Next(ctx, r.scratch)
 		if err != nil {
 			return false, err
 		}
@@ -518,9 +556,15 @@ func (r *topKReader) Next(ctx context.Context, dst *memory.Batch) (bool, error) 
 		dst.ClearColumns()
 		return false, nil
 	}
-	second, err := source.OpenBatchStream(ctx, r.owner.input, r.readOpts)
-	if err != nil {
-		return false, err
+	var second source.BatchStream
+	if r.materialize {
+		second = &materializedBatchStream{batch: snapshot}
+	} else {
+		replayed, err := source.OpenBatchStream(ctx, r.owner.input, r.readOpts)
+		if err != nil {
+			return false, err
+		}
+		second = replayed
 	}
 	defer second.Close()
 	type selectedPart struct {
@@ -623,6 +667,23 @@ func (r *topKReader) reserve(ctx context.Context) error {
 	} else {
 		bytes = math.MaxInt64
 	}
+	if r.materialize {
+		// The single-snapshot fallback retains the full payload input instead
+		// of rescanning it, so charge the materialization like a resident sort.
+		st, err := r.owner.input.Stats(ctx)
+		if err != nil {
+			return err
+		}
+		full := estimateOrderBytes(r.owner.input.Schema(), st.Rows)
+		if st.Bytes > full {
+			full = st.Bytes
+		}
+		if full > math.MaxInt64-bytes {
+			bytes = math.MaxInt64
+		} else {
+			bytes += full
+		}
+	}
 	res, err := r.owner.manager.Reserve(ctx, bytes)
 	if err != nil {
 		return err
@@ -693,7 +754,8 @@ func validateSortKeys(schema memory.Schema, keys []SortKey) error {
 		case memory.TypeInt8, memory.TypeInt16, memory.TypeInt32, memory.TypeDate32, memory.TypeTime32,
 			memory.TypeInt64, memory.TypeDate64, memory.TypeTimestamp, memory.TypeTime64, memory.TypeDuration,
 			memory.TypeUint8, memory.TypeUint16, memory.TypeUint32, memory.TypeUint64,
-			memory.TypeFloat32, memory.TypeFloat64, memory.TypeString, memory.TypeBinary:
+			memory.TypeFloat32, memory.TypeFloat64, memory.TypeString, memory.TypeBinary,
+			memory.TypeBool:
 		default:
 			return fmt.Errorf("sort column %q type %s is not orderable yet", k.Column, f.Type)
 		}
@@ -712,7 +774,7 @@ func estimateOrderBytes(schema memory.Schema, rows int64) int64 {
 			width++
 		case memory.TypeInt16, memory.TypeUint16:
 			width += 2
-		case memory.TypeInt32, memory.TypeUint32, memory.TypeFloat32, memory.TypeDate32, memory.TypeTime32:
+		case memory.TypeInt32, memory.TypeUint32, memory.TypeFloat32, memory.TypeDate32, memory.TypeTime32, memory.TypeBool:
 			width += 4
 		case memory.TypeInt64, memory.TypeUint64, memory.TypeFloat64, memory.TypeDate64, memory.TypeTimestamp, memory.TypeTime64, memory.TypeDuration:
 			width += 8
@@ -804,7 +866,21 @@ func snapshotCell(batch *memory.Batch, schema memory.Schema, column string, row 
 	f, _ := schema.Field(column)
 	cell := sortCell{typ: f.Type}
 	switch f.Type {
-	case memory.TypeInt8, memory.TypeInt16, memory.TypeInt32, memory.TypeDate32, memory.TypeTime32:
+	case memory.TypeInt8:
+		v, err := batch.Int8(column)
+		if err != nil {
+			return cell, err
+		}
+		cell.null = !v.IsValid(row)
+		cell.i64 = int64(v.Values[row])
+	case memory.TypeInt16:
+		v, err := batch.Int16(column)
+		if err != nil {
+			return cell, err
+		}
+		cell.null = !v.IsValid(row)
+		cell.i64 = int64(v.Values[row])
+	case memory.TypeInt32, memory.TypeDate32, memory.TypeTime32:
 		v, err := batch.Int32(column)
 		if err != nil {
 			return cell, err
@@ -818,7 +894,29 @@ func snapshotCell(batch *memory.Batch, schema memory.Schema, column string, row 
 		}
 		cell.null = !v.IsValid(row)
 		cell.i64 = v.Values[row]
-	case memory.TypeUint8, memory.TypeUint16, memory.TypeUint32:
+	case memory.TypeUint8:
+		v, err := batch.Uint8(column)
+		if err != nil {
+			return cell, err
+		}
+		cell.null = !v.IsValid(row)
+		cell.u64 = uint64(v.Values[row])
+	case memory.TypeUint16:
+		v, err := batch.Uint16(column)
+		if err != nil {
+			return cell, err
+		}
+		cell.null = !v.IsValid(row)
+		cell.u64 = uint64(v.Values[row])
+	case memory.TypeUint32:
+		v, err := batch.Uint32(column)
+		if err != nil {
+			return cell, err
+		}
+		cell.null = !v.IsValid(row)
+		cell.u64 = uint64(v.Values[row])
+	case memory.TypeBool:
+		// Bools are physically uint32 0/1 vectors; they order false < true.
 		v, err := batch.Uint32(column)
 		if err != nil {
 			return cell, err
@@ -832,7 +930,14 @@ func snapshotCell(batch *memory.Batch, schema memory.Schema, column string, row 
 		}
 		cell.null = !v.IsValid(row)
 		cell.u64 = v.Values[row]
-	case memory.TypeFloat32, memory.TypeFloat64:
+	case memory.TypeFloat32:
+		v, err := batch.Float32(column)
+		if err != nil {
+			return cell, err
+		}
+		cell.null = !v.IsValid(row)
+		cell.f64 = float64(v.Values[row])
+	case memory.TypeFloat64:
 		v, err := batch.Float64(column)
 		if err != nil {
 			return cell, err
@@ -892,7 +997,7 @@ func compareCells(a, b sortCell, nullsLast bool) int {
 		if a.i64 > b.i64 {
 			return 1
 		}
-	case memory.TypeUint8, memory.TypeUint16, memory.TypeUint32, memory.TypeUint64:
+	case memory.TypeUint8, memory.TypeUint16, memory.TypeUint32, memory.TypeUint64, memory.TypeBool:
 		if a.u64 < b.u64 {
 			return -1
 		}
@@ -1007,7 +1112,31 @@ func newBatchAccumulator(schema memory.Schema) *batchAccumulator {
 func (a *batchAccumulator) appendRow(src *memory.Batch, row int) error {
 	for _, f := range a.schema.Fields {
 		switch f.Type {
-		case memory.TypeInt8, memory.TypeInt16, memory.TypeInt32, memory.TypeDate32, memory.TypeTime32:
+		case memory.TypeInt8:
+			v, ok := src.Int8s[f.Name]
+			if !ok {
+				return fmt.Errorf("column %q missing", f.Name)
+			}
+			out := a.batch.Int8s[f.Name]
+			if out == nil {
+				out = &memory.Int8Vector{Encoding: v.Encoding}
+			}
+			out.Values = append(out.Values, v.Values[row])
+			out.Validity = appendOneValidity(out.Validity, v.Validity, row, len(out.Values)-1)
+			a.batch.Int8s[f.Name] = out
+		case memory.TypeInt16:
+			v, ok := src.Int16s[f.Name]
+			if !ok {
+				return fmt.Errorf("column %q missing", f.Name)
+			}
+			out := a.batch.Int16s[f.Name]
+			if out == nil {
+				out = &memory.Int16Vector{Encoding: v.Encoding}
+			}
+			out.Values = append(out.Values, v.Values[row])
+			out.Validity = appendOneValidity(out.Validity, v.Validity, row, len(out.Values)-1)
+			a.batch.Int16s[f.Name] = out
+		case memory.TypeInt32, memory.TypeDate32, memory.TypeTime32:
 			v, ok := src.Int32s[f.Name]
 			if !ok {
 				if o := src.Opaque[f.Name]; o != nil {
@@ -1037,7 +1166,33 @@ func (a *batchAccumulator) appendRow(src *memory.Batch, row int) error {
 			out.Values = append(out.Values, v.Values[row])
 			out.Validity = appendOneValidity(out.Validity, v.Validity, row, len(out.Values)-1)
 			a.batch.Int64s[f.Name] = out
-		case memory.TypeUint8, memory.TypeUint16, memory.TypeUint32:
+		case memory.TypeUint8:
+			v, ok := src.Uint8s[f.Name]
+			if !ok {
+				return fmt.Errorf("column %q missing", f.Name)
+			}
+			out := a.batch.Uint8s[f.Name]
+			if out == nil {
+				out = &memory.Uint8Vector{Encoding: v.Encoding}
+			}
+			out.Values = append(out.Values, v.Values[row])
+			out.Validity = appendOneValidity(out.Validity, v.Validity, row, len(out.Values)-1)
+			a.batch.Uint8s[f.Name] = out
+		case memory.TypeUint16:
+			v, ok := src.Uint16s[f.Name]
+			if !ok {
+				return fmt.Errorf("column %q missing", f.Name)
+			}
+			out := a.batch.Uint16s[f.Name]
+			if out == nil {
+				out = &memory.Uint16Vector{Encoding: v.Encoding}
+			}
+			out.Values = append(out.Values, v.Values[row])
+			out.Validity = appendOneValidity(out.Validity, v.Validity, row, len(out.Values)-1)
+			a.batch.Uint16s[f.Name] = out
+		case memory.TypeUint32, memory.TypeBool:
+			// Bools share the uint32 0/1 physical vector, so payload gather and
+			// accumulation treat them as one family keyed by the schema type.
 			v, ok := src.Uint32s[f.Name]
 			if !ok {
 				if o := src.Opaque[f.Name]; o != nil {
@@ -1067,7 +1222,19 @@ func (a *batchAccumulator) appendRow(src *memory.Batch, row int) error {
 			out.Values = append(out.Values, v.Values[row])
 			out.Validity = appendOneValidity(out.Validity, v.Validity, row, len(out.Values)-1)
 			a.batch.Uint64s[f.Name] = out
-		case memory.TypeFloat32, memory.TypeFloat64:
+		case memory.TypeFloat32:
+			v, ok := src.Float32s[f.Name]
+			if !ok {
+				return fmt.Errorf("column %q missing", f.Name)
+			}
+			out := a.batch.Float32s[f.Name]
+			if out == nil {
+				out = &memory.Float32Vector{Encoding: v.Encoding}
+			}
+			out.Values = append(out.Values, v.Values[row])
+			out.Validity = appendOneValidity(out.Validity, v.Validity, row, len(out.Values)-1)
+			a.batch.Float32s[f.Name] = out
+		case memory.TypeFloat64:
 			v, ok := src.Float64s[f.Name]
 			if !ok {
 				if o := src.Opaque[f.Name]; o != nil {
@@ -1239,3 +1406,35 @@ func materializeStream(ctx context.Context, schema memory.Schema, stream source.
 	}
 	return acc.finish()
 }
+
+// materializedBatchStream replays one owned materialized batch as a
+// single-batch stream. It gives the two-pass Top-K winner gather a
+// replay-stable view of an input that cannot rescan itself.
+type materializedBatchStream struct {
+	batch *memory.Batch
+	done  bool
+}
+
+// Next binds the snapshot columns into dst exactly once.
+func (s *materializedBatchStream) Next(ctx context.Context, dst *memory.Batch) (bool, error) {
+	if err := ctx.Err(); err != nil {
+		dst.ClearColumns()
+		return false, err
+	}
+	if s.done {
+		dst.ClearColumns()
+		return false, nil
+	}
+	s.done = true
+	dst.ClearColumns()
+	bindAll(dst, s.batch)
+	dst.Reset(s.batch.Rows)
+	return true, nil
+}
+
+// Close is a no-op; the snapshot is owned and released by the caller.
+func (s *materializedBatchStream) Close() error { return nil }
+
+var _ source.ReplayabilityProvider = (*SortSource)(nil)
+var _ source.ReplayabilityProvider = (*TopKSource)(nil)
+var _ source.BatchStream = (*materializedBatchStream)(nil)

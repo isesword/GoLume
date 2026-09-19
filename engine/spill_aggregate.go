@@ -1095,6 +1095,19 @@ func (s *spillableAggregateStream) consumeInput(ctx context.Context) error {
 	batch := memory.NewBatch()
 	defer batch.ReleaseOwned()
 	var workspace expr.EvalWorkspace
+	var workspaceReservations []memory.Reservation
+	defer func() {
+		for _, reservation := range workspaceReservations {
+			reservation.Release()
+		}
+	}()
+	workspace.SetReserveHook(func(n int64) error {
+		reservation, err := s.budget.Reserve(ctx, n)
+		if err == nil {
+			workspaceReservations = append(workspaceReservations, reservation)
+		}
+		return err
+	})
 	for {
 		ok, nextErr := stream.Next(ctx, batch)
 		if nextErr != nil {

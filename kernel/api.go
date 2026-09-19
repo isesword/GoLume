@@ -65,6 +65,36 @@ func (op CompareOp) String() string {
 	}
 }
 
+// StringMatchOp identifies a literal byte-string predicate.
+type StringMatchOp uint8
+
+const (
+	// StringEqual evaluates literal byte-string equality.
+	StringEqual StringMatchOp = iota + 1
+	// StringPrefix evaluates a literal byte-string prefix match.
+	StringPrefix
+	// StringSuffix evaluates a literal byte-string suffix match.
+	StringSuffix
+	// StringContains evaluates a literal byte-string containment match.
+	StringContains
+)
+
+// String returns the stable string-match operation name.
+func (op StringMatchOp) String() string {
+	switch op {
+	case StringEqual:
+		return "equal"
+	case StringPrefix:
+		return "prefix"
+	case StringSuffix:
+		return "suffix"
+	case StringContains:
+		return "contains"
+	default:
+		return fmt.Sprintf("string-match(%d)", op)
+	}
+}
+
 // ArithmeticOp is a physical arithmetic operation.
 type ArithmeticOp uint8
 
@@ -113,6 +143,8 @@ const (
 	KernelStringLength
 	// KernelCompact identifies fixed-width compaction operations.
 	KernelCompact
+	// KernelStringMatch identifies a literal byte-string predicate.
+	KernelStringMatch
 )
 
 // String returns the stable kernel-family name.
@@ -176,6 +208,8 @@ func (id KernelID) String() string {
 		}
 	case KernelCompact:
 		return fmt.Sprintf("compact-%s", id.typ)
+	case KernelStringMatch:
+		return fmt.Sprintf("string-match-%s", StringMatchOp(id.op))
 	}
 	return "invalid-kernel"
 }
@@ -186,15 +220,19 @@ func ComparisonID(typ memory.DataType, op CompareOp) (KernelID, bool) {
 		return KernelID{}, false
 	}
 	switch typ {
-	case memory.TypeInt8, memory.TypeInt16, memory.TypeInt32, memory.TypeDate32, memory.TypeTime32:
+	case memory.TypeInt8, memory.TypeInt16:
+		// Native-width storage keeps a distinct comparison identity.
+	case memory.TypeInt32, memory.TypeDate32, memory.TypeTime32:
 		typ = memory.TypeInt32
 	case memory.TypeInt64, memory.TypeDate64, memory.TypeTimestamp, memory.TypeTime64, memory.TypeDuration:
 		typ = memory.TypeInt64
-	case memory.TypeUint8, memory.TypeUint16, memory.TypeUint32:
+	case memory.TypeUint8, memory.TypeUint16:
+	case memory.TypeUint32:
 		typ = memory.TypeUint32
 	case memory.TypeUint64:
 	case memory.TypeFloat32, memory.TypeFloat64:
-		typ = memory.TypeFloat64
+		// Preserve Float32 as a physical kernel type. Float32 and Float64
+		// have distinct storage and numerical contracts.
 	default:
 		return KernelID{}, false
 	}
@@ -214,12 +252,15 @@ func ArithmeticID(typ memory.DataType, op ArithmeticOp) (KernelID, bool) {
 	case memory.TypeUint8, memory.TypeUint16, memory.TypeUint32:
 		typ = memory.TypeUint32
 	case memory.TypeUint64:
-	case memory.TypeFloat32, memory.TypeFloat64:
-		typ = memory.TypeFloat64
+	case memory.TypeFloat32:
+		// Float32 has a native arithmetic backend with float32 evaluation
+		// semantics. It is intentionally separate from Float64 promotion.
+	case memory.TypeFloat64:
+		// Float64 remains the implemented floating arithmetic kernel.
 	default:
 		return KernelID{}, false
 	}
-	if typ != memory.TypeFloat64 && op == ArithmeticDiv {
+	if typ != memory.TypeFloat64 && typ != memory.TypeFloat32 && op == ArithmeticDiv {
 		return KernelID{}, false
 	}
 	return KernelID{kind: KernelArithmetic, typ: typ, op: uint8(op)}, true
@@ -242,6 +283,14 @@ var (
 	KernelStringByteLength = KernelID{kind: KernelStringLength, typ: memory.TypeString, op: 1}
 	// KernelStringUTF8Length identifies UTF-8 rune-length comparison.
 	KernelStringUTF8Length = KernelID{kind: KernelStringLength, typ: memory.TypeString, op: 2}
+	// KernelStringEqual identifies literal byte-string equality.
+	KernelStringEqual = KernelID{kind: KernelStringMatch, typ: memory.TypeString, op: uint8(StringEqual)}
+	// KernelStringPrefix identifies literal byte-string prefix matching.
+	KernelStringPrefix = KernelID{kind: KernelStringMatch, typ: memory.TypeString, op: uint8(StringPrefix)}
+	// KernelStringSuffix identifies literal byte-string suffix matching.
+	KernelStringSuffix = KernelID{kind: KernelStringMatch, typ: memory.TypeString, op: uint8(StringSuffix)}
+	// KernelStringContains identifies literal byte-string containment.
+	KernelStringContains = KernelID{kind: KernelStringMatch, typ: memory.TypeString, op: uint8(StringContains)}
 	// KernelCompactInt32 identifies int32 compaction.
 	KernelCompactInt32 = KernelID{kind: KernelCompact, typ: memory.TypeInt32, op: 1}
 	// KernelCompactInt64 identifies int64 compaction.
@@ -252,19 +301,32 @@ var (
 	KernelCompactUint64 = KernelID{kind: KernelCompact, typ: memory.TypeUint64, op: 1}
 	// KernelCompactFloat64 identifies float64 compaction.
 	KernelCompactFloat64 = KernelID{kind: KernelCompact, typ: memory.TypeFloat64, op: 1}
+	// KernelCompactInt8 identifies native int8 compaction.
+	KernelCompactInt8 = KernelID{kind: KernelCompact, typ: memory.TypeInt8, op: 1}
+	// KernelCompactInt16 identifies native int16 compaction.
+	KernelCompactInt16 = KernelID{kind: KernelCompact, typ: memory.TypeInt16, op: 1}
+	// KernelCompactUint8 identifies native uint8 compaction.
+	KernelCompactUint8 = KernelID{kind: KernelCompact, typ: memory.TypeUint8, op: 1}
+	// KernelCompactUint16 identifies native uint16 compaction.
+	KernelCompactUint16 = KernelID{kind: KernelCompact, typ: memory.TypeUint16, op: 1}
+	// KernelCompactFloat32 identifies native float32 compaction.
+	KernelCompactFloat32 = KernelID{kind: KernelCompact, typ: memory.TypeFloat32, op: 1}
 )
 
 var allKernelIDs = buildKernelIDs()
 
 func buildKernelIDs() []KernelID {
 	ids := make([]KernelID, 0, 64)
-	for _, typ := range []memory.DataType{memory.TypeInt32, memory.TypeInt64, memory.TypeUint32, memory.TypeUint64, memory.TypeFloat64} {
+	comparisonTypes := []memory.DataType{memory.TypeInt8, memory.TypeInt16, memory.TypeInt32, memory.TypeInt64, memory.TypeUint8, memory.TypeUint16, memory.TypeUint32, memory.TypeUint64, memory.TypeFloat32, memory.TypeFloat64}
+	for _, typ := range comparisonTypes {
 		for op := CompareGT; op <= CompareEQ; op++ {
 			id, _ := ComparisonID(typ, op)
 			ids = append(ids, id)
 		}
+	}
+	for _, typ := range []memory.DataType{memory.TypeInt32, memory.TypeInt64, memory.TypeUint32, memory.TypeUint64, memory.TypeFloat32, memory.TypeFloat64} {
 		for op := ArithmeticAdd; op <= ArithmeticDiv; op++ {
-			if typ != memory.TypeFloat64 && op == ArithmeticDiv {
+			if typ != memory.TypeFloat64 && typ != memory.TypeFloat32 && op == ArithmeticDiv {
 				continue
 			}
 			id, _ := ArithmeticID(typ, op)
@@ -275,7 +337,10 @@ func buildKernelIDs() []KernelID {
 		KernelBoolAnd, KernelBoolOr, KernelBoolNot,
 		KernelHash64Batch, KernelHash128Batch, KernelInt64Scale,
 		KernelStringByteLength, KernelStringUTF8Length,
-		KernelCompactInt32, KernelCompactInt64, KernelCompactUint32, KernelCompactUint64, KernelCompactFloat64,
+		KernelStringEqual, KernelStringPrefix, KernelStringSuffix, KernelStringContains,
+		KernelCompactInt8, KernelCompactInt16, KernelCompactInt32, KernelCompactInt64,
+		KernelCompactUint8, KernelCompactUint16, KernelCompactUint32, KernelCompactUint64,
+		KernelCompactFloat32, KernelCompactFloat64,
 	)
 }
 
@@ -318,11 +383,24 @@ func (c Capabilities) For(id KernelID) (KernelCapability, bool) {
 }
 
 type int32CompareFunc func([]int32, memory.Bitmap, memory.Bitmap, int32) int
+type int8CompareFunc func([]int8, memory.Bitmap, memory.Bitmap, int8) int
 type int64CompareFunc func([]int64, memory.Bitmap, memory.Bitmap, int64) int
 type uint32CompareFunc func([]uint32, memory.Bitmap, memory.Bitmap, uint32) int
 type uint64CompareFunc func([]uint64, memory.Bitmap, memory.Bitmap, uint64) int
 type float64CompareFunc func([]float64, memory.Bitmap, memory.Bitmap, float64) int
+type float32CompareFunc func([]float32, memory.Bitmap, memory.Bitmap, float32) int
+type float32ColumnCompareFunc func([]float32, []float32, memory.Bitmap, memory.Bitmap, memory.Bitmap) int
+type int32ColumnCompareFunc func([]int32, []int32, memory.Bitmap, memory.Bitmap, memory.Bitmap) int
+type uint32ColumnCompareFunc func([]uint32, []uint32, memory.Bitmap, memory.Bitmap, memory.Bitmap) int
+type int64ColumnCompareFunc func([]int64, []int64, memory.Bitmap, memory.Bitmap, memory.Bitmap) int
+type float64ColumnCompareFunc func([]float64, []float64, memory.Bitmap, memory.Bitmap, memory.Bitmap) int
+type uint64ColumnCompareFunc func([]uint64, []uint64, memory.Bitmap, memory.Bitmap, memory.Bitmap) int
+type int8ColumnCompareFunc func([]int8, []int8, memory.Bitmap, memory.Bitmap, memory.Bitmap) int
+type int16ColumnCompareFunc func([]int16, []int16, memory.Bitmap, memory.Bitmap, memory.Bitmap) int
+type uint8ColumnCompareFunc func([]uint8, []uint8, memory.Bitmap, memory.Bitmap, memory.Bitmap) int
+type uint16ColumnCompareFunc func([]uint16, []uint16, memory.Bitmap, memory.Bitmap, memory.Bitmap) int
 type float64ArithmeticFunc func(left, right, out []float64, validity memory.Bitmap)
+type float32ArithmeticFunc func(left, right, out []float32, validity memory.Bitmap)
 type int32ArithmeticFunc func(left, right, out []int32, validity, overflow memory.Bitmap) int
 type int64ArithmeticFunc func(left, right, out []int64, validity, overflow memory.Bitmap) int
 type uint32ArithmeticFunc func(left, right, out []uint32, validity, overflow memory.Bitmap) int
@@ -333,37 +411,62 @@ type hash64BatchFunc func(keys, out []uint64)
 type hash128BatchFunc func(a, b []uint64, validMasks []uint8, out []uint64)
 type int64ScaleFunc func(values []int64, validity memory.Bitmap, factor int64) int
 type stringLengthCompareFunc func(offsets []uint32, data []byte, validity, out memory.Bitmap, literal int64) int
+type stringMatchFunc func(offsets []uint32, data []byte, validity, out memory.Bitmap, literal []byte) int
 type int32CompactFunc func(values []int32, selection memory.Bitmap, out []int32) int
 type int64CompactFunc func(values []int64, selection memory.Bitmap, out []int64) int
 type uint32CompactFunc func(values []uint32, selection memory.Bitmap, out []uint32) int
 type uint64CompactFunc func(values []uint64, selection memory.Bitmap, out []uint64) int
 type float64CompactFunc func(values []float64, selection memory.Bitmap, out []float64) int
+type int8CompactFunc func(values []int8, selection memory.Bitmap, out []int8) int
+type int16CompactFunc func(values []int16, selection memory.Bitmap, out []int16) int
+type uint8CompactFunc func(values []uint8, selection memory.Bitmap, out []uint8) int
+type uint16CompactFunc func(values []uint16, selection memory.Bitmap, out []uint16) int
+type float32CompactFunc func(values []float32, selection memory.Bitmap, out []float32) int
 
 type dispatch struct {
-	compareInt32      [CompareEQ + 1]int32CompareFunc
-	compareInt64      [CompareEQ + 1]int64CompareFunc
-	compareUint32     [CompareEQ + 1]uint32CompareFunc
-	compareUint64     [CompareEQ + 1]uint64CompareFunc
-	compareFloat64    [CompareEQ + 1]float64CompareFunc
-	arithmeticInt32   [ArithmeticDiv + 1]int32ArithmeticFunc
-	arithmeticInt64   [ArithmeticDiv + 1]int64ArithmeticFunc
-	arithmeticUint32  [ArithmeticDiv + 1]uint32ArithmeticFunc
-	arithmeticUint64  [ArithmeticDiv + 1]uint64ArithmeticFunc
-	arithmeticFloat64 [ArithmeticDiv + 1]float64ArithmeticFunc
-	boolAnd           boolBinaryFunc
-	boolOr            boolBinaryFunc
-	boolNot           boolNotFunc
-	hash64            hash64BatchFunc
-	hash128           hash128BatchFunc
-	scaleInt64        int64ScaleFunc
-	stringByteLength  [CompareEQ + 1]stringLengthCompareFunc
-	stringUTF8Length  [CompareEQ + 1]stringLengthCompareFunc
-	compactInt32      int32CompactFunc
-	compactInt64      int64CompactFunc
-	compactUint32     uint32CompactFunc
-	compactUint64     uint64CompactFunc
-	compactFloat64    float64CompactFunc
-	caps              *capabilityState
+	compareInt8           [CompareEQ + 1]int8CompareFunc
+	compareInt32          [CompareEQ + 1]int32CompareFunc
+	compareInt64          [CompareEQ + 1]int64CompareFunc
+	compareUint32         [CompareEQ + 1]uint32CompareFunc
+	compareUint64         [CompareEQ + 1]uint64CompareFunc
+	compareFloat64        [CompareEQ + 1]float64CompareFunc
+	compareFloat32        [CompareEQ + 1]float32CompareFunc
+	compareFloat32Columns [CompareEQ + 1]float32ColumnCompareFunc
+	compareInt32Columns   [CompareEQ + 1]int32ColumnCompareFunc
+	compareUint32Columns  [CompareEQ + 1]uint32ColumnCompareFunc
+	compareInt64Columns   [CompareEQ + 1]int64ColumnCompareFunc
+	compareFloat64Columns [CompareEQ + 1]float64ColumnCompareFunc
+	compareUint64Columns  [CompareEQ + 1]uint64ColumnCompareFunc
+	compareInt8Columns    [CompareEQ + 1]int8ColumnCompareFunc
+	compareInt16Columns   [CompareEQ + 1]int16ColumnCompareFunc
+	compareUint8Columns   [CompareEQ + 1]uint8ColumnCompareFunc
+	compareUint16Columns  [CompareEQ + 1]uint16ColumnCompareFunc
+	arithmeticInt32       [ArithmeticDiv + 1]int32ArithmeticFunc
+	arithmeticInt64       [ArithmeticDiv + 1]int64ArithmeticFunc
+	arithmeticUint32      [ArithmeticDiv + 1]uint32ArithmeticFunc
+	arithmeticUint64      [ArithmeticDiv + 1]uint64ArithmeticFunc
+	arithmeticFloat64     [ArithmeticDiv + 1]float64ArithmeticFunc
+	arithmeticFloat32     [ArithmeticDiv + 1]float32ArithmeticFunc
+	boolAnd               boolBinaryFunc
+	boolOr                boolBinaryFunc
+	boolNot               boolNotFunc
+	hash64                hash64BatchFunc
+	hash128               hash128BatchFunc
+	scaleInt64            int64ScaleFunc
+	stringByteLength      [CompareEQ + 1]stringLengthCompareFunc
+	stringUTF8Length      [CompareEQ + 1]stringLengthCompareFunc
+	stringMatch           [StringContains + 1]stringMatchFunc
+	compactInt32          int32CompactFunc
+	compactInt64          int64CompactFunc
+	compactUint32         uint32CompactFunc
+	compactUint64         uint64CompactFunc
+	compactFloat64        float64CompactFunc
+	compactInt8           int8CompactFunc
+	compactInt16          int16CompactFunc
+	compactUint8          uint8CompactFunc
+	compactUint16         uint16CompactFunc
+	compactFloat32        float32CompactFunc
+	caps                  *capabilityState
 }
 
 // Set is an immutable, comparable handle to one complete dispatch table.
@@ -398,6 +501,13 @@ func (s Set) CompareInt32(v []int32, valid, out memory.Bitmap, lit int32, op Com
 	return s.d.compareInt32[op](v, valid, out, lit)
 }
 
+// CompareInt8 compares nullable native int8 values and writes a packed
+// selection bitmap. The scalar implementation is the reference backend;
+// no SIMD backend is selected until architecture-specific evidence exists.
+func (s Set) CompareInt8(v []int8, valid, out memory.Bitmap, lit int8, op CompareOp) int {
+	return s.d.compareInt8[op](v, valid, out, lit)
+}
+
 // CompareInt64 compares nullable int64 values and writes a packed selection bitmap.
 func (s Set) CompareInt64(v []int64, valid, out memory.Bitmap, lit int64, op CompareOp) int {
 	return s.d.compareInt64[op](v, valid, out, lit)
@@ -416,6 +526,62 @@ func (s Set) CompareUint64(v []uint64, valid, out memory.Bitmap, lit uint64, op 
 // CompareFloat64 compares nullable float64 values with IEEE comparison semantics.
 func (s Set) CompareFloat64(v []float64, valid, out memory.Bitmap, lit float64, op CompareOp) int {
 	return s.d.compareFloat64[op](v, valid, out, lit)
+}
+
+// CompareFloat32 compares nullable float32 values with IEEE comparison semantics.
+func (s Set) CompareFloat32(v []float32, valid, out memory.Bitmap, lit float32, op CompareOp) int {
+	return s.d.compareFloat32[op](v, valid, out, lit)
+}
+
+// CompareFloat32Columns compares two nullable Float32 vectors and writes the
+// rows where both values are valid and the comparison is true.
+func (s Set) CompareFloat32Columns(left, right []float32, leftValid, rightValid, out memory.Bitmap, op CompareOp) int {
+	return s.d.compareFloat32Columns[op](left, right, leftValid, rightValid, out)
+}
+
+// CompareInt32Columns compares two nullable Int32 vectors.
+func (s Set) CompareInt32Columns(left, right []int32, leftValid, rightValid, out memory.Bitmap, op CompareOp) int {
+	return s.d.compareInt32Columns[op](left, right, leftValid, rightValid, out)
+}
+
+// CompareUint32Columns compares two nullable Uint32 vectors.
+func (s Set) CompareUint32Columns(left, right []uint32, leftValid, rightValid, out memory.Bitmap, op CompareOp) int {
+	return s.d.compareUint32Columns[op](left, right, leftValid, rightValid, out)
+}
+
+// CompareInt64Columns compares two nullable Int64 vectors.
+func (s Set) CompareInt64Columns(left, right []int64, leftValid, rightValid, out memory.Bitmap, op CompareOp) int {
+	return s.d.compareInt64Columns[op](left, right, leftValid, rightValid, out)
+}
+
+// CompareFloat64Columns compares two nullable Float64 vectors.
+func (s Set) CompareFloat64Columns(left, right []float64, leftValid, rightValid, out memory.Bitmap, op CompareOp) int {
+	return s.d.compareFloat64Columns[op](left, right, leftValid, rightValid, out)
+}
+
+// CompareUint64Columns compares two nullable Uint64 vectors.
+func (s Set) CompareUint64Columns(left, right []uint64, leftValid, rightValid, out memory.Bitmap, op CompareOp) int {
+	return s.d.compareUint64Columns[op](left, right, leftValid, rightValid, out)
+}
+
+// CompareInt8Columns compares two nullable Int8 vectors.
+func (s Set) CompareInt8Columns(left, right []int8, leftValid, rightValid, out memory.Bitmap, op CompareOp) int {
+	return s.d.compareInt8Columns[op](left, right, leftValid, rightValid, out)
+}
+
+// CompareInt16Columns compares two nullable Int16 vectors.
+func (s Set) CompareInt16Columns(left, right []int16, leftValid, rightValid, out memory.Bitmap, op CompareOp) int {
+	return s.d.compareInt16Columns[op](left, right, leftValid, rightValid, out)
+}
+
+// CompareUint8Columns compares two nullable Uint8 vectors.
+func (s Set) CompareUint8Columns(left, right []uint8, leftValid, rightValid, out memory.Bitmap, op CompareOp) int {
+	return s.d.compareUint8Columns[op](left, right, leftValid, rightValid, out)
+}
+
+// CompareUint16Columns compares two nullable Uint16 vectors.
+func (s Set) CompareUint16Columns(left, right []uint16, leftValid, rightValid, out memory.Bitmap, op CompareOp) int {
+	return s.d.compareUint16Columns[op](left, right, leftValid, rightValid, out)
 }
 
 // Int32Arithmetic performs checked nullable int32 arithmetic and returns the first overflow row.
@@ -441,6 +607,12 @@ func (s Set) Uint64Arithmetic(a, b, out []uint64, valid, overflow memory.Bitmap,
 // Float64Arithmetic performs nullable float64 arithmetic.
 func (s Set) Float64Arithmetic(a, b, out []float64, valid memory.Bitmap, op ArithmeticOp) {
 	s.d.arithmeticFloat64[op](a, b, out, valid)
+}
+
+// Float32Arithmetic performs nullable float32 arithmetic with float32
+// evaluation semantics and preserves invalid rows as zero.
+func (s Set) Float32Arithmetic(a, b, out []float32, valid memory.Bitmap, op ArithmeticOp) {
+	s.d.arithmeticFloat32[op](a, b, out, valid)
 }
 
 // BoolAnd applies packed SQL three-valued AND.
@@ -477,6 +649,12 @@ func (s Set) CompareStringLength(offsets []uint32, data []byte, valid, out memor
 	return s.d.stringByteLength[op](offsets, data, valid, out, lit)
 }
 
+// CompareStringMatch evaluates a literal byte-string predicate over a
+// StringView vector and writes its selected rows.
+func (s Set) CompareStringMatch(offsets []uint32, data []byte, valid, out memory.Bitmap, literal []byte, op StringMatchOp) int {
+	return s.d.stringMatch[op](offsets, data, valid, out, literal)
+}
+
 // CompactInt32 compacts selected int32 values into out and returns the output length.
 func (s Set) CompactInt32(v []int32, selection memory.Bitmap, out []int32) int {
 	return s.d.compactInt32(v, selection, out)
@@ -507,10 +685,24 @@ func (s Set) setCapability(id KernelID, capability KernelCapability) { s.d.caps.
 func newScalarSet(mode Mode) Set {
 	d := &dispatch{caps: &capabilityState{mode: mode, arch: runtimeArch(), byID: make(map[KernelID]KernelCapability, len(allKernelIDs))}}
 	installGeneratedScalar(d)
+	installFloat32Scalar(d)
+	installInt32ColumnScalar(d)
+	installUint32ColumnScalar(d)
+	installInt64ColumnScalar(d)
+	installFloat64ColumnScalar(d)
+	installStringMatchScalar(d)
+	installUint64ColumnScalar(d)
+	installInt8ColumnScalar(d)
+	installInt16ColumnScalar(d)
+	installUint8ColumnScalar(d)
+	installUint16ColumnScalar(d)
 	d.boolAnd, d.boolOr, d.boolNot = scalarBoolAnd, scalarBoolOr, scalarBoolNot
 	d.hash64, d.hash128, d.scaleInt64 = scalarHash64Batch, scalarHash128Batch, scalarInt64Scale
+	d.compactInt8, d.compactInt16 = scalarInt8Compact, scalarInt16Compact
 	d.compactInt32, d.compactInt64 = scalarInt32Compact, scalarInt64Compact
-	d.compactUint32, d.compactUint64, d.compactFloat64 = scalarUint32Compact, scalarUint64Compact, scalarFloat64Compact
+	d.compactUint8, d.compactUint16 = scalarUint8Compact, scalarUint16Compact
+	d.compactUint32, d.compactUint64 = scalarUint32Compact, scalarUint64Compact
+	d.compactFloat32, d.compactFloat64 = scalarFloat32Compact, scalarFloat64Compact
 	for _, id := range allKernelIDs {
 		d.caps.byID[id] = KernelCapability{Backend: "scalar"}
 	}

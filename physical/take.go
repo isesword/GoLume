@@ -23,6 +23,51 @@ func takeRows(ctx context.Context, dst, src *gomemory.Batch, rows []int) error {
 	}
 	dst.ClearColumns()
 	n := len(rows)
+	for name, v := range src.Int8s {
+		out := ensureI8(nil, n)
+		for i, row := range rows {
+			out.Values[i] = v.Values[row]
+		}
+		out.Validity = compactValidity(out.Validity, v.Validity, rows)
+		out.Encoding = v.Encoding
+		dst.Int8s[name] = out
+	}
+	for name, v := range src.Int16s {
+		out := ensureI16(nil, n)
+		for i, row := range rows {
+			out.Values[i] = v.Values[row]
+		}
+		out.Validity = compactValidity(out.Validity, v.Validity, rows)
+		out.Encoding = v.Encoding
+		dst.Int16s[name] = out
+	}
+	for name, v := range src.Uint8s {
+		out := ensureU8(nil, n)
+		for i, row := range rows {
+			out.Values[i] = v.Values[row]
+		}
+		out.Validity = compactValidity(out.Validity, v.Validity, rows)
+		out.Encoding = v.Encoding
+		dst.Uint8s[name] = out
+	}
+	for name, v := range src.Uint16s {
+		out := ensureU16(nil, n)
+		for i, row := range rows {
+			out.Values[i] = v.Values[row]
+		}
+		out.Validity = compactValidity(out.Validity, v.Validity, rows)
+		out.Encoding = v.Encoding
+		dst.Uint16s[name] = out
+	}
+	for name, v := range src.Float32s {
+		out := ensureF32(nil, n)
+		for i, row := range rows {
+			out.Values[i] = v.Values[row]
+		}
+		out.Validity = compactValidity(out.Validity, v.Validity, rows)
+		out.Encoding = v.Encoding
+		dst.Float32s[name] = out
+	}
 	for name, v := range src.Int64s {
 		out := ensureI64(nil, n)
 		for i, row := range rows {

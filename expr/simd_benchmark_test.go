@@ -100,3 +100,50 @@ func BenchmarkUTF8LengthExpressionKernelMode(b *testing.B) {
 		}
 	}
 }
+
+func BenchmarkStringMatchExpressionKernelMode(b *testing.B) {
+	const rows = 1 << 16
+	offsets := make([]uint32, rows+1)
+	data := make([]byte, 0, rows*12)
+	for row := 0; row < rows; row++ {
+		value := "alpha-value"
+		if row%7 == 0 {
+			value = "中文-😀-alpha"
+		}
+		data = append(data, value...)
+		offsets[row+1] = uint32(len(data))
+	}
+	valid := memory.EnsureBitmap(nil, rows)
+	for row := 0; row < rows; row++ {
+		if row%13 != 0 {
+			memory.Set(valid, row)
+		}
+	}
+	batch := memory.NewBatch()
+	batch.Strings["s"] = &memory.StringViewVector{Offsets: offsets, Data: data, Validity: valid, Encoding: memory.EncodingView}
+	batch.Reset(rows)
+	schema := memory.NewSchema(memory.Field{Name: "s", Type: memory.TypeString, Encoding: memory.EncodingView})
+	program, _, err := CompilePredicate(schema, Contains(Col("s"), Str("alpha")))
+	if err != nil {
+		b.Fatal(err)
+	}
+	for _, choice := range []struct {
+		name string
+		mode kernel.Mode
+	}{{"mode=scalar", kernel.ModeScalar}, {"mode=auto", kernel.ModeAuto}} {
+		b.Run(choice.name, func(b *testing.B) {
+			set := kernel.New(choice.mode)
+			var workspace EvalWorkspace
+			if _, err := program.Evaluate(batch, &workspace, set); err != nil {
+				b.Fatal(err)
+			}
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				if _, err := program.Evaluate(batch, &workspace, set); err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+	}
+}

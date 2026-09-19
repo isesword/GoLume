@@ -1,0 +1,912 @@
+{
+  "schema": 1,
+  "generated": "2026-09-19",
+  "kernels": [
+    {
+      "id": "arithmetic-float32-add",
+      "family": "arithmetic",
+      "type": "float32",
+      "operation": "add",
+      "source": "generated",
+      "arches": {}
+    },
+    {
+      "id": "arithmetic-float32-div",
+      "family": "arithmetic",
+      "type": "float32",
+      "operation": "div",
+      "source": "generated",
+      "arches": {}
+    },
+    {
+      "id": "arithmetic-float32-mul",
+      "family": "arithmetic",
+      "type": "float32",
+      "operation": "mul",
+      "source": "generated",
+      "arches": {}
+    },
+    {
+      "id": "arithmetic-float32-sub",
+      "family": "arithmetic",
+      "type": "float32",
+      "operation": "sub",
+      "source": "generated",
+      "arches": {}
+    },
+    {
+      "id": "arithmetic-float64-add",
+      "family": "arithmetic",
+      "type": "float64",
+      "operation": "add",
+      "source": "generated",
+      "arches": {}
+    },
+    {
+      "id": "arithmetic-float64-div",
+      "family": "arithmetic",
+      "type": "float64",
+      "operation": "div",
+      "source": "generated",
+      "arches": {
+        "darwin/arm64": {
+          "state": "approved",
+          "evidence": [
+            "simd-kernelid-candidates-refactor-arm64.txt",
+            "simd-kernelid-candidates-refactor-arm64.csv"
+          ],
+          "updated": "2026-09-19"
+        }
+      }
+    },
+    {
+      "id": "arithmetic-float64-mul",
+      "family": "arithmetic",
+      "type": "float64",
+      "operation": "mul",
+      "source": "generated",
+      "arches": {
+        "darwin/arm64": {
+          "state": "approved",
+          "evidence": [
+            "simd-kernelid-candidates-refactor-arm64.txt",
+            "simd-kernelid-candidates-refactor-arm64.csv"
+          ],
+          "updated": "2026-09-19"
+        }
+      }
+    },
+    {
+      "id": "arithmetic-float64-sub",
+      "family": "arithmetic",
+      "type": "float64",
+      "operation": "sub",
+      "source": "generated",
+      "arches": {
+        "darwin/arm64": {
+          "state": "approved",
+          "evidence": [
+            "simd-kernelid-candidates-refactor-arm64.txt",
+            "simd-kernelid-candidates-refactor-arm64.csv"
+          ],
+          "updated": "2026-09-19"
+        }
+      }
+    },
+    {
+      "id": "arithmetic-int32-add",
+      "family": "arithmetic",
+      "type": "int32",
+      "operation": "add",
+      "source": "generated",
+      "arches": {}
+    },
+    {
+      "id": "arithmetic-int32-mul",
+      "family": "arithmetic",
+      "type": "int32",
+      "operation": "mul",
+      "source": "generated",
+      "arches": {}
+    },
+    {
+      "id": "arithmetic-int32-sub",
+      "family": "arithmetic",
+      "type": "int32",
+      "operation": "sub",
+      "source": "generated",
+      "arches": {}
+    },
+    {
+      "id": "arithmetic-int64-add",
+      "family": "arithmetic",
+      "type": "int64",
+      "operation": "add",
+      "source": "generated",
+      "arches": {}
+    },
+    {
+      "id": "arithmetic-int64-mul",
+      "family": "arithmetic",
+      "type": "int64",
+      "operation": "mul",
+      "source": "generated",
+      "arches": {}
+    },
+    {
+      "id": "arithmetic-int64-sub",
+      "family": "arithmetic",
+      "type": "int64",
+      "operation": "sub",
+      "source": "generated",
+      "arches": {}
+    },
+    {
+      "id": "arithmetic-uint32-add",
+      "family": "arithmetic",
+      "type": "uint32",
+      "operation": "add",
+      "source": "generated",
+      "arches": {}
+    },
+    {
+      "id": "arithmetic-uint32-mul",
+      "family": "arithmetic",
+      "type": "uint32",
+      "operation": "mul",
+      "source": "generated",
+      "arches": {}
+    },
+    {
+      "id": "arithmetic-uint32-sub",
+      "family": "arithmetic",
+      "type": "uint32",
+      "operation": "sub",
+      "source": "generated",
+      "arches": {}
+    },
+    {
+      "id": "arithmetic-uint64-add",
+      "family": "arithmetic",
+      "type": "uint64",
+      "operation": "add",
+      "source": "generated",
+      "arches": {}
+    },
+    {
+      "id": "arithmetic-uint64-mul",
+      "family": "arithmetic",
+      "type": "uint64",
+      "operation": "mul",
+      "source": "generated",
+      "arches": {}
+    },
+    {
+      "id": "arithmetic-uint64-sub",
+      "family": "arithmetic",
+      "type": "uint64",
+      "operation": "sub",
+      "source": "generated",
+      "arches": {}
+    },
+    {
+      "id": "boolean-and",
+      "family": "boolean",
+      "operation": "and",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "boolean-not",
+      "family": "boolean",
+      "operation": "not",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "boolean-or",
+      "family": "boolean",
+      "operation": "or",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "compact-float32",
+      "family": "compact",
+      "type": "float32",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "compact-float64",
+      "family": "compact",
+      "type": "float64",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "compact-int16",
+      "family": "compact",
+      "type": "int16",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "compact-int32",
+      "family": "compact",
+      "type": "int32",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "compact-int64",
+      "family": "compact",
+      "type": "int64",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "compact-int8",
+      "family": "compact",
+      "type": "int8",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "compact-uint16",
+      "family": "compact",
+      "type": "uint16",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "compact-uint32",
+      "family": "compact",
+      "type": "uint32",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "compact-uint64",
+      "family": "compact",
+      "type": "uint64",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "compact-uint8",
+      "family": "compact",
+      "type": "uint8",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "compare-float32-eq",
+      "family": "comparison",
+      "type": "float32",
+      "operation": "eq",
+      "source": "handwritten",
+      "arches": {
+        "darwin/arm64": {
+          "state": "approved",
+          "evidence": [
+            "simd-gate-compare-float32-eq-arm64.txt",
+            "simd-gate-compare-float32-eq-arm64.csv"
+          ],
+          "updated": "2026-09-19"
+        }
+      }
+    },
+    {
+      "id": "compare-float32-ge",
+      "family": "comparison",
+      "type": "float32",
+      "operation": "ge",
+      "source": "handwritten",
+      "arches": {
+        "darwin/arm64": {
+          "state": "approved",
+          "evidence": [
+            "simd-gate-compare-float32-ge-arm64.txt",
+            "simd-gate-compare-float32-ge-arm64.csv"
+          ],
+          "updated": "2026-09-19"
+        }
+      }
+    },
+    {
+      "id": "compare-float32-gt",
+      "family": "comparison",
+      "type": "float32",
+      "operation": "gt",
+      "source": "handwritten",
+      "arches": {
+        "darwin/arm64": {
+          "state": "approved",
+          "evidence": [
+            "simd-gate-compare-float32-gt-arm64.txt",
+            "simd-gate-compare-float32-gt-arm64.csv"
+          ],
+          "updated": "2026-09-19"
+        }
+      }
+    },
+    {
+      "id": "compare-float32-le",
+      "family": "comparison",
+      "type": "float32",
+      "operation": "le",
+      "source": "handwritten",
+      "arches": {
+        "darwin/arm64": {
+          "state": "approved",
+          "evidence": [
+            "simd-gate-compare-float32-le-arm64.txt",
+            "simd-gate-compare-float32-le-arm64.csv"
+          ],
+          "updated": "2026-09-19"
+        }
+      }
+    },
+    {
+      "id": "compare-float32-lt",
+      "family": "comparison",
+      "type": "float32",
+      "operation": "lt",
+      "source": "handwritten",
+      "arches": {
+        "darwin/arm64": {
+          "state": "approved",
+          "evidence": [
+            "simd-gate-compare-float32-lt-arm64.txt",
+            "simd-gate-compare-float32-lt-arm64.csv"
+          ],
+          "updated": "2026-09-19"
+        }
+      }
+    },
+    {
+      "id": "compare-float64-eq",
+      "family": "comparison",
+      "type": "float64",
+      "operation": "eq",
+      "source": "generated",
+      "arches": {}
+    },
+    {
+      "id": "compare-float64-ge",
+      "family": "comparison",
+      "type": "float64",
+      "operation": "ge",
+      "source": "generated",
+      "arches": {}
+    },
+    {
+      "id": "compare-float64-gt",
+      "family": "comparison",
+      "type": "float64",
+      "operation": "gt",
+      "source": "generated",
+      "arches": {}
+    },
+    {
+      "id": "compare-float64-le",
+      "family": "comparison",
+      "type": "float64",
+      "operation": "le",
+      "source": "generated",
+      "arches": {}
+    },
+    {
+      "id": "compare-float64-lt",
+      "family": "comparison",
+      "type": "float64",
+      "operation": "lt",
+      "source": "generated",
+      "arches": {}
+    },
+    {
+      "id": "compare-int16-eq",
+      "family": "comparison",
+      "type": "int16",
+      "operation": "eq",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "compare-int16-ge",
+      "family": "comparison",
+      "type": "int16",
+      "operation": "ge",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "compare-int16-gt",
+      "family": "comparison",
+      "type": "int16",
+      "operation": "gt",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "compare-int16-le",
+      "family": "comparison",
+      "type": "int16",
+      "operation": "le",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "compare-int16-lt",
+      "family": "comparison",
+      "type": "int16",
+      "operation": "lt",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "compare-int32-eq",
+      "family": "comparison",
+      "type": "int32",
+      "operation": "eq",
+      "source": "generated",
+      "arches": {}
+    },
+    {
+      "id": "compare-int32-ge",
+      "family": "comparison",
+      "type": "int32",
+      "operation": "ge",
+      "source": "generated",
+      "arches": {
+        "darwin/arm64": {
+          "state": "approved",
+          "evidence": [
+            "simd-kernelid-candidates-refactor-arm64.txt",
+            "simd-kernelid-candidates-refactor-arm64.csv"
+          ],
+          "updated": "2026-09-19"
+        }
+      }
+    },
+    {
+      "id": "compare-int32-gt",
+      "family": "comparison",
+      "type": "int32",
+      "operation": "gt",
+      "source": "generated",
+      "arches": {
+        "darwin/arm64": {
+          "state": "approved",
+          "evidence": [
+            "simd-kernelid-candidates-refactor-arm64.txt",
+            "simd-kernelid-candidates-refactor-arm64.csv"
+          ],
+          "updated": "2026-09-19"
+        }
+      }
+    },
+    {
+      "id": "compare-int32-le",
+      "family": "comparison",
+      "type": "int32",
+      "operation": "le",
+      "source": "generated",
+      "arches": {
+        "darwin/arm64": {
+          "state": "approved",
+          "evidence": [
+            "simd-kernelid-candidates-refactor-arm64.txt",
+            "simd-kernelid-candidates-refactor-arm64.csv"
+          ],
+          "updated": "2026-09-19"
+        }
+      }
+    },
+    {
+      "id": "compare-int32-lt",
+      "family": "comparison",
+      "type": "int32",
+      "operation": "lt",
+      "source": "generated",
+      "arches": {
+        "darwin/arm64": {
+          "state": "approved",
+          "evidence": [
+            "simd-kernelid-candidates-refactor-arm64.txt",
+            "simd-kernelid-candidates-refactor-arm64.csv"
+          ],
+          "updated": "2026-09-19"
+        }
+      }
+    },
+    {
+      "id": "compare-int64-eq",
+      "family": "comparison",
+      "type": "int64",
+      "operation": "eq",
+      "source": "generated",
+      "arches": {}
+    },
+    {
+      "id": "compare-int64-ge",
+      "family": "comparison",
+      "type": "int64",
+      "operation": "ge",
+      "source": "generated",
+      "arches": {}
+    },
+    {
+      "id": "compare-int64-gt",
+      "family": "comparison",
+      "type": "int64",
+      "operation": "gt",
+      "source": "generated",
+      "arches": {}
+    },
+    {
+      "id": "compare-int64-le",
+      "family": "comparison",
+      "type": "int64",
+      "operation": "le",
+      "source": "generated",
+      "arches": {}
+    },
+    {
+      "id": "compare-int64-lt",
+      "family": "comparison",
+      "type": "int64",
+      "operation": "lt",
+      "source": "generated",
+      "arches": {}
+    },
+    {
+      "id": "compare-int8-eq",
+      "family": "comparison",
+      "type": "int8",
+      "operation": "eq",
+      "source": "generated",
+      "arches": {}
+    },
+    {
+      "id": "compare-int8-ge",
+      "family": "comparison",
+      "type": "int8",
+      "operation": "ge",
+      "source": "generated",
+      "arches": {}
+    },
+    {
+      "id": "compare-int8-gt",
+      "family": "comparison",
+      "type": "int8",
+      "operation": "gt",
+      "source": "generated",
+      "arches": {}
+    },
+    {
+      "id": "compare-int8-le",
+      "family": "comparison",
+      "type": "int8",
+      "operation": "le",
+      "source": "generated",
+      "arches": {}
+    },
+    {
+      "id": "compare-int8-lt",
+      "family": "comparison",
+      "type": "int8",
+      "operation": "lt",
+      "source": "generated",
+      "arches": {}
+    },
+    {
+      "id": "compare-uint16-eq",
+      "family": "comparison",
+      "type": "uint16",
+      "operation": "eq",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "compare-uint16-ge",
+      "family": "comparison",
+      "type": "uint16",
+      "operation": "ge",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "compare-uint16-gt",
+      "family": "comparison",
+      "type": "uint16",
+      "operation": "gt",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "compare-uint16-le",
+      "family": "comparison",
+      "type": "uint16",
+      "operation": "le",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "compare-uint16-lt",
+      "family": "comparison",
+      "type": "uint16",
+      "operation": "lt",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "compare-uint32-eq",
+      "family": "comparison",
+      "type": "uint32",
+      "operation": "eq",
+      "source": "generated",
+      "arches": {
+        "darwin/arm64": {
+          "state": "approved",
+          "evidence": [
+            "simd-kernelid-candidates-refactor-arm64.txt",
+            "simd-kernelid-candidates-refactor-arm64.csv"
+          ],
+          "updated": "2026-09-19"
+        }
+      }
+    },
+    {
+      "id": "compare-uint32-ge",
+      "family": "comparison",
+      "type": "uint32",
+      "operation": "ge",
+      "source": "generated",
+      "arches": {
+        "darwin/arm64": {
+          "state": "approved",
+          "evidence": [
+            "simd-kernelid-candidates-refactor-arm64.txt",
+            "simd-kernelid-candidates-refactor-arm64.csv"
+          ],
+          "updated": "2026-09-19"
+        }
+      }
+    },
+    {
+      "id": "compare-uint32-gt",
+      "family": "comparison",
+      "type": "uint32",
+      "operation": "gt",
+      "source": "generated",
+      "arches": {
+        "darwin/arm64": {
+          "state": "approved",
+          "evidence": [
+            "simd-kernelid-candidates-refactor-arm64.txt",
+            "simd-kernelid-candidates-refactor-arm64.csv"
+          ],
+          "updated": "2026-09-19"
+        }
+      }
+    },
+    {
+      "id": "compare-uint32-le",
+      "family": "comparison",
+      "type": "uint32",
+      "operation": "le",
+      "source": "generated",
+      "arches": {
+        "darwin/arm64": {
+          "state": "approved",
+          "evidence": [
+            "simd-kernelid-candidates-refactor-arm64.txt",
+            "simd-kernelid-candidates-refactor-arm64.csv"
+          ],
+          "updated": "2026-09-19"
+        }
+      }
+    },
+    {
+      "id": "compare-uint32-lt",
+      "family": "comparison",
+      "type": "uint32",
+      "operation": "lt",
+      "source": "generated",
+      "arches": {
+        "darwin/arm64": {
+          "state": "approved",
+          "evidence": [
+            "simd-kernelid-candidates-refactor-arm64.txt",
+            "simd-kernelid-candidates-refactor-arm64.csv"
+          ],
+          "updated": "2026-09-19"
+        }
+      }
+    },
+    {
+      "id": "compare-uint64-eq",
+      "family": "comparison",
+      "type": "uint64",
+      "operation": "eq",
+      "source": "generated",
+      "arches": {}
+    },
+    {
+      "id": "compare-uint64-ge",
+      "family": "comparison",
+      "type": "uint64",
+      "operation": "ge",
+      "source": "generated",
+      "arches": {}
+    },
+    {
+      "id": "compare-uint64-gt",
+      "family": "comparison",
+      "type": "uint64",
+      "operation": "gt",
+      "source": "generated",
+      "arches": {}
+    },
+    {
+      "id": "compare-uint64-le",
+      "family": "comparison",
+      "type": "uint64",
+      "operation": "le",
+      "source": "generated",
+      "arches": {}
+    },
+    {
+      "id": "compare-uint64-lt",
+      "family": "comparison",
+      "type": "uint64",
+      "operation": "lt",
+      "source": "generated",
+      "arches": {}
+    },
+    {
+      "id": "compare-uint8-eq",
+      "family": "comparison",
+      "type": "uint8",
+      "operation": "eq",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "compare-uint8-ge",
+      "family": "comparison",
+      "type": "uint8",
+      "operation": "ge",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "compare-uint8-gt",
+      "family": "comparison",
+      "type": "uint8",
+      "operation": "gt",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "compare-uint8-le",
+      "family": "comparison",
+      "type": "uint8",
+      "operation": "le",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "compare-uint8-lt",
+      "family": "comparison",
+      "type": "uint8",
+      "operation": "lt",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "hash128-batch",
+      "family": "hash",
+      "type": "uint64",
+      "operation": "batch128",
+      "source": "handwritten",
+      "arches": {
+        "darwin/arm64": {
+          "state": "rejected",
+          "reason": "unrolled scalar experiment regressed 10 percent",
+          "updated": "2026-09-19"
+        }
+      }
+    },
+    {
+      "id": "hash64-batch",
+      "family": "hash",
+      "type": "uint64",
+      "operation": "batch",
+      "source": "handwritten",
+      "arches": {
+        "darwin/arm64": {
+          "state": "approved",
+          "evidence": [
+            "simd-hash-utf8-refactor-arm64.txt",
+            "simd-hash-refactor-arm64.csv"
+          ],
+          "updated": "2026-09-19"
+        }
+      }
+    },
+    {
+      "id": "int64-scale",
+      "family": "scale",
+      "type": "int64",
+      "operation": "scale",
+      "source": "handwritten",
+      "arches": {
+        "darwin/arm64": {
+          "state": "rejected",
+          "reason": "optimized bounded scalar is the only production implementation",
+          "updated": "2026-09-19"
+        }
+      }
+    },
+    {
+      "id": "string-byte-length",
+      "family": "string-length",
+      "type": "string",
+      "operation": "byte-length",
+      "source": "generated",
+      "arches": {}
+    },
+    {
+      "id": "string-match-contains",
+      "family": "string-match",
+      "type": "string",
+      "operation": "contains",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "string-match-equal",
+      "family": "string-match",
+      "type": "string",
+      "operation": "equal",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "string-match-prefix",
+      "family": "string-match",
+      "type": "string",
+      "operation": "prefix",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "string-match-suffix",
+      "family": "string-match",
+      "type": "string",
+      "operation": "suffix",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "string-utf8-length",
+      "family": "string-length",
+      "type": "string",
+      "operation": "utf8-length",
+      "source": "generated",
+      "arches": {
+        "darwin/arm64": {
+          "state": "rejected",
+          "evidence": [
+            "simd-expression-e2e-refactor-arm64.txt"
+          ],
+          "reason": "mixed Unicode expression regressed beyond the end-to-end limit",
+          "updated": "2026-09-19"
+        }
+      }
+    }
+  ]
+}

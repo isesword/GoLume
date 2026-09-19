@@ -93,11 +93,32 @@ func (p *PreparedQuery) newWorkspace(ctx context.Context) (*queryWorkspace, erro
 	}
 	words := memory.WordsFor(p.maxPartRows)
 	exprBytes := int64(workers * len(p.cq.Predicate.Instructions) * 2 * words * 8)
+	// String literal byte caches are retained by each worker's EvalWorkspace.
+	// Their size is known from the compiled program, so reserve it up front
+	// instead of charging it lazily during the first batch.
+	var literalBytes int64
+	for _, in := range p.cq.Predicate.Instructions {
+		literalBytes += int64(len(in.LiteralString))
+	}
+	exprBytes += int64(workers) * literalBytes
 	selBytes := int64(workers * words * 8)
 	if err := w.reserve(ctx, exprBytes+selBytes); err != nil {
 		return nil, fmt.Errorf("predicate workspace: %w", err)
 	}
 	w.workers = make([]workerWorkspace, workers)
+	// Pair aggregation reuses these fixed-size batch scratch buffers in the
+	// direct path; reserve their ownership once with the query workspace.
+	if p.cq.GroupShape == GroupShapePairFixed {
+		pairScratchBytes := int64(workers*p.maxPartRows) * int64(16+1+8)
+		if err := w.reserve(ctx, pairScratchBytes); err != nil {
+			return nil, fmt.Errorf("pair aggregation workspace: %w", err)
+		}
+		for i := range w.workers {
+			w.workers[i].selectedPairs = make([]hashagg.Key128, p.maxPartRows)
+			w.workers[i].selectedPairValid = make([]uint8, p.maxPartRows)
+			w.workers[i].selectedVals = make([]int64, p.maxPartRows)
+		}
+	}
 	legacy, ok := p.src.(source.LegacyReaderSource)
 	if !ok {
 		return nil, fmt.Errorf("legacy engine.Result execution requires an external source.LegacyReaderSource; DataFrame execution uses the native physical stream graph")
@@ -111,6 +132,7 @@ func (p *PreparedQuery) newWorkspace(ctx context.Context) (*queryWorkspace, erro
 		w.workers[i].batch = memory.NewBatch()
 		w.workers[i].selection = make(memory.Bitmap, words)
 		w.workers[i].expr.Ensure(p.maxPartRows, len(p.cq.Predicate.Instructions))
+		w.workers[i].expr.SetReserveHook(func(n int64) error { return w.reserve(context.Background(), n) })
 	}
 	if p.strategy.Kind == planner.StrategyRadix {
 		rows := p.maxPartRows

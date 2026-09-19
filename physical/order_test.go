@@ -3,12 +3,70 @@ package physical
 import (
 	"context"
 	"errors"
+	"math"
 	"testing"
 
 	"gocolumn/memory"
 	"gocolumn/source"
 	"gocolumn/source/inmemory"
 )
+
+func TestSortFloatSpecialValuesAndStableZeroTie(t *testing.T) {
+	schema := memory.NewSchema(memory.Field{Name: "id", Type: memory.TypeInt64}, memory.Field{Name: "f", Type: memory.TypeFloat64})
+	b := memory.NewBatch()
+	b.Int64s["id"] = &memory.Int64Vector{Values: []int64{0, 1, 2, 3}}
+	b.Float64s["f"] = &memory.Float64Vector{Values: []float64{math.NaN(), -0, 0, -1}}
+	b.Reset(4)
+	base, err := inmemory.New(schema, b)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sorted, err := NewSortSource(base, []SortKey{{Column: "f"}}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ids := sortedIDs(t, sorted)
+	if want := []int64{3, 1, 2, 0}; !equalInt64s(ids, want) {
+		t.Fatalf("ids=%v want=%v", ids, want)
+	}
+}
+
+func TestSortPreservesNativeNumericOutputs(t *testing.T) {
+	schema := memory.NewSchema(memory.Field{Name: "key", Type: memory.TypeInt8}, memory.Field{Name: "f", Type: memory.TypeFloat32})
+	b := memory.NewBatch()
+	b.Int8s["key"] = &memory.Int8Vector{Values: []int8{3, 1, 2}}
+	b.Float32s["f"] = &memory.Float32Vector{Values: []float32{30, 10, 20}}
+	b.Reset(3)
+	base, err := inmemory.New(schema, b)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sorted, err := NewSortSource(base, []SortKey{{Column: "key"}}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	parts, _ := sorted.Partitions(context.Background())
+	r, err := openTestReader(context.Background(), sorted, testReadOptions())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer r.Close()
+	out := memory.NewBatch()
+	if err := r.ReadPartition(context.Background(), parts[0], out); err != nil {
+		t.Fatal(err)
+	}
+	keys, err := out.Int8("key")
+	if err != nil {
+		t.Fatal(err)
+	}
+	fs, err := out.Float32("f")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(keys.Values) != 3 || keys.Values[0] != 1 || keys.Values[1] != 2 || keys.Values[2] != 3 || fs.Values[0] != 10 || fs.Values[2] != 30 {
+		t.Fatalf("keys=%v f=%v", keys.Values, fs.Values)
+	}
+}
 
 func TestSortHonorsMemoryBudget(t *testing.T) {
 	schema := memory.NewSchema(

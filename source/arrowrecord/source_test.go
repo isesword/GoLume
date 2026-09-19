@@ -346,7 +346,7 @@ func TestSourceTypedFloatDateTimestampBindings(t *testing.T) {
 	if len(batch.Opaque) != 0 {
 		t.Fatalf("typed columns should not retain opaque bindings: %v", batch.Opaque)
 	}
-	fv, _ := batch.Float64("f")
+	fv, _ := batch.Float32("f")
 	if fv.Values[1] != 2.5 {
 		t.Fatalf("float values=%v", fv.Values)
 	}
@@ -357,6 +357,68 @@ func TestSourceTypedFloatDateTimestampBindings(t *testing.T) {
 	tv, _ := batch.Int64("ts")
 	if tv.Values[0] != int64(1000)*int64(1e6) {
 		t.Fatalf("timestamp values=%v", tv.Values)
+	}
+}
+
+func TestSourcePreservesNativeArrowWidths(t *testing.T) {
+	alloc := arrowmem.NewGoAllocator()
+	i8b := array.NewInt8Builder(alloc)
+	i16b := array.NewInt16Builder(alloc)
+	u8b := array.NewUint8Builder(alloc)
+	u16b := array.NewUint16Builder(alloc)
+	f32b := array.NewFloat32Builder(alloc)
+	defer i8b.Release()
+	defer i16b.Release()
+	defer u8b.Release()
+	defer u16b.Release()
+	defer f32b.Release()
+	i8b.AppendValues([]int8{-1, 2}, nil)
+	i16b.AppendValues([]int16{-3, 4}, nil)
+	u8b.AppendValues([]uint8{5, 6}, nil)
+	u16b.AppendValues([]uint16{7, 8}, nil)
+	f32b.AppendValues([]float32{1.5, 2.5}, nil)
+	arrays := []arrow.Array{i8b.NewArray(), i16b.NewArray(), u8b.NewArray(), u16b.NewArray(), f32b.NewArray()}
+	defer func() {
+		for _, a := range arrays {
+			a.Release()
+		}
+	}()
+	schema := arrow.NewSchema([]arrow.Field{
+		{Name: "i8", Type: arrow.PrimitiveTypes.Int8}, {Name: "i16", Type: arrow.PrimitiveTypes.Int16},
+		{Name: "u8", Type: arrow.PrimitiveTypes.Uint8}, {Name: "u16", Type: arrow.PrimitiveTypes.Uint16},
+		{Name: "f32", Type: arrow.PrimitiveTypes.Float32},
+	}, nil)
+	rec := array.NewRecordBatch(schema, arrays, 2)
+	defer rec.Release()
+	src, err := NewSource(rec)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer src.Close()
+	r, err := src.NewReader(context.Background(), testReadOptions())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer r.Close()
+	parts, _ := src.Partitions(context.Background())
+	b := memory.NewBatch()
+	if err := r.ReadPartition(context.Background(), parts[0], b); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := b.Int8("i8"); got.Values[0] != -1 {
+		t.Fatalf("i8=%v", got.Values)
+	}
+	if got, _ := b.Int16("i16"); got.Values[0] != -3 {
+		t.Fatalf("i16=%v", got.Values)
+	}
+	if got, _ := b.Uint8("u8"); got.Values[0] != 5 {
+		t.Fatalf("u8=%v", got.Values)
+	}
+	if got, _ := b.Uint16("u16"); got.Values[0] != 7 {
+		t.Fatalf("u16=%v", got.Values)
+	}
+	if got, _ := b.Float32("f32"); got.Values[1] != 2.5 {
+		t.Fatalf("f32=%v", got.Values)
 	}
 }
 

@@ -385,6 +385,7 @@ func (p *PreparedQuery) executeRadixFallbackReplay(ctx context.Context, workspac
 	batch := memory.NewBatch()
 	defer batch.ReleaseOwned()
 	var evaluation expr.EvalWorkspace
+	evaluation.SetReserveHook(func(n int64) error { return workspace.reserve(ctx, n) })
 	var summary hashagg.Summary
 	if p.cq.GroupShape == GroupShapePairFixed {
 		table, err := workspace.ensureFallbackPair(ctx)

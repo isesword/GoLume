@@ -70,6 +70,13 @@ func (p *PreparedQuery) NewSortedAggregateStream(ctx context.Context, schema mem
 		stateLease: stateLease, outputRows: outputRows, inputBatch: memory.NewBatch(),
 		state: aggregate.NewInt64Vector(1, p.cq.AggregateLayout), started: time.Now(), active: true,
 	}
+	stream.workspace.SetReserveHook(func(n int64) error {
+		r, err := budget.Reserve(context.Background(), n)
+		if err == nil {
+			stream.dynamicReservations = append(stream.dynamicReservations, r)
+		}
+		return err
+	})
 	active = false
 	return stream, nil
 }
@@ -86,15 +93,16 @@ type sortedAggregateStream struct {
 	outputLeases []memory.Reservation
 	outputRows   int
 
-	inputBatch *memory.Batch
-	binding    aggregateBatchBinding
-	selection  memory.Bitmap
-	nextRow    int
-	workspace  expr.EvalWorkspace
-	state      aggregate.Int64Vector
-	current    aggregateRecord
-	haveGroup  bool
-	inputDone  bool
+	inputBatch          *memory.Batch
+	binding             aggregateBatchBinding
+	selection           memory.Bitmap
+	nextRow             int
+	workspace           expr.EvalWorkspace
+	dynamicReservations []memory.Reservation
+	state               aggregate.Int64Vector
+	current             aggregateRecord
+	haveGroup           bool
+	inputDone           bool
 
 	selectedRows int
 	groups       int
@@ -385,6 +393,10 @@ func (s *sortedAggregateStream) Close() error {
 		return s.closeErr
 	}
 	s.closed = true
+	for _, r := range s.dynamicReservations {
+		r.Release()
+	}
+	s.dynamicReservations = nil
 	s.releaseOutput()
 	s.releaseKey()
 	if s.stateLease != nil {

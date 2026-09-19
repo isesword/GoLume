@@ -6,10 +6,15 @@ import "fmt"
 // Vector bindings are shallow; sources retain ownership unless documented otherwise.
 type Batch struct {
 	Rows        int
+	Int8s       map[string]*Int8Vector
+	Int16s      map[string]*Int16Vector
 	Int64s      map[string]*Int64Vector
 	Int32s      map[string]*Int32Vector
+	Uint8s      map[string]*Uint8Vector
+	Uint16s     map[string]*Uint16Vector
 	Uint32s     map[string]*Uint32Vector
 	Uint64s     map[string]*Uint64Vector
+	Float32s    map[string]*Float32Vector
 	Float64s    map[string]*Float64Vector
 	Strings     map[string]*StringViewVector
 	DictStrings map[string]*DictionaryStringVector
@@ -21,10 +26,15 @@ type Batch struct {
 // NewBatch allocates an empty batch with reusable column maps.
 func NewBatch() *Batch {
 	return &Batch{
+		Int8s:       make(map[string]*Int8Vector),
+		Int16s:      make(map[string]*Int16Vector),
 		Int64s:      make(map[string]*Int64Vector),
 		Int32s:      make(map[string]*Int32Vector),
+		Uint8s:      make(map[string]*Uint8Vector),
+		Uint16s:     make(map[string]*Uint16Vector),
 		Uint32s:     make(map[string]*Uint32Vector),
 		Uint64s:     make(map[string]*Uint64Vector),
+		Float32s:    make(map[string]*Float32Vector),
 		Float64s:    make(map[string]*Float64Vector),
 		Strings:     make(map[string]*StringViewVector),
 		DictStrings: make(map[string]*DictionaryStringVector),
@@ -64,10 +74,15 @@ func (b *Batch) ReleaseOwned() {
 // materialized opaque Arrow arrays owned by the batch are released first.
 func (b *Batch) ClearColumns() {
 	b.ReleaseOwned()
+	clear(b.Int8s)
+	clear(b.Int16s)
 	clear(b.Int64s)
 	clear(b.Int32s)
+	clear(b.Uint8s)
+	clear(b.Uint16s)
 	clear(b.Uint32s)
 	clear(b.Uint64s)
+	clear(b.Float32s)
 	clear(b.Float64s)
 	clear(b.Strings)
 	clear(b.DictStrings)
@@ -75,6 +90,51 @@ func (b *Batch) ClearColumns() {
 	clear(b.Structs)
 	clear(b.Opaque)
 	b.Rows = 0
+}
+
+// Int8 returns the named int8 vector or an error when the binding is absent.
+func (b *Batch) Int8(name string) (*Int8Vector, error) {
+	v, ok := b.Int8s[name]
+	if !ok {
+		return nil, fmt.Errorf("int8 column %q not present in batch", name)
+	}
+	return v, nil
+}
+
+// Int16 returns the named int16 vector or an error when the binding is absent.
+func (b *Batch) Int16(name string) (*Int16Vector, error) {
+	v, ok := b.Int16s[name]
+	if !ok {
+		return nil, fmt.Errorf("int16 column %q not present in batch", name)
+	}
+	return v, nil
+}
+
+// Uint8 returns the named uint8 vector or an error when the binding is absent.
+func (b *Batch) Uint8(name string) (*Uint8Vector, error) {
+	v, ok := b.Uint8s[name]
+	if !ok {
+		return nil, fmt.Errorf("uint8 column %q not present in batch", name)
+	}
+	return v, nil
+}
+
+// Uint16 returns the named uint16 vector or an error when the binding is absent.
+func (b *Batch) Uint16(name string) (*Uint16Vector, error) {
+	v, ok := b.Uint16s[name]
+	if !ok {
+		return nil, fmt.Errorf("uint16 column %q not present in batch", name)
+	}
+	return v, nil
+}
+
+// Float32 returns the named float32 vector or an error when the binding is absent.
+func (b *Batch) Float32(name string) (*Float32Vector, error) {
+	v, ok := b.Float32s[name]
+	if !ok {
+		return nil, fmt.Errorf("float32 column %q not present in batch", name)
+	}
+	return v, nil
 }
 
 // Int64 returns the named int64 vector or an error when the binding is absent.
