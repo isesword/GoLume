@@ -697,7 +697,7 @@ func (s *externalSortStream) StreamDiagnostics() map[string]string {
 		"strategy": "external-stable", "input_rows": fmt.Sprint(s.inputRows), "output_rows": fmt.Sprint(s.outputRows),
 		"spill_runs": fmt.Sprint(s.spillRuns), "spill_bytes": fmt.Sprint(s.spillBytes),
 		"merge_levels": fmt.Sprint(s.mergeLevels), "merge_fan_in": fmt.Sprint(externalSortFanIn),
-		"peak_memory_bytes": fmt.Sprint(snapshot.PeakBytes),
+		"peak_memory_scope": "query", "peak_memory_bytes": fmt.Sprint(snapshot.PeakBytes),
 	}
 }
 

@@ -364,7 +364,7 @@ func (s *residentAggregateStream) StreamDiagnostics() map[string]string {
 	strategy, workers := s.physicalStrategy()
 	attributes := map[string]string{
 		"strategy": strategy.String(), "workers": fmt.Sprint(workers), "groups": fmt.Sprint(s.groups),
-		"selected_rows": fmt.Sprint(s.selectedRows), "checksum": fmt.Sprint(s.checksum), "peak_memory_bytes": fmt.Sprint(peak), "spill_runs": "0",
+		"selected_rows": fmt.Sprint(s.selectedRows), "checksum": fmt.Sprint(s.checksum), "peak_memory_scope": "query", "peak_memory_bytes": fmt.Sprint(peak), "spill_runs": "0",
 		"kernel_mode": s.query.e.kernels.Capabilities().Mode().String(), "kernel_arch": s.query.e.kernels.Capabilities().Arch(),
 	}
 	if s.physicalKind == planner.StrategyPartitionedHash {

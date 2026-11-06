@@ -3,6 +3,41 @@
 This is a breaking API change. There is one source and physical execution
 protocol, not a legacy whole-partition engine behind a compatibility wrapper.
 
+For current scope, resource limits and staged follow-up work, see
+[CURRENT_STATUS.md](CURRENT_STATUS.md). Historical phase gates and benchmark
+reports describe their own checkpoints, not automatic acceptance of this tree.
+The old prepared W4 target is accepted as deferred so development can continue;
+its unmet measurements are not relabeled as passing, and merge readiness is a
+separate decision.
+
+## Result consumers
+
+- `Collect(ctx)` returns an owned `DataFrame`; call `Close` on it.
+- `Prepare(ctx)` returns `*PreparedDataFrame`. Each `Execute` owns its result;
+  each `ExecuteBatches` owns a separate borrowed stream. Close results/readers
+  and the prepared plan according to their lifetimes.
+- `CollectBatches(ctx, BatchOptions)` and `SinkBatches` consume borrowed
+  `BatchView` values. A view expires on the next `Next` or reader `Close`;
+  retaining one does not copy its data. Close a reader when stopping early.
+- `SinkParquet` and `SinkIPC` avoid collecting the whole result first. They
+  share the native graph and resource policy; choosing a sink alone does not
+  make an unsupported intermediate operator bounded.
+- `PrepareResult` and `CollectResult` are terminal-Aggregate-only APIs, as
+  detailed below. Aggregate followed by row operators uses the other consumers.
+
+`Collect` always retains its complete output. `ExecutionBounded` is not an
+out-of-core DataFrame representation or a promise that any plan can finish.
+
+Owned DataFrame execution, borrowed iterators, Analyze and file sinks use the
+same query-budget acquisition policy. A `QueryBudget` supplied through
+`memory.WithQueryBudget` is honored, including its accounting root and limits,
+and remains caller-owned. Execution releases its own resources, not the caller's
+reservations or budget; the caller must close the budget after dependent results
+and consumers are finished. Without an external budget, execution creates and
+closes its own. Closed engines/budgets reject new work. `ExecutionBounded` also
+rejects an unlimited external budget rather than silently replacing or ignoring
+it; stateful spill requirements still apply to the actual execution budget.
+
 ## Source implementers
 
 `source.Source` now includes `NewBatchStream(context.Context, source.ReadOptions)`
@@ -89,7 +124,7 @@ strategy is selected; forcing direct-fused for an unsupported predicate is an
 error rather than a diagnostic
 label for a different execution path.
 
-## Continuously charged prepared-state reuse (WIP)
+## Continuously charged prepared-state reuse
 
 Repeated engine.PreparedQuery.Execute calls can retain owned fixed-width resident
 state and bounded partition/wave scratch in an engine-wide reclaimable cache.
@@ -106,17 +141,85 @@ entries in transit. Engine.Memory().Used() may therefore remain positive after a
 successful prepared execution, while the completed query's Used() is zero.
 PreparedCacheStats exposes idle/credited bytes and hit/miss/eviction counts.
 
-Prepared.Close and Engine.Close wait for accepted work and in-flight eviction
+PreparedQuery.Close and Engine.Close wait for accepted work and in-flight eviction
 cleanup. Engine.Close rejects new execution with ErrEngineClosed. Result rows
 remain caller-owned and survive subsequent resets. See
 [prepared memory ownership](PREPARED_MEMORY_REUSE.md).
 
 The shared I32 dense SUM/COUNT kernel uses the same state transitions, preserves
 NULL/fallback paths and existing bounded cancellation checks, and does not
-restore a separate executor. This checkpoint is still WIP: diagnostic combined
-W4 median 13.338 ms remains above the old 10.04 ms reference and its 3% limit. The
-controlled improvement is not full performance acceptance. See
+restore a separate executor. The historical diagnostic combined W4 median
+13.338 ms remains above the old 10.04 ms reference and its 3% limit (10.341 ms).
+That target is now deferred, not passed; the controlled improvement is not full
+performance acceptance. See
 [the measured evidence](../validation/charged-reuse/README.md).
+
+## Streaming Analyze and partial failure reports
+
+Implemented in the current worktree: `Analyze` prepares once and drains one
+native execution through the same stream opener as
+`PreparedDataFrame.ExecuteBatches`. It does not collect a DataFrame or retain
+output batches. Blocking operators still require their ordinary state and obey
+the same resource/spill policy; diagnostic draining does not make them stateless.
+
+The report API intentionally changes:
+
+- `AnalyzeReport.MaterializedRows` is removed without a compatibility shim.
+  `OutputRows` counts successfully observed output rows, not all input work.
+- `OutputBatches` counts nonempty output batches, not zero-row progress calls.
+- `FirstBatchDuration` starts immediately before opening the execution stream
+  and ends at the first nonempty output batch. It is zero when none was observed,
+  including empty results or failure before the first nonempty batch.
+- `ExecuteDuration` starts at that same boundary and includes stream opening,
+  draining, and top-level stream/budget/prepared-plan cleanup. Preparation is
+  measured separately in `PrepareDuration`.
+- `SelectedRows`, `GroupCount` and `Strategy` summarize only a terminal Aggregate.
+  Nested aggregate diagnostics remain on their own `ExecuteOperators` entries.
+
+`Analyze` returns the available report alongside any error. `ExplainAnalyze`
+likewise returns complete or partial text even on failure. Plans and operator
+snapshots describe stages reached; counts on a failed execution are partial,
+not a completed-query result. Final snapshots are captured after cleanup and
+scale with plan size, not output row count. Callers must check the returned error.
+
+Failure fields follow the public operation boundaries:
+
+- `Error` is the error from preparation, stream opening or `Next`.
+- `FailurePhase` is `prepare` or `execute` when `Error` is non-nil, and empty on
+  success or a cleanup-only failure.
+- `CleanupError` contains errors from top-level reader/budget/plan `Close`.
+  It does not replace `Error`; both remain discoverable with `errors.Is/As` in
+  the joined error returned by Analyze.
+- `Termination` is `completed`, `failed`, `canceled` (including deadline expiry),
+  `budget-exceeded` (memory or spill quota), or `cleanup-failed`. The last value
+  applies only when there is no primary `Error` but top-level cleanup fails.
+
+These fields are not global causal attribution. An operator may close a nested
+stream during preparation or `Next`, so a nested Close error can appear in
+`Error` with `FailurePhase=prepare` or `execute`, not `CleanupError`. Profiled
+operator `close_error` attributes identify that origin where available. A
+primary failure still determines termination when top-level cleanup also fails.
+
+Allocation deltas are process-wide Go runtime measurements, not exclusive query
+or operator allocations. Native `peak_memory_bytes` attributes carry
+`peak_memory_scope=query`: they are shared query-budget high-water marks and
+must not be summed across operators. A caller-owned budget can include earlier
+or concurrent caller usage, so its peak is not necessarily exclusive to this
+Analyze invocation either. It is not process RSS.
+
+Unified predicate/projection expression execution remains subsequent work;
+`expr.Program` and `expr.ScalarProgram` are still separate.
+
+Validation status: this stage's implementation, independent final review and
+full local `scripts/validate.sh` passed. Coverage includes ordinary/SIMD tests,
+host-supported forced widths, SIMD-disabled fallback, Linux build, race, vet,
+GoDoc, structure/generated-code checks and demo, plus independent focused tests.
+See [the review record](../validation/analyze-stream-review.md) and
+[full validation log](../validation/analyze-stream-full-validation.txt).
+The fixture remains the disclosed synthetic substitute; original-fixture and
+GitHub Actions success are not claimed. The old W4 target remains deferred and
+unified expressions remain an unfinished separate stage. This is not a release
+or merge-readiness claim.
 
 ## Native vector representation
 
@@ -169,6 +272,17 @@ The experimental producer-side Filter acceleration is not enabled in this WIP
 checkpoint; shared ownership fixes are independent of that rejected optimization.
 
 ## Resource policy
+
+`engine.DefaultOptions()` has no finite memory hard cap (`MemoryLimitBytes=0`)
+and disables Spill. Configure a finite memory limit for `ExecutionBounded`,
+and a positive `Spill.MaxBytes` when the selected stateful strategy requires
+Spill. Unsupported bounded plans fail explicitly. `ExecutionMemoryOnly` disables
+Spill; `ExecutionAuto` selects strategies within the same native graph.
+
+Managed reservation is not a process RSS guarantee. `Collect`, caller-retained
+Result rows, immutable source data and decoder/runtime overhead have different
+ownership and accounting lifetimes; none may be treated as free memory merely
+because a completed query reports zero usage.
 
 ReadOptions.BatchRows and BatchBytes govern managed row-scaled decoded buffers
 and scratch. Arrow/in-memory input buffers are immutable borrowed source data;

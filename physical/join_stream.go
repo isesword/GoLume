@@ -1342,7 +1342,7 @@ func (s *spillableJoinStream) StreamDiagnostics() map[string]string {
 		"probe_rows": fmt.Sprint(s.probeRows), "probe_bytes": fmt.Sprint(s.probeBytes),
 		"matched_probe_rows": fmt.Sprint(s.matchedProbe), "output_rows": fmt.Sprint(s.outputCount),
 		"spill_runs": fmt.Sprint(s.spillRuns), "spill_bytes": fmt.Sprint(s.spillBytes),
-		"peak_memory_bytes": fmt.Sprint(snapshot.PeakBytes), "max_radix_depth": fmt.Sprint(s.maxDepth),
+		"peak_memory_scope": "query", "peak_memory_bytes": fmt.Sprint(snapshot.PeakBytes), "max_radix_depth": fmt.Sprint(s.maxDepth),
 		"max_partition_build_rows": fmt.Sprint(s.maxBuildRows), "max_multiplicity": fmt.Sprint(s.maxMultiplicity),
 	}
 }

@@ -107,6 +107,35 @@ func (e *Engine) BeginQueryMemory() (*memory.QueryBudget, error) {
 	}
 	return e.beginQueryMemory()
 }
+
+// AcquireQueryMemory uses a caller-supplied query budget when present, otherwise
+// creates an execution-owned budget. The returned ownership flag is true only
+// for a new budget: callers must never close a borrowed budget. An external
+// budget supplies the query's accounting root and limits, as for PreparedQuery
+// execution. Closed engines and closed external budgets reject new work.
+func (e *Engine) AcquireQueryMemory(ctx context.Context) (*memory.QueryBudget, bool, error) {
+	if ctx == nil {
+		return nil, false, fmt.Errorf("query memory context is nil")
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, false, err
+	}
+	if e == nil || e.memory == nil {
+		return nil, false, fmt.Errorf("engine memory budget is nil")
+	}
+	if err := e.checkOpen(); err != nil {
+		return nil, false, err
+	}
+	if budget := memory.QueryBudgetFromContext(ctx); budget != nil {
+		if budget.Snapshot().Closed {
+			return nil, false, memory.ErrQueryBudgetClosed
+		}
+		return budget, false, nil
+	}
+	budget, err := e.beginQueryMemory()
+	return budget, err == nil, err
+}
+
 func (e *Engine) beginQueryMemory() (*memory.QueryBudget, error) {
 	return e.memory.BeginQuery(memory.BudgetOptions{SoftLimitBytes: e.opts.QueryMemorySoftLimitBytes, HardLimitBytes: e.opts.MemoryLimitBytes, Spill: e.opts.Spill})
 }

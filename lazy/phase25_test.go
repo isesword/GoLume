@@ -288,7 +288,7 @@ func TestExplainAnalyzeAggregateAndFrame(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if rowReport.OutputRows != 3 || rowReport.MaterializedRows != 3 {
+	if rowReport.OutputRows != 3 || rowReport.OutputBatches != 1 {
 		t.Fatalf("row analyze=%+v", rowReport)
 	}
 	if len(rowReport.ExecuteOperators) < 2 {

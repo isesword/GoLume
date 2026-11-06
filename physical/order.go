@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"container/heap"
 	"context"
+	"errors"
 	"fmt"
 	"gocolumn/join"
 	"gocolumn/memory"
@@ -464,7 +465,7 @@ func (r *topKReader) Close() error {
 // selected rows from winning source batches. For a non-replayable input the
 // reader first snapshots the payload input into one materialized batch and
 // runs both passes over that snapshot.
-func (r *topKReader) Next(ctx context.Context, dst *memory.Batch) (bool, error) {
+func (r *topKReader) Next(ctx context.Context, dst *memory.Batch) (produced bool, resultErr error) {
 	if r.done || r.owner.k == 0 {
 		r.done = true
 		dst.ClearColumns()
@@ -564,7 +565,12 @@ func (r *topKReader) Next(ctx context.Context, dst *memory.Batch) (bool, error) 
 		}
 		second = replayed
 	}
-	defer second.Close()
+	defer func() {
+		if closeErr := second.Close(); closeErr != nil {
+			produced = false
+			resultErr = errors.Join(resultErr, closeErr)
+		}
+	}()
 	type selectedRow struct {
 		batch *memory.Batch
 		row   int

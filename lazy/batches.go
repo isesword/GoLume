@@ -111,6 +111,7 @@ type BatchReader struct {
 	ownedPrepare bool
 	stream       source.BatchStream
 	budget       *memory.QueryBudget
+	ownedBudget  bool
 	baseContext  context.Context
 	schema       memory.Schema
 	batch        *memory.Batch
@@ -118,6 +119,9 @@ type BatchReader struct {
 	err          error
 	closeErr     error
 	closed       bool
+	// Analyze snapshots only final diagnostics, never a per-batch event log.
+	captureDiagnostics bool
+	diagnostics        map[string]string
 	// holdBudgetUntilClose is used by native sinks whose encoders may allocate
 	// while finalizing after the upstream reaches EOF.
 	holdBudgetUntilClose bool
@@ -145,22 +149,30 @@ func (f LazyFrame) CollectBatches(ctx context.Context, opts BatchOptions) (*Batc
 
 // ExecuteBatches opens one independent borrowed result stream from a prepared
 // DataFrame plan. Multiple streams may run concurrently when the source allows
-// concurrent readers.
+// concurrent readers. A QueryBudget in ctx is borrowed and remains open after
+// stream cleanup; otherwise the reader owns a new execution budget.
 func (p *PreparedDataFrame) ExecuteBatches(ctx context.Context, opts BatchOptions) (*BatchReader, error) {
+	reader, err, cleanupErr := p.openBatches(ctx, opts)
+	return reader, errors.Join(err, cleanupErr)
+}
+
+// openBatches is the single execution opener. Analyze retains the two failure
+// categories while public iterators return their joined error.
+func (p *PreparedDataFrame) openBatches(ctx context.Context, opts BatchOptions) (*BatchReader, error, error) {
 	if p == nil {
-		return nil, fmt.Errorf("nil PreparedDataFrame")
+		return nil, fmt.Errorf("nil PreparedDataFrame"), nil
 	}
 	if ctx == nil {
-		return nil, fmt.Errorf("prepared batch context is nil")
+		return nil, fmt.Errorf("prepared batch context is nil"), nil
 	}
 	pipelineOptions, err := opts.apply(p.pipeline)
 	if err != nil {
-		return nil, err
+		return nil, err, nil
 	}
 	p.lifeMu.Lock()
 	if p.closed {
 		p.lifeMu.Unlock()
-		return nil, ErrPreparedFrameClosed
+		return nil, ErrPreparedFrameClosed, nil
 	}
 	p.active.Add(1)
 	p.lifeMu.Unlock()
@@ -170,19 +182,22 @@ func (p *PreparedDataFrame) ExecuteBatches(ctx context.Context, opts BatchOption
 			p.active.Done()
 		}
 	}()
-	queryBudget, err := p.engine.BeginQueryMemory()
+	queryBudget, ownedBudget, err := p.acquireQueryMemory(ctx)
 	if err != nil {
-		return nil, err
+		return nil, err, nil
 	}
 	openContext := memory.WithQueryBudget(ctx, queryBudget)
 	exchangeManager := memory.ClassifiedManager(p.manager, "Exchange", memory.MemoryInFlightBatch)
 	stream, err := pipeline.OpenBatchStream(openContext, p.src, source.ReadOptions{Kernels: p.kernels}, p.parts, exchangeManager, pipelineOptions, p.observer)
 	if err != nil {
-		_ = queryBudget.Close()
-		return nil, err
+		var cleanupErr error
+		if ownedBudget {
+			cleanupErr = queryBudget.Close()
+		}
+		return nil, err, cleanupErr
 	}
 	active = false
-	return &BatchReader{prepared: p, stream: stream, budget: queryBudget, baseContext: ctx, schema: p.schema, batch: memory.NewBatch()}, nil
+	return &BatchReader{prepared: p, stream: stream, budget: queryBudget, ownedBudget: ownedBudget, baseContext: ctx, schema: p.schema, batch: memory.NewBatch()}, nil, nil
 }
 
 // Schema returns a copy of the result schema, including after exhaustion.
@@ -205,6 +220,16 @@ func (r *BatchReader) Next(ctx context.Context) bool {
 	}
 	if ctx == nil {
 		r.err = fmt.Errorf("batch reader context is nil")
+		r.finishLocked()
+		return false
+	}
+	if err := ctx.Err(); err != nil {
+		r.err = err
+		r.finishLocked()
+		return false
+	}
+	if err := r.baseContext.Err(); err != nil {
+		r.err = err
 		r.finishLocked()
 		return false
 	}
@@ -244,7 +269,8 @@ func (r *BatchReader) Err() error {
 	return errors.Join(r.err, r.closeErr)
 }
 
-// Close releases the physical stream, query budget, and one-shot prepared plan.
+// Close releases the physical stream, any execution-owned query budget, and
+// the one-shot prepared plan. Caller-supplied query budgets remain open.
 func (r *BatchReader) Close() error {
 	if r == nil {
 		return nil
@@ -268,11 +294,15 @@ func (r *BatchReader) finishLockedWithBudget(closeBudget bool) {
 		r.batch.ReleaseOwned()
 	}
 	if r.stream != nil {
+		r.snapshotDiagnosticsLocked()
 		r.closeErr = errors.Join(r.closeErr, r.stream.Close())
+		r.snapshotDiagnosticsLocked()
 		r.stream = nil
 	}
 	if closeBudget && r.budget != nil {
-		r.closeErr = errors.Join(r.closeErr, r.budget.Close())
+		if r.ownedBudget {
+			r.closeErr = errors.Join(r.closeErr, r.budget.Close())
+		}
 		r.budget = nil
 	}
 	if r.prepared != nil {
@@ -281,6 +311,24 @@ func (r *BatchReader) finishLockedWithBudget(closeBudget bool) {
 			r.closeErr = errors.Join(r.closeErr, r.prepared.Close())
 		}
 		r.prepared = nil
+	}
+}
+
+// snapshotDiagnosticsLocked merges final snapshots so diagnostics finalized by
+// Close replace earlier values without losing values cleared during cleanup.
+func (r *BatchReader) snapshotDiagnosticsLocked() {
+	if !r.captureDiagnostics {
+		return
+	}
+	provider, ok := r.stream.(source.BatchStreamDiagnostics)
+	if !ok {
+		return
+	}
+	for key, value := range provider.StreamDiagnostics() {
+		if r.diagnostics == nil {
+			r.diagnostics = make(map[string]string)
+		}
+		r.diagnostics[key] = value
 	}
 }
 

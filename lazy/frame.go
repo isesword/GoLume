@@ -2,6 +2,7 @@ package lazy
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"gocolumn/engine"
 	"gocolumn/expr"
@@ -610,7 +611,7 @@ func (f LazyFrame) explainRowPhysical(ctx context.Context) (string, error) {
 	}
 	src, pending, closers, err := lowerSourcePipeline(ctx, physicalPlan, f.session.engine.Memory(), f.session.engine.KernelSet(), f.session.engine)
 	if err != nil {
-		return "", err
+		return "", errors.Join(err, releaseClosers(closers))
 	}
 	defer closeClosers(closers)
 	if pending != nil {
@@ -666,9 +667,15 @@ func schemaColumnNames(schema memory.Schema) []string {
 }
 
 func closeClosers(closers []io.Closer) {
+	_ = releaseClosers(closers)
+}
+
+func releaseClosers(closers []io.Closer) error {
+	var err error
 	for i := len(closers) - 1; i >= 0; i-- {
-		_ = closers[i].Close()
+		err = errors.Join(err, closers[i].Close())
 	}
+	return err
 }
 
 // PrepareResult requires a terminal Aggregate and prepares the same physical
@@ -787,7 +794,7 @@ func (f LazyFrame) prepare(ctx context.Context, opts engine.PrepareOptions) (*en
 		}
 		physicalSource, query.Filter, closers, err = lowerSourcePipeline(ctx, agg.Input, f.session.engine.Memory(), f.session.engine.KernelSet(), f.session.engine)
 		if err != nil {
-			return nil, nil, source.PushdownReport{}, nil, err
+			return nil, nil, source.PushdownReport{}, nil, errors.Join(err, releaseClosers(closers))
 		}
 		query.GroupBy = append([]string(nil), agg.GroupBy...)
 		query.Aggregates = append([]expr.Aggregate(nil), agg.Aggregates...)
@@ -812,10 +819,7 @@ func (f LazyFrame) prepare(ctx context.Context, opts engine.PrepareOptions) (*en
 	}
 	prepared, err := f.session.engine.Prepare(ctx, physicalSource, query, opts)
 	if err != nil {
-		for i := len(closers) - 1; i >= 0; i-- {
-			_ = closers[i].Close()
-		}
-		return nil, nil, source.PushdownReport{}, nil, err
+		return nil, nil, source.PushdownReport{}, nil, errors.Join(err, releaseClosers(closers))
 	}
 	return prepared, physicalLogical, report, closers, nil
 }
@@ -988,13 +992,10 @@ func lowerTopKKeySource(ctx context.Context, input logical.Plan, order orderKeyP
 	}
 	keySrc, pending, closers, err := lowerSourcePipeline(ctx, physicalPlan, manager, kernels, exec)
 	if err != nil {
-		return nil, err
+		return nil, errors.Join(err, releaseClosers(closers))
 	}
 	if len(closers) != 0 {
-		for i := len(closers) - 1; i >= 0; i-- {
-			_ = closers[i].Close()
-		}
-		return nil, fmt.Errorf("top-k key source unexpectedly retains physical resources")
+		return nil, errors.Join(fmt.Errorf("top-k key source unexpectedly retains physical resources"), releaseClosers(closers))
 	}
 	if pending == nil {
 		return keySrc, nil
@@ -1084,6 +1085,8 @@ func (p orderKeyPlan) keyPlan(input logical.Plan) logical.Plan {
 	}
 }
 
+// lowerSourcePipeline returns every acquired closer, including on failure.
+// Recursive calls transfer ownership upward; only the outer caller closes them.
 func lowerSourcePipeline(ctx context.Context, plan logical.Plan, manager memory.Manager, kernels kernel.Set, exec join.ParallelExecutor) (source.Source, expr.Expr, []io.Closer, error) {
 	switch n := plan.(type) {
 	case *logical.Scan:
@@ -1099,19 +1102,19 @@ func lowerSourcePipeline(ctx context.Context, plan logical.Plan, manager memory.
 	case *logical.Filter:
 		src, pending, closers, err := lowerSourcePipeline(ctx, n.Input, manager, kernels, exec)
 		if err != nil {
-			return nil, nil, nil, err
+			return nil, nil, closers, err
 		}
 		return src, expr.MergeAnd(pending, n.Predicate), closers, nil
 	case *logical.Projection:
 		src, pending, closers, err := lowerSourcePipeline(ctx, n.Input, manager, kernels, exec)
 		if err != nil {
-			return nil, nil, nil, err
+			return nil, nil, closers, err
 		}
 		if pending != nil {
 			childID := profileSourceID(src)
 			src, err = physical.NewFilterSource(src, pending)
 			if err != nil {
-				return nil, nil, nil, err
+				return nil, nil, closers, err
 			}
 			src = profileSource(ctx, src, "filter", "residual filter", childID)
 		}
@@ -1128,13 +1131,13 @@ func lowerSourcePipeline(ctx context.Context, plan logical.Plan, manager memory.
 	case *logical.ExprProjection:
 		src, pending, closers, err := lowerSourcePipeline(ctx, n.Input, manager, kernels, exec)
 		if err != nil {
-			return nil, nil, nil, err
+			return nil, nil, closers, err
 		}
 		if pending != nil {
 			childID := profileSourceID(src)
 			src, err = physical.NewFilterSource(src, pending)
 			if err != nil {
-				return nil, nil, nil, err
+				return nil, nil, closers, err
 			}
 			src = profileSource(ctx, src, "filter", "residual filter", childID)
 		}
@@ -1147,7 +1150,7 @@ func lowerSourcePipeline(ctx context.Context, plan logical.Plan, manager memory.
 	case *logical.Sort:
 		src, pending, closers, err := lowerSourcePipeline(ctx, n.Input, manager, kernels, exec)
 		if err != nil {
-			return nil, nil, nil, err
+			return nil, nil, closers, err
 		}
 		if pending != nil {
 			childID := profileSourceID(src)
@@ -1192,7 +1195,7 @@ func lowerSourcePipeline(ctx context.Context, plan logical.Plan, manager memory.
 	case *logical.TopK:
 		src, pending, closers, err := lowerSourcePipeline(ctx, n.Input, manager, kernels, exec)
 		if err != nil {
-			return nil, nil, nil, err
+			return nil, nil, closers, err
 		}
 		if pending != nil {
 			childID := profileSourceID(src)
@@ -1240,7 +1243,7 @@ func lowerSourcePipeline(ctx context.Context, plan logical.Plan, manager memory.
 	case *logical.Limit:
 		src, pending, closers, err := lowerSourcePipeline(ctx, n.Input, manager, kernels, exec)
 		if err != nil {
-			return nil, nil, nil, err
+			return nil, nil, closers, err
 		}
 		if pending != nil {
 			childID := profileSourceID(src)
@@ -1259,7 +1262,7 @@ func lowerSourcePipeline(ctx context.Context, plan logical.Plan, manager memory.
 	case *logical.Aggregate:
 		src, pending, closers, err := lowerSourcePipeline(ctx, n.Input, manager, kernels, exec)
 		if err != nil {
-			return nil, nil, nil, err
+			return nil, nil, closers, err
 		}
 		eng, ok := exec.(*engine.Engine)
 		if !ok || eng == nil {
@@ -1279,25 +1282,23 @@ func lowerSourcePipeline(ctx context.Context, plan logical.Plan, manager memory.
 		if err != nil {
 			return nil, nil, closers, err
 		}
+		closers = append(closers, pq)
 		outSchema, err := logical.InferSchema(n)
 		if err != nil {
-			_ = pq.Close()
 			return nil, nil, closers, err
 		}
 		policy := engine.ExecutionPolicyFromContext(ctx, eng.ExecutionPolicy())
 		spillable := (policy == engine.ExecutionBounded || policy == engine.ExecutionAuto && eng.Memory().Limit() > 0 && eng.SpillConfigured()) && pq.Plan().Strategy.Kind != planner.StrategySorted
 		aggSrc, err := newAggregateResultSource(ctx, pq, src, outSchema, n.GroupBy, n.Aggregates, spillable)
 		if err != nil {
-			_ = pq.Close()
 			return nil, nil, closers, err
 		}
-		closers = append(closers, pq)
 		childID := profileSourceID(src)
-		return profileSource(ctx, aggSrc, "aggregate", "materialized aggregate source", childID), nil, closers, nil
+		return profileSource(ctx, aggSrc, "aggregate", "native aggregate stream", childID), nil, closers, nil
 	case *logical.Window:
 		src, pending, closers, err := lowerSourcePipeline(ctx, n.Input, manager, kernels, exec)
 		if err != nil {
-			return nil, nil, nil, err
+			return nil, nil, closers, err
 		}
 		if pending != nil {
 			childID := profileSourceID(src)
@@ -1356,28 +1357,26 @@ func lowerSourcePipeline(ctx context.Context, plan logical.Plan, manager memory.
 	case *logical.Join:
 		left, lp, lc, err := lowerSourcePipeline(ctx, n.Left, manager, kernels, exec)
 		if err != nil {
-			return nil, nil, nil, err
+			return nil, nil, lc, err
 		}
 		if lp != nil {
 			childID := profileSourceID(left)
 			left, err = physical.NewFilterSource(left, lp)
 			if err != nil {
-				return nil, nil, nil, err
+				return nil, nil, lc, err
 			}
 			left = profileSource(ctx, left, "filter", "left join filter", childID)
 		}
 		right, rp, rc, err := lowerSourcePipeline(ctx, n.Right, manager, kernels, exec)
+		closers := append(lc, rc...)
 		if err != nil {
-			for i := len(lc) - 1; i >= 0; i-- {
-				_ = lc[i].Close()
-			}
-			return nil, nil, nil, err
+			return nil, nil, closers, err
 		}
 		if rp != nil {
 			childID := profileSourceID(right)
 			right, err = physical.NewFilterSource(right, rp)
 			if err != nil {
-				return nil, nil, nil, err
+				return nil, nil, closers, err
 			}
 			right = profileSource(ctx, right, "filter", "right join filter", childID)
 		}
@@ -1388,6 +1387,11 @@ func lowerSourcePipeline(ctx context.Context, plan logical.Plan, manager memory.
 		workers := n.Workers
 		if workers == 0 && exec != nil {
 			workers = exec.MaxWorkers()
+		}
+		trace := observer.TraceFromContext(ctx)
+		var node observer.OperatorNode
+		if trace != nil {
+			node = trace.NewNode("join", "join preparation", profileSourceID(left), profileSourceID(right))
 		}
 		joinStart := time.Now()
 		policy := engine.ExecutionPolicyFromContext(ctx, engine.ExecutionAuto)
@@ -1422,23 +1426,22 @@ func lowerSourcePipeline(ctx context.Context, plan logical.Plan, manager memory.
 			}(),
 		})
 		joinPrepare := time.Since(joinStart)
-		if err != nil {
-			for i := len(rc) - 1; i >= 0; i-- {
-				_ = rc[i].Close()
+		if trace != nil {
+			inputRows := int64(0)
+			if err == nil {
+				node.Label = joined.Strategy()
+				trace.Register(node)
+				rightStats, _ := right.Stats(ctx)
+				inputRows = rightStats.Rows
 			}
-			for i := len(lc) - 1; i >= 0; i-- {
-				_ = lc[i].Close()
-			}
-			return nil, nil, nil, err
+			trace.Record(node.ID, observer.PhaseFromContext(ctx), inputRows, 0, joinPrepare)
 		}
-		closers := append(lc, rc...)
+		if err != nil {
+			return nil, nil, closers, err
+		}
 		closers = append(closers, joined)
-		trace := observer.TraceFromContext(ctx)
 		var profiled source.Source = joined
 		if trace != nil {
-			node := trace.NewNode("join", joined.Strategy(), profileSourceID(left), profileSourceID(right))
-			rightStats, _ := right.Stats(ctx)
-			trace.Record(node.ID, observer.PhaseFromContext(ctx), rightStats.Rows, 0, joinPrepare)
 			profiled = physical.NewProfileSource(joined, trace, node)
 		}
 		return profiled, nil, closers, nil

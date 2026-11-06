@@ -263,7 +263,7 @@ func (s *externalWindowStream) StreamDiagnostics() map[string]string {
 	snapshot := s.query.Snapshot()
 	return map[string]string{
 		"strategy": "external-sort-restore", "output_rows": fmt.Sprint(s.rows),
-		"spill_bytes": fmt.Sprint(snapshot.SpilledBytes), "peak_memory_bytes": fmt.Sprint(snapshot.PeakBytes),
+		"spill_bytes": fmt.Sprint(snapshot.SpilledBytes), "peak_memory_scope": "query", "peak_memory_bytes": fmt.Sprint(snapshot.PeakBytes),
 	}
 }
 

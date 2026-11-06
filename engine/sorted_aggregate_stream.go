@@ -498,7 +498,7 @@ func (s *sortedAggregateStream) StreamDiagnostics() map[string]string {
 	}
 	return map[string]string{
 		"strategy": planner.StrategySorted.String(), "workers": "1", "groups": fmt.Sprint(s.groups),
-		"selected_rows": fmt.Sprint(s.selectedRows), "checksum": fmt.Sprint(s.checksum), "peak_memory_bytes": fmt.Sprint(peak), "spill_runs": "0",
+		"selected_rows": fmt.Sprint(s.selectedRows), "checksum": fmt.Sprint(s.checksum), "peak_memory_scope": "query", "peak_memory_bytes": fmt.Sprint(peak), "spill_runs": "0",
 		"kernel_mode": s.query.e.kernels.Capabilities().Mode().String(), "kernel_arch": s.query.e.kernels.Capabilities().Arch(),
 	}
 }

@@ -66,18 +66,20 @@ func (s *ProfileSource) Partitions(ctx context.Context) ([]source.Partition, err
 func (s *ProfileSource) NewBatchStream(ctx context.Context, opts source.ReadOptions) (source.BatchStream, error) {
 	child, err := source.OpenBatchStream(ctx, s.input, opts)
 	if err != nil {
+		s.trace.RecordAttributes(s.id, observer.PhaseFromContext(ctx), map[string]string{"open_error": err.Error()})
 		return nil, err
 	}
-	return &profileBatchStream{owner: s, child: child}, nil
+	return &profileBatchStream{owner: s, child: child, phase: observer.PhaseFromContext(ctx)}, nil
 }
 
 // NewBatchStreamWithPartitions is the prepared-plan form of NewBatchStream.
 func (s *ProfileSource) NewBatchStreamWithPartitions(ctx context.Context, opts source.ReadOptions, parts []source.Partition) (source.BatchStream, error) {
 	child, err := source.OpenBatchStreamWithPartitions(ctx, s.input, opts, parts)
 	if err != nil {
+		s.trace.RecordAttributes(s.id, observer.PhaseFromContext(ctx), map[string]string{"open_error": err.Error()})
 		return nil, err
 	}
-	return &profileBatchStream{owner: s, child: child}, nil
+	return &profileBatchStream{owner: s, child: child, phase: observer.PhaseFromContext(ctx)}, nil
 }
 
 // StreamDiagnostics forwards cold-path operator diagnostics through the
@@ -99,18 +101,17 @@ func (s *ProfileSource) Dictionary(ctx context.Context, column string) (source.D
 }
 
 type profileBatchStream struct {
-	owner       *ProfileSource
-	child       source.BatchStream
-	diagnostics bool
+	owner *ProfileSource
+	child source.BatchStream
+	phase observer.Phase
 }
 
-func (s *profileBatchStream) captureDiagnostics(ctx context.Context) {
-	if s == nil || s.diagnostics {
+func (s *profileBatchStream) captureDiagnostics() {
+	if s == nil {
 		return
 	}
-	s.diagnostics = true
 	if diagnostics, ok := s.child.(source.BatchStreamDiagnostics); ok {
-		s.owner.trace.RecordAttributes(s.owner.id, observer.PhaseFromContext(ctx), diagnostics.StreamDiagnostics())
+		s.owner.trace.RecordAttributes(s.owner.id, s.phase, diagnostics.StreamDiagnostics())
 	}
 }
 
@@ -125,16 +126,23 @@ func (s *profileBatchStream) Next(ctx context.Context, dst *memory.Batch) (bool,
 		bytes = estimateBatchBytes(dst)
 	}
 	s.owner.trace.RecordBytes(s.owner.id, observer.PhaseFromContext(ctx), 0, rows, bytes, elapsed)
+	if err != nil {
+		s.owner.trace.RecordAttributes(s.owner.id, s.phase, map[string]string{"next_error": err.Error()})
+	}
 	if !ok || err != nil {
-		s.captureDiagnostics(ctx)
+		s.captureDiagnostics()
 	}
 	return ok, err
 }
 
 // Close releases the child stream and captures its final diagnostics.
 func (s *profileBatchStream) Close() error {
+	s.captureDiagnostics()
 	err := s.child.Close()
-	s.captureDiagnostics(context.Background())
+	s.captureDiagnostics()
+	if err != nil {
+		s.owner.trace.RecordAttributes(s.owner.id, s.phase, map[string]string{"close_error": err.Error()})
+	}
 	return err
 }
 
