@@ -19,8 +19,24 @@ import (
 // Retained group state may grow with cardinality, but input and output remain
 // incremental and no engine.Result compatibility materialization is used.
 func (p *PreparedQuery) NewResidentAggregateStream(ctx context.Context, schema memory.Schema, outputRows int) (source.BatchStream, error) {
+	var readOpts source.ReadOptions
+	if p != nil && p.e != nil {
+		readOpts.Kernels = p.e.kernels
+	}
+	return p.NewResidentAggregateStreamWithReadOptions(ctx, schema, outputRows, readOpts)
+}
+
+// NewResidentAggregateStreamWithReadOptions preserves scan limits and memory ownership
+// through the aggregate child graph. Kernels must match the prepared query.
+func (p *PreparedQuery) NewResidentAggregateStreamWithReadOptions(ctx context.Context, schema memory.Schema, outputRows int, readOpts source.ReadOptions) (source.BatchStream, error) {
 	if p == nil || p.e == nil {
 		return nil, fmt.Errorf("nil prepared aggregate query")
+	}
+	if err := readOpts.Validate(); err != nil {
+		return nil, err
+	}
+	if readOpts.Kernels != p.e.kernels {
+		return nil, fmt.Errorf("aggregate stream kernel set differs from prepared query")
 	}
 	if ctx == nil {
 		return nil, fmt.Errorf("resident aggregate stream context is nil")
@@ -45,7 +61,7 @@ func (p *PreparedQuery) NewResidentAggregateStream(ctx context.Context, schema m
 		outputRows = 4096
 	}
 	exchange := budget.Operator("ResidentAggregateExchange", memory.MemoryInFlightBatch)
-	input, err := pipeline.OpenBatchStream(ctx, p.src, source.ReadOptions{Kernels: p.e.kernels}, p.parts, exchange, p.e.opts.Pipeline, p.e.opts.Observer)
+	input, err := pipeline.OpenBatchStream(ctx, p.src, readOpts, p.parts, exchange, p.e.opts.Pipeline, p.e.opts.Observer)
 	if err != nil {
 		return nil, err
 	}

@@ -77,10 +77,10 @@ func (s *JoinSource) NewBatchStreamWithPartitions(ctx context.Context, opts sour
 		return nil, fmt.Errorf("physical join source closed")
 	}
 	if s.spillable {
-		return newSpillableJoinStream(ctx, s)
+		return newSpillableJoinStream(ctx, s, opts)
 	}
 	if s.merge {
-		return newMergeJoinStream(ctx, s)
+		return newMergeJoinStream(ctx, s, opts)
 	}
 	left, err := source.OpenBatchStreamWithPartitions(ctx, s.left, opts, s.leftParts)
 	if err != nil {
@@ -267,6 +267,7 @@ func (s *residentJoinBatchStream) recordStats() {
 
 type spillableJoinStream struct {
 	owner                 *JoinSource
+	readOpts              source.ReadOptions
 	query                 *memory.QueryBudget
 	store                 memory.SpillManager
 	leftSchema            memory.Schema
@@ -315,7 +316,7 @@ type spillableJoinStream struct {
 	statsRecorded   bool
 }
 
-func newSpillableJoinStream(ctx context.Context, owner *JoinSource) (*spillableJoinStream, error) {
+func newSpillableJoinStream(ctx context.Context, owner *JoinSource, opts source.ReadOptions) (*spillableJoinStream, error) {
 	if ctx == nil {
 		return nil, fmt.Errorf("spillable join context is nil")
 	}
@@ -350,7 +351,7 @@ func newSpillableJoinStream(ctx context.Context, owner *JoinSource) (*spillableJ
 		chunkRows = 4096
 	}
 	stream := &spillableJoinStream{
-		owner: owner, query: query, store: store, leftSchema: owner.left.Schema(), rightSchema: owner.right.Schema(),
+		owner: owner, readOpts: opts, query: query, store: store, leftSchema: owner.left.Schema(), rightSchema: owner.right.Schema(),
 		leftFP: memory.SchemaFingerprint(owner.left.Schema()), rightFP: memory.SchemaFingerprint(owner.right.Schema()), outputFP: memory.SchemaFingerprint(owner.schema),
 		gather: query.Operator("JoinPartitionGather", memory.MemoryWorkspace), encoder: query.Operator("JoinEncode", memory.MemorySpillBuffer),
 		restorer: query.Operator("JoinRestore", memory.MemorySpillBuffer), state: query.Operator("JoinBuild", memory.MemoryRetainedState),
@@ -548,7 +549,7 @@ func (s *spillableJoinStream) partitionBatch(ctx context.Context, schema memory.
 }
 
 func (s *spillableJoinStream) partitionSource(ctx context.Context, input source.Source, schema memory.Schema, fingerprint [32]byte, left bool, destinations [][]joinRunRef) error {
-	stream, err := source.OpenBatchStream(ctx, input, source.ReadOptions{Kernels: s.owner.kernels})
+	stream, err := source.OpenBatchStream(ctx, input, s.readOpts)
 	if err != nil {
 		return err
 	}

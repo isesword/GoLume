@@ -40,6 +40,10 @@ func OpenBatchStream(ctx context.Context, src source.Source, readOpts source.Rea
 	if err := opts.Validate(); err != nil {
 		return nil, err
 	}
+	if err := readOpts.Validate(); err != nil {
+		return nil, err
+	}
+	readOpts = scanReadOptions(ctx, readOpts, manager, opts)
 	workers := EffectiveWorkers(src, parts, opts)
 	if workers <= 1 {
 		return source.OpenBatchStreamWithPartitions(ctx, src, readOpts, parts)
@@ -73,6 +77,27 @@ func OpenBatchStream(ctx context.Context, src source.Source, readOpts source.Rea
 		go p.runWorker(uint32(worker), parts[start:end])
 	}
 	return p, nil
+}
+
+// scanReadOptions applies scan limits before decoding, not just when an
+// exchange later splits an already decoded batch. Source buffers and exchange
+// clones have distinct ownership and are charged separately to the same query.
+func scanReadOptions(ctx context.Context, readOpts source.ReadOptions, manager memory.Manager, opts Options) source.ReadOptions {
+	readOpts = readOpts.Normalize()
+	if readOpts.BatchRows > opts.MaxMorselRows {
+		readOpts.BatchRows = opts.MaxMorselRows
+	}
+	if readOpts.BatchBytes > opts.MaxMorselBytes {
+		readOpts.BatchBytes = opts.MaxMorselBytes
+	}
+	if readOpts.MemoryManager == nil {
+		if query := memory.QueryBudgetFromContext(ctx); query != nil {
+			readOpts.MemoryManager = query.Operator("SourceScan", memory.MemoryWorkspace)
+		} else {
+			readOpts.MemoryManager = memory.ClassifiedManager(manager, "SourceScan", memory.MemoryWorkspace)
+		}
+	}
+	return readOpts
 }
 
 // EffectiveWorkers returns the safe partition parallelism after plan,

@@ -69,6 +69,11 @@ func openBatchStream(ctx context.Context, src Source, opts ReadOptions, prepared
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
+	if opts.MemoryManager == nil {
+		if query := memory.QueryBudgetFromContext(ctx); query != nil {
+			opts.MemoryManager = query.Operator("SourceScan", memory.MemoryWorkspace)
+		}
+	}
 	if havePreparedParts {
 		if provider, ok := src.(PreparedBatchStreamProvider); ok {
 			stream, err := provider.NewBatchStreamWithPartitions(ctx, opts, preparedParts)

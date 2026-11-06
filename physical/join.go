@@ -539,7 +539,9 @@ func (s *JoinSource) buildRight(ctx context.Context, manager memory.Manager) err
 		}
 		defer scratch.Release()
 	}
-	rd, err := source.OpenBatchStreamWithPartitions(ctx, s.right, source.ReadOptions{Kernels: s.kernels}, parts)
+	rd, err := source.OpenBatchStreamWithPartitions(ctx, s.right, source.ReadOptions{
+		Kernels: s.kernels, MemoryManager: memory.ClassifiedManager(manager, "SourceScan", memory.MemoryWorkspace),
+	}, parts)
 	if err != nil {
 		return err
 	}

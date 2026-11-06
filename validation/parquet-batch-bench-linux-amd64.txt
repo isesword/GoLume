@@ -1,0 +1,30 @@
+goos: linux
+goarch: amd64
+pkg: gocolumn/source/parquet
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkParquetBatchStream/RowGroupRows=65536/Legacy/FirstBatch-9         	      13	  27278434 ns/op	 302.20 MB/s	  27265353 first-batch-ns	     65536 rows/op	   2402484 rows/s	51219717 B/op	    8858 allocs/op
+BenchmarkParquetBatchStream/RowGroupRows=65536/Legacy/FirstBatch-9         	      16	  24181250 ns/op	 340.91 MB/s	  24167892 first-batch-ns	     65536 rows/op	   2710199 rows/s	51219945 B/op	    8854 allocs/op
+BenchmarkParquetBatchStream/RowGroupRows=65536/Legacy/FirstBatch-9         	      12	  26576580 ns/op	 310.18 MB/s	  26562053 first-batch-ns	     65536 rows/op	   2465931 rows/s	51217334 B/op	    8850 allocs/op
+BenchmarkParquetBatchStream/RowGroupRows=65536/Legacy/FullScan-9           	       8	  37719225 ns/op	 437.11 MB/s	    131072 rows/op	   3474939 rows/s	65649840 B/op	   17206 allocs/op
+BenchmarkParquetBatchStream/RowGroupRows=65536/Legacy/FullScan-9           	       8	  38000679 ns/op	 433.87 MB/s	    131072 rows/op	   3449202 rows/s	65648918 B/op	   17210 allocs/op
+BenchmarkParquetBatchStream/RowGroupRows=65536/Legacy/FullScan-9           	       8	  38365840 ns/op	 429.74 MB/s	    131072 rows/op	   3416373 rows/s	65653039 B/op	   17218 allocs/op
+BenchmarkParquetBatchStream/RowGroupRows=65536/Native/FirstBatch-9         	     326	    950048 ns/op	 135.50 MB/s	    943677 first-batch-ns	    196360 managed-peak-B	      1024 rows/op	   1077840 rows/s	  891539 B/op	     756 allocs/op
+BenchmarkParquetBatchStream/RowGroupRows=65536/Native/FirstBatch-9         	     466	    821786 ns/op	 156.64 MB/s	    815438 first-batch-ns	    196360 managed-peak-B	      1024 rows/op	   1246066 rows/s	  891025 B/op	     756 allocs/op
+BenchmarkParquetBatchStream/RowGroupRows=65536/Native/FirstBatch-9         	     410	    834876 ns/op	 154.19 MB/s	    828833 first-batch-ns	    196360 managed-peak-B	      1024 rows/op	   1226529 rows/s	  890572 B/op	     756 allocs/op
+BenchmarkParquetBatchStream/RowGroupRows=65536/Native/FullScan-9           	       7	  45984387 ns/op	 358.56 MB/s	    196360 managed-peak-B	    131072 rows/op	   2850359 rows/s	 2952216 B/op	   16764 allocs/op
+BenchmarkParquetBatchStream/RowGroupRows=65536/Native/FullScan-9           	       7	  51932760 ns/op	 317.49 MB/s	    196360 managed-peak-B	    131072 rows/op	   2523879 rows/s	 2953056 B/op	   16764 allocs/op
+BenchmarkParquetBatchStream/RowGroupRows=65536/Native/FullScan-9           	       7	  57918606 ns/op	 284.68 MB/s	    196360 managed-peak-B	    131072 rows/op	   2263038 rows/s	 2958779 B/op	   16763 allocs/op
+BenchmarkParquetBatchStreamNumeric/RowGroupRows=65536/Legacy/FirstBatch-9  	      63	   5217993 ns/op	 460.00 MB/s	   5211226 first-batch-ns	     65536 rows/op	  12559618 rows/s	 6700382 B/op	    6732 allocs/op
+BenchmarkParquetBatchStreamNumeric/RowGroupRows=65536/Legacy/FirstBatch-9  	      81	   5377065 ns/op	 446.39 MB/s	   5367168 first-batch-ns	     65536 rows/op	  12188062 rows/s	 6700514 B/op	    6731 allocs/op
+BenchmarkParquetBatchStreamNumeric/RowGroupRows=65536/Legacy/FirstBatch-9  	      52	   6297315 ns/op	 381.16 MB/s	   6285213 first-batch-ns	     65536 rows/op	  10406975 rows/s	 6700539 B/op	    6732 allocs/op
+BenchmarkParquetBatchStreamNumeric/RowGroupRows=65536/Legacy/FullScan-9    	      45	  12756209 ns/op	 376.33 MB/s	    131072 rows/op	  10275153 rows/s	 9170906 B/op	   13055 allocs/op
+BenchmarkParquetBatchStreamNumeric/RowGroupRows=65536/Legacy/FullScan-9    	      31	  16626374 ns/op	 288.73 MB/s	    131072 rows/op	   7883378 rows/s	 9172336 B/op	   13056 allocs/op
+BenchmarkParquetBatchStreamNumeric/RowGroupRows=65536/Legacy/FullScan-9    	      19	  20803660 ns/op	 230.75 MB/s	    131072 rows/op	   6300430 rows/s	 9168114 B/op	   13049 allocs/op
+BenchmarkParquetBatchStreamNumeric/RowGroupRows=65536/Native/FirstBatch-9  	     625	    515460 ns/op	  72.76 MB/s	    497377 first-batch-ns	     65152 managed-peak-B	      1024 rows/op	   1986573 rows/s	  399003 B/op	     634 allocs/op
+BenchmarkParquetBatchStreamNumeric/RowGroupRows=65536/Native/FirstBatch-9  	    1494	    424474 ns/op	  88.35 MB/s	    413852 first-batch-ns	     65152 managed-peak-B	      1024 rows/op	   2412399 rows/s	  398597 B/op	     634 allocs/op
+BenchmarkParquetBatchStreamNumeric/RowGroupRows=65536/Native/FirstBatch-9  	     693	    584388 ns/op	  64.18 MB/s	    572468 first-batch-ns	     65152 managed-peak-B	      1024 rows/op	   1752260 rows/s	  399137 B/op	     634 allocs/op
+BenchmarkParquetBatchStreamNumeric/RowGroupRows=65536/Native/FullScan-9    	      61	   6643017 ns/op	 722.64 MB/s	     65152 managed-peak-B	    131072 rows/op	  19730793 rows/s	 1439807 B/op	   13102 allocs/op
+BenchmarkParquetBatchStreamNumeric/RowGroupRows=65536/Native/FullScan-9    	      72	   6372562 ns/op	 753.31 MB/s	     65152 managed-peak-B	    131072 rows/op	  20568179 rows/s	 1436876 B/op	   13099 allocs/op
+BenchmarkParquetBatchStreamNumeric/RowGroupRows=65536/Native/FullScan-9    	      85	   5620614 ns/op	 854.09 MB/s	     65152 managed-peak-B	    131072 rows/op	  23319872 rows/s	 1435140 B/op	   13099 allocs/op
+PASS
+ok  	gocolumn/source/parquet	13.405s

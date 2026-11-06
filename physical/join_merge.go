@@ -339,12 +339,12 @@ type mergeJoinStream struct {
 	statsRecorded     bool
 }
 
-func newMergeJoinStream(ctx context.Context, owner *JoinSource) (*mergeJoinStream, error) {
-	left, err := source.OpenBatchStream(ctx, owner.left, source.ReadOptions{Kernels: owner.kernels})
+func newMergeJoinStream(ctx context.Context, owner *JoinSource, opts source.ReadOptions) (*mergeJoinStream, error) {
+	left, err := source.OpenBatchStream(ctx, owner.left, opts)
 	if err != nil {
 		return nil, err
 	}
-	right, err := source.OpenBatchStream(ctx, owner.right, source.ReadOptions{Kernels: owner.kernels})
+	right, err := source.OpenBatchStream(ctx, owner.right, opts)
 	if err != nil {
 		_ = left.Close()
 		return nil, err

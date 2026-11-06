@@ -22,8 +22,24 @@ func (p *PreparedQuery) IsSortedAggregate() bool {
 // NewSortedAggregateStream creates a one-group-state stream over proven
 // globally ordered input. It does not require a spill store.
 func (p *PreparedQuery) NewSortedAggregateStream(ctx context.Context, schema memory.Schema, outputRows int) (source.BatchStream, error) {
+	var readOpts source.ReadOptions
+	if p != nil && p.e != nil {
+		readOpts.Kernels = p.e.kernels
+	}
+	return p.NewSortedAggregateStreamWithReadOptions(ctx, schema, outputRows, readOpts)
+}
+
+// NewSortedAggregateStreamWithReadOptions preserves scan limits and memory ownership
+// through the aggregate child graph. Kernels must match the prepared query.
+func (p *PreparedQuery) NewSortedAggregateStreamWithReadOptions(ctx context.Context, schema memory.Schema, outputRows int, readOpts source.ReadOptions) (source.BatchStream, error) {
 	if p == nil || p.e == nil || !p.IsSortedAggregate() {
 		return nil, fmt.Errorf("sorted aggregate stream requires a prepared sorted strategy")
+	}
+	if err := readOpts.Validate(); err != nil {
+		return nil, err
+	}
+	if readOpts.Kernels != p.e.kernels {
+		return nil, fmt.Errorf("aggregate stream kernel set differs from prepared query")
 	}
 	if ctx == nil {
 		return nil, fmt.Errorf("sorted aggregate stream context is nil")
@@ -53,7 +69,7 @@ func (p *PreparedQuery) NewSortedAggregateStream(ctx context.Context, schema mem
 		outputRows = int(budgetRows)
 	}
 	exchange := budget.Operator("SortedAggregateExchange", memory.MemoryInFlightBatch)
-	input, err := pipeline.OpenBatchStream(ctx, p.src, source.ReadOptions{Kernels: p.e.kernels}, p.parts, exchange, p.e.opts.Pipeline, p.e.opts.Observer)
+	input, err := pipeline.OpenBatchStream(ctx, p.src, readOpts, p.parts, exchange, p.e.opts.Pipeline, p.e.opts.Observer)
 	if err != nil {
 		return nil, err
 	}

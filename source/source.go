@@ -30,12 +30,49 @@ type Reader interface {
 // ReadOptions carries immutable execution services into a complete source
 // reader chain. Kernels is mandatory so wrappers cannot silently rebuild or
 // substitute a dispatch table.
-type ReadOptions struct{ Kernels kernel.Set }
+type ReadOptions struct {
+	Kernels kernel.Set
+	// BatchRows caps the rows decoded by a native scan at once. Zero selects
+	// DefaultBatchRows. Legacy partition readers may ignore this setting.
+	BatchRows int
+	// BatchBytes caps engine-owned decoded buffers and explicit scan scratch.
+	// Zero selects DefaultBatchBytes. An oversized row/value returns a
+	// resource error. Third-party decoder pages, codecs, and runtime overhead
+	// are excluded, so this is not a hard heap/RSS cap. Legacy readers may
+	// ignore this setting.
+	BatchBytes int64
+	// MemoryManager charges live scan buffers to the owning query. A nil
+	// manager leaves direct scans uncharged; OpenBatchStream binds the query
+	// budget from its context when available.
+	MemoryManager memory.Manager
+}
+
+const (
+	// DefaultBatchRows is the native scan row limit when BatchRows is zero.
+	DefaultBatchRows = 8192
+	// DefaultBatchBytes is the native scan byte limit when BatchBytes is zero.
+	DefaultBatchBytes = int64(8 << 20)
+)
+
+// Normalize fills zero batch limits without replacing the kernel set or
+// memory manager. Negative limits remain invalid and are rejected by Validate.
+func (o ReadOptions) Normalize() ReadOptions {
+	if o.BatchRows == 0 {
+		o.BatchRows = DefaultBatchRows
+	}
+	if o.BatchBytes == 0 {
+		o.BatchBytes = DefaultBatchBytes
+	}
+	return o
+}
 
 // Validate rejects the zero value instead of installing a hidden default.
 func (o ReadOptions) Validate() error {
 	if !o.Kernels.Valid() {
 		return fmt.Errorf("source read options require a valid kernel set")
+	}
+	if o.BatchRows < 0 || o.BatchBytes < 0 {
+		return fmt.Errorf("source batch limits must be non-negative")
 	}
 	return nil
 }

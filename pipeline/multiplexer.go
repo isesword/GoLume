@@ -16,6 +16,9 @@ import (
 // OpenFanOut opens independent rescans for stable sources and a single-scan,
 // byte-bounded multiplexer for unknown/non-replayable sources.
 func OpenFanOut(ctx context.Context, src source.Source, readOpts source.ReadOptions, parts []source.Partition, manager memory.Manager, opts Options, branches int, sink observer.Observer) ([]source.BatchStream, error) {
+	if ctx == nil {
+		return nil, fmt.Errorf("pipeline context is nil")
+	}
 	plan, err := PlanFanOut(src, branches, opts.MaxInFlightBytes)
 	if err != nil {
 		return nil, err
@@ -23,6 +26,10 @@ func OpenFanOut(ctx context.Context, src source.Source, readOpts source.ReadOpti
 	if err := opts.Validate(); err != nil {
 		return nil, err
 	}
+	if err := readOpts.Validate(); err != nil {
+		return nil, err
+	}
+	readOpts = scanReadOptions(ctx, readOpts, manager, opts)
 	if plan.Strategy == FanOutRescan {
 		streams := make([]source.BatchStream, 0, branches)
 		for branch := 0; branch < branches; branch++ {
@@ -50,6 +57,7 @@ func OpenFanOut(ctx context.Context, src source.Source, readOpts source.ReadOpti
 	if err := branchOpts.Validate(); err != nil {
 		return nil, err
 	}
+	readOpts = scanReadOptions(ctx, readOpts, manager, branchOpts)
 	if sink == nil {
 		sink = observer.Nop{}
 	}

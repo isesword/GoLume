@@ -86,12 +86,12 @@ func (s *aggregateResultSource) NewBatchStream(ctx context.Context, opts source.
 		return nil, err
 	}
 	if s.spillable {
-		return s.query.NewSpillableAggregateStream(ctx, s.schema, 0)
+		return s.query.NewSpillableAggregateStreamWithReadOptions(ctx, s.schema, 0, opts)
 	}
 	if s.query.IsSortedAggregate() {
-		return s.query.NewSortedAggregateStream(ctx, s.schema, 0)
+		return s.query.NewSortedAggregateStreamWithReadOptions(ctx, s.schema, 0, opts)
 	}
-	return s.query.NewResidentAggregateStream(ctx, s.schema, 0)
+	return s.query.NewResidentAggregateStreamWithReadOptions(ctx, s.schema, 0, opts)
 }
 
 // NewBatchStreamWithPartitions opens the aggregate stream for the requested output partitions.

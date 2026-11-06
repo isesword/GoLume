@@ -675,8 +675,24 @@ func (o *aggregateTableOwner) close() int64 {
 // aggregation stream. The caller must bind a QueryBudget to ctx and configure
 // a finite memory limit and spill quota.
 func (p *PreparedQuery) NewSpillableAggregateStream(ctx context.Context, schema memory.Schema, outputRows int) (source.BatchStream, error) {
+	var readOpts source.ReadOptions
+	if p != nil && p.e != nil {
+		readOpts.Kernels = p.e.kernels
+	}
+	return p.NewSpillableAggregateStreamWithReadOptions(ctx, schema, outputRows, readOpts)
+}
+
+// NewSpillableAggregateStreamWithReadOptions preserves scan limits and memory ownership
+// through the aggregate child graph. Kernels must match the prepared query.
+func (p *PreparedQuery) NewSpillableAggregateStreamWithReadOptions(ctx context.Context, schema memory.Schema, outputRows int, readOpts source.ReadOptions) (source.BatchStream, error) {
 	if p == nil || p.e == nil {
 		return nil, fmt.Errorf("nil prepared aggregate query")
+	}
+	if err := readOpts.Validate(); err != nil {
+		return nil, err
+	}
+	if readOpts.Kernels != p.e.kernels {
+		return nil, fmt.Errorf("aggregate stream kernel set differs from prepared query")
 	}
 	if ctx == nil {
 		return nil, fmt.Errorf("aggregate stream context is nil")
@@ -724,6 +740,7 @@ func (p *PreparedQuery) NewSpillableAggregateStream(ctx context.Context, schema 
 	}
 	s := &spillableAggregateStream{
 		query:       p,
+		readOpts:    readOpts,
 		schema:      schema,
 		budget:      query,
 		store:       store,
@@ -749,6 +766,7 @@ func (p *PreparedQuery) NewSpillableAggregateStream(ctx context.Context, schema 
 
 type spillableAggregateStream struct {
 	query       *PreparedQuery
+	readOpts    source.ReadOptions
 	schema      memory.Schema
 	budget      *memory.QueryBudget
 	store       memory.SpillManager
@@ -1088,7 +1106,7 @@ func (s *spillableAggregateStream) aggregateBatch(ctx context.Context, batch *me
 
 func (s *spillableAggregateStream) consumeInput(ctx context.Context) error {
 	exchange := s.budget.Operator("AggregateExchange", memory.MemoryInFlightBatch)
-	stream, err := pipeline.OpenBatchStream(ctx, s.query.src, source.ReadOptions{Kernels: s.query.e.kernels}, s.query.parts, exchange, s.query.e.opts.Pipeline, s.query.e.opts.Observer)
+	stream, err := pipeline.OpenBatchStream(ctx, s.query.src, s.readOpts, s.query.parts, exchange, s.query.e.opts.Pipeline, s.query.e.opts.Observer)
 	if err != nil {
 		return err
 	}

@@ -529,8 +529,28 @@ func (r *reader) readNarrowInt32(chunk file.ColumnChunkReader, b columnBinding, 
 	r.dense32 = resize(r.dense32, rows)
 	r.defs = resize(r.defs, rows)
 	var validity memory.Bitmap
+	switch b.Type {
+	case memory.TypeInt8:
+		if v := dst.Int8s[b.Name]; v != nil {
+			validity = v.Validity
+		}
+	case memory.TypeInt16:
+		if v := dst.Int16s[b.Name]; v != nil {
+			validity = v.Validity
+		}
+	case memory.TypeUint8:
+		if v := dst.Uint8s[b.Name]; v != nil {
+			validity = v.Validity
+		}
+	case memory.TypeUint16:
+		if v := dst.Uint16s[b.Name]; v != nil {
+			validity = v.Validity
+		}
+	}
 	if b.Nullable {
-		validity = memory.EnsureBitmap(nil, rows)
+		validity = memory.EnsureBitmap(validity, rows)
+	} else {
+		validity = nil
 	}
 	var total int64
 	var values int
@@ -563,13 +583,45 @@ func (r *reader) readNarrowInt32(chunk file.ColumnChunkReader, b columnBinding, 
 	}
 	switch b.Type {
 	case memory.TypeInt8:
-		dst.Int8s[b.Name] = &memory.Int8Vector{Values: resize(make([]int8, 0), rows), Validity: validity, Encoding: memory.EncodingPlain}
+		v := dst.Int8s[b.Name]
+		if v == nil {
+			v = &memory.Int8Vector{}
+			dst.Int8s[b.Name] = v
+		}
+		v.Values = resize(v.Values, rows)
+		clear(v.Values)
+		v.Validity = validity
+		v.Encoding = memory.EncodingPlain
 	case memory.TypeInt16:
-		dst.Int16s[b.Name] = &memory.Int16Vector{Values: make([]int16, rows), Validity: validity, Encoding: memory.EncodingPlain}
+		v := dst.Int16s[b.Name]
+		if v == nil {
+			v = &memory.Int16Vector{}
+			dst.Int16s[b.Name] = v
+		}
+		v.Values = resize(v.Values, rows)
+		clear(v.Values)
+		v.Validity = validity
+		v.Encoding = memory.EncodingPlain
 	case memory.TypeUint8:
-		dst.Uint8s[b.Name] = &memory.Uint8Vector{Values: make([]uint8, rows), Validity: validity, Encoding: memory.EncodingPlain}
+		v := dst.Uint8s[b.Name]
+		if v == nil {
+			v = &memory.Uint8Vector{}
+			dst.Uint8s[b.Name] = v
+		}
+		v.Values = resize(v.Values, rows)
+		clear(v.Values)
+		v.Validity = validity
+		v.Encoding = memory.EncodingPlain
 	case memory.TypeUint16:
-		dst.Uint16s[b.Name] = &memory.Uint16Vector{Values: make([]uint16, rows), Validity: validity, Encoding: memory.EncodingPlain}
+		v := dst.Uint16s[b.Name]
+		if v == nil {
+			v = &memory.Uint16Vector{}
+			dst.Uint16s[b.Name] = v
+		}
+		v.Values = resize(v.Values, rows)
+		clear(v.Values)
+		v.Validity = validity
+		v.Encoding = memory.EncodingPlain
 	}
 	dense := 0
 	for i := 0; i < rows; i++ {
