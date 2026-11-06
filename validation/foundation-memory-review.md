@@ -62,8 +62,12 @@ Full `go test ./...` and `GOEXPERIMENT=simd go test ./...` were executed and
 These limitations are not suppressed in the full-suite results. The existing
 binary fixture and unrelated architecture-sensitive test need verification in
 an ordinary checkout before merging. The macOS CI matrix was not run locally.
-The feature branch does not trigger CI automatically; the workflow is configured
-for main/master pushes, pull requests, and manual dispatch.
+The workflow is configured for main/master pushes, pull requests, and manual
+dispatch. After publishing code commit `27af6c6184b7c38571265a48582650fb1580773c`,
+GitHub nevertheless recorded a `BuildFailed` run with `startup_failure` and no
+jobs: https://github.com/isesword/GoLume/actions/runs/42174941177 .
+This is not a successful remote CI run; its underlying startup reason was not
+available in the workflow/job responses.
 
 ## Remaining risk
 
