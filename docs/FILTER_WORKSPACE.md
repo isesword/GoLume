@@ -2,9 +2,9 @@
 
 `physical.FilterSource` is the canonical batch-local predicate/compaction
 operator. A prepared source is immutable. Every execution and producer worker
-creates its own `expr.PredicateWorkspace`, selection indices, and reusable
-compacted output. The old private engine predicate owner can delegate to the
-same workspace rather than duplicating reservation logic.
+creates its own `expr.Workspace`, selection bitmap and indices, and reusable
+compacted output. The aggregate predicate owner uses the same workspace rather
+than duplicating expression execution or reservation logic.
 
 `NewFilterProjectSource(input, predicate, columns)` evaluates the predicate
 against the full input but only emits designated output columns. Nil columns
@@ -15,21 +15,26 @@ order retained. A nil predicate selects every row. The ordinary
 
 ## Accounting and lifetime
 
-- `PredicateWorkspace` binds one immutable program and one execution owner.
+- `Workspace` binds one immutable program and one execution owner.
   An external context `QueryBudget` takes precedence over a supplied manager;
-  its optional diagnostic operator name defaults to `Predicate` and the class
+  its optional diagnostic operator name defaults to `Expression` and the class
   is `MemoryWorkspace`. Without an external query the supplied manager is
   preserved. An absent manager uses an unlimited local accounting owner.
-- Static predicate capacity is reserved using `Program.WorkspaceBytes` before
-  allocation. Dynamic dictionary match caches own their separate reservation
-  tokens. `MemoryBytes` reports actual retained static and dynamic capacities.
+- Fixed expression capacity is reserved using `Program.WorkspaceBytes` before
+  allocation. Dynamic dictionary caches, string/list/JSON payloads, branch
+  regions, and exported output metadata own separate reservation tokens.
+  `MemoryBytes` reports actual retained fixed and dynamic capacities.
   A context without a query keeps the opening owner and is bound to it before
   child work or reservations. The same explicit owner is accepted; a different
   explicit owner is rejected. A workspace opened without a query cannot adopt
-  one later. `Release` is
-  idempotent and terminal; a later evaluation needs a new workspace.
-- Selection indices reserve their exact new backing capacity. Compaction
-  preflights numeric values, validity, string bytes/offsets, dictionary indices,
+  one later. `Close` is idempotent and terminal; a later evaluation needs a
+  new workspace. Admission failures can retry; cancellation and semantic
+  errors close the expression workspace.
+- The selection bitmap owns the intersection of predicate truth and validity,
+  including a masked final word. Predicate results are immutable and can borrow
+  input or common-expression storage. Neither truth nor validity is modified.
+  The bitmap and selection indices reserve their exact new backing capacities.
+  Compaction preflights numeric values, validity, string bytes/offsets, dictionary indices,
   list children, and recursive struct buffers before allocating any payload.
   Buffer growth reserves the full replacement while old buffers remain charged.
   Failed reservation leaves the old workspace intact. Successful replacement
@@ -45,7 +50,7 @@ order retained. A nil predicate selects every row. The ordinary
   destination. Opaque/struct ownership headers are independent non-owning
   views: clearing an output never changes child ownership or releases its
   Arrow references. EOF, cancellation, failure, and early/idempotent Close
-  release every predicate, index, and output reservation.
+  release every predicate, selection, index, and output reservation.
 - Prepared partition order, duplicates, and empty subsets are forwarded
   exactly. Replayability, partition parallelism, visible ordering prefixes,
   and visible dictionary metadata are preserved.

@@ -10,6 +10,134 @@ The old prepared W4 target is accepted as deferred so development can continue;
 its unmet measurements are not relabeled as passing, and merge readiness is a
 separate decision.
 
+## Unified expression API (breaking change)
+
+The second stage uses one binder, immutable `expr.Program` and execution-local
+`expr.Workspace` for projections, filters and aggregate predicates. It does not
+retain a scalar/predicate compatibility executor. This stage's local full
+validation passed; see the validation record below for scope and limitations.
+
+Migrate public compilation and evaluation calls as follows:
+
+| Removed API | Replacement |
+| --- | --- |
+| `CompileScalar(schema, expression)` / `ScalarProgram` | `Compile(schema, expression)` returning `Program` |
+| `CompileProjection(schema, named)` / `ProjectionProgram` | `CompileExpressions(schema, named)` returning `Program` |
+| `EvalWorkspace`, `ScalarWorkspace`, `PredicateWorkspace`, `NewPredicateWorkspace` | `NewWorkspace(ctx, program, manager, operatorName)` returning `*Workspace` |
+| Program-owned `Evaluate(batch, workspace, kernels)` methods | `workspace.Evaluate(ctx, batch, kernels)` for typed outputs, or `workspace.EvaluateBool(ctx, batch, kernels)` for a BOOL root |
+| `ScalarProgram.EvaluateInt64` | `Workspace.Evaluate`, check the output type and use its `Int64` vector |
+| Public workspace `Ensure`, `Register`, `SetMemoryManager`, `SetReserveHook`, `Release` | Supply the memory owner when constructing the workspace; evaluate through its public methods and call `Close` |
+
+`CompilePredicate` remains a BOOL-validation helper over the same `Compile`
+entry point, with optional `SimpleComparison` metadata for kernel selection.
+It is not a second representation or evaluator. Its nil-predicate convention is
+all rows; ordinary `Compile` rejects a nil expression. `CompileExpressions`
+requires at least one named expression and rejects duplicate output names.
+
+Compiled instructions, root registers, region programs and output storage are
+private, not mutable public structs or compatibility aliases:
+
+- Former scalar `Type` / `Nullable` fields become `Type()` / `Nullable()`.
+- Replace `len(Instructions)` / `Complexity` inspection with `InstructionCount()`,
+  which includes guarded-region instructions. `Instructions` / `Root` and their
+  mutable instruction structs are no longer public. There is no instruction or
+  root mutation API and no root-index getter.
+- Replace `Outputs`/`ProjectionOutput` inspection with `OutputCount()`,
+  `OutputName(i)`, `OutputField(i)` or `OutputFields()`.
+- Use `ResultField()` for a single root's full field descriptor; use output
+  fields for a multi-output program, which has no scalar root.
+- Returned field descriptors are independent deep copies. `WorkspaceBytes(rows)`
+  remains a checked fresh fixed-storage estimate, not the full dynamic allocation
+  bound or a growth delta.
+
+`Workspace.Evaluate` returns a borrowed slice of `ScalarValue` outputs (one
+element for a single root). `EvaluateBool` returns borrowed immutable truth and
+validity bitmaps without expanding BOOL into a physical output vector. Results
+must not outlive the next evaluation, workspace Close or their borrowed input
+storage. Copy explicitly before retaining them, and never mutate the Boolean
+result to construct a selection mask. Filter owns a separate truth-AND-validity
+selection, with tail bits cleared. Projected BOOL uses `TypeBool` and a
+`Uint32Vector`; `Series.ToAnySlice` exposes `bool` and `nil`, not integer 0/1.
+
+## Conditions, membership and type limits
+
+`expr` and `lazy` expose `Bool`, typed `Null`, `If`, `Case`, `Coalesce` and `In`;
+all new node types support `.Alias(name)`. The lazy functions construct the same
+nodes without another binder or runtime. `Case` takes `[]expr.WhenThen` and an
+optional ELSE expression. Binding validates every branch and dependency, even
+when a branch will not be selected for a particular row.
+
+- IF requires a BOOL condition. TRUE chooses THEN; FALSE or NULL chooses ELSE.
+  Both value arguments are required; a nil argument is not an implicit NULL.
+- CASE requires at least one BOOL WHEN condition and chooses the first TRUE
+  arm. FALSE/NULL conditions continue. A nil ELSE becomes a typed NULL.
+- COALESCE requires at least one value and evaluates left-to-right until the
+  first non-NULL value for each row.
+- IN requires at least one comparable candidate, evaluated left-to-right until
+  a match. A NULL needle gives NULL; a match gives TRUE; no match with a NULL
+  candidate gives NULL; otherwise the result is FALSE. Use `expr.Not(expr.In(...))`
+  (or `expr.Not(lazy.In(...))`) for NOT IN, which preserves NULL under negation.
+
+IF/CASE/COALESCE result values and typed NULL accept the native numeric types
+(Int8/16/32/64, Uint8/16/32/64, Float32/64), Bool, String, Date32/64, Timestamp,
+Time32/64 and Duration. They do not accept Binary, List, Struct, opaque Arrow,
+Map or other nested/extension result types. This limit does not remove existing
+projection passthrough, list/string functions or fixed-schema JSON decoding.
+Equal branch types are preserved; differing branch types must admit numeric
+promotion. Bool/String and temporal result types are not silently coerced to
+each other or to numeric columns.
+
+IN follows the comparison binder rather than the conditional-result type set:
+numeric operands may mix; same-type Bool/String/Binary and supported temporal
+values compare. Existing literal exceptions remain: temporal values with a
+physical-unit Int64 literal, Bool with a nonnegative Int64 literal, and Binary
+with a String literal. Those exceptions do not make arbitrary mismatched
+columns comparable. List/Struct/opaque comparisons are unsupported.
+
+Guarded IF/CASE/COALESCE/IN regions use active-row masks and region-local CSE.
+Only rows still demanding a branch/candidate evaluate it, and partial expressions
+are not hoisted out of their guarded region. Ordinary AND/OR are SQL three-valued
+Boolean operators, **not runtime-error guards**; do not rely on them to suppress
+a cast, arithmetic, slicing or JSON error. Use explicit conditionals when a
+value must be evaluated only under a guard.
+
+Numeric comparison is distinct from result promotion. Mixed signed/unsigned
+integer and integer/float comparisons preserve exact ordering without first
+rounding integers to Float64; Float32 operands retain the original literal's
+comparison precision. Ordinary comparisons with NaN are FALSE; signed zeros
+compare equal. Arithmetic and differing numeric branch results still follow
+`CommonNumericType`: floating involvement or mixed Uint64/other numeric types
+can produce Float64 and lose integer precision. This is not a promise of
+lossless arithmetic or implicit conversion. Supported explicit casts enforce
+their conversion and range checks.
+
+## Error domains and optimization
+
+`Bind` is the shared schema authority: `BoundExpr` carries a full `Field`, sorted
+`Columns`, children and conservative `MayError`. This effect covers row-value
+errors, not cancellation, memory admission or malformed source storage.
+Unused projection outputs may still be pruned, including unused fallible ones.
+For retained expressions, optimizer rewrites must preserve demanded rows and
+evaluation order: they cannot merge a fallible sequential filter into eager
+AND, push an outer filter across fallible retained projections/sort keys, or
+use a safe metadata conjunct to hide a demanded error. Parquet/Arrow pruning
+conservatively keeps partitions for a `MayError` predicate.
+
+Safe metadata pruning also preserves NaN-negation results and declines lossy
+integer metadata bounds; it cannot use rounded min/max values to discard a row
+that exact residual evaluation would retain. Projected opaque aliases and
+include-input views remain borrowed and do not transfer source ownership.
+See [EXPRESSION_EVALUATION.md](EXPRESSION_EVALUATION.md) for the integrated
+schema, ownership, precision and optimizer contract.
+
+Second-stage validation: implementation, targeted/independent checks and local
+full `scripts/validate.sh` passed. See
+[unified-expression-review.md](../validation/unified-expression-review.md) and
+[the full log](../validation/unified-expression-full-validation.txt). This is
+local validation with the disclosed synthetic fixture, not original-fixture or
+GitHub Actions success, a whole-process RSS guarantee, old W4 acceptance, or
+merge approval. Publication remains a separate step.
+
 ## Result consumers
 
 - `Collect(ctx)` returns an owned `DataFrame`; call `Close` on it.
@@ -207,19 +335,16 @@ must not be summed across operators. A caller-owned budget can include earlier
 or concurrent caller usage, so its peak is not necessarily exclusive to this
 Analyze invocation either. It is not process RSS.
 
-Unified predicate/projection expression execution remains subsequent work;
-`expr.Program` and `expr.ScalarProgram` are still separate.
-
-Validation status: this stage's implementation, independent final review and
+First-stage validation status: the Analyze implementation, independent final review and
 full local `scripts/validate.sh` passed. Coverage includes ordinary/SIMD tests,
 host-supported forced widths, SIMD-disabled fallback, Linux build, race, vet,
 GoDoc, structure/generated-code checks and demo, plus independent focused tests.
 See [the review record](../validation/analyze-stream-review.md) and
 [full validation log](../validation/analyze-stream-full-validation.txt).
 The fixture remains the disclosed synthetic substitute; original-fixture and
-GitHub Actions success are not claimed. The old W4 target remains deferred and
-unified expressions remain an unfinished separate stage. This is not a release
-or merge-readiness claim.
+GitHub Actions success are not claimed. The old W4 target remains deferred.
+These first-stage results are separate from the unified-expression validation
+record above and imply no merge readiness.
 
 ## Native vector representation
 
@@ -240,21 +365,31 @@ then releases the old component after replacement. Do not also retain/release
 the same tokens in an external workspace list. This replaces the previous
 under-counted new-minus-old growth accounting.
 
-## Predicate workspace ownership
+## Unified workspace ownership
 
-Program.WorkspaceBytes(rows) returns a checked fresh-workspace capacity estimate
-and an error on invalid or overflowing sizes. The callback supplied to
-EvalWorkspace.SetReserveHook now returns `(memory.Reservation, error)` for each
-dictionary-cache allocation. The cache owns
-that token, reserves a complete replacement before allocating, and releases the
-old token after replacement. Call EvalWorkspace.Release when replacing or closing
-a workspace. Engine streams own their static workspace reservation separately;
-cache tokens must not also be released by an external reservation list.
+`NewWorkspace` binds one immutable Program to one execution-local owner. A
+QueryBudget in the opening context takes precedence over the supplied manager;
+later contexts that omit it retain that owner, and explicit rebinding is
+rejected. The budget remains caller-owned. `Close` idempotently releases owned
+buffers and references; the same Workspace is not for concurrent evaluations.
+
+Owned fixed registers, truth/validity, output metadata, dictionary caches,
+conditional masks/region workspaces and dynamic payloads reserve before
+allocation. Replacement includes old/new overlap. `Program.WorkspaceBytes(rows)`
+checks fresh fixed-storage sizing; dynamic payloads, guarded regions and output
+metadata are admitted separately. Do not reserve/release those tokens again in
+an external list. `MemoryBytes()` reports retained owned capacities, excluding
+borrowed input payloads; it is not process RSS.
+
+Budget admission failure is retryable; runtime semantic errors and cancellation
+close the workspace. Binding/type errors occur before execution, including in
+unused branches of a retained expression. `Evaluate` outputs remain borrowed
+and must be discarded after a failed evaluation or workspace reuse.
 
 ## Shared filter and predicate ownership
 
-Engine resident, sorted and spill streams delegate predicate reservations to
-`expr.PredicateWorkspace`, also used by canonical `physical.FilterSource`.
+Engine resident, sorted and spill streams delegate predicate execution and
+reservations to the same `expr.Workspace` used by projection and FilterSource.
 Static workspace, dynamic dictionary cache, selection indices and retained
 compaction capacities are charged before allocation, including old/new overlap.
 The opening query owns the stream: a plain context preserves that owner, the

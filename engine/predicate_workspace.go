@@ -13,7 +13,7 @@ import (
 type aggregatePredicateWorkspace struct {
 	fusedMask        memory.Bitmap
 	fusedReservation memory.Reservation
-	workspace        *expr.PredicateWorkspace
+	workspace        *expr.Workspace
 	manager          memory.Manager
 	operator         string
 }
@@ -24,12 +24,12 @@ func (w *aggregatePredicateWorkspace) evaluate(ctx context.Context, program expr
 			return expr.BoolVector{}, fmt.Errorf("aggregate predicate workspace has no memory owner")
 		}
 		var err error
-		w.workspace, err = expr.NewPredicateWorkspace(ctx, program, w.manager, w.operator)
+		w.workspace, err = expr.NewWorkspace(ctx, program, w.manager, w.operator)
 		if err != nil {
 			return expr.BoolVector{}, err
 		}
 	}
-	return w.workspace.Evaluate(ctx, batch, kernels)
+	return w.workspace.EvaluateBool(ctx, batch, kernels)
 }
 
 // ensureFused owns exactly one reusable mask word. It is borrowed by the
@@ -57,7 +57,7 @@ func (w *aggregatePredicateWorkspace) close() {
 		w.fusedReservation = nil
 	}
 	if w.workspace != nil {
-		w.workspace.Release()
+		_ = w.workspace.Close()
 		w.workspace = nil
 	}
 	w.manager = nil

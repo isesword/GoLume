@@ -51,7 +51,7 @@ func TestPredicateLogicalRowsNumeric(t *testing.T) {
 									if err != nil {
 										t.Fatal(err)
 									}
-									var w EvalWorkspace
+									var w evaluationState
 									// Shrink and regrow a warmed workspace as a source reuses buffers.
 									for _, rows := range []int{65, 64, 63, 1, 0, 1, 65} {
 										left, rightValues := make([]int64, rows+extra), make([]int64, rows+extra+3)
@@ -76,7 +76,7 @@ func TestPredicateLogicalRowsNumeric(t *testing.T) {
 										// An unrelated malformed vector must not be inspected.
 										b.Int8s["unreferenced"] = nil
 										leftValidity, rightValidity := slices.Clone(lv), slices.Clone(rv)
-										out, err := p.Evaluate(b, &w, ks)
+										out, err := evaluateBoolTest(p, b, &w, ks)
 										if err != nil {
 											t.Fatalf("rows=%d extra=%d nulls=%s columns=%v: %v", rows, extra, nulls, columns, err)
 										}
@@ -140,9 +140,9 @@ func TestPredicateLogicalRowsFullWidthLiterals(t *testing.T) {
 				unsigned := typ == memory.TypeUint8 || typ == memory.TypeUint16 || typ == memory.TypeUint32 || typ == memory.TypeUint64 || typ == memory.TypeBool
 				for _, op := range []Op{OpGT, OpGE, OpLT, OpLE, OpEQ} {
 					for _, literal := range []int64{math.MinInt64, -(1 << 32), -1, 1 << 32, math.MaxInt64} {
-						in := Instruction{Code: codeCmpScalar, Column: "x", Type: typ, Op: op, LiteralI64: literal, LiteralU64: uint64(literal)}
-						p := Program{Instructions: []Instruction{in}, Root: 0}
-						out, err := p.Evaluate(b, &EvalWorkspace{}, kernel.New(mode))
+						in := instruction{Code: codeCmpScalar, Column: "x", Type: typ, Op: op, LiteralI64: literal, LiteralU64: uint64(literal)}
+						p := Program{instructions: []instruction{in}, root: 0}
+						out, err := evaluateBoolTest(p, b, &evaluationState{}, kernel.New(mode))
 						if err != nil {
 							t.Fatal(err)
 						}
@@ -197,12 +197,12 @@ func TestPredicateLogicalRowsInt64AndUint64Extremes(t *testing.T) {
 				for _, op := range []Op{OpGT, OpGE, OpLT, OpLE, OpEQ} {
 					for _, columns := range []bool{false, true} {
 						for _, literal := range pattern {
-							in := Instruction{Code: codeCmpScalar, Column: "x", Type: typ, Op: op, LiteralI64: int64(literal), LiteralU64: literal}
+							in := instruction{Code: codeCmpScalar, Column: "x", Type: typ, Op: op, LiteralI64: int64(literal), LiteralU64: literal}
 							if columns {
 								in.RightColumn = "y"
 							}
-							p := Program{Instructions: []Instruction{in}, Root: 0}
-							out, err := p.Evaluate(b, &EvalWorkspace{}, kernel.New(mode))
+							p := Program{instructions: []instruction{in}, root: 0}
+							out, err := evaluateBoolTest(p, b, &evaluationState{}, kernel.New(mode))
 							if err != nil {
 								t.Fatal(err)
 							}
@@ -244,7 +244,7 @@ func TestPredicateLogicalRowsFloat32Precision(t *testing.T) {
 						if err != nil {
 							t.Fatal(err)
 						}
-						out, err := p.Evaluate(b, &EvalWorkspace{}, kernel.New(mode))
+						out, err := evaluateBoolTest(p, b, &evaluationState{}, kernel.New(mode))
 						if err != nil {
 							t.Fatal(err)
 						}
@@ -286,7 +286,7 @@ func TestPredicateLogicalRowsStrings(t *testing.T) {
 					if err != nil {
 						t.Fatal(err)
 					}
-					var w EvalWorkspace
+					var w evaluationState
 					for _, rows := range []int{65, 64, 63, 1, 0, 65} {
 						b := memory.NewBatch()
 						b.Rows = rows
@@ -307,7 +307,7 @@ func TestPredicateLogicalRowsStrings(t *testing.T) {
 						} else {
 							b.Strings["s"] = plain
 						}
-						out, err := p.Evaluate(b, &w, kernel.New(mode))
+						out, err := evaluateBoolTest(p, b, &w, kernel.New(mode))
 						if err != nil {
 							t.Fatal(err)
 						}
@@ -332,7 +332,7 @@ func TestPredicateLogicalRowsStrings(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			out, err := p.Evaluate(b, &EvalWorkspace{}, testKernelSet())
+			out, err := evaluateBoolTest(p, b, &evaluationState{}, testKernelSet())
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -365,7 +365,7 @@ func TestPredicateLogicalRowsCalendar(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				out, err := p.Evaluate(b, &EvalWorkspace{}, kernel.New(mode))
+				out, err := evaluateBoolTest(p, b, &evaluationState{}, kernel.New(mode))
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -401,7 +401,7 @@ func TestPredicateLogicalRowsRejectMalformedBuffers(t *testing.T) {
 						t.Fatal(err)
 					}
 					for _, mode := range []kernel.Mode{kernel.ModeScalar, kernel.ModeSIMD} {
-						if _, err := p.Evaluate(b, &EvalWorkspace{}, kernel.New(mode)); err == nil || !strings.Contains(err.Error(), `column "x"`) {
+						if _, err := evaluateBoolTest(p, b, &evaluationState{}, kernel.New(mode)); err == nil || !strings.Contains(err.Error(), `column "x"`) {
 							t.Fatalf("type=%s rows=%d shortValues=%v expected x length error, got %v", typ, rows, shortValues, err)
 						}
 					}
@@ -427,7 +427,7 @@ func TestPredicateLogicalRowsRejectMalformedBuffers(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				if _, err := p.Evaluate(b, &EvalWorkspace{}, testKernelSet()); err == nil {
+				if _, err := evaluateBoolTest(p, b, &evaluationState{}, testKernelSet()); err == nil {
 					t.Fatalf("accepted malformed string dictionary=%v shortValues=%v", dictionary, shortValues)
 				}
 			}
@@ -440,8 +440,8 @@ func TestPredicateLogicalRowsRejectMalformedBuffers(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		var w EvalWorkspace
-		if _, err := p.Evaluate(b, &w, testKernelSet()); err == nil {
+		var w evaluationState
+		if _, err := evaluateBoolTest(p, b, &w, testKernelSet()); err == nil {
 			t.Fatalf("accepted invalid rows %d", rows)
 		}
 		if w.MemoryBytes() != 0 {
@@ -473,13 +473,13 @@ func TestPredicateLogicalRowsNilVectorsAndOpaqueValidity(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, err := p.Evaluate(b, &EvalWorkspace{}, testKernelSet()); err == nil || !strings.Contains(err.Error(), "nil vector") {
+		if _, err := evaluateBoolTest(p, b, &evaluationState{}, testKernelSet()); err == nil || !strings.Contains(err.Error(), "nil vector") {
 			t.Fatalf("type=%s nil vector error=%v", typ, err)
 		}
 		if typ == memory.TypeString {
 			delete(b.Strings, "x")
 			b.DictStrings["x"] = nil
-			if _, err := p.Evaluate(b, &EvalWorkspace{}, testKernelSet()); err == nil || !strings.Contains(err.Error(), "nil vector") {
+			if _, err := evaluateBoolTest(p, b, &evaluationState{}, testKernelSet()); err == nil || !strings.Contains(err.Error(), "nil vector") {
 				t.Fatalf("nil dictionary error=%v", err)
 			}
 		}
@@ -495,7 +495,7 @@ func TestPredicateLogicalRowsNilVectorsAndOpaqueValidity(t *testing.T) {
 				b.Rows = rows
 				validity := predicateRowsValidity(rows, nulls, 1)
 				b.Opaque["x"] = &memory.OpaqueVector{Rows: rows + 65, Type: memory.TypeArrow, Validity: validity}
-				out, err := p.Evaluate(b, &EvalWorkspace{}, testKernelSet())
+				out, err := evaluateBoolTest(p, b, &evaluationState{}, testKernelSet())
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -510,12 +510,12 @@ func TestPredicateLogicalRowsNilVectorsAndOpaqueValidity(t *testing.T) {
 					continue
 				}
 				b.Opaque["x"].Rows = rows - 1
-				if _, err := p.Evaluate(b, &EvalWorkspace{}, testKernelSet()); err == nil {
+				if _, err := evaluateBoolTest(p, b, &evaluationState{}, testKernelSet()); err == nil {
 					t.Fatal("accepted short opaque rows")
 				}
 				b.Opaque["x"].Rows = rows + 65
 				b.Opaque["x"].Validity = make(memory.Bitmap, (rows+63)/64-1)
-				if _, err := p.Evaluate(b, &EvalWorkspace{}, testKernelSet()); err == nil {
+				if _, err := evaluateBoolTest(p, b, &evaluationState{}, testKernelSet()); err == nil {
 					t.Fatal("accepted short opaque validity")
 				}
 			}
@@ -537,9 +537,9 @@ func TestPredicateLogicalRowsWorkspaceAndAllocations(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			var w EvalWorkspace
+			var w evaluationState
 			ks := testKernelSet()
-			if _, err := p.Evaluate(b, &w, ks); err != nil {
+			if _, err := evaluateBoolTest(p, b, &w, ks); err != nil {
 				t.Fatal(err)
 			}
 			want, err := p.WorkspaceBytes(rows)
@@ -550,7 +550,7 @@ func TestPredicateLogicalRowsWorkspaceAndAllocations(t *testing.T) {
 				t.Fatalf("type=%s rows=%d retained=%d want=%d", typ, rows, w.MemoryBytes(), want)
 			}
 			if allocs := testing.AllocsPerRun(10, func() {
-				if _, err := p.Evaluate(b, &w, ks); err != nil {
+				if _, err := evaluateBoolTest(p, b, &w, ks); err != nil {
 					panic(err)
 				}
 			}); allocs != 0 {
@@ -570,9 +570,9 @@ func TestPredicateLogicalRowsWorkspaceAndAllocations(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		var w EvalWorkspace
+		var w evaluationState
 		ks := testKernelSet()
-		if _, err := p.Evaluate(b, &w, ks); err != nil {
+		if _, err := evaluateBoolTest(p, b, &w, ks); err != nil {
 			t.Fatal(err)
 		}
 		want, _ := p.WorkspaceBytes(1)
@@ -583,7 +583,7 @@ func TestPredicateLogicalRowsWorkspaceAndAllocations(t *testing.T) {
 			t.Fatalf("string retained=%d want=%d", w.MemoryBytes(), want)
 		}
 		if allocs := testing.AllocsPerRun(10, func() {
-			if _, err := p.Evaluate(b, &w, ks); err != nil {
+			if _, err := evaluateBoolTest(p, b, &w, ks); err != nil {
 				panic(err)
 			}
 		}); allocs != 0 {

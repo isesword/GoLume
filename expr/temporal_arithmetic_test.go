@@ -28,11 +28,11 @@ func TestTimestampUnitLiteralsNormalizeAndRejectOverflow(t *testing.T) {
 			if got, err := tt.lit.Nanoseconds(); err != nil || got != tt.want {
 				t.Fatalf("Nanoseconds() = %d, %v; want %d, nil", got, err, tt.want)
 			}
-			p, err := CompileScalar(memory.Schema{}, tt.lit)
+			p, err := Compile(memory.Schema{}, tt.lit)
 			if err != nil {
 				t.Fatal(err)
 			}
-			value, err := p.Evaluate(batch, &ScalarWorkspace{}, testKernelSet())
+			value, err := evaluateValueTest(p, batch, &evaluationState{}, testKernelSet())
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -46,7 +46,7 @@ func TestTimestampUnitLiteralsNormalizeAndRejectOverflow(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err := predicate.Evaluate(batch, &EvalWorkspace{}, testKernelSet())
+	result, err := evaluateBoolTest(predicate, batch, &evaluationState{}, testKernelSet())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -60,7 +60,7 @@ func TestTimestampUnitLiteralsNormalizeAndRejectOverflow(t *testing.T) {
 		TimestampMicros(math.MinInt64),
 		TimestampUnitLiteral{Value: 1},
 	} {
-		if _, err := CompileScalar(memory.Schema{}, bad); err == nil {
+		if _, err := Compile(memory.Schema{}, bad); err == nil {
 			t.Fatalf("%s should fail to compile", bad)
 		}
 	}
@@ -83,7 +83,7 @@ func TestTemporalArithmeticPreservesTypesAndNulls(t *testing.T) {
 	batch.Int64s["ts"] = &memory.Int64Vector{Values: []int64{2 * int64(time.Second), 3 * int64(time.Second)}}
 	batch.Reset(2)
 
-	program, err := CompileProjection(schema, []NamedExpr{
+	program, err := CompileExpressions(schema, []NamedExpr{
 		Named(Add(Col("d"), I64(2)), "date_plus_days"),
 		Named(Sub(Col("d"), I64(3)), "date_minus_days"),
 		Named(Add(I64(7), Col("d64")), "date64_plus_millis"),
@@ -92,7 +92,7 @@ func TestTemporalArithmeticPreservesTypesAndNulls(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	values, err := program.Evaluate(batch, &ScalarWorkspace{}, testKernelSet())
+	values, err := evaluateProjectionTest(program, batch, &evaluationState{}, testKernelSet())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -114,7 +114,7 @@ func TestTemporalArithmeticPreservesTypesAndNulls(t *testing.T) {
 		Sub(I64(1), Col("ts")),
 		Mul(Col("ts"), I64(2)),
 	} {
-		if _, err := CompileScalar(schema, bad); err == nil {
+		if _, err := Compile(schema, bad); err == nil {
 			t.Fatalf("%s should be rejected", bad)
 		}
 	}
@@ -165,11 +165,11 @@ func TestCheckedArithmeticRejectsNumericAndTemporalOverflow(t *testing.T) {
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			program, err := CompileScalar(tt.schema, tt.expr)
+			program, err := Compile(tt.schema, tt.expr)
 			if err != nil {
 				t.Fatal(err)
 			}
-			if _, err := program.Evaluate(tt.batch, &ScalarWorkspace{}, testKernelSet()); err == nil || !strings.Contains(err.Error(), "overflows at row 0") {
+			if _, err := evaluateValueTest(program, tt.batch, &evaluationState{}, testKernelSet()); err == nil || !strings.Contains(err.Error(), "overflows at row 0") {
 				t.Fatalf("Evaluate error = %v, want checked overflow at row 0", err)
 			}
 		})

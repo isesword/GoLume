@@ -24,7 +24,7 @@ func TestRegexMatchPreservesThreeValuedLogicAndUnicode(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err := program.Evaluate(batch, &EvalWorkspace{}, testKernelSet())
+	result, err := evaluateBoolTest(program, batch, &evaluationState{}, testKernelSet())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -56,8 +56,8 @@ func TestRegexMatchCachesDictionaryResults(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var workspace EvalWorkspace
-	result, err := program.Evaluate(batch, &workspace, testKernelSet())
+	var workspace evaluationState
+	result, err := evaluateBoolTest(program, batch, &workspace, testKernelSet())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,7 +66,7 @@ func TestRegexMatchCachesDictionaryResults(t *testing.T) {
 			t.Fatalf("row %d match=%v want=%v", row, memory.IsSet(result.Truth, row), want)
 		}
 	}
-	if len(workspace.dictionary) != 1 || !workspace.dictionary[0].valid {
+	if len(workspace.owned) != 1 || !workspace.owned[0].dictionary.valid {
 		t.Fatal("dictionary regex results were not retained")
 	}
 }
@@ -81,7 +81,7 @@ func TestRegexExtractCapturesNullsAndEmptyMatches(t *testing.T) {
 	batch.Reset(5)
 	pattern := Str(`^([^:]+)(?::([0-9]+))?$`)
 	extractName := RegexExtract(Col("s"), pattern, I64(1))
-	program, err := CompileProjection(schema, []NamedExpr{
+	program, err := CompileExpressions(schema, []NamedExpr{
 		Named(RegexExtract(Col("s"), pattern, I64(0)), "whole"),
 		Named(extractName, "name"),
 		Named(RegexExtract(Col("s"), pattern, I64(2)), "number"),
@@ -91,15 +91,15 @@ func TestRegexExtractCapturesNullsAndEmptyMatches(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if program.Outputs[1].Root != program.Outputs[3].Root {
+	if program.outputs[1].root != program.outputs[3].root {
 		t.Fatal("identical REGEX_EXTRACT expressions did not share their compiled CSE root")
 	}
-	for _, instruction := range program.Instructions {
+	for _, instruction := range program.instructions {
 		if instruction.Code == scalarLiteralString {
 			t.Fatal("REGEX_EXTRACT pattern must remain instruction metadata, not a row-materialized string literal")
 		}
 	}
-	values, err := program.Evaluate(batch, &ScalarWorkspace{}, testKernelSet())
+	values, err := evaluateProjectionTest(program, batch, &evaluationState{}, testKernelSet())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -133,7 +133,7 @@ func TestRegexCompilationContracts(t *testing.T) {
 		RegexExtract(Col("s"), Str("(a)"), Col("pattern")),
 	}
 	for _, expression := range scalarErrors {
-		if _, err := CompileScalar(schema, expression); err == nil {
+		if _, err := Compile(schema, expression); err == nil {
 			t.Fatalf("scalar %s should fail compilation", expression)
 		}
 	}
@@ -150,15 +150,15 @@ func TestRegexExecutionHandlesLongInput(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err := predicate.Evaluate(batch, &EvalWorkspace{}, testKernelSet())
+	result, err := evaluateBoolTest(predicate, batch, &evaluationState{}, testKernelSet())
 	if err != nil || !memory.IsSet(result.Truth, 0) {
 		t.Fatalf("long input match truth=%v err=%v", result.Truth, err)
 	}
-	extract, err := CompileScalar(schema, RegexExtract(Col("s"), Str(`(语言[0-9]+)$`), I64(1)))
+	extract, err := Compile(schema, RegexExtract(Col("s"), Str(`(语言[0-9]+)$`), I64(1)))
 	if err != nil {
 		t.Fatal(err)
 	}
-	value, err := extract.Evaluate(batch, &ScalarWorkspace{}, testKernelSet())
+	value, err := evaluateValueTest(extract, batch, &evaluationState{}, testKernelSet())
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -15,16 +15,16 @@ func TestProjectionCSEFramesColumnNames(t *testing.T) {
 	)
 	left := Add(Col("a:c:b"), Col("c"))
 	right := Add(Col("a"), Col("b:c:c"))
-	p, err := CompileProjection(schema, []NamedExpr{
+	p, err := CompileExpressions(schema, []NamedExpr{
 		Named(left, "left"), Named(right, "right"), Named(left, "shared"),
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if p.Outputs[0].Root == p.Outputs[1].Root {
+	if p.outputs[0].root == p.outputs[1].root {
 		t.Fatal("distinct expressions share a register")
 	}
-	if p.Outputs[0].Root != p.Outputs[2].Root {
+	if p.outputs[0].root != p.outputs[2].root {
 		t.Fatal("identical expressions no longer share a register")
 	}
 	batch := memory.NewBatch()
@@ -33,13 +33,13 @@ func TestProjectionCSEFramesColumnNames(t *testing.T) {
 	batch.Int64s["a"] = &memory.Int64Vector{Values: []int64{10}}
 	batch.Int64s["b:c:c"] = &memory.Int64Vector{Values: []int64{20}}
 	batch.Reset(1)
-	var w ScalarWorkspace
+	var w evaluationState
 	defer w.Close()
-	if err := evaluateInstructions(p.Instructions, batch, &w, testKernelSet()); err != nil {
+	if err := evaluateInstructions(p.instructions, batch, &w, testKernelSet()); err != nil {
 		t.Fatal(err)
 	}
 	for i, want := range []int64{3, 30, 3} {
-		if got := w.regs[p.Outputs[i].Root].i64[0]; got != want {
+		if got := w.regs[p.outputs[i].root].i64[0]; got != want {
 			t.Fatalf("output %d = %d, want %d", i, got, want)
 		}
 	}

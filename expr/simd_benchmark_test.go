@@ -26,7 +26,7 @@ func BenchmarkFloat64ExpressionKernelMode(b *testing.B) {
 		batch.Float64s[name] = &memory.Float64Vector{Values: values}
 	}
 	batch.Reset(rows)
-	program, err := CompileScalar(schema, Col("a").Sub(Col("b")).Mul(Col("c")).Div(Col("d")))
+	program, err := Compile(schema, Col("a").Sub(Col("b")).Mul(Col("c")).Div(Col("d")))
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -36,14 +36,14 @@ func BenchmarkFloat64ExpressionKernelMode(b *testing.B) {
 	}{{"mode=scalar", kernel.ModeScalar}, {"mode=auto", kernel.ModeAuto}} {
 		b.Run(choice.name, func(b *testing.B) {
 			set := kernel.New(choice.mode)
-			var workspace ScalarWorkspace
-			if _, err := program.Evaluate(batch, &workspace, set); err != nil {
+			var workspace evaluationState
+			if _, err := evaluateValueTest(program, batch, &workspace, set); err != nil {
 				b.Fatal(err)
 			}
 			b.ReportAllocs()
 			b.ResetTimer()
 			for iteration := 0; iteration < b.N; iteration++ {
-				value, err := program.Evaluate(batch, &workspace, set)
+				value, err := evaluateValueTest(program, batch, &workspace, set)
 				if err != nil {
 					b.Fatal(err)
 				}
@@ -85,14 +85,14 @@ func BenchmarkUTF8LengthExpressionKernelMode(b *testing.B) {
 		}{{"mode=scalar", kernel.ModeScalar}, {"mode=auto", kernel.ModeAuto}} {
 			b.Run(profile.name+"/"+choice.name, func(b *testing.B) {
 				set := kernel.New(choice.mode)
-				var workspace EvalWorkspace
-				if _, err := program.Evaluate(batch, &workspace, set); err != nil {
+				var workspace evaluationState
+				if _, err := evaluateBoolTest(program, batch, &workspace, set); err != nil {
 					b.Fatal(err)
 				}
 				b.ReportAllocs()
 				b.ResetTimer()
 				for iteration := 0; iteration < b.N; iteration++ {
-					if _, err := program.Evaluate(batch, &workspace, set); err != nil {
+					if _, err := evaluateBoolTest(program, batch, &workspace, set); err != nil {
 						b.Fatal(err)
 					}
 				}
@@ -133,14 +133,14 @@ func BenchmarkStringMatchExpressionKernelMode(b *testing.B) {
 	}{{"mode=scalar", kernel.ModeScalar}, {"mode=auto", kernel.ModeAuto}} {
 		b.Run(choice.name, func(b *testing.B) {
 			set := kernel.New(choice.mode)
-			var workspace EvalWorkspace
-			if _, err := program.Evaluate(batch, &workspace, set); err != nil {
+			var workspace evaluationState
+			if _, err := evaluateBoolTest(program, batch, &workspace, set); err != nil {
 				b.Fatal(err)
 			}
 			b.ReportAllocs()
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				if _, err := program.Evaluate(batch, &workspace, set); err != nil {
+				if _, err := evaluateBoolTest(program, batch, &workspace, set); err != nil {
 					b.Fatal(err)
 				}
 			}

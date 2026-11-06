@@ -38,9 +38,15 @@ func NewFilterProjectSource(input source.Source, predicate expr.Expr, columns []
 	if predicate == nil && columns == nil {
 		return input, nil
 	}
-	program, _, err := expr.CompilePredicate(input.Schema(), predicate)
+	if predicate == nil {
+		predicate = expr.Bool(true)
+	}
+	program, err := expr.Compile(input.Schema(), predicate)
 	if err != nil {
 		return nil, err
+	}
+	if program.Type() != memory.TypeBool {
+		return nil, fmt.Errorf("filter predicate must be bool, got %s", program.Type())
 	}
 	schema := input.Schema()
 	if columns != nil {
@@ -144,13 +150,13 @@ func (s *FilterSource) newBatchStream(ctx context.Context, opts source.ReadOptio
 	if manager == nil {
 		manager = memory.NewBudgetManager(0)
 	}
-	eval, err := expr.NewPredicateWorkspace(ctx, s.program, manager, "Filter")
+	eval, err := expr.NewWorkspace(ctx, s.program, manager, "Filter")
 	if err != nil {
 		return nil, err
 	}
 	child, err := openUnaryInputStream(ctx, s.input, opts, parts, prepared)
 	if err != nil {
-		eval.Release()
+		_ = eval.Close()
 		return nil, err
 	}
 	stream := &filterBatchStream{owner: s, input: memory.NewBatch(), view: memory.NewBatch(), eval: eval, manager: manager, query: memory.QueryBudgetFromContext(ctx), kernels: opts.Kernels}
@@ -161,8 +167,13 @@ func (s *FilterSource) newBatchStream(ctx context.Context, opts source.ReadOptio
 		stream.view.ClearColumns()
 		// input is filled by the child and never owns its borrowed payload.
 		stream.input = nil
-		stream.eval.Release()
+		_ = stream.eval.Close()
 		stream.output.release()
+		stream.selection = nil
+		if stream.selectionLease != nil {
+			stream.selectionLease.Release()
+			stream.selectionLease = nil
+		}
 		stream.rows = nil
 		if stream.rowsLease != nil {
 			stream.rowsLease.Release()
@@ -180,8 +191,10 @@ type filterBatchStream struct {
 	owner                 *FilterSource
 	input, view, borrowed *memory.Batch
 	output                compactWorkspace
-	eval                  *expr.PredicateWorkspace
+	eval                  *expr.Workspace
 	manager               memory.Manager
+	selectionLease        memory.Reservation
+	selection             memory.Bitmap
 	rowsLease             memory.Reservation
 	rows                  []int
 	kernels               kernel.Set
@@ -198,6 +211,22 @@ func (s *filterBatchStream) clearBorrowed() {
 func (s *filterBatchStream) selectRows(ctx context.Context, bv expr.BoolVector) (int, error) {
 	selected := 0
 	words := memory.WordsFor(s.input.Rows)
+	// Boolean results can borrow input or shared expression registers. Own the
+	// truth-and-validity intersection rather than modifying the result in place.
+	if cap(s.selection) < words {
+		lease, err := s.manager.Reserve(ctx, int64(words)*8)
+		if err != nil {
+			return 0, fmt.Errorf("reserve filter selection: %w", err)
+		}
+		next := make(memory.Bitmap, words)
+		previous := s.selectionLease
+		s.selection, s.selectionLease = next, lease
+		if previous != nil {
+			previous.Release()
+		}
+	} else {
+		s.selection = s.selection[:words]
+	}
 	for i := 0; i < words; i++ {
 		word := bv.Truth[i]
 		if bv.Validity != nil {
@@ -206,7 +235,7 @@ func (s *filterBatchStream) selectRows(ctx context.Context, bv expr.BoolVector) 
 		if i == words-1 && s.input.Rows&63 != 0 {
 			word &= uint64(1)<<uint(s.input.Rows&63) - 1
 		}
-		bv.Truth[i] = word
+		s.selection[i] = word
 		selected += bits.OnesCount64(word)
 	}
 	if selected == 0 || selected == s.input.Rows {
@@ -228,7 +257,7 @@ func (s *filterBatchStream) selectRows(ctx context.Context, bv expr.BoolVector) 
 	}
 	offset := 0
 	for i := 0; i < words; i++ {
-		word := bv.Truth[i]
+		word := s.selection[i]
 		for word != 0 {
 			s.rows[offset] = i*64 + bits.TrailingZeros64(word)
 			offset++
@@ -266,7 +295,7 @@ func (s *filterBatchStream) Next(ctx context.Context, dst *memory.Batch) (bool, 
 		if !ok {
 			return false, s.state.finish()
 		}
-		bv, err := s.eval.Evaluate(ctx, s.input, s.kernels)
+		bv, err := s.eval.EvaluateBool(ctx, s.input, s.kernels)
 		if err != nil {
 			return false, s.state.fail(err)
 		}
@@ -293,7 +322,7 @@ func (s *filterBatchStream) Next(ctx context.Context, dst *memory.Batch) (bool, 
 		s.view.Rows = s.input.Rows
 		out := s.view
 		if selected != s.input.Rows {
-			out, err = s.output.compact(ctx, s.view, s.rows, bv.Truth, s.kernels)
+			out, err = s.output.compact(ctx, s.view, s.rows, s.selection, s.kernels)
 			if err != nil {
 				return false, s.state.fail(err)
 			}

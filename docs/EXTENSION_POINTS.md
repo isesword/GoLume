@@ -2,7 +2,20 @@
 
 ## Expression
 
-新增 predicate operator：扩 `expr.Op`、compile instruction、scalar correctness，再决定是否需要 kernel specialization。不要把 AST type-switch 放进 row hot loop。
+表达式扩展从共享 `expr.Bind` 开始：定义完整 Field、NULL/类型规则、依赖和保守
+`MayError`，再接入 `Compile` / `CompileExpressions` 的单一私有指令表示及
+`Workspace` 执行器。Filter、Projection 与 Aggregate predicate 不得各建一套编译/
+求值路径；lazy 入口只构造同一节点。公开 Program 仅提供只读 metadata getter。
+
+新增 conditional/partial-value operator 必须保留 active-row region 和 region-local
+CSE，不能把可能失败的子表达式提到未需求的行。普通 AND/OR 不作错误 guard；
+优化器与 source pruning 要保留已需求表达式的错误，未使用输出仍可裁剪。
+
+先补独立语义、NULL、精度/转换、预算失败、借用 ownership、取消和重复执行测试，
+再决定是否需要 kernel specialization。Boolean 值与 Filter selection 分离，
+computed buffers 在分配前计费，不能修改借用输入。不要把 AST type-switch 放进
+row hot loop。契约见 [EXPRESSION_EVALUATION.md](EXPRESSION_EVALUATION.md)，
+公共 API 迁移见 [STREAM_MIGRATION.md](STREAM_MIGRATION.md#unified-expression-api-breaking-change)。
 
 ## Kernel
 

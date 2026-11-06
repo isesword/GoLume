@@ -11,7 +11,7 @@ import (
 
 func TestAggregatePredicateWorkspaceChargesActualCapacities(t *testing.T) {
 	schema := memory.NewSchema(memory.Field{Name: "s", Type: memory.TypeString, Encoding: memory.EncodingDictionary, DictionaryDomain: "budget-v1"})
-	program, _, err := expr.CompilePredicate(schema, expr.EQ(expr.Col("s"), expr.Str("one")))
+	program, err := expr.Compile(schema, expr.EQ(expr.Col("s"), expr.Str("one")))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -45,7 +45,7 @@ func TestAggregatePredicateWorkspaceChargesActualCapacities(t *testing.T) {
 }
 
 func TestAggregatePredicateWorkspaceGrowthReservesBeforeAllocation(t *testing.T) {
-	program, _, err := expr.CompilePredicate(memory.NewSchema(memory.Field{Name: "pred", Type: memory.TypeInt32}), expr.GT(expr.Col("pred"), expr.I64(0)))
+	program, err := expr.Compile(memory.NewSchema(memory.Field{Name: "pred", Type: memory.TypeInt32}), expr.GT(expr.Col("pred"), expr.I64(0)))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -166,6 +166,108 @@ func (v TimestampUnitLiteral) Nanoseconds() (int64, error) {
 	return normalizeTimestampUnitLiteral(v)
 }
 
+// BoolLiteral is a non-null Boolean constant.
+type BoolLiteral struct{ Value bool }
+
+func (BoolLiteral) exprNode() {}
+
+// String returns the SQL-like expression spelling.
+func (v BoolLiteral) String() string {
+	if v.Value {
+		return "TRUE"
+	}
+	return "FALSE"
+}
+
+// NullLiteral is a NULL value with an explicit logical type.
+type NullLiteral struct{ Type memory.DataType }
+
+func (NullLiteral) exprNode() {}
+
+// String returns the SQL-like expression spelling.
+func (v NullLiteral) String() string { return fmt.Sprintf("NULL(%s)", v.Type) }
+
+// IfExpr evaluates only the selected branch. A NULL condition selects Else.
+type IfExpr struct{ Condition, Then, Else Expr }
+
+func (IfExpr) exprNode() {}
+
+// String returns the SQL-like expression spelling.
+func (v IfExpr) String() string { return fmt.Sprintf("IF(%s, %s, %s)", v.Condition, v.Then, v.Else) }
+
+// WhenThen is one searched CASE arm.
+type WhenThen struct{ When, Then Expr }
+
+// CaseExpr evaluates the first arm with a TRUE condition; nil Else means NULL.
+type CaseExpr struct {
+	Whens []WhenThen
+	Else  Expr
+}
+
+func (CaseExpr) exprNode() {}
+
+// String returns the SQL-like expression spelling.
+func (v CaseExpr) String() string {
+	out := "CASE"
+	for _, arm := range v.Whens {
+		out += fmt.Sprintf(" WHEN %s THEN %s", arm.When, arm.Then)
+	}
+	if v.Else != nil {
+		out += fmt.Sprintf(" ELSE %s", v.Else)
+	}
+	return out + " END"
+}
+
+// CoalesceExpr evaluates arguments until the first non-NULL value.
+type CoalesceExpr struct{ Values []Expr }
+
+func (CoalesceExpr) exprNode() {}
+
+// String returns the SQL-like expression spelling.
+func (v CoalesceExpr) String() string { return fmt.Sprintf("COALESCE(%v)", v.Values) }
+
+// InExpr compares Value to its candidates using SQL three-valued equality.
+type InExpr struct {
+	Value  Expr
+	Values []Expr
+}
+
+func (InExpr) exprNode() {}
+
+// String returns the SQL-like expression spelling.
+func (v InExpr) String() string { return fmt.Sprintf("(%s IN %v)", v.Value, v.Values) }
+
+// Bool constructs a non-null Boolean literal.
+func Bool(value bool) BoolLiteral { return BoolLiteral{Value: value} }
+
+// Null constructs a NULL literal with an explicit scalar result type.
+func Null(typ memory.DataType) NullLiteral { return NullLiteral{Type: typ} }
+
+// If constructs a conditional expression. FALSE or NULL chooses otherwise;
+// only the selected branch is evaluated for each row.
+func If(condition, then, otherwise Expr) IfExpr {
+	return IfExpr{Condition: condition, Then: then, Else: otherwise}
+}
+
+// Case constructs a searched CASE expression. The first TRUE condition wins;
+// a nil otherwise expression supplies a typed NULL default.
+func Case(arms []WhenThen, otherwise Expr) CaseExpr {
+	return CaseExpr{Whens: append([]WhenThen(nil), arms...), Else: otherwise}
+}
+
+// Coalesce constructs a left-to-right first-non-NULL expression. Arguments
+// after the first non-NULL value are not evaluated for that row.
+func Coalesce(values ...Expr) CoalesceExpr {
+	return CoalesceExpr{Values: append([]Expr(nil), values...)}
+}
+
+// In constructs SQL three-valued membership against one or more candidates.
+// Candidates are evaluated left-to-right until a match; use Not(In(...))
+// for NOT IN with the same NULL semantics.
+func In(value Expr, values ...Expr) InExpr {
+	return InExpr{Value: value, Values: append([]Expr(nil), values...)}
+}
+
 // Binary is a binary logical expression.
 type Binary struct {
 	Op          Op
@@ -433,8 +535,8 @@ func Div(l, r Expr) Binary { return Binary{Op: OpDiv, Left: l, Right: r} }
 // produces NULL, matching the engine's scalar NULL-propagation rule.
 func Concat(l, r Expr) Binary { return Binary{Op: OpConcat, Left: l, Right: r} }
 
-// Contains constructs a case-sensitive UTF-8 substring predicate. It is valid
-// in filters and preserves SQL NULL semantics.
+// Contains constructs a case-sensitive UTF-8 substring expression. Its BOOL
+// result can be filtered or projected and preserves SQL NULL semantics.
 func Contains(value, needle Expr) Binary { return Binary{Op: OpContains, Left: value, Right: needle} }
 
 // StartsWith constructs a case-sensitive UTF-8 prefix predicate.
@@ -858,3 +960,21 @@ func (c Column) IsNull() Unary { return IsNull(c) }
 
 // IsNotNull constructs c IS NOT NULL.
 func (c Column) IsNotNull() Unary { return IsNotNull(c) }
+
+// Alias gives this expression a stable projection output name.
+func (v BoolLiteral) Alias(name string) NamedExpr { return Named(v, name) }
+
+// Alias gives this expression a stable projection output name.
+func (v NullLiteral) Alias(name string) NamedExpr { return Named(v, name) }
+
+// Alias gives this expression a stable projection output name.
+func (v IfExpr) Alias(name string) NamedExpr { return Named(v, name) }
+
+// Alias gives this expression a stable projection output name.
+func (v CaseExpr) Alias(name string) NamedExpr { return Named(v, name) }
+
+// Alias gives this expression a stable projection output name.
+func (v CoalesceExpr) Alias(name string) NamedExpr { return Named(v, name) }
+
+// Alias gives this expression a stable projection output name.
+func (v InExpr) Alias(name string) NamedExpr { return Named(v, name) }

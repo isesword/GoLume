@@ -29,11 +29,11 @@ func TestJSONDecodeExplicitStructSemantics(t *testing.T) {
 		`ignored`,
 	}, []bool{true, true, true, false})
 	batch.Reset(4)
-	program, err := CompileScalar(schema, JSONDecode(Col("payload"), target))
+	program, err := Compile(schema, JSONDecode(Col("payload"), target))
 	if err != nil {
 		t.Fatal(err)
 	}
-	got, err := program.Evaluate(batch, &ScalarWorkspace{}, testKernelSet())
+	got, err := evaluateValueTest(program, batch, &evaluationState{}, testKernelSet())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -74,11 +74,11 @@ func TestJSONDecodeRejectsInvalidRowsAndOverflow(t *testing.T) {
 			batch := memory.NewBatch()
 			batch.Strings["payload"] = testStringVector([]string{tc.json}, nil)
 			batch.Reset(1)
-			program, err := CompileScalar(schema, JSONDecode(Col("payload"), memory.NewSchema(tc.field)))
+			program, err := Compile(schema, JSONDecode(Col("payload"), memory.NewSchema(tc.field)))
 			if err != nil {
 				t.Fatal(err)
 			}
-			_, err = program.Evaluate(batch, &ScalarWorkspace{}, testKernelSet())
+			_, err = evaluateValueTest(program, batch, &evaluationState{}, testKernelSet())
 			if err == nil || !strings.Contains(err.Error(), tc.want) {
 				t.Fatalf("error=%v want substring %q", err, tc.want)
 			}
@@ -91,14 +91,14 @@ func TestJSONDecodeBudgetFailureReleasesWorkspaceReservation(t *testing.T) {
 	batch := memory.NewBatch()
 	batch.Strings["payload"] = testStringVector([]string{`{"value":"a long value"}`}, nil)
 	batch.Reset(1)
-	program, err := CompileScalar(schema, JSONDecode(Col("payload"), memory.NewSchema(memory.Field{Name: "value", Type: memory.TypeString, Encoding: memory.EncodingView})))
+	program, err := Compile(schema, JSONDecode(Col("payload"), memory.NewSchema(memory.Field{Name: "value", Type: memory.TypeString, Encoding: memory.EncodingView})))
 	if err != nil {
 		t.Fatal(err)
 	}
 	manager := memory.NewBudgetManager(4)
-	workspace := &ScalarWorkspace{}
+	workspace := &evaluationState{}
 	workspace.SetMemoryManager(context.Background(), manager)
-	if _, err := program.Evaluate(batch, workspace, testKernelSet()); !errors.Is(err, memory.ErrBudgetExceeded) {
+	if _, err := evaluateValueTest(program, batch, workspace, testKernelSet()); !errors.Is(err, memory.ErrBudgetExceeded) {
 		t.Fatalf("error=%v", err)
 	}
 	if err := workspace.Close(); err != nil {

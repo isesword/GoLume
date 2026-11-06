@@ -114,12 +114,17 @@ func TestLazyExpressionTopKFirstPassReadsOnlyDependencies(t *testing.T) {
 	}
 }
 
-func TestLazySortByRejectsPredicateAndAmbiguousKeys(t *testing.T) {
+func TestLazySortByAcceptsBooleanValuesAndRejectsEmptyKeys(t *testing.T) {
 	src := expressionOrderSource(t)
 	session := NewSession(engine.DefaultOptions())
 	defer session.Close()
-	if _, err := session.FromSource(src).SortBy(DescExpr(expr.Contains(Col("s"), Str("x")))).Schema(); err == nil {
-		t.Fatal("predicate expression must not be accepted as a sort key")
+	frame, err := session.FromSource(src).SortBy(DescExpr(expr.Contains(Col("s"), Str("x")))).Collect(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer frame.Close()
+	if got, want := frameInt64Column(t, frame, "id"), []int64{4, 1, 2, 5, 6, 3}; !equalI64(got, want) {
+		t.Fatalf("Boolean sort IDs=%v want=%v", got, want)
 	}
 	if _, err := session.FromSource(src).SortBy(SortExpr{}).Schema(); err == nil {
 		t.Fatal("empty sort expression must be rejected")

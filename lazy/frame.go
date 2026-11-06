@@ -216,6 +216,28 @@ func F64(v float64) expr.Float64Literal { return expr.F64(v) }
 // Str constructs a UTF-8 string literal for fluent lazy expressions.
 func Str(v string) expr.StringLiteral { return expr.Str(v) }
 
+// Bool constructs a non-null Boolean value.
+func Bool(value bool) expr.BoolLiteral { return expr.Bool(value) }
+
+// Null constructs a NULL value with an explicit logical type.
+func Null(typ memory.DataType) expr.NullLiteral { return expr.Null(typ) }
+
+// If selects then for TRUE conditions and otherwise for FALSE or NULL.
+func If(condition, then, otherwise expr.Expr) expr.IfExpr {
+	return expr.If(condition, then, otherwise)
+}
+
+// Case selects the first TRUE arm; a nil otherwise produces typed NULL.
+func Case(arms []expr.WhenThen, otherwise expr.Expr) expr.CaseExpr {
+	return expr.Case(arms, otherwise)
+}
+
+// Coalesce selects the first non-NULL value for each row.
+func Coalesce(values ...expr.Expr) expr.CoalesceExpr { return expr.Coalesce(values...) }
+
+// In compares a value with the supplied values using SQL three-valued logic.
+func In(value expr.Expr, values ...expr.Expr) expr.InExpr { return expr.In(value, values...) }
+
 // Date32 constructs a date32 literal expressed as days since the Unix epoch.
 func Date32(days int32) expr.Date32Literal { return expr.Date32(days) }
 
@@ -916,8 +938,11 @@ func lowerAggregate(plan logical.Plan) (*logical.Scan, expr.Query, error) {
 	walk = func(node logical.Plan) error {
 		switch n := node.(type) {
 		case *logical.Filter:
+			if err := walk(n.Input); err != nil {
+				return err
+			}
 			predicate = expr.MergeAnd(predicate, n.Predicate)
-			return walk(n.Input)
+			return nil
 		case *logical.Projection:
 			return walk(n.Input)
 		case *logical.Scan:
@@ -944,6 +969,16 @@ func containsAdvancedPlan(plan logical.Plan) bool {
 	case *logical.Sort, *logical.TopK, *logical.Limit, *logical.Window:
 		return true
 	case *logical.Filter:
+		// The aggregate-only shortcut folds filters into one predicate. Partial
+		// predicates require the source pipeline to preserve TRUE-only stages.
+		schema, err := logical.InferSchema(n.Input)
+		if err != nil {
+			return true
+		}
+		bound, err := expr.Bind(schema, n.Predicate)
+		if err != nil || bound.MayError {
+			return true
+		}
 		return containsAdvancedPlan(n.Input)
 	case *logical.Projection:
 		return containsAdvancedPlan(n.Input)
@@ -1036,7 +1071,7 @@ func newOrderKeyPlan(schema memory.Schema, by []logical.SortKey) (orderKeyPlan, 
 		if err != nil {
 			return orderKeyPlan{}, fmt.Errorf("ordering key %d: %w", i, err)
 		}
-		if _, err := expr.InferScalarType(schema, value); err != nil {
+		if _, err := expr.Bind(schema, value); err != nil {
 			return orderKeyPlan{}, fmt.Errorf("ordering key %d: %w", i, err)
 		}
 		column := ""
@@ -1103,6 +1138,23 @@ func lowerSourcePipeline(ctx context.Context, plan logical.Plan, manager memory.
 		src, pending, closers, err := lowerSourcePipeline(ctx, n.Input, manager, kernels, exec)
 		if err != nil {
 			return nil, nil, closers, err
+		}
+		if pending != nil {
+			bound, bindErr := expr.Bind(src.Schema(), n.Predicate)
+			if bindErr != nil {
+				return nil, nil, closers, bindErr
+			}
+			if bound.MayError {
+				// NULL rows from the first filter are rejected, whereas SQL AND
+				// demands its right side on them. Materialize that row boundary.
+				childID := profileSourceID(src)
+				src, err = physical.NewFilterSource(src, pending)
+				if err != nil {
+					return nil, nil, closers, err
+				}
+				src = profileSource(ctx, src, "filter", "sequential filter boundary", childID)
+				pending = nil
+			}
 		}
 		return src, expr.MergeAnd(pending, n.Predicate), closers, nil
 	case *logical.Projection:

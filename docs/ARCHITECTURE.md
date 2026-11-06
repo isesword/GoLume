@@ -62,18 +62,32 @@ pushdown happen in `Prepare`, `PrepareResult`, or one-shot Collect helpers.
 
 ## 3. Expression system
 
-Boolean predicates use the SQL-three-valued `expr.Program`.
-Scalar projections use `expr.ScalarProgram`.
+`expr.Bind` is the shared authority for complete output fields, dependencies,
+nullability and row-value `MayError` effects. `Compile` and `CompileExpressions`
+produce the same immutable `expr.Program` with private instructions and regions.
+Projection, Filter and aggregate predicates use one execution-local
+`expr.Workspace`; separate scalar/predicate programs and workspaces are removed.
 
-The typed scalar IR supports signed/unsigned numerics, float, UTF-8 string views, date32 and timestamp semantics, explicit Cast, arithmetic and string concat. Projection expressions compile into one shared instruction DAG with compile-time common-subexpression elimination.
+Typed values include SQL-three-valued BOOL. BOOL can be projected and filtered
+again, uses `TypeBool` / `Uint32Vector` at batch boundaries, and exports as Go
+`bool` / `nil`. Filter owns a separate truth-AND-validity selection bitmap.
+IF/CASE/COALESCE/IN use active-row regions and region-local CSE, so guarded partial
+values are not hoisted to undemanded rows. Ordinary AND/OR are not error guards.
+Numeric comparison is exact across integer/float domains; arithmetic and branch
+result promotion may still use Float64 and lose integer precision.
 
-Programs are compiled once; `ScalarWorkspace` stores reusable typed vector registers and validity bitmaps per execution stream. This deliberately avoids AST interface dispatch for each row.
+Workspace outputs borrow input or owned register storage until reuse/Close;
+owned capacities are admitted before allocation. Programs expose read-only
+metadata getters, not mutable instruction/root fields. No row-level AST
+dispatch is introduced. Type limits and public migration details are in
+[EXPRESSION_EVALUATION.md](EXPRESSION_EVALUATION.md) and
+[STREAM_MIGRATION.md](STREAM_MIGRATION.md#unified-expression-api-breaking-change).
 
 ## 4. Optimizer
 
 The rule optimizer currently performs:
 
-- filter merge;
+- filter merge when row-demand/error semantics permit;
 - column projection merge/removal;
 - projection dependency analysis;
 - expression dependency pruning;
@@ -82,6 +96,12 @@ The rule optimizer currently performs:
 
 Computed aliases form a conservative predicate-pushdown boundary until alias
 substitution analysis is added.
+
+Retained fallible expressions preserve their demanded rows and order. Filters
+cannot cross fallible projections/sort keys or become eager AND when that hides
+or adds demanded errors. Unused output expressions may still be pruned.
+Parquet/Arrow metadata pruning retains partitions for `MayError` predicates;
+safe pruning must also preserve NaN and exact numeric boundary semantics.
 
 Projection pruning has two levels:
 
@@ -174,7 +194,7 @@ Row terminal:
 ```text
 LazyFrame.Prepare
  -> prepared physical source DAG
- -> reusable Join build / scalar programs
+ -> reusable Join build / immutable expression programs
  -> independent native stream per Execute
 ```
 

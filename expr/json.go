@@ -43,7 +43,18 @@ func evalJSONDecode(out, input *scalarRegister, fields []memory.Field, rows int)
 			}
 		}()
 	}
-	result := &memory.StructVector{Fields: append([]memory.Field(nil), fields...), Values: memory.NewBatch(), Encoding: memory.EncodingView}
+	// The result schema belongs to this register, never the immutable program.
+	// Reuse it across batches under the read-only borrowed-result contract.
+	var ownedFields []memory.Field
+	if out.strct != nil {
+		ownedFields = out.strct.Fields
+	} else {
+		ownedFields = make([]memory.Field, len(fields))
+		for i, field := range fields {
+			ownedFields[i] = cloneBoundField(field)
+		}
+	}
+	result := &memory.StructVector{Fields: ownedFields, Values: memory.NewBatch(), Encoding: memory.EncodingView}
 	for row := 0; row < rows; row++ {
 		if out.checkContext != nil {
 			if err := out.checkContext(); err != nil {

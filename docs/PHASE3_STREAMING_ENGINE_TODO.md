@@ -6,9 +6,9 @@
 [STREAM_MIGRATION.md](STREAM_MIGRATION.md) 为准。本轮顺序如下，勾选表示该阶段已
 收口；代码已实现、完整验收和发布分别记录：
 
-- [x] **分支文档收口，本阶段本地检查通过。** 已对齐 README、迁移说明与阶段
+- [x] **分支文档收口，第一阶段本地检查通过。** 已对齐 README、迁移说明与阶段
   状态，记录最终检查结果；保留原始历史报告，不继承其 PASS 或自动宣布可合并。
-- [x] **流式 Analyze 与失败诊断，已实现，本阶段本地完整验收通过。** 使用与
+- [x] **流式 Analyze 与失败诊断，第一阶段本地完整验收通过。** 使用与
   `ExecuteBatches` 相同的入口 drain，不保留完整 DataFrame；删除
   `AnalyzeReport.MaterializedRows`，增加非空 `OutputBatches`、`FirstBatchDuration`
   和部分失败诊断。`Termination` / `FailurePhase` / `Error` / `CleanupError`
@@ -16,9 +16,13 @@
   共同入口采纳 caller-owned external QueryBudget，bounded 拒绝无限额外部 budget；
   `peak_memory_scope=query` 是共享高水位，不是独占值，不可跨算子求和。
   定向测试、独立最终 review 与补充/race 检查、完整本地 validate 已通过。
-- [ ] **统一表达式架构，后续独立阶段，尚未完成。** 先固定 typed IR、类型/NULL/溢出语义、CSE、
-  workspace 和预算契约，再逐个迁移 predicate/projection；每个切片独立验证，
-  删除替代后的重复实现。当前 `expr.Program` 与 `expr.ScalarProgram` 仍分开。
+- [x] **统一表达式架构，第二阶段本地完整验收通过、待发布。** 单一 `Bind` /
+  `Compile` / `CompileExpressions` → 私有不可变 Program → 单一 Workspace；
+  删除旧 scalar/projection/predicate workspace 和 mutable program 字段，用 getter
+  读取 metadata。BOOL 可投影再过滤，导出 bool/nil；条件/IN active-mask 求值和
+  region CSE、lazy 薄构造与 Alias 已实现。普通 AND/OR 不是错误 guard；MayError
+  保留已需求行上的错误，但允许未使用输出裁剪。条件结果类型与数值 promotion
+  限制、预算借用语义见 [表达式边界](EXPRESSION_EVALUATION.md) 与迁移说明。
 
 旧 prepared W4 性能目标已接受延期，不再阻塞上述开发顺序。原 10.04 ms 参考、
 10.341 ms 门槛和未达标结果保持不变；13.338 ms 的组合诊断只是改善证据，不是正式
@@ -26,11 +30,17 @@ PASS。见 [charged-reuse 历史报告](../validation/charged-reuse/README.md)�
 正确性、资源生命周期和受影响性能仍须验证，原始 fixture 与 CI 也不能由历史本地
 检查替代。
 
-本阶段最终验证状态：本地完整 `scripts/validate.sh` exit 0，覆盖普通/SIMD、宿主
+第一阶段验证状态：本地完整 `scripts/validate.sh` exit 0，覆盖普通/SIMD、宿主
 支持的强制宽度、SIMD-disabled fallback、Linux build、race、vet、GoDoc、结构/
 生成器检查和 demo。见 [验收记录](../validation/analyze-stream-review.md) 与
 [完整日志](../validation/analyze-stream-full-validation.txt)。仍使用合成替代 fixture，
-未核验 CI，未改变旧 W4 未达标结论；未声明发布或可合并，表达式独立阶段不在此验收内。
+未核验 CI，未改变旧 W4 未达标结论；该历史验收不覆盖第二阶段表达式改动。
+
+第二阶段最终验证状态：本地完整 `scripts/validate.sh` exit 0，定向/独立检查通过，
+普通/SIMD、宿主支持强制宽度、disabled fallback、race、vet、GoDoc、结构/生成器、
+Linux build 和 demo 均通过。见 [表达式验收记录](../validation/unified-expression-review.md)
+与 [完整日志](../validation/unified-expression-full-validation.txt)。合成 fixture、
+未核 CI、旧 W4 延期和无 RSS 保证的边界不变；待发布，不表示可合并。
 
 ## 历史记录的阅读方式
 

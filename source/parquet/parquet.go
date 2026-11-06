@@ -216,6 +216,24 @@ func (s *Source) ApplyPushdown(_ context.Context, req source.PushdownRequest) (s
 	if s == nil {
 		return nil, source.PushdownReport{}, fmt.Errorf("nil parquet source")
 	}
+	// Metadata can prove a predicate never TRUE while an earlier evaluated
+	// subexpression still errors. Keep all row groups for a fallible predicate;
+	// the residual evaluator is responsible for its ordered mask semantics.
+	pruningPredicate := req.Predicate
+	var predicateColumns []string
+	if req.Predicate != nil {
+		bound, err := expr.Bind(s.baseSchema, req.Predicate)
+		if err != nil {
+			return nil, source.PushdownReport{}, fmt.Errorf("pushdown predicate: %w", err)
+		}
+		if bound.Field.Type != memory.TypeBool {
+			return nil, source.PushdownReport{}, fmt.Errorf("pushdown predicate must be bool, got %s", bound.Field.Type)
+		}
+		predicateColumns = bound.Columns
+		if bound.MayError {
+			pruningPredicate = nil
+		}
+	}
 	projection := append([]string(nil), req.Projection...)
 	if len(projection) == 0 {
 		projection = schemaNames(s.baseSchema)
@@ -226,7 +244,7 @@ func (s *Source) ApplyPushdown(_ context.Context, req source.PushdownRequest) (s
 	for _, name := range projection {
 		need[name] = struct{}{}
 	}
-	for _, name := range expr.Columns(req.Predicate) {
+	for _, name := range predicateColumns {
 		need[name] = struct{}{}
 	}
 	projection = orderedNames(s.baseSchema, need)
@@ -264,7 +282,7 @@ func (s *Source) ApplyPushdown(_ context.Context, req source.PushdownRequest) (s
 			totalChunkBytes += chunk.TotalCompressedSize()
 		}
 
-		keep, err := rowGroupMayMatch(s.meta, p.ID, req.Predicate, byName)
+		keep, err := rowGroupMayMatch(s.meta, p.ID, pruningPredicate, byName)
 		if err != nil {
 			return nil, source.PushdownReport{}, err
 		}
@@ -925,9 +943,9 @@ func boolStatistic(value bool) int64 {
 }
 
 // floatComparisonTruth prunes a float64 column comparison against a numeric
-// literal using float64 min/max statistics. NaN bounds or literals make all
-// range reasoning unsound under SQL comparison semantics, so they degrade to
-// null-count-only pruning instead of risking false negatives.
+// literal using float64 min/max statistics. NaN bounds disable range reasoning;
+// NaN literals are FALSE on valid rows. Parquet may omit NaNs from statistics,
+// so ordinary comparisons must also retain FALSE as a possible result.
 func floatComparisonTruth(rg *metadata.RowGroupMetaData, stats metadata.TypedStatistics, literal expr.Expr, op expr.Op) (truthSet, error) {
 	value, ok := floatComparisonLiteral(literal)
 	if !ok {
@@ -944,15 +962,19 @@ func floatComparisonTruth(rg *metadata.RowGroupMetaData, stats metadata.TypedSta
 	return floatRangeTruth(rg, stats, hasMinMax, min, max, value, op), nil
 }
 
-// floatComparisonLiteral accepts float64 literals and int64 literals as
-// float64 comparison bounds. The int64-to-float64 conversion matches the
-// engine's own predicate evaluation, keeping pruning semantics aligned.
+// floatComparisonLiteral accepts float64 literals and exactly representable
+// int64 bounds. Runtime integer/float comparisons are exact, so rounding a
+// nonrepresentable integer here could incorrectly exclude a matching group.
 func floatComparisonLiteral(literal expr.Expr) (float64, bool) {
 	switch v := literal.(type) {
 	case expr.Float64Literal:
 		return v.Value, true
 	case expr.Int64Literal:
-		return float64(v.Value), true
+		value := float64(v.Value)
+		if value >= 0x1p63 || value < -0x1p63 || int64(value) != v.Value {
+			return 0, false
+		}
+		return value, true
 	default:
 		return 0, false
 	}
@@ -964,28 +986,31 @@ func floatRangeTruth(rg *metadata.RowGroupMetaData, stats metadata.TypedStatisti
 	if stats.HasNullCount() && stats.NullCount() >= rg.NumRows() {
 		return out
 	}
+	if math.IsNaN(literal) {
+		return out | truthFalse
+	}
 	if !hasMinMax {
 		return out | truthTrue | truthFalse
 	}
-	var mayTrue, mayFalse bool
+	// NaN rows are valid but can be absent from min/max. They make every
+	// supported comparison FALSE, including one whose numeric range is TRUE.
+	// Losing that possibility makes NOT and larger Boolean trees unsound.
+	out |= truthFalse
+	var mayTrue bool
 	switch op {
 	case expr.OpGT:
-		mayTrue, mayFalse = max > literal, min <= literal
+		mayTrue = max > literal
 	case expr.OpGE:
-		mayTrue, mayFalse = max >= literal, min < literal
+		mayTrue = max >= literal
 	case expr.OpLT:
-		mayTrue, mayFalse = min < literal, max >= literal
+		mayTrue = min < literal
 	case expr.OpLE:
-		mayTrue, mayFalse = min <= literal, max > literal
+		mayTrue = min <= literal
 	case expr.OpEQ:
 		mayTrue = min <= literal && literal <= max
-		mayFalse = min != literal || max != literal
 	}
 	if mayTrue {
 		out |= truthTrue
-	}
-	if mayFalse {
-		out |= truthFalse
 	}
 	return out
 }

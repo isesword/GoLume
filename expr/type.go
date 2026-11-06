@@ -3,7 +3,6 @@ package expr
 import (
 	"fmt"
 	"gocolumn/memory"
-	"unicode/utf8"
 )
 
 // TypeInfo is the inferred logical type and nullability of one scalar expression.
@@ -12,190 +11,14 @@ type TypeInfo struct {
 	Nullable bool
 }
 
-// InferScalarType validates e against schema and returns its result type. It
-// centralizes Phase 2.6 numeric coercion and explicit cast rules so logical and
-// physical compilation use identical semantics.
+// InferScalarType returns the type and nullability from the shared expression
+// binder. Predicates and projected values use the same validation rules.
 func InferScalarType(schema memory.Schema, e Expr) (TypeInfo, error) {
-	switch n := e.(type) {
-	case Column:
-		f, ok := schema.Field(n.Name)
-		if !ok {
-			return TypeInfo{}, fmt.Errorf("column %q not found", n.Name)
-		}
-		return TypeInfo{Type: f.Type, Nullable: f.Nullable}, nil
-	case Int64Literal:
-		return TypeInfo{Type: memory.TypeInt64}, nil
-	case Float64Literal:
-		return TypeInfo{Type: memory.TypeFloat64}, nil
-	case StringLiteral:
-		if !utf8.ValidString(n.Value) {
-			return TypeInfo{}, fmt.Errorf("string literal is not valid UTF-8")
-		}
-		return TypeInfo{Type: memory.TypeString}, nil
-	case Date32Literal:
-		return TypeInfo{Type: memory.TypeDate32}, nil
-	case TimestampLiteral:
-		return TypeInfo{Type: memory.TypeTimestamp}, nil
-	case DurationLiteral:
-		return TypeInfo{Type: memory.TypeDuration}, nil
-	case TimestampUnitLiteral:
-		if _, err := n.Nanoseconds(); err != nil {
-			return TypeInfo{}, err
-		}
-		return TypeInfo{Type: memory.TypeTimestamp}, nil
-	case JSONDecodeExpr:
-		input, err := InferScalarType(schema, n.Value)
-		if err != nil {
-			return TypeInfo{}, err
-		}
-		if input.Type != memory.TypeString {
-			return TypeInfo{}, fmt.Errorf("JSON_DECODE requires string input, got %s", input.Type)
-		}
-		if err := memory.StructField("json", true, n.Schema.Fields...).ValidateStruct(); err != nil {
-			return TypeInfo{}, err
-		}
-		return TypeInfo{Type: memory.TypeStruct, Nullable: true}, nil
-	case Cast:
-		in, err := InferScalarType(schema, n.Value)
-		if err != nil {
-			return TypeInfo{}, err
-		}
-		if !CanCast(in.Type, n.Target) {
-			return TypeInfo{}, fmt.Errorf("cannot cast %s to %s", in.Type, n.Target)
-		}
-		return TypeInfo{Type: n.Target, Nullable: in.Nullable}, nil
-	case Binary:
-		left, err := InferScalarType(schema, n.Left)
-		if err != nil {
-			return TypeInfo{}, err
-		}
-		right, err := InferScalarType(schema, n.Right)
-		if err != nil {
-			return TypeInfo{}, err
-		}
-		nullable := left.Nullable || right.Nullable
-		switch n.Op {
-		case OpAdd, OpSub:
-			if temporal, ok := temporalArithmeticType(n.Op, left.Type, right.Type); ok {
-				return TypeInfo{Type: temporal, Nullable: nullable}, nil
-			}
-			if isTemporalType(left.Type) || isTemporalType(right.Type) || left.Type == memory.TypeDuration || right.Type == memory.TypeDuration {
-				return TypeInfo{}, fmt.Errorf("operator %s does not support temporal operands %s and %s", n.Op, left.Type, right.Type)
-			}
-			t, err := CommonNumericType(left.Type, right.Type)
-			if err != nil {
-				return TypeInfo{}, fmt.Errorf("operator %s: %w", n.Op, err)
-			}
-			return TypeInfo{Type: t, Nullable: nullable}, nil
-		case OpMul:
-			t, err := CommonNumericType(left.Type, right.Type)
-			if err != nil {
-				return TypeInfo{}, fmt.Errorf("operator %s: %w", n.Op, err)
-			}
-			return TypeInfo{Type: t, Nullable: nullable}, nil
-		case OpDiv:
-			if !IsNumeric(left.Type) || !IsNumeric(right.Type) {
-				return TypeInfo{}, fmt.Errorf("operator / requires numeric operands, got %s and %s", left.Type, right.Type)
-			}
-			return TypeInfo{Type: memory.TypeFloat64, Nullable: nullable}, nil
-		case OpConcat:
-			if left.Type != memory.TypeString || right.Type != memory.TypeString {
-				return TypeInfo{}, fmt.Errorf("operator || requires string operands, got %s and %s", left.Type, right.Type)
-			}
-			return TypeInfo{Type: memory.TypeString, Nullable: nullable}, nil
-		case OpFind:
-			if left.Type != memory.TypeString || right.Type != memory.TypeString {
-				return TypeInfo{}, fmt.Errorf("FIND requires string operands, got %s and %s", left.Type, right.Type)
-			}
-			return TypeInfo{Type: memory.TypeInt64, Nullable: nullable}, nil
-		case OpSplit:
-			if left.Type != memory.TypeString || right.Type != memory.TypeString {
-				return TypeInfo{}, fmt.Errorf("SPLIT requires string value and delimiter, got %s and %s", left.Type, right.Type)
-			}
-			return TypeInfo{Type: memory.TypeList, Nullable: nullable}, nil
-		case OpContains, OpStartsWith, OpEndsWith, OpRegexMatch:
-			return TypeInfo{}, fmt.Errorf("operator %s is a filter predicate and cannot be projected", n.Op)
-		default:
-			return TypeInfo{}, fmt.Errorf("operator %s is not a scalar projection operator", n.Op)
-		}
-	case Unary:
-		in, err := InferScalarType(schema, n.Value)
-		if err != nil {
-			return TypeInfo{}, err
-		}
-		switch n.Op {
-		case OpLength, OpByteLength:
-			if in.Type != memory.TypeString {
-				return TypeInfo{}, fmt.Errorf("%s requires string input, got %s", n.Op, in.Type)
-			}
-			return TypeInfo{Type: memory.TypeInt64, Nullable: in.Nullable}, nil
-		case OpTrim, OpTrimStart, OpTrimEnd, OpLower, OpUpper:
-			if in.Type != memory.TypeString {
-				return TypeInfo{}, fmt.Errorf("%s requires string input, got %s", n.Op, in.Type)
-			}
-			return TypeInfo{Type: memory.TypeString, Nullable: in.Nullable}, nil
-		case OpYear, OpMonth, OpDay:
-			if in.Type != memory.TypeDate32 && in.Type != memory.TypeDate64 && in.Type != memory.TypeTimestamp {
-				return TypeInfo{}, fmt.Errorf("%s requires date32, date64, or timestamp input, got %s", n.Op, in.Type)
-			}
-		case OpHour, OpMinute, OpSecond:
-			if in.Type != memory.TypeTimestamp {
-				return TypeInfo{}, fmt.Errorf("%s requires timestamp input, got %s", n.Op, in.Type)
-			}
-		default:
-			return TypeInfo{}, fmt.Errorf("operator %s is not a scalar projection operator", n.Op)
-		}
-		return TypeInfo{Type: memory.TypeInt64, Nullable: in.Nullable}, nil
-	case Ternary:
-		value, err := InferScalarType(schema, n.Value)
-		if err != nil {
-			return TypeInfo{}, err
-		}
-		first, err := InferScalarType(schema, n.First)
-		if err != nil {
-			return TypeInfo{}, err
-		}
-		second, err := InferScalarType(schema, n.Second)
-		if err != nil {
-			return TypeInfo{}, err
-		}
-		nullable := value.Nullable || first.Nullable || second.Nullable
-		switch n.Op {
-		case OpReplace, OpReplaceAll:
-			if value.Type != memory.TypeString || first.Type != memory.TypeString || second.Type != memory.TypeString {
-				return TypeInfo{}, fmt.Errorf("%s requires string value, old text, and new text; got %s, %s, and %s", n.Op, value.Type, first.Type, second.Type)
-			}
-			return TypeInfo{Type: memory.TypeString, Nullable: nullable}, nil
-		case OpSlice:
-			if value.Type != memory.TypeString || !isSignedInteger(first.Type) || !isSignedInteger(second.Type) {
-				return TypeInfo{}, fmt.Errorf("SLICE requires string value and signed integer offset/length, got %s, %s, and %s", value.Type, first.Type, second.Type)
-			}
-			return TypeInfo{Type: memory.TypeString, Nullable: nullable}, nil
-		case OpRegexExtract, OpRegexExtractAll:
-			if value.Type != memory.TypeString || first.Type != memory.TypeString || !isSignedInteger(second.Type) {
-				return TypeInfo{}, fmt.Errorf("%s requires string value, string-literal pattern, and int64-literal group; got %s, %s, and %s", n.Op, value.Type, first.Type, second.Type)
-			}
-			pattern, ok := n.First.(StringLiteral)
-			if !ok {
-				return TypeInfo{}, fmt.Errorf("%s pattern must be a string literal", n.Op)
-			}
-			group, ok := n.Second.(Int64Literal)
-			if !ok {
-				return TypeInfo{}, fmt.Errorf("%s group must be an int64 literal", n.Op)
-			}
-			if _, _, err := compileRegexExtract(pattern.Value, group.Value); err != nil {
-				return TypeInfo{}, err
-			}
-			if n.Op == OpRegexExtractAll {
-				return TypeInfo{Type: memory.TypeList, Nullable: value.Nullable}, nil
-			}
-			return TypeInfo{Type: memory.TypeString, Nullable: true}, nil
-		default:
-			return TypeInfo{}, fmt.Errorf("operator %s is not a ternary scalar projection operator", n.Op)
-		}
-	default:
-		return TypeInfo{}, fmt.Errorf("unsupported scalar expression node %T", e)
+	bound, err := Bind(schema, e)
+	if err != nil {
+		return TypeInfo{}, err
 	}
+	return TypeInfo{Type: bound.Field.Type, Nullable: bound.Field.Nullable}, nil
 }
 
 func isTemporalType(t memory.DataType) bool {
@@ -284,7 +107,7 @@ func CommonNumericType(a, b memory.DataType) (memory.DataType, error) {
 // date and integer temporal casts otherwise use physical epoch values.
 func CanCast(from, to memory.DataType) bool {
 	if from == to {
-		return true
+		return conditionalScalarType(from) || from == memory.TypeBinary
 	}
 	if IsNumeric(from) && IsNumeric(to) {
 		return true

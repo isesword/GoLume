@@ -45,7 +45,7 @@ func TestPredicateIntegerLiteralBoundsExactOracle(t *testing.T) {
 						}
 						batch := literalTestIntegerBatch(tc.typ, exact, validity)
 						schema := memory.NewSchema(memory.Field{Name: "v", Type: tc.typ, Nullable: nulls != "none"})
-						var workspace EvalWorkspace
+						var workspace evaluationState
 						for _, literal := range literals {
 							for _, op := range []Op{OpGT, OpGE, OpLT, OpLE, OpEQ} {
 								predicate, simple, err := CompilePredicate(schema, Binary{Op: op, Left: Col("v"), Right: I64(literal)})
@@ -55,7 +55,7 @@ func TestPredicateIntegerLiteralBoundsExactOracle(t *testing.T) {
 								if simple == nil || simple.Type != tc.typ || simple.Op != op || (!tc.unsigned && simple.LiteralI64 != literal) || (tc.unsigned && simple.LiteralU64 != uint64(literal)) {
 									t.Fatalf("compiled literal or type changed: %+v", simple)
 								}
-								out, err := predicate.Evaluate(batch, &workspace, kernel.New(mode))
+								out, err := evaluateBoolTest(predicate, batch, &workspace, kernel.New(mode))
 								if err != nil {
 									t.Fatal(err)
 								}
@@ -109,14 +109,14 @@ func TestPredicateFloat32LiteralPrecisionExactOracle(t *testing.T) {
 					}
 					batch.Float32s["v"] = &memory.Float32Vector{Values: native, Validity: validity}
 					schema := memory.NewSchema(memory.Field{Name: "v", Type: memory.TypeFloat32, Nullable: nulls != "none"})
-					var workspace EvalWorkspace
+					var workspace evaluationState
 					for _, literal := range literals {
 						for _, op := range []Op{OpGT, OpGE, OpLT, OpLE, OpEQ} {
 							predicate, _, err := CompilePredicate(schema, Binary{Op: op, Left: Col("v"), Right: F64(literal)})
 							if err != nil {
 								t.Fatal(err)
 							}
-							out, err := predicate.Evaluate(batch, &workspace, kernel.New(mode))
+							out, err := evaluateBoolTest(predicate, batch, &workspace, kernel.New(mode))
 							if err != nil {
 								t.Fatal(err)
 							}
@@ -146,7 +146,7 @@ func TestPredicateOutsideIntegerRangeRetainsUnknown(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			out, err := predicate.Evaluate(batch, &EvalWorkspace{}, kernel.New(mode))
+			out, err := evaluateBoolTest(predicate, batch, &evaluationState{}, kernel.New(mode))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -162,7 +162,7 @@ func TestPredicateOutsideIntegerRangeRetainsUnknown(t *testing.T) {
 }
 
 func TestPredicateLiteralBoundsPreserveExplicitTypes(t *testing.T) {
-	for _, typ := range []memory.DataType{memory.TypeUint8, memory.TypeUint16, memory.TypeUint32, memory.TypeUint64, memory.TypeBool} {
+	for _, typ := range []memory.DataType{memory.TypeBool} {
 		schema := memory.NewSchema(memory.Field{Name: "v", Type: typ})
 		if _, _, err := CompilePredicate(schema, GT(Col("v"), I64(-1))); err == nil {
 			t.Fatalf("%s accepted negative signed literal", typ)
@@ -172,7 +172,6 @@ func TestPredicateLiteralBoundsPreserveExplicitTypes(t *testing.T) {
 		typ     memory.DataType
 		literal Expr
 	}{
-		{memory.TypeInt8, F64(128)},
 		{memory.TypeInt32, Date32Literal{Days: 1}},
 		{memory.TypeInt64, TimestampLiteral{Value: 1}},
 		{memory.TypeDate32, TimestampLiteral{Value: 1}},
@@ -181,6 +180,16 @@ func TestPredicateLiteralBoundsPreserveExplicitTypes(t *testing.T) {
 		schema := memory.NewSchema(memory.Field{Name: "v", Type: tc.typ})
 		if _, _, err := CompilePredicate(schema, GT(Col("v"), tc.literal)); err == nil {
 			t.Fatalf("%s accepted incompatible %T literal", tc.typ, tc.literal)
+		}
+	}
+	// Unified numeric expressions accept mixed signed/unsigned and integer/float
+	// comparisons without changing the native literal domain.
+	for _, typ := range []memory.DataType{memory.TypeUint8, memory.TypeUint16, memory.TypeUint32, memory.TypeUint64, memory.TypeInt8} {
+		schema := memory.NewSchema(memory.Field{Name: "v", Type: typ})
+		for _, literal := range []Expr{I64(-1), F64(128)} {
+			if _, _, err := CompilePredicate(schema, GT(Col("v"), literal)); err != nil {
+				t.Fatalf("%s mixed comparison: %v", typ, err)
+			}
 		}
 	}
 	// Integer literals on float columns deliberately use the compiler's float64
@@ -194,7 +203,7 @@ func TestPredicateLiteralBoundsPreserveExplicitTypes(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			out, err := predicate.Evaluate(batch, &EvalWorkspace{}, kernel.New(mode))
+			out, err := evaluateBoolTest(predicate, batch, &evaluationState{}, kernel.New(mode))
 			if err != nil {
 				t.Fatal(err)
 			}

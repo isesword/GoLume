@@ -12,10 +12,18 @@ func compileQuery(schema memory.Schema, q expr.Query) (CompiledQuery, error) {
 	if len(q.GroupBy) < 1 || len(q.GroupBy) > 2 {
 		return CompiledQuery{}, fmt.Errorf("phase-2.2 supports one or two group-by columns")
 	}
-	prog, simple, err := expr.CompilePredicate(schema, q.Filter)
+	predicate := q.Filter
+	if predicate == nil {
+		predicate = expr.Bool(true)
+	}
+	prog, err := expr.Compile(schema, predicate)
 	if err != nil {
 		return CompiledQuery{}, err
 	}
+	if prog.Type() != memory.TypeBool {
+		return CompiledQuery{}, fmt.Errorf("query predicate must be bool, got %s", prog.Type())
+	}
+	simple := prog.SimpleComparison()
 	if len(q.Aggregates) == 0 {
 		return CompiledQuery{}, fmt.Errorf("query requires at least one aggregate")
 	}

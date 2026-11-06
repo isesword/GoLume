@@ -26,12 +26,50 @@ SIMD / hash / radix / scheduler
 
 当前只有一套 `source.Source.NewBatchStream` 物理执行协议，`Collect`、批次消费、
 文件 Sink 与 terminal Aggregate 共用原生执行图。旧 `source.Reader` 与整分区 fallback
-已经删除。表达式的 predicate `expr.Program` 与 projection `expr.ScalarProgram`
-目前仍分开，统一表达式架构是后续工作，不是已完成能力。
+已经删除。Filter、Projection 与 Aggregate predicate 现在共用 `expr.Bind`、
+不可变 `expr.Program` 和执行独享 `expr.Workspace`，不再保留独立 scalar/predicate
+执行器。第二阶段实现、定向/独立检查及本地完整验收已通过，待发布。
 
 已有能力包括 **Limit / Sort / Top-K**、**opaque Arrow Take/materialization**、
 以及 **runtime feedback → aggregate CostModel**。下文介绍当前用法；Phase 2/3
 阶段文档和 benchmark 只记录各自版本、平台与输入上的结果。
+
+## 统一表达式与条件求值
+
+`expr.Compile(schema, expression)` 和 `expr.CompileExpressions(schema, named)`
+生成同一种 Program；指令和寄存器私有，元数据通过只读 getter 获取。旧
+`ScalarProgram` / `ProjectionProgram` 及分开的 workspace API 已删除，迁移见
+[表达式 API 变更](docs/STREAM_MIGRATION.md#unified-expression-api-breaking-change)。
+
+Boolean 是普通可投影值，可以先 Select 再 Filter；内部为 `TypeBool` / `Uint32Vector`，
+`Series.ToAnySlice` 返回 Go `bool` 或 NULL 对应的 `nil`。新增薄构造器
+`lazy.Bool`、`Null(type)`、`If`、`Case`、`Coalesce` 和 `In`，均支持 `.Alias`：
+
+```go
+result := lf.SelectExprs(
+    lazy.If(lazy.Col("keep"), lazy.Col("x"), lazy.Lit(0)).Alias("chosen"),
+    lazy.In(lazy.Col("kind"), lazy.Str("a"), lazy.Str("b")).Alias("included"),
+).Filter(lazy.Col("included"))
+```
+
+IF/CASE/COALESCE/IN 按每行 active mask 只求值仍需要的分支/候选，CSE 不越过受保护
+region。普通 AND/OR **不提供屏蔽运行时错误的短路保证**；需要保护 cast 等可能失败的
+计算时使用条件表达式。`expr.Not(lazy.In(...))` 表示 SQL 三值语义的 NOT IN。
+条件结果仅支持数值、Bool、String 和受支持的时间标量，不支持 List/Struct/Arrow/
+Binary 等结果；CASE 至少一条 WHEN，COALESCE 和 IN 至少一个参数/候选，类型化
+NULL 必须显式给定受支持的标量类型。所有分支在绑定时都检查类型和依赖。
+
+比较保留 signed/unsigned integer 与 float 的精确大小关系，不把整数先舍入成
+Float64；但算术和不同数值分支的结果提升仍遵循 `CommonNumericType`，可能得到
+Float64，不能据此承诺所有算术或结果转换无损。优化器保留已被需求的错误求值范围，
+未使用的 projection 输出仍可删除。预算、借用生命周期与错误范围详见
+[表达式求值边界](docs/EXPRESSION_EVALUATION.md)。
+
+第二阶段本地完整 `scripts/validate.sh` 已通过，含普通/SIMD、宿主支持的强制宽度、
+disabled fallback、race、vet、GoDoc、结构/生成器、Linux build 与 demo。
+见 [统一表达式验收记录](validation/unified-expression-review.md) 和
+[完整日志](validation/unified-expression-full-validation.txt)。仍是合成 fixture 的本地
+结果，不声明原始 fixture、CI、旧 W4 性能目标通过或可合并。
 
 当前表达式层也支持编译期正则：`RegexMatch` 用于过滤，
 `RegexExtract` 用于提取完整匹配或指定捕获组。pattern 只能是字面量，
@@ -142,12 +180,12 @@ fsync 和原子提交；失败不返回临时路径。
 
 诊断中 `peak_memory_scope=query` 表示共享 query budget 高水位，不是算子独占内存，
 不能跨算子求和；外部 budget 也可能包含调用者先前或同时的使用。
-本阶段实现、独立 review 与本地完整 `scripts/validate.sh` 已通过，覆盖普通/SIMD、
+第一阶段 Analyze 实现、独立 review 与本地完整 `scripts/validate.sh` 已通过，覆盖普通/SIMD、
 宿主支持的强制宽度、SIMD-disabled fallback、Linux build、race、vet、GoDoc、
 结构/生成器检查及 demo。见 [验收记录](validation/analyze-stream-review.md) 和
 [完整日志](validation/analyze-stream-full-validation.txt)。仍使用合成替代 fixture，
-未核验 GitHub Actions，不表示原始 fixture、旧 W4 门槛或发布已通过。统一表达式阶段
-尚未完成，不属于本次验收范围。
+未核验 GitHub Actions，不表示原始 fixture 或旧 W4 门槛已通过。该历史结果不覆盖
+第二阶段统一表达式变更；第二阶段本地完整验收另见上面的表达式验收记录。
 
 ## Lazy ordering API
 
@@ -271,7 +309,7 @@ feedback cache 最多保留 1024 个 plan signature。用户显式 `WithHints` �
 - Go 1.27 scalar / portable SIMD / arch hotspot dispatch；
 - Projection/Predicate Pushdown 与 Parquet row-group pruning；
 - Arrow RecordBatch typed/opaque source；
-- typed scalar expressions、Cast、CSE；
+- 统一 typed expressions、Cast、region-local CSE 与条件/成员求值；
 - bounded literal-pattern RegexMatch / RegexExtract；
 - specialized Arrow-compatible List<String> vectors and Lazy passthrough；
 - engine.PreparedQuery / lazy.PreparedDataFrame / lazy.PreparedResult；
@@ -296,8 +334,9 @@ checksum = 236716301
 
 需要 Go 1.27：
 
-以下是复现命令。本阶段本地完整验证已通过，具体范围与日志见上面的验收记录。
-本次及历史 native/charged-reuse 验证使用已披露的合成替代 fixture，不能据此声称
+以下是复现命令。第一、二阶段本地完整验证各自通过，范围与日志分别见上面的
+Analyze 和统一表达式验收记录。历史 native/charged-reuse 验证也
+使用已披露的合成替代 fixture，不能据此声称
 原始 fixture 或 GitHub Actions 已通过。后续代码修改必须针对实际变更重新验证；
 详见 [验证边界](docs/CURRENT_STATUS.md#验证与历史证据)。
 
@@ -330,6 +369,8 @@ GOEXPERIMENT=simd go run ./cmd/lazy-demo \
 
 - [当前状态、限制与后续阶段](docs/CURRENT_STATUS.md)
 - [破坏性 API 与资源迁移](docs/STREAM_MIGRATION.md)
+- [统一表达式求值边界](docs/EXPRESSION_EVALUATION.md)
+- [第二阶段统一表达式验收](validation/unified-expression-review.md)
 - [近期计划与历史 Phase 3 清单](docs/PHASE3_STREAMING_ENGINE_TODO.md)
 - [本阶段流式 Analyze 验收](validation/analyze-stream-review.md)
 - [原生执行历史验证](validation/native-stream-unification-review.md)

@@ -43,7 +43,10 @@ func mergeFilters(plan logical.Plan, rules *[]string) logical.Plan {
 	switch n := plan.(type) {
 	case *logical.Filter:
 		child := mergeFilters(n.Input, rules)
-		if inner, ok := child.(*logical.Filter); ok {
+		if inner, ok := child.(*logical.Filter); ok && !mayError(inner, n.Predicate) {
+			// Sequential filters demand the outer expression only for TRUE rows.
+			// SQL AND also demands its right side for NULL left values, so a
+			// fallible outer expression must retain its own row-selection boundary.
 			*rules = append(*rules, "filter-merge")
 			return &logical.Filter{Input: inner.Input, Predicate: expr.MergeAnd(inner.Predicate, n.Predicate)}
 		}
@@ -154,7 +157,12 @@ func mergeLimits(plan logical.Plan, rules *[]string) logical.Plan {
 func pushPredicates(plan logical.Plan, inherited expr.Expr, rules *[]string) logical.Plan {
 	switch n := plan.(type) {
 	case *logical.Filter:
-		combined := expr.MergeAnd(inherited, n.Predicate)
+		var combined expr.Expr
+		if !mayError(n.Input, n.Predicate) {
+			combined = expr.MergeAnd(n.Predicate, inherited)
+		}
+		// An outer predicate cannot remove rows before a fallible inner filter:
+		// doing so could suppress an error that the original plan demanded.
 		child := pushPredicates(n.Input, combined, rules)
 		return &logical.Filter{Input: child, Predicate: n.Predicate}
 	case *logical.Projection:
@@ -165,6 +173,13 @@ func pushPredicates(plan logical.Plan, inherited expr.Expr, rules *[]string) log
 		// substitution analysis. Filters already inside the child still push down.
 		return &logical.ExprProjection{Input: pushPredicates(n.Input, nil, rules), Exprs: cloneNamedExprs(n.Exprs), IncludeInput: n.IncludeInput}
 	case *logical.Sort:
+		for _, key := range n.By {
+			value, err := key.Expression()
+			if err != nil || mayError(n.Input, value) {
+				inherited = nil
+				break
+			}
+		}
 		return &logical.Sort{Input: pushPredicates(n.Input, inherited, rules), By: cloneSortKeys(n.By)}
 	case *logical.TopK:
 		return &logical.TopK{Input: pushPredicates(n.Input, nil, rules), K: n.K, By: cloneSortKeys(n.By)}
@@ -191,6 +206,9 @@ func pushPredicates(plan logical.Plan, inherited expr.Expr, rules *[]string) log
 
 	case *logical.Scan:
 		out := cloneScan(n)
+		if out.PushedPredicate != nil && mayError(n, out.PushedPredicate) {
+			out.PushedPredicate = nil
+		}
 		if inherited != nil {
 			out.PushedPredicate = expr.MergeAnd(out.PushedPredicate, inherited)
 			*rules = append(*rules, "predicate-pushdown")
@@ -199,6 +217,18 @@ func pushPredicates(plan logical.Plan, inherited expr.Expr, rules *[]string) log
 	default:
 		return plan
 	}
+}
+
+// mayError treats an expression that cannot be rebound as unsafe. Optimize has
+// already validated the original plan; this conservative result prevents a
+// rewrite from widening or suppressing its demanded row-value error domain.
+func mayError(input logical.Plan, value expr.Expr) bool {
+	schema, err := logical.InferSchema(input)
+	if err != nil {
+		return true
+	}
+	bound, err := expr.Bind(schema, value)
+	return err != nil || bound.MayError
 }
 
 // pushProjection propagates the columns required by each operator to the scan.
@@ -354,6 +384,7 @@ func pushProjection(plan logical.Plan, required map[string]struct{}, rules *[]st
 			}
 		}
 		produced := make(map[string]expr.NamedExpr, len(n.Exprs))
+		dependencies := make(map[string][]string, len(n.Exprs))
 		kept := make([]expr.NamedExpr, 0, len(n.Exprs))
 		for _, e := range n.Exprs {
 			name, err := e.Name()
@@ -361,16 +392,26 @@ func pushProjection(plan logical.Plan, required map[string]struct{}, rules *[]st
 				return nil, err
 			}
 			produced[name] = e
+			bound, err := expr.Bind(inSchema, e.Expr)
+			if err != nil {
+				return nil, err
+			}
+			dependencies[name] = bound.Columns
 			if _, ok := wanted[name]; ok {
+				// Keep the established dead-output pruning contract: only
+				// retained outputs are demanded by the optimized query.
 				kept = append(kept, e)
 			}
 		}
 		childReq := make(map[string]struct{})
+		for _, e := range kept {
+			name, _ := e.Name()
+			for _, dep := range dependencies[name] {
+				childReq[dep] = struct{}{}
+			}
+		}
 		for name := range wanted {
-			if e, computed := produced[name]; computed {
-				for _, dep := range expr.Columns(e.Expr) {
-					childReq[dep] = struct{}{}
-				}
+			if _, computed := produced[name]; computed {
 				continue
 			}
 			if n.IncludeInput {

@@ -103,7 +103,7 @@ func TestFilterCompactionReserveCapacityOverlapAndRollback(t *testing.T) {
 func TestFilterPredicateIndexAndOutputAdmissionFailures(t *testing.T) {
 	base := filterBase(t, filterNumericBatch(1, 0, 1, 0))
 	predicate := expr.GT(expr.Col("x"), expr.I64(0))
-	program, _, err := expr.CompilePredicate(base.Schema(), predicate)
+	program, err := expr.Compile(base.Schema(), predicate)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -112,7 +112,7 @@ func TestFilterPredicateIndexAndOutputAdmissionFailures(t *testing.T) {
 		t.Fatal(err)
 	}
 	indexBytes := 2 * int64(unsafe.Sizeof(int(0)))
-	for stage, limit := range []int64{static - 1, static + indexBytes - 1, static + indexBytes + 16 - 1} {
+	for stage, limit := range []int64{static - 1, static + 8 - 1, static + 8 + indexBytes - 1, static + 8 + indexBytes + 16 - 1} {
 		t.Run(fmt.Sprint(stage), func(t *testing.T) {
 			filtered, err := NewFilterSource(base, predicate)
 			if err != nil {

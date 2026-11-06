@@ -15,7 +15,7 @@ func TestProjectionProgramTypedCoercionCSEAndCast(t *testing.T) {
 		memory.Field{Name: "ts", Type: memory.TypeTimestamp},
 	)
 	shared := Add(Col("a"), Col("b"))
-	program, err := CompileProjection(schema, []NamedExpr{
+	program, err := CompileExpressions(schema, []NamedExpr{
 		Named(shared, "sum"),
 		Named(Mul(shared, F64(2)), "twice"),
 		Named(Concat(Col("s"), Str("!")), "label"),
@@ -28,7 +28,7 @@ func TestProjectionProgramTypedCoercionCSEAndCast(t *testing.T) {
 	}
 	// a,b,a+b,2,(a+b)*2,s,"!",concat,cast,d,ts = 11. Without CSE,
 	// the shared a+b subtree would require three additional instructions.
-	if got := len(program.Instructions); got != 11 {
+	if got := len(program.instructions); got != 11 {
 		t.Fatalf("instruction count=%d, want 11 (shared subtree must be reused)", got)
 	}
 
@@ -43,8 +43,8 @@ func TestProjectionProgramTypedCoercionCSEAndCast(t *testing.T) {
 	batch.Int64s["ts"] = &memory.Int64Vector{Values: []int64{1000, 2000, 3000}}
 	batch.Reset(3)
 
-	var ws ScalarWorkspace
-	values, err := program.Evaluate(batch, &ws, testKernelSet())
+	var ws evaluationState
+	values, err := evaluateProjectionTest(program, batch, &ws, testKernelSet())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -99,8 +99,8 @@ func TestTypedPredicateFloatStringDateTimestamp(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var ws EvalWorkspace
-	out, err := program.Evaluate(batch, &ws, testKernelSet())
+	var ws evaluationState
+	out, err := evaluateBoolTest(program, batch, &ws, testKernelSet())
 	if err != nil {
 		t.Fatal(err)
 	}

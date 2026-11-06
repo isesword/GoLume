@@ -34,7 +34,8 @@ type PushdownReport struct {
 // PushdownSource is implemented by sources that can apply projection and
 // predicate information before physical execution. Implementations must treat
 // Predicate conservatively: a partition may be pruned only when it cannot
-// produce a SQL TRUE result for the predicate.
+// produce a SQL TRUE result or a demanded row-value error for the predicate.
+// A false safe conjunct is not sufficient to prune a fallible predicate.
 type PushdownSource interface {
 	Source
 	ApplyPushdown(context.Context, PushdownRequest) (Source, PushdownReport, error)

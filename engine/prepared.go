@@ -136,7 +136,7 @@ func (e *Engine) Prepare(ctx context.Context, src source.Source, q expr.Query, o
 		FusedCapable:  cq.FusedCapable,
 		ComparisonID:  cq.ComparisonID, HasComparisonID: cq.HasComparisonID,
 		SortedCapable: source.OrderedByPrefix(src, q.GroupBy),
-		KeyWidthBytes: cq.KeyWidthBytes, PredicateComplexity: cq.Predicate.Complexity,
+		KeyWidthBytes: cq.KeyWidthBytes, PredicateComplexity: cq.Predicate.InstructionCount(),
 	})
 	if err != nil {
 		return nil, err
@@ -181,7 +181,7 @@ func (e *Engine) Prepare(ctx context.Context, src source.Source, q expr.Query, o
 
 // Plan returns physical-plan diagnostics selected during preparation.
 func (p *PreparedQuery) Plan() PlanInfo {
-	return PlanInfo{Strategy: p.strategy, Rows: p.stats.Rows, Partitions: p.stats.Partitions, KeyWidthBytes: p.cq.KeyWidthBytes, PredicateOps: p.cq.Predicate.Complexity, GroupColumns: len(p.cq.GroupBy), MaxConcurrency: cap(p.executions), FeedbackSamples: p.feedbackSamples, EstimatedSelectivity: p.cq.SelectivityHint, EstimatedCardinality: p.cq.CardinalityHint}
+	return PlanInfo{Strategy: p.strategy, Rows: p.stats.Rows, Partitions: p.stats.Partitions, KeyWidthBytes: p.cq.KeyWidthBytes, PredicateOps: p.cq.Predicate.InstructionCount(), GroupColumns: len(p.cq.GroupBy), MaxConcurrency: cap(p.executions), FeedbackSamples: p.feedbackSamples, EstimatedSelectivity: p.cq.SelectivityHint, EstimatedCardinality: p.cq.CardinalityHint}
 }
 
 func (p *PreparedQuery) begin() error {

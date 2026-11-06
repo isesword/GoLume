@@ -1,9 +1,9 @@
 # 当前状态与开发顺序
 
-本文区分当前原生执行架构、历史验证结果和本轮工作。起始基线为
-`2c2162cc303429d07e723e9afc94f3e3c457717f`；下文也记录本轮工作树中已经实现的
-流式 Analyze 与共同 budget 入口变更。验证状态单独列出，不继承历史 Phase 文档的
-通过状态，也不表示这些变更已发布。
+本文区分当前原生执行架构、历史验证结果和本轮工作。第一阶段 Analyze 与文档收口
+基线已提交为 `5dddf50587affba10fb9e39e3134e360a85f9d03`；本工作树在此基础上实现
+第二阶段统一表达式。第二阶段本地完整验收已通过、待发布，不继承第一阶段或历史
+Phase 文档的通过状态。
 
 ## 当前架构
 
@@ -19,8 +19,45 @@
 - 聚合诊断使用实际策略：direct-fused、bitmap-direct、partitioned-hash、sorted
   或 spill-hash。独立的 radix 工具和 Join radix 算法仍存在，旧 aggregate
   `ForceStrategy="radix"` 不再支持。
-- 谓词 `expr.Program` 与投影 `expr.ScalarProgram` 仍是不同表达式程序。
-  共享 `expr.PredicateWorkspace` 和已复用的批内 kernel 不代表表达式架构已统一。
+- `expr.Bind` 统一类型、完整 schema、依赖和 `MayError` 推导；`Compile` /
+  `CompileExpressions` 生成同一种私有不可变 `expr.Program`，Filter、Projection
+  和 Aggregate predicate 共用一个 `expr.Workspace` 执行契约。旧独立程序与 workspace
+  已删除，不保留兼容执行器。
+
+## 统一表达式契约
+
+- 单表达式用 `expr.Compile`，命名多输出用 `expr.CompileExpressions`。通过
+  `Type()`、`Nullable()`、`InstructionCount()`、`ResultField()`、`OutputCount()`、
+  `OutputName(i)`、`OutputField(i)`、`OutputFields()` 读取 metadata，不再访问或
+  修改公开指令/寄存器字段。`CompilePredicate` 只是共享 Compile 的 BOOL 校验助手。
+- `NewWorkspace(ctx, program, manager)` 创建执行独享状态；`Evaluate` 返回借用
+  typed outputs，`EvaluateBool` 返回只读 truth/validity。结果只到下一次求值/Close
+  或输入失效前有效。查询 owner 不可重绑；预算失败可重试，运行时语义错误/取消会
+  关闭 workspace。固定/动态容量在分配前计费，不能用 `WorkspaceBytes` 代替全部
+  动态预算。
+- BOOL 可以 Select 后再 Filter，物理输出为 `TypeBool` / `Uint32Vector`，
+  `Series.ToAnySlice` 导出 `bool` / `nil`。Filter 单独拥有 truth AND validity
+  selection，不修改借用 BOOL 输出；opaque alias/passthrough 不接管输入 ownership。
+- `Bool`、类型化 `Null`、`If`、`Case`、`Coalesce`、`In` 及 `.Alias` 均可通过
+  `expr` 或 lazy 薄构造器使用。IF 的 NULL condition 走 ELSE；CASE 首个 TRUE 胜出，
+  nil ELSE 为 typed NULL；COALESCE 首个非 NULL 胜出。IN 按序比较到匹配为止，
+  NULL needle 或无匹配但有 NULL candidate 得 NULL；NOT IN 写作 `expr.Not(In(...))`。
+- CASE 至少一条 WHEN，COALESCE 至少一个值，IN 至少一个 candidate，IF 两个值
+  分支均必需。IF/CASE 条件须为 BOOL。所有分支在绑定时验证，不能用运行时短路隐藏
+  无效类型/缺列。条件结果与 typed NULL 仅支持 numeric、Bool、String、Date32/64、
+  Timestamp、Time32/64、Duration，不包含 Binary/List/Struct/opaque Arrow 等。
+  IN 单独遵循比较类型规则，详见迁移说明。
+- 条件/成员求值以 active-row mask 和 region-local CSE 保留受保护分支；普通 AND/OR
+  不保证屏蔽运行时错误。未使用 projection 输出仍可删除；已保留表达式的行需求、
+  顺序和错误不可被 filter 合并/下推或 source pruning 偷换。`MayError` 仅描述
+  行值错误，不含取消、内存失败、损坏源数据。
+- signed/unsigned integer 与 float 比较不先把整数舍入为 Float64；NaN 普通比较
+  为 FALSE，signed zero 相等。安全 source pruning 保留 NaN 取反结果并拒绝有损
+  integer metadata bounds。算术/不同 numeric 分支结果仍沿 `CommonNumericType`
+  提升，可能为 Float64 丢失精度，不承诺所有运算无损；显式 cast 执行相应范围检查。
+
+旧→新 API 和 getter 列表见 [迁移说明](STREAM_MIGRATION.md#unified-expression-api-breaking-change)，
+完整求值/优化器边界见 [EXPRESSION_EVALUATION.md](EXPRESSION_EVALUATION.md)。
 
 ## 当前支持的结果 API
 
@@ -94,13 +131,20 @@ checksum、策略等诊断，不保留结果行。`Materialize: true` 和 `Colle
 
 ## 验证与历史证据
 
-本阶段流式 Analyze 与分支文档收口的实现、独立最终 review、本地完整
+第二阶段统一表达式实现、定向/独立检查与本地完整 `scripts/validate.sh` 已通过。
+覆盖普通/SIMD、宿主支持的强制宽度、SIMD-disabled fallback、race、vet、GoDoc、
+结构/生成器、Linux build 与 demo。见
+[第二阶段验收记录](../validation/unified-expression-review.md) 和
+[完整日志](../validation/unified-expression-full-validation.txt)。这是本地合成替代
+fixture 验收，不代表原始 fixture、CI、旧 W4、全进程 RSS 保证或合并批准；待发布。
+
+第一阶段流式 Analyze 与分支文档收口的实现、独立最终 review、本地完整
 `scripts/validate.sh` 已通过。覆盖普通/SIMD、宿主支持的强制宽度、SIMD-disabled
 fallback、Linux build、race、vet、GoDoc、结构/生成器检查及 demo，另有独立定向
 检查。见 [本阶段验收记录](../validation/analyze-stream-review.md) 和
 [完整日志](../validation/analyze-stream-full-validation.txt)。该结果使用已披露的合成
-替代 fixture，不证明原始 fixture、GitHub Actions 或旧 W4 性能门槛通过；统一表达式
-独立阶段未完成，不在本次验收范围内。
+替代 fixture，不证明原始 fixture、GitHub Actions 或旧 W4 性能门槛通过；这些历史
+检查只覆盖第一阶段，第二阶段结果单独记录。
 
 历史报告与原始数据保留不变，结论只适用于各报告记载的版本、输入和环境：
 
@@ -125,18 +169,18 @@ fallback、Linux build、race、vet、GoDoc、结构/生成器检查及 demo，�
 
 ## 近期分阶段工作
 
-1. **分支文档收口，本阶段本地检查通过。** 已对齐当前文档与接口，保留历史证据，
+1. **分支文档收口，第一阶段本地检查通过。** 已对齐当前文档与接口，保留历史证据，
    区分验证结果、延期目标和后续阶段；不据此声明发布或可合并。
-2. **流式 Analyze 与失败诊断，已实现，本阶段本地完整验收通过。** 使用共同 stream
+2. **流式 Analyze 与失败诊断，第一阶段本地完整验收通过。** 使用共同 stream
    入口 drain，删除 `MaterializedRows`，保留首批/批次数和部分失败诊断；统一采纳
    caller-owned external budget。独立 review、定向/race 检查及完整 validate 通过；
    具体覆盖与合成 fixture/未核 CI 边界见上面的验收记录。
-3. **统一表达式架构，后续独立阶段，尚未完成。** 先明确共享 typed IR、类型与
-   NULL/溢出语义、CSE、workspace ownership 和 budget 契约，再逐步迁移 predicate
-   与 projection。用独立语义 oracle、预算/取消/生命周期测试和同条件基准验证每个
-   切片，删除替代后的重复实现；不另建一套长期并存的表达式执行器。
+3. **统一表达式架构，第二阶段已实现，本地完整验收通过、待发布。** 单一 binder/
+   Program/Workspace、条件 active masks、region CSE、BOOL 投影、成员求值、
+   错误需求边界与精确比较已纳入实现；旧 scalar/predicate 执行契约已删除。
+   支持类型、promotion 和 managed budget 的限制仍按上文生效。
 
-统一表达式 IR 与后续性能工作不属于本次已验收能力。代码实现、定向检查、
+进一步扩大条件结果类型或开展性能优化不是本次已验收能力。代码实现、定向检查、
 全仓本地验收与发布是不同状态。
 
-本阶段最终验证状态：本地完整 `scripts/validate.sh` exit 0；未声明发布、CI 通过或可合并。
+第二阶段最终验证状态：本地完整 `scripts/validate.sh` exit 0，待发布；未声明 CI 通过或可合并。

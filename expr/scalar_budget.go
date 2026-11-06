@@ -15,7 +15,7 @@ import (
 // error objects, standard-library caches/pools (including regexp machines), and
 // Go allocator size classes/bookkeeping. This is not a hard heap or RSS limit.
 type scalarReservation struct {
-	owner       *ScalarWorkspace
+	owner       *evaluationState
 	reservation memory.Reservation
 	index       int
 	bytes       int64
@@ -48,27 +48,33 @@ func (scalarNoopReservation) Bytes() int64 { return 0 }
 
 // Release is a no-op for unbudgeted work.
 func (scalarNoopReservation) Release() {}
-func (w *ScalarWorkspace) checkContext() error {
+func (w *evaluationState) checkContext() error {
 	if w.ctx != nil {
 		return w.ctx.Err()
 	}
 	return nil
 }
-func (w *ScalarWorkspace) acquire(n int64) (memory.Reservation, error) {
+func (w *evaluationState) acquire(n int64) (memory.Reservation, error) {
 	if err := w.checkContext(); err != nil {
 		return nil, err
 	}
 	if n < 0 {
 		return nil, fmt.Errorf("scalar allocation size overflow")
 	}
-	if w.manager == nil || n == 0 {
+	if (w.manager == nil && w.reserveHook == nil) || n == 0 {
 		return scalarNoopReservation{}, nil
 	}
 	ctx := w.ctx
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	reservation, err := w.manager.Reserve(ctx, n)
+	var reservation memory.Reservation
+	var err error
+	if w.manager != nil {
+		reservation, err = w.manager.Reserve(ctx, n)
+	} else {
+		reservation, err = w.reserveHook(n)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -109,7 +115,7 @@ func scalarResize[S ~[]T, T any](dst *S, n int, slot *memory.Reservation, acquir
 	}
 	return nil
 }
-func (w *ScalarWorkspace) ensureRegisters(n int) error {
+func (w *evaluationState) ensureRegisters(n int) error {
 	if err := scalarResize(&w.regs, n, &w.storage[0], w.acquire); err != nil {
 		return err
 	}
@@ -118,7 +124,7 @@ func (w *ScalarWorkspace) ensureRegisters(n int) error {
 	}
 	return nil
 }
-func (w *ScalarWorkspace) ensureOutputs(n int) error {
+func (w *evaluationState) ensureOutputs(n int) error {
 	return scalarResize(&w.outputs, n, &w.storage[2], w.acquire)
 }
 func prepareScalarBuffers(r *scalarRegister, rows int) error {
@@ -133,6 +139,9 @@ func prepareScalarBuffers(r *scalarRegister, rows int) error {
 		return err
 	}
 	r.validity = r.ownedValidity
+	if r.typ == memory.TypeBool {
+		return scalarResize(&r.Truth, memory.WordsFor(rows), &r.buffers[14], r.acquire)
+	}
 	switch r.typ {
 	case memory.TypeInt8:
 		return scalarResize(&r.i8, rows, &r.buffers[1], r.acquire)
@@ -229,7 +238,7 @@ func checkedScalarScratch(parts ...int64) (int64, error) {
 	}
 	return total, nil
 }
-func regexScratch(r *scalarRegister, input []byte, in ScalarInstruction, all bool) (memory.Reservation, error) {
+func regexScratch(r *scalarRegister, input []byte, in instruction, all bool) (memory.Reservation, error) {
 	count := int64(1)
 	if all {
 		count = int64(len(input)) + 1

@@ -304,6 +304,23 @@ func (s *Source) ApplyPushdown(_ context.Context, req source.PushdownRequest) (s
 	if s == nil {
 		return nil, source.PushdownReport{}, fmt.Errorf("arrowrecord: nil source")
 	}
+	// A no-TRUE result is not enough to prune when evaluation can raise a
+	// demanded row error. The residual executor owns mask/order semantics.
+	pruningPredicate := req.Predicate
+	var predicateColumns []string
+	if req.Predicate != nil {
+		bound, err := expr.Bind(s.baseSchema, req.Predicate)
+		if err != nil {
+			return nil, source.PushdownReport{}, fmt.Errorf("arrowrecord: pushdown predicate: %w", err)
+		}
+		if bound.Field.Type != memory.TypeBool {
+			return nil, source.PushdownReport{}, fmt.Errorf("arrowrecord: pushdown predicate must be bool, got %s", bound.Field.Type)
+		}
+		predicateColumns = bound.Columns
+		if bound.MayError {
+			pruningPredicate = nil
+		}
+	}
 	projection := append([]string(nil), req.Projection...)
 	if len(projection) == 0 {
 		projection = schemaNames(s.baseSchema)
@@ -312,7 +329,7 @@ func (s *Source) ApplyPushdown(_ context.Context, req source.PushdownRequest) (s
 	for _, name := range projection {
 		need[name] = struct{}{}
 	}
-	for _, name := range expr.Columns(req.Predicate) {
+	for _, name := range predicateColumns {
 		need[name] = struct{}{}
 	}
 	projection = orderedNames(s.baseSchema, need)
@@ -334,7 +351,7 @@ func (s *Source) ApplyPushdown(_ context.Context, req source.PushdownRequest) (s
 	parts := make([]source.Partition, 0, len(s.allParts))
 	for _, part := range s.allParts {
 		totalRows += part.Rows
-		keep, err := s.recordMayMatch(part.ID, req.Predicate)
+		keep, err := s.recordMayMatch(part.ID, pruningPredicate)
 		if err != nil {
 			return nil, source.PushdownReport{}, err
 		}

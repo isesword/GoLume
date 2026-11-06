@@ -10,7 +10,7 @@ func TestScalarProgramArithmeticAndNulls(t *testing.T) {
 		memory.Field{Name: "a", Type: memory.TypeInt64, Nullable: true},
 		memory.Field{Name: "b", Type: memory.TypeInt64},
 	)
-	p, err := CompileScalar(schema, Col("a").Mul(Lit(2)).Add(Col("b")))
+	p, err := Compile(schema, Col("a").Mul(Lit(2)).Add(Col("b")))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -21,8 +21,8 @@ func TestScalarProgramArithmeticAndNulls(t *testing.T) {
 	batch.Int64s["a"] = &memory.Int64Vector{Values: []int64{2, 100, 4}, Validity: valid}
 	batch.Int64s["b"] = &memory.Int64Vector{Values: []int64{1, 2, 3}}
 	batch.Reset(3)
-	var w ScalarWorkspace
-	got, err := p.EvaluateInt64(batch, &w, testKernelSet())
+	var w evaluationState
+	got, err := evaluateInt64Test(p, batch, &w, testKernelSet())
 	if err != nil {
 		t.Fatal(err)
 	}

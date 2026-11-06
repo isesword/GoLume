@@ -7,9 +7,9 @@ import (
 	"gocolumn/memory"
 )
 
-func TestScalarWorkspaceCloseDropsAllRegisters(t *testing.T) {
+func TestEvaluationStateCloseDropsAllRegisters(t *testing.T) {
 	manager := memory.NewBudgetManager(1 << 20)
-	w := &ScalarWorkspace{}
+	w := &evaluationState{}
 	w.SetMemoryManager(context.Background(), manager)
 	w.Ensure(1, 2)
 	if err := w.reserve(128); err != nil {
