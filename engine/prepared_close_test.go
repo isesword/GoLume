@@ -10,7 +10,9 @@ import (
 )
 
 func TestEveryConcurrentPreparedCloseWaitsForActiveCleanup(t *testing.T) {
-	prepared := &PreparedQuery{}
+	eng := New(streamTestOptions())
+	defer eng.Close()
+	prepared := &PreparedQuery{e: eng}
 	if err := prepared.begin(); err != nil {
 		t.Fatal(err)
 	}

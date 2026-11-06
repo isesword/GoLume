@@ -240,6 +240,7 @@ func TestPreparedQueryReleasesEveryExecution(t *testing.T) {
 		t.Fatal(err)
 	}
 	opts := engine.DefaultOptions()
+	opts.PreparedCacheBytes = 0 // Explicitly test no-retention mode.
 	opts.Workers = 4
 	eng := engine.New(opts)
 	defer eng.Close()

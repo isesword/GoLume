@@ -31,11 +31,11 @@ func (p *PreparedQuery) NewResidentAggregateStream(ctx context.Context, schema m
 // NewResidentAggregateStreamWithReadOptions preserves scan limits and memory ownership
 // through the aggregate child graph. Kernels must match the prepared query.
 func (p *PreparedQuery) NewResidentAggregateStreamWithReadOptions(ctx context.Context, schema memory.Schema, outputRows int, readOpts source.ReadOptions) (source.BatchStream, error) {
-	return p.newResidentAggregateStream(ctx, schema, outputRows, readOpts, true)
+	return p.newResidentAggregateStream(ctx, schema, outputRows, readOpts, true, false)
 }
 
 // acquirePrepared is false only when Execute already owns the plan lifecycle.
-func (p *PreparedQuery) newResidentAggregateStream(ctx context.Context, schema memory.Schema, outputRows int, readOpts source.ReadOptions, acquirePrepared bool) (source.BatchStream, error) {
+func (p *PreparedQuery) newResidentAggregateStream(ctx context.Context, schema memory.Schema, outputRows int, readOpts source.ReadOptions, acquirePrepared, reuse bool) (source.BatchStream, error) {
 	if p == nil || p.e == nil {
 		return nil, fmt.Errorf("nil prepared aggregate query")
 	}
@@ -90,7 +90,15 @@ func (p *PreparedQuery) newResidentAggregateStream(ctx context.Context, schema m
 		output:     budget.Operator("ResidentAggregateOutput", memory.MemoryWorkspace),
 		outputRows: outputRows, inputBatch: memory.NewBatch(), started: time.Now(), active: acquirePrepared,
 	}
-	if p.strategy.Kind == planner.StrategyPartitionedHash {
+	if reuse && p.reuseEligible() {
+		stream.reuse = p.e.cache.take(ctx, p, budget)
+		if stream.reuse == nil {
+			stream.reuse, err = newResidentReuseUnit(ctx, p, budget)
+		}
+		if err == nil {
+			stream.table, stream.partitioned = stream.reuse.table, stream.reuse.partitioned
+		}
+	} else if p.strategy.Kind == planner.StrategyPartitionedHash {
 		stream.partitioned, err = newResidentPartitionedState(ctx, p, budget)
 	} else {
 		state := budget.Operator("ResidentHashAggregate", memory.MemoryRetainedState)
@@ -127,6 +135,7 @@ type residentAggregateStream struct {
 	schema                    memory.Schema
 	budget                    *memory.QueryBudget
 	input                     source.BatchStream
+	reuse                     *residentReuseUnit
 	table                     *aggregateTableOwner
 	partitioned               *residentPartitionedState
 	output                    *memory.OperatorBudget
@@ -398,13 +407,23 @@ func (s *residentAggregateStream) cleanup() error {
 		s.input = nil
 	}
 	s.releaseOutput()
-	if s.partitioned != nil {
-		s.partitioned.close()
-		s.partitioned = nil
-	}
-	if s.table != nil {
-		s.table.close()
-		s.table = nil
+	if s.reuse != nil {
+		u := s.reuse
+		s.reuse, s.partitioned, s.table = nil, nil, nil
+		if s.exhausted && s.terminalErr == nil && err == nil && u.state.ctx != nil && u.state.ctx.Err() == nil {
+			s.query.e.cache.put(s.query, u)
+		} else {
+			u.destroy()
+		}
+	} else {
+		if s.partitioned != nil {
+			s.partitioned.close()
+			s.partitioned = nil
+		}
+		if s.table != nil {
+			s.table.close()
+			s.table = nil
+		}
 	}
 	s.finishActive()
 	s.closeErr = err

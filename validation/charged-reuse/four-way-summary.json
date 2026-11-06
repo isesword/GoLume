@@ -1,0 +1,122 @@
+{
+  "wip": {
+    "elapsed_ns_per_op": 17309454.553333335,
+    "process_cpu_ns_per_op": 49855993.333333336,
+    "alloc_bytes_per_op": 53709824.16,
+    "allocs_per_op": 11717.883333333333,
+    "retained_after_bytes": 0,
+    "samples": [
+      {
+        "elapsed_ns_per_op": 17309454.553333335,
+        "process_cpu_ns_per_op": 49975166.666666664,
+        "alloc_bytes_per_op": 53709460.32,
+        "allocs_per_op": 11718.153333333334,
+        "used_after_prepared_close_bytes": 0
+      },
+      {
+        "elapsed_ns_per_op": 17096987.81,
+        "process_cpu_ns_per_op": 48929623.333333336,
+        "alloc_bytes_per_op": 53709824.16,
+        "allocs_per_op": 11717.66,
+        "used_after_prepared_close_bytes": 0
+      },
+      {
+        "elapsed_ns_per_op": 17312669.98666667,
+        "process_cpu_ns_per_op": 49855993.333333336,
+        "alloc_bytes_per_op": 53710376.586666666,
+        "allocs_per_op": 11717.883333333333,
+        "used_after_prepared_close_bytes": 0
+      }
+    ]
+  },
+  "reuse": {
+    "elapsed_ns_per_op": 14598794.696666667,
+    "process_cpu_ns_per_op": 42234990,
+    "alloc_bytes_per_op": 32425702.56,
+    "allocs_per_op": 6272.996666666667,
+    "retained_after_bytes": 20872392,
+    "samples": [
+      {
+        "elapsed_ns_per_op": 14598794.696666667,
+        "process_cpu_ns_per_op": 42234990,
+        "alloc_bytes_per_op": 32425614.506666668,
+        "allocs_per_op": 6272.996666666667,
+        "used_after_prepared_close_bytes": 0
+      },
+      {
+        "elapsed_ns_per_op": 15008414.116666667,
+        "process_cpu_ns_per_op": 42922556.666666664,
+        "alloc_bytes_per_op": 32425702.56,
+        "allocs_per_op": 6272.933333333333,
+        "used_after_prepared_close_bytes": 0
+      },
+      {
+        "elapsed_ns_per_op": 14321389.75,
+        "process_cpu_ns_per_op": 41422663.333333336,
+        "alloc_bytes_per_op": 32430222.533333335,
+        "allocs_per_op": 6274.133333333333,
+        "used_after_prepared_close_bytes": 0
+      }
+    ]
+  },
+  "kernel": {
+    "elapsed_ns_per_op": 16060091.55,
+    "process_cpu_ns_per_op": 46413486.666666664,
+    "alloc_bytes_per_op": 53711367.86666667,
+    "allocs_per_op": 11717.403333333334,
+    "retained_after_bytes": 0,
+    "samples": [
+      {
+        "elapsed_ns_per_op": 16060091.55,
+        "process_cpu_ns_per_op": 44936266.666666664,
+        "alloc_bytes_per_op": 53711367.86666667,
+        "allocs_per_op": 11717.296666666667,
+        "used_after_prepared_close_bytes": 0
+      },
+      {
+        "elapsed_ns_per_op": 15894072.146666666,
+        "process_cpu_ns_per_op": 46413486.666666664,
+        "alloc_bytes_per_op": 53712401.12,
+        "allocs_per_op": 11717.713333333333,
+        "used_after_prepared_close_bytes": 0
+      },
+      {
+        "elapsed_ns_per_op": 17062644.35333333,
+        "process_cpu_ns_per_op": 47760123.333333336,
+        "alloc_bytes_per_op": 53707882.74666667,
+        "allocs_per_op": 11717.403333333334,
+        "used_after_prepared_close_bytes": 0
+      }
+    ]
+  },
+  "combined": {
+    "elapsed_ns_per_op": 13337881.973333333,
+    "process_cpu_ns_per_op": 38737480,
+    "alloc_bytes_per_op": 32424502.213333335,
+    "allocs_per_op": 6273.113333333334,
+    "retained_after_bytes": 20872392,
+    "samples": [
+      {
+        "elapsed_ns_per_op": 13337881.973333333,
+        "process_cpu_ns_per_op": 38737480,
+        "alloc_bytes_per_op": 32424319.52,
+        "allocs_per_op": 6272.75,
+        "used_after_prepared_close_bytes": 0
+      },
+      {
+        "elapsed_ns_per_op": 13690572.393333333,
+        "process_cpu_ns_per_op": 38818350,
+        "alloc_bytes_per_op": 32427110.24,
+        "allocs_per_op": 6273.35,
+        "used_after_prepared_close_bytes": 0
+      },
+      {
+        "elapsed_ns_per_op": 13332800.876666667,
+        "process_cpu_ns_per_op": 37670486.666666664,
+        "alloc_bytes_per_op": 32424502.213333335,
+        "allocs_per_op": 6273.113333333334,
+        "used_after_prepared_close_bytes": 0
+      }
+    ]
+  }
+}

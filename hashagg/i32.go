@@ -152,7 +152,7 @@ func (t *I32Table) TryAdd(key int32, value int64) (bool, error) {
 
 // TryAddValue updates one non-NULL key while preserving aggregate-value NULL semantics.
 func (t *I32Table) TryAddValue(key int32, value int64, valueValid bool) (bool, error) {
-	slot, exists := t.lookupSlot(key)
+	slot, exists := lookupI32Slot(t.keys, t.epoch, t.gen, t.mask, key)
 	if exists {
 		t.state.AddValue(slot, value, valueValid)
 		return false, nil
@@ -170,7 +170,7 @@ func (t *I32Table) insertValueAt(key int32, slot int, value int64, valueValid bo
 				return false, err
 			}
 		}
-		slot, _ = t.lookupSlot(key)
+		slot, _ = lookupI32Slot(t.keys, t.epoch, t.gen, t.mask, key)
 	}
 	t.epoch[slot], t.keys[slot] = t.gen, key
 	t.state.InitValue(slot, value, valueValid)
@@ -263,6 +263,9 @@ func (t *I32Table) AggregateSelectedNullableValues(keys []int32, keyValidity mem
 	// Nullability is constant for a vector. Keep the common all-valid loop
 	// free of row-level validity checks and nullable-key dispatch.
 	if keyValidity == nil && valueValidity == nil {
+		if sumCount {
+			return t.aggregateSelectedSumCount(keys, vals, sel)
+		}
 		var out Summary
 		for wi, word := range sel {
 			base := wi << 6
@@ -273,7 +276,7 @@ func (t *I32Table) AggregateSelectedNullableValues(keys []int32, keyValidity mem
 				}
 				value := vals[i]
 				key := keys[i]
-				if slot, exists := t.lookupSlot(key); exists {
+				if slot, exists := lookupI32Slot(t.keys, t.epoch, t.gen, t.mask, key); exists {
 					if sumCount {
 						updater.AddValue(slot, value, true)
 					} else {
@@ -313,7 +316,7 @@ func (t *I32Table) AggregateSelectedNullableValues(keys []int32, keyValidity mem
 			var created bool
 			var err error
 			if keyValid {
-				if slot, exists := t.lookupSlot(k); exists {
+				if slot, exists := lookupI32Slot(t.keys, t.epoch, t.gen, t.mask, k); exists {
 					if sumCount {
 						updater.AddValue(slot, vals[i], valueValid)
 					} else {
@@ -341,6 +344,145 @@ func (t *I32Table) AggregateSelectedNullableValues(keys []int32, keyValidity mem
 	return out, nil
 }
 
+// aggregateSelectedSumCount keeps reservation and resizing outside the batch
+// kernel. A full table can still consume existing keys; only the first actual
+// insertion requiring growth ends a run. The stopped row remains unconsumed.
+func (t *I32Table) aggregateSelectedSumCount(keys []int32, vals []int64, sel memory.Bitmap) (Summary, error) {
+	var out Summary
+	for start := 0; start < len(keys); {
+		part, next := t.aggregateSelectedSumCountNoGrow(keys, vals, sel, start)
+		out.Groups += part.Groups
+		out.Checksum += part.Checksum
+		out.Rows += part.Rows
+		if next == len(keys) {
+			break
+		}
+		// Use the existing growth policy and old+new reservation accounting.
+		// Very low load factors can require more than one doubling.
+		for t.size+1 > t.maxEntries {
+			if err := t.grow(); err != nil {
+				return out, err
+			}
+		}
+		start = next
+	}
+	return out, nil
+}
+
+// aggregateSelectedSumCountNoGrow consumes selected, non-NULL SUM+COUNT rows
+// with fixed backing arrays. It returns the logical index of the first row
+// needing growth, or len(keys) at EOF, and commits exactly the consumed prefix.
+// The checked layout dispatch is performed by AggregateSelectedNullableValues.
+func (t *I32Table) aggregateSelectedSumCountNoGrow(keys []int32, vals []int64, sel memory.Bitmap, start int) (Summary, int) {
+	tableKeys, epochs := t.keys, t.epoch
+	mask, gen := t.mask, t.gen
+	room := t.maxEntries - t.size
+	// Borrow only inside this fixed-backing run. No operation below can grow
+	// or release the table; the outer loop discards this view before resizing.
+	var state aggregate.SumCountState
+	t.state.BorrowSumCountState(&state)
+	var out Summary
+	for wi := start >> 6; wi < len(sel); wi++ {
+		word := sel[wi]
+		if wi == start>>6 {
+			word &= ^uint64(0) << uint(start&63)
+		}
+		for word != 0 {
+			i := wi<<6 + bits.TrailingZeros64(word)
+			if i >= len(keys) {
+				t.size += out.Groups
+				return out, len(keys)
+			}
+			key, value := keys[i], vals[i]
+			p, exists := lookupI32Slot(tableKeys, epochs, gen, mask, key)
+			if exists {
+				state.AddValue(p, value, true)
+			} else {
+				if out.Groups == room {
+					t.size += out.Groups
+					return out, i
+				}
+				epochs[p], tableKeys[p] = gen, key
+				state.InitValue(p, value, true)
+				out.Groups++
+			}
+			out.Checksum += value
+			out.Rows++
+			word &= word - 1
+		}
+	}
+	t.size += out.Groups
+	return out, len(keys)
+}
+
+// AggregateValues aggregates every key/value row in order. Keys and values
+// must be non-NULL and vals must cover keys. It returns exactly the successful
+// prefix summary if growth fails, leaving the failed row unconsumed.
+func (t *I32Table) AggregateValues(keys []int32, vals []int64) (Summary, error) {
+	if _, sumCount := t.state.SumCountUpdater(); !sumCount {
+		var out Summary
+		for i, key := range keys {
+			created, err := t.TryAddValue(key, vals[i], true)
+			if err != nil {
+				return out, err
+			}
+			if created {
+				out.Groups++
+			}
+			out.Checksum += vals[i]
+			out.Rows++
+		}
+		return out, nil
+	}
+	var out Summary
+	for start := 0; start < len(keys); {
+		part, next := t.aggregateSumCountNoGrow(keys, vals, start)
+		out.Groups += part.Groups
+		out.Checksum += part.Checksum
+		out.Rows += part.Rows
+		if next == len(keys) {
+			break
+		}
+		for t.size+1 > t.maxEntries {
+			if err := t.grow(); err != nil {
+				return out, err
+			}
+		}
+		start = next
+	}
+	return out, nil
+}
+
+// aggregateSumCountNoGrow is the dense traversal of the shared I32 probe and
+// SUM+COUNT transitions. Its borrowed state ends before any growth or release.
+func (t *I32Table) aggregateSumCountNoGrow(keys []int32, vals []int64, start int) (Summary, int) {
+	tableKeys, epochs := t.keys, t.epoch
+	mask, gen := t.mask, t.gen
+	room := t.maxEntries - t.size
+	var state aggregate.SumCountState
+	t.state.BorrowSumCountState(&state)
+	var out Summary
+	for i := start; i < len(keys); i++ {
+		key, value := keys[i], vals[i]
+		p, exists := lookupI32Slot(tableKeys, epochs, gen, mask, key)
+		if exists {
+			state.AddValue(p, value, true)
+		} else {
+			if out.Groups == room {
+				t.size += out.Groups
+				return out, i
+			}
+			epochs[p], tableKeys[p] = gen, key
+			state.InitValue(p, value, true)
+			out.Groups++
+		}
+		out.Checksum += value
+		out.Rows++
+	}
+	t.size += out.Groups
+	return out, len(keys)
+}
+
 // AggregateIndexedNullableValues aggregates rows in index order, including
 // repeated indices, preserving key and value NULL semantics. Indices must be
 // valid for keys and vals; validity bitmaps, when present, must cover those rows.
@@ -355,7 +497,7 @@ func (t *I32Table) AggregateIndexedNullableValues(keys []int32, keyValidity memo
 		var created bool
 		var err error
 		if keyValid {
-			if slot, exists := t.lookupSlot(key); exists {
+			if slot, exists := lookupI32Slot(t.keys, t.epoch, t.gen, t.mask, key); exists {
 				if sumCount {
 					updater.AddValue(slot, value, valueValid)
 				} else {
@@ -381,15 +523,14 @@ func (t *I32Table) AggregateIndexedNullableValues(keys []int32, keyValidity memo
 	return out, nil
 }
 
-// lookupSlot returns the existing key slot or the first empty insertion slot.
-// The returned slot remains valid until the next resize or Reset.
-func (t *I32Table) lookupSlot(key int32) (int, bool) {
-	p := Hash64(uint64(uint32(key))) & t.mask
-	for t.epoch[p] == t.gen {
-		if t.keys[p] == key {
+// lookupI32Slot is the shared fixed-backing probe for scalar and batch paths.
+func lookupI32Slot(keys []int32, epochs []uint32, gen uint32, mask uint64, key int32) (int, bool) {
+	p := Hash64(uint64(uint32(key))) & mask
+	for epochs[p] == gen {
+		if keys[p] == key {
 			return int(p), true
 		}
-		p = (p + 1) & t.mask
+		p = (p + 1) & mask
 	}
 	return int(p), false
 }

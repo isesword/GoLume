@@ -17,7 +17,10 @@ import (
 // by DataFrames. Scan and operator scratch are morsel-bounded in every policy.
 // Materialize retains caller-owned result rows; while collecting, their memory
 // is charged to this execution and must fit its budget.
-func (p *PreparedQuery) Execute(ctx context.Context, opts ExecuteOptions) (result Result, err error) {
+func (p *PreparedQuery) Execute(ctx context.Context, opts ExecuteOptions) (Result, error) {
+	return p.execute(ctx, opts, true)
+}
+func (p *PreparedQuery) execute(ctx context.Context, opts ExecuteOptions, allowReuse bool) (result Result, err error) {
 	if p == nil || ctx == nil {
 		return Result{}, fmt.Errorf("prepared execution requires a query and context")
 	}
@@ -36,8 +39,9 @@ func (p *PreparedQuery) Execute(ctx context.Context, opts ExecuteOptions) (resul
 	}
 	start := time.Now()
 	budget := memory.QueryBudgetFromContext(ctx)
+	internalBudget := budget == nil
 	if budget == nil {
-		budget, err = p.e.BeginQueryMemory()
+		budget, err = p.e.beginQueryMemory()
 		if err != nil {
 			return Result{}, err
 		}
@@ -63,7 +67,7 @@ func (p *PreparedQuery) Execute(ctx context.Context, opts ExecuteOptions) (resul
 	case p.strategy.Kind == planner.StrategySpillHash:
 		stream, err = p.newSpillableAggregateStream(ctx, schema, 0, readOpts, false)
 	default:
-		stream, err = p.newResidentAggregateStream(ctx, schema, 0, readOpts, false)
+		stream, err = p.newResidentAggregateStream(ctx, schema, 0, readOpts, false, allowReuse && internalBudget)
 	}
 	if err != nil {
 		return Result{}, err

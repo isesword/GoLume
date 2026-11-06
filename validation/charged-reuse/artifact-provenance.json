@@ -1,0 +1,27 @@
+{
+  "wip-profile.txt": {
+    "original_sha256": "e29baaeec4e9766afa8a4d19b92ef7b85e04ef38f036aa2cbcc1c5cf142119b2",
+    "published_sha256": "64a430e1326a975e78207ab016edebcfdb03049a9c98e86a23b7bc2d59b773b3",
+    "change": "build/source path redaction only"
+  },
+  "wip-profile.json": {
+    "original_sha256": "9625e28a56d460b30a067c6f6b3d554fa862fa49b8552130d722426ac5c13fd6",
+    "published_sha256": "2cad9e54ecdffd9889043f13694fce28a3a2993762f12068b90c07e34ef27027",
+    "change": "build/source path redaction only"
+  },
+  "combined-profile.txt": {
+    "original_sha256": "9c4ab9fca11ff5ce1fa22c75736c5ad72e573f06d97e7a3c196c51282649d0ad",
+    "published_sha256": "c2882fa22242b79bfe74574f299e61b5abfb6e3e75e5fd5c1403b2d2998b839d",
+    "change": "build/source path redaction only"
+  },
+  "combined-profile.json": {
+    "original_sha256": "a858dab20036cf1c667a9ed38776eccdc06877c7b7dc34a0abb7a6f2a0073369",
+    "published_sha256": "21c82a90b0253fa88240b7b722139791eb315fe98bffb0291d8f2e871beaaf3f",
+    "change": "build/source path redaction only"
+  },
+  "four-way-runs.json": {
+    "original_sha256": "45b86f330748488b0ffc941298c61dd119f1d771962a696164da142b08a43d5a",
+    "published_sha256": "a94cc6a4e23f0deb0ea925fb9d7a4aa887f17b7fb8916269afce7ca1bb478918",
+    "change": "build/source path redaction only"
+  }
+}

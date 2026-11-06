@@ -1,0 +1,80 @@
+{
+  "wip": {
+    "binary_sha256": "8adb6b9c2a4ddbd82f212551fada848be294c114ef41d2fcdd4d68f610b9daa4",
+    "diff_from_wip": {
+      "engine/reuse_fixed_cpu_test.go": "6a49e8025116372e5e91fdf8ab1193c278546beadf12571900ddd7748996343f"
+    }
+  },
+  "reuse": {
+    "binary_sha256": "df4c3b12b64b248a00b94eb47e03e076d64ca585215ce9c665e4ab313e51a303",
+    "diff_from_wip": {
+      "memory/manager.go": "0cc57e9d2919ed3e4e7fb815e95009f984f3fd2973b74892c0b46b50e6a4731d",
+      "memory/reclaim.go": "e7065b4db7978fa0f7e0b1db62b2e62c1fd34285af5929ffe887be2a92222248",
+      "memory/reusable.go": "dd28d3a9c6d4160c307ec4862aaea9b7d076e03313e0a2219583d89f8fb4eb7f",
+      "memory/budget.go": "d1fa71941fe8fbdd2022623b7bcbc71bf32ad432f33ae84c674f0cac4fb96803",
+      "memory/reclaim_test.go": "9a245a68b4ac4a679dff773d495ad436b089e8af55bd24d87ca56692a42e56d3",
+      "memory/reusable_test.go": "c33a9a59d6864bac988dceaa7fd487d7c00113b11ee63015c9fd7cb005c5cf0c",
+      "engine/reuse_fixed_cpu_test.go": "6a49e8025116372e5e91fdf8ab1193c278546beadf12571900ddd7748996343f",
+      "engine/prepared_close_test.go": "755c49b63ee47b82f86263a98406bf485021ba5b9a90d9ba4dab21a233ebeaa0",
+      "engine/reuse_cache.go": "87a8f603072e346ca5941e15cb2e616869f137d793508eb94701fa55601e31d3",
+      "engine/reuse_cache_test.go": "727cc91513977cc754df1302486c500e664682a7726103cb5647474296262288",
+      "engine/phase2_test.go": "cb8a6ab2c7e4b1d41ceb42710951ea61d97d9e82c5bbc1e04237ed6628cbdeff",
+      "engine/result_stream.go": "12476d6e1df571ea3a82e4a3b254d9c70aef4345e82ba992190cb6e90961e1b6",
+      "engine/resident_wave.go": "b89a664f150bcf0932b10c5b826476d4e7d6c358399e3fec65d5b0fab1644270",
+      "engine/resident_aggregate_stream.go": "7729db0587882c1fd28dd5db4bc4efae5f90dfd89053a44095d1fd06295e98a9",
+      "engine/reuse_memory.go": "353d348e46835dd95f5addbef2fd1e7327aef079cf8e5a504e879e5b72fc2c7c",
+      "engine/prepared.go": "855a59f98d1deba0226c5930b8b8e686fdc5fe86cafc66d5ee38f91825575c24",
+      "engine/options.go": "83150469c78d3b81c30f77eac67a326dca23024444a7d98a1cc2aca55e838b98",
+      "engine/engine.go": "a4a5dabf4ffceded63315d33e6ace99300fb45be5fc64b98b674d58f70bfebae",
+      "engine/resident_partitioned.go": "5d08e7cd12c5116ad94292dbdd589e1deb50641e5cdb0a6d9681c1eee780a22b",
+      "engine/result_stream_test.go": "00d3ec53862df6543519cf6ce09235b1fe64d450b9bc2fc2f5c138516650df90"
+    }
+  },
+  "kernel": {
+    "binary_sha256": "571810eca1e1b5151866e11ee51cc4d86695ef63d022e12c1beab9f8ded547b6",
+    "diff_from_wip": {
+      "hashagg/i32_dense_kernel_test.go": "fc191459f491e1dfde7d386b86eea82ed56d72c91a17b99a8ad0526d7d025f40",
+      "hashagg/i32_controlled_hash_test.go": "7ce3f9f209e8cebed2c809d2d6ea88da37f05859ecb624f40d8c6bb9ef3bad95",
+      "hashagg/i32_batch_kernel_test.go": "963ebb5c42a1c563482c478cf8e611764ca831a79dad6efef8fbbcd1e974d9c9",
+      "hashagg/i32.go": "4d232cfe1ac934e4a08c5c1e8142631a7185367d6ea84be837e011c178b53487",
+      "aggregate/init_view_test.go": "1af978399c8395c7fb5a37b0815b0329add31cec5f3ff4d1cc921b3e9cb6e0e5",
+      "aggregate/api.go": "898930081229c447f8b43c2d9218a1c4a29f9ab193db1ed2b1fe77843db1e3ed",
+      "aggregate/borrowed_state_test.go": "01a0fed72e52a55a49c462d5bd6ed9bad10e9c23643bf743b341716188bdd48f",
+      "engine/reuse_fixed_cpu_test.go": "6a49e8025116372e5e91fdf8ab1193c278546beadf12571900ddd7748996343f",
+      "engine/resident_partitioned.go": "18ffb8d781dd1828cc8c75d8bf08bb5854595ff86cfad0ab58ced554dc53f458"
+    }
+  },
+  "combined": {
+    "binary_sha256": "5066651a2ce4454e8724c4478a84694dfe6dc49fa7591d98d789c2b380d84871",
+    "diff_from_wip": {
+      "memory/manager.go": "0cc57e9d2919ed3e4e7fb815e95009f984f3fd2973b74892c0b46b50e6a4731d",
+      "memory/reclaim.go": "e7065b4db7978fa0f7e0b1db62b2e62c1fd34285af5929ffe887be2a92222248",
+      "memory/reusable.go": "dd28d3a9c6d4160c307ec4862aaea9b7d076e03313e0a2219583d89f8fb4eb7f",
+      "memory/budget.go": "d1fa71941fe8fbdd2022623b7bcbc71bf32ad432f33ae84c674f0cac4fb96803",
+      "memory/reclaim_test.go": "9a245a68b4ac4a679dff773d495ad436b089e8af55bd24d87ca56692a42e56d3",
+      "memory/reusable_test.go": "c33a9a59d6864bac988dceaa7fd487d7c00113b11ee63015c9fd7cb005c5cf0c",
+      "hashagg/i32_dense_kernel_test.go": "fc191459f491e1dfde7d386b86eea82ed56d72c91a17b99a8ad0526d7d025f40",
+      "hashagg/i32_controlled_hash_test.go": "7ce3f9f209e8cebed2c809d2d6ea88da37f05859ecb624f40d8c6bb9ef3bad95",
+      "hashagg/i32_batch_kernel_test.go": "963ebb5c42a1c563482c478cf8e611764ca831a79dad6efef8fbbcd1e974d9c9",
+      "hashagg/i32.go": "4d232cfe1ac934e4a08c5c1e8142631a7185367d6ea84be837e011c178b53487",
+      "aggregate/init_view_test.go": "1af978399c8395c7fb5a37b0815b0329add31cec5f3ff4d1cc921b3e9cb6e0e5",
+      "aggregate/api.go": "898930081229c447f8b43c2d9218a1c4a29f9ab193db1ed2b1fe77843db1e3ed",
+      "aggregate/borrowed_state_test.go": "01a0fed72e52a55a49c462d5bd6ed9bad10e9c23643bf743b341716188bdd48f",
+      "engine/reuse_fixed_cpu_test.go": "6a49e8025116372e5e91fdf8ab1193c278546beadf12571900ddd7748996343f",
+      "engine/prepared_close_test.go": "755c49b63ee47b82f86263a98406bf485021ba5b9a90d9ba4dab21a233ebeaa0",
+      "engine/reuse_cache.go": "87a8f603072e346ca5941e15cb2e616869f137d793508eb94701fa55601e31d3",
+      "engine/reuse_cache_test.go": "727cc91513977cc754df1302486c500e664682a7726103cb5647474296262288",
+      "engine/phase2_test.go": "cb8a6ab2c7e4b1d41ceb42710951ea61d97d9e82c5bbc1e04237ed6628cbdeff",
+      "engine/result_stream.go": "12476d6e1df571ea3a82e4a3b254d9c70aef4345e82ba992190cb6e90961e1b6",
+      "engine/resident_wave.go": "b89a664f150bcf0932b10c5b826476d4e7d6c358399e3fec65d5b0fab1644270",
+      "engine/resident_aggregate_stream.go": "7729db0587882c1fd28dd5db4bc4efae5f90dfd89053a44095d1fd06295e98a9",
+      "engine/reuse_memory.go": "353d348e46835dd95f5addbef2fd1e7327aef079cf8e5a504e879e5b72fc2c7c",
+      "engine/prepared.go": "855a59f98d1deba0226c5930b8b8e686fdc5fe86cafc66d5ee38f91825575c24",
+      "engine/options.go": "83150469c78d3b81c30f77eac67a326dca23024444a7d98a1cc2aca55e838b98",
+      "engine/engine.go": "a4a5dabf4ffceded63315d33e6ace99300fb45be5fc64b98b674d58f70bfebae",
+      "engine/resident_partitioned.go": "0fd06083c54b6a2007137bbb2b90976fe14a3bfedb4fe63b756edb55b05b7873",
+      "engine/result_stream_test.go": "00d3ec53862df6543519cf6ce09235b1fe64d450b9bc2fc2f5c138516650df90"
+    }
+  },
+  "fixture_sha256": "115f46c063da52e2b3b8c883522e8d29a4559b410772bc08681a87235d783876"
+}

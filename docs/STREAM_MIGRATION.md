@@ -89,6 +89,35 @@ strategy is selected; forcing direct-fused for an unsupported predicate is an
 error rather than a diagnostic
 label for a different execution path.
 
+## Continuously charged prepared-state reuse (WIP)
+
+Repeated engine.PreparedQuery.Execute calls can retain owned fixed-width resident
+state and bounded partition/wave scratch in an engine-wide reclaimable cache.
+DefaultOptions.PreparedCacheBytes is 64 MiB; zero disables retention, and a finite
+engine hard limit also caps idle bytes. Source batches, predicates, output data,
+string/dictionary group state, sorted/spill strategies, public BatchStreams,
+one-shot Engine.Execute and externally supplied QueryBudgets do not use it.
+
+The root remains charged while buffers are idle. Each checkout admits the whole
+capacity into the new query through stable ReusableAccounts; no prior query or
+context owns idle memory. Failed attachment destroys that entry before cold
+fallback. Admission and root-pressure eviction share one hard cache cap, including
+entries in transit. Engine.Memory().Used() may therefore remain positive after a
+successful prepared execution, while the completed query's Used() is zero.
+PreparedCacheStats exposes idle/credited bytes and hit/miss/eviction counts.
+
+Prepared.Close and Engine.Close wait for accepted work and in-flight eviction
+cleanup. Engine.Close rejects new execution with ErrEngineClosed. Result rows
+remain caller-owned and survive subsequent resets. See
+[prepared memory ownership](PREPARED_MEMORY_REUSE.md).
+
+The shared I32 dense SUM/COUNT kernel uses the same state transitions, preserves
+NULL/fallback paths and existing bounded cancellation checks, and does not
+restore a separate executor. This checkpoint is still WIP: diagnostic combined
+W4 median 13.338 ms remains above the old 10.04 ms reference and its 3% limit. The
+controlled improvement is not full performance acceptance. See
+[the measured evidence](../validation/charged-reuse/README.md).
+
 ## Native vector representation
 
 Int8, Int16, Uint8, Uint16 and Float32 values use their corresponding native

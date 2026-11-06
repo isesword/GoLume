@@ -1,0 +1,171 @@
+{
+  "alloc_bytes_per_op": 32430572.453333333,
+  "allocs_per_op": 6289.643333333333,
+  "checksum": 236716301,
+  "elapsed_ns_per_op": 13734667.863333333,
+  "fixture": "repo/testdata/bench-1m.parquet",
+  "gomaxprocs": 4,
+  "groups": 219196,
+  "known_iterations": 300,
+  "label": "combined-profile",
+  "loop_elapsed_ns": 4120400359,
+  "loop_process_system_cpu_ns": 717413000,
+  "loop_process_total_cpu_ns": 11924455000,
+  "loop_process_user_cpu_ns": 11207042000,
+  "materialize": false,
+  "max_inflight_bytes": 67108864,
+  "max_morsel_rows": 65536,
+  "memory_limit_bytes": 0,
+  "process_cpu_ns_per_op": 39748183.333333336,
+  "process_work_div_four_ns_per_op": 9937045.833333334,
+  "profile_path": "combined-profile.pprof",
+  "retained_after_bytes": 20872392,
+  "retained_before_bytes": 20872392,
+  "selected_rows": 472475,
+  "source_id": "24d742d-5066651a2ce4454e8724c4478a84694dfe6dc49fa7591d98d789c2b380d84871",
+  "used_after_prepared_close_bytes": 0,
+  "warmup_events": [
+    {
+      "Stage": "pipeline",
+      "Duration": 23886056,
+      "Rows": 1048576,
+      "Bytes": 20971520,
+      "Workers": 4,
+      "Attributes": {
+        "morsels": "33",
+        "ordering": "relaxed",
+        "peak_in_flight_bytes": "5241680",
+        "producer_blocked_ns": "42726197",
+        "queue_high_water": "3",
+        "target_morsel_bytes": "1048576"
+      }
+    },
+    {
+      "Stage": "resident-stream-aggregate",
+      "Duration": 26761637,
+      "Rows": 1048576,
+      "Bytes": 0,
+      "Workers": 4,
+      "Attributes": {
+        "aggregate_wave_bytes": "3244032",
+        "aggregate_wave_rows": "262144",
+        "checksum": "236716301",
+        "groups": "219196",
+        "kernel_arch": "amd64",
+        "kernel_mode": "auto",
+        "peak_memory_bytes": "26127488",
+        "selected_rows": "472475",
+        "spill_runs": "0",
+        "state_partitions": "256",
+        "strategy": "partitioned-hash",
+        "workers": "4"
+      }
+    },
+    {
+      "Stage": "prepared-query",
+      "Duration": 26807576,
+      "Rows": 1048576,
+      "Bytes": 3566591,
+      "Workers": 4,
+      "Attributes": {
+        "reason": "native parallel high-cardinality hash ownership",
+        "strategy": "partitioned-hash"
+      }
+    },
+    {
+      "Stage": "pipeline",
+      "Duration": 13598106,
+      "Rows": 1048576,
+      "Bytes": 20971520,
+      "Workers": 4,
+      "Attributes": {
+        "morsels": "33",
+        "ordering": "relaxed",
+        "peak_in_flight_bytes": "5241680",
+        "producer_blocked_ns": "27534180",
+        "queue_high_water": "3",
+        "target_morsel_bytes": "1048576"
+      }
+    },
+    {
+      "Stage": "resident-stream-aggregate",
+      "Duration": 16529391,
+      "Rows": 1048576,
+      "Bytes": 0,
+      "Workers": 4,
+      "Attributes": {
+        "aggregate_wave_bytes": "3244032",
+        "aggregate_wave_rows": "262144",
+        "checksum": "236716301",
+        "groups": "219196",
+        "kernel_arch": "amd64",
+        "kernel_mode": "auto",
+        "peak_memory_bytes": "26127488",
+        "selected_rows": "472475",
+        "spill_runs": "0",
+        "state_partitions": "256",
+        "strategy": "partitioned-hash",
+        "workers": "4"
+      }
+    },
+    {
+      "Stage": "prepared-query",
+      "Duration": 16601550,
+      "Rows": 1048576,
+      "Bytes": 3566591,
+      "Workers": 4,
+      "Attributes": {
+        "reason": "native parallel high-cardinality hash ownership",
+        "strategy": "partitioned-hash"
+      }
+    },
+    {
+      "Stage": "pipeline",
+      "Duration": 12263960,
+      "Rows": 1048576,
+      "Bytes": 20971520,
+      "Workers": 4,
+      "Attributes": {
+        "morsels": "33",
+        "ordering": "relaxed",
+        "peak_in_flight_bytes": "5241680",
+        "producer_blocked_ns": "26393682",
+        "queue_high_water": "3",
+        "target_morsel_bytes": "1048576"
+      }
+    },
+    {
+      "Stage": "resident-stream-aggregate",
+      "Duration": 15575692,
+      "Rows": 1048576,
+      "Bytes": 0,
+      "Workers": 4,
+      "Attributes": {
+        "aggregate_wave_bytes": "3244032",
+        "aggregate_wave_rows": "262144",
+        "checksum": "236716301",
+        "groups": "219196",
+        "kernel_arch": "amd64",
+        "kernel_mode": "auto",
+        "peak_memory_bytes": "26127488",
+        "selected_rows": "472475",
+        "spill_runs": "0",
+        "state_partitions": "256",
+        "strategy": "partitioned-hash",
+        "workers": "4"
+      }
+    },
+    {
+      "Stage": "prepared-query",
+      "Duration": 15645648,
+      "Rows": 1048576,
+      "Bytes": 3566591,
+      "Workers": 4,
+      "Attributes": {
+        "reason": "native parallel high-cardinality hash ownership",
+        "strategy": "partitioned-hash"
+      }
+    }
+  ],
+  "warmup_iterations": 3
+}

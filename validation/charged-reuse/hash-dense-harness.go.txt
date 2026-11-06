@@ -1,0 +1,420 @@
+//go:build linux
+
+package hashagg
+
+import (
+	"crypto/sha256"
+	"encoding/binary"
+	"encoding/hex"
+	"encoding/json"
+	"fmt"
+	"math/bits"
+	"os"
+	"reflect"
+	"runtime"
+	"runtime/pprof"
+	"strconv"
+	"syscall"
+	"testing"
+	"time"
+
+	"gocolumn/memory"
+)
+
+// These test-only controls normalize the old radix row loop to native int32
+// keys, selected traversal, hashing, table capacity, and SUM validity storage.
+// They are not an alternate executor or a claim about actual old engine timing.
+type i32ControlPart struct {
+	keys     []int32
+	values   []int64
+	selected memory.Bitmap
+}
+type i32ControlInput struct {
+	parts  []i32ControlPart
+	digest string
+	want   Summary
+}
+
+func makeI32ControlInput() i32ControlInput {
+	const rows, groups, parts = 472475, 219196, 256
+	order := make([]uint32, rows)
+	for i := range order {
+		order[i] = uint32(i % groups)
+	}
+	rng := uint64(0xb78a5fe231c9046d)
+	for i := rows - 1; i > 0; i-- {
+		rng ^= rng << 13
+		rng ^= rng >> 7
+		rng ^= rng << 17
+		j := int(rng % uint64(i+1))
+		order[i], order[j] = order[j], order[i]
+	}
+	out := i32ControlInput{parts: make([]i32ControlPart, parts), want: Summary{Rows: rows, Groups: groups}}
+	h := sha256.New()
+	var buf [12]byte
+	for row, id := range order {
+		// Odd multiplication is one-to-one modulo 2^32 and includes signed keys.
+		key := int32(id*2654435761 + 0x80000000)
+		value := int64((row*17)%2001 - 1000)
+		p := &out.parts[Hash64(uint64(uint32(key)))>>56]
+		p.keys = append(p.keys, key)
+		p.values = append(p.values, value)
+		out.want.Checksum += value
+	}
+	for i := range out.parts {
+		p := &out.parts[i]
+		p.selected = make(memory.Bitmap, memory.WordsFor(len(p.keys)))
+		for j, k := range p.keys {
+			memory.Set(p.selected, j)
+			binary.LittleEndian.PutUint32(buf[:4], uint32(k))
+			binary.LittleEndian.PutUint64(buf[4:], uint64(p.values[j]))
+			_, _ = h.Write(buf[:])
+		}
+	}
+	out.digest = hex.EncodeToString(h.Sum(nil))
+	return out
+}
+
+type i32OldNormalized struct {
+	keys   []int32
+	epochs []uint32
+	sums   []int64
+	valid  []uint8
+	counts []uint64
+	gen    uint32
+	mask   uint64
+}
+
+func newI32OldNormalized() *i32OldNormalized {
+	const n = 2048
+	return &i32OldNormalized{keys: make([]int32, n), epochs: make([]uint32, n), sums: make([]int64, n), valid: make([]uint8, n), counts: make([]uint64, n), gen: 1, mask: n - 1}
+}
+func (r *i32OldNormalized) reset() {
+	r.gen++
+	if r.gen == 0 {
+		clear(r.epochs)
+		r.gen = 1
+	}
+}
+
+// aggregate uses direct test-only scalar math, preserving the old loop's miss
+// and hit branches while normalizing all of the listed confounders above.
+func (r *i32OldNormalized) aggregate(in i32ControlPart) Summary {
+	var out Summary
+	for wi, word := range in.selected {
+		for word != 0 {
+			i := wi<<6 + bits.TrailingZeros64(word)
+			if i >= len(in.keys) {
+				break
+			}
+			key, value := in.keys[i], in.values[i]
+			p := Hash64(uint64(uint32(key))) & r.mask
+			for {
+				if r.epochs[p] != r.gen {
+					r.epochs[p], r.keys[p], r.sums[p], r.valid[p], r.counts[p] = r.gen, key, value, 1, 1
+					out.Groups++
+					break
+				}
+				if r.keys[p] == key {
+					r.sums[p] += value
+					r.valid[p] = 1
+					r.counts[p]++
+					break
+				}
+				p = (p + 1) & r.mask
+			}
+			out.Rows++
+			out.Checksum += value
+			word &= word - 1
+		}
+	}
+	return out
+}
+
+func i32ControlTables(t testing.TB) []*I32Table {
+	t.Helper()
+	tables := make([]*I32Table, 256)
+	for i := range tables {
+		tables[i] = NewI32Table(1024)
+		if tables[i].Capacity() != 2048 {
+			t.Fatalf("capacity=%d", tables[i].Capacity())
+		}
+	}
+	return tables
+}
+func i32ControlClose(tables []*I32Table) {
+	for _, t := range tables {
+		t.Close()
+	}
+}
+func i32ControlNative(t testing.TB, in i32ControlInput, tables []*I32Table) Summary {
+	t.Helper()
+	var out Summary
+	for i, part := range in.parts {
+		tables[i].Reset()
+		s, err := tables[i].AggregateSelectedNullableValues(part.keys, nil, part.values, nil, part.selected)
+		if err != nil {
+			t.Fatal(err)
+		}
+		out.Rows += s.Rows
+		out.Groups += s.Groups
+		out.Checksum += s.Checksum
+	}
+	return out
+}
+func i32ControlDense(t testing.TB, in i32ControlInput, tables []*I32Table) Summary {
+	t.Helper()
+	var out Summary
+	for i, part := range in.parts {
+		tables[i].Reset()
+		partSum, err := tables[i].AggregateValues(part.keys, part.values)
+		if err != nil {
+			t.Fatal(err)
+		}
+		out.Rows += partSum.Rows
+		out.Groups += partSum.Groups
+		out.Checksum += partSum.Checksum
+	}
+	return out
+}
+
+func i32ControlOld(in i32ControlInput, tables []*i32OldNormalized) Summary {
+	var out Summary
+	for i, part := range in.parts {
+		tables[i].reset()
+		s := tables[i].aggregate(part)
+		out.Rows += s.Rows
+		out.Groups += s.Groups
+		out.Checksum += s.Checksum
+	}
+	return out
+}
+
+// i32ControlVerify checks exact slot placement and all state independently of
+// aggregate transition methods, and counts probes in an untimed replay. Since
+// both actual final tables match this deterministic replay, the same keys,
+// order, hash and capacity imply identical per-row probe counts.
+func i32ControlVerify(t testing.TB, in i32ControlInput) (uint64, string) {
+	t.Helper()
+	native := i32ControlTables(t)
+	defer i32ControlClose(native)
+	if got := i32ControlNative(t, in, native); got != in.want {
+		t.Fatalf("native %+v want %+v", got, in.want)
+	}
+	var totalProbes uint64
+	h := sha256.New()
+	var buf [24]byte
+	for part, input := range in.parts {
+		ref := newI32OldNormalized()
+		if got := ref.aggregate(input); got.Rows != len(input.keys) {
+			t.Fatal("reference row mismatch")
+		}
+		replayKeys := make([]int32, 2048)
+		used := make([]bool, 2048)
+		for _, key := range input.keys {
+			p := Hash64(uint64(uint32(key))) & 2047
+			totalProbes++
+			for used[p] && replayKeys[p] != key {
+				totalProbes++
+				p = (p + 1) & 2047
+			}
+			used[p] = true
+			replayKeys[p] = key
+		}
+		n := native[part]
+		if n.Capacity() != 2048 {
+			t.Fatal("unexpected growth")
+		}
+		for slot := range n.keys {
+			occupied := n.epoch[slot] == n.gen
+			if occupied != used[slot] || occupied != (ref.epochs[slot] == ref.gen) {
+				t.Fatalf("partition%d slot%d occupancy", part, slot)
+			}
+			if !occupied {
+				continue
+			}
+			state := n.state.Result(slot)
+			if n.keys[slot] != replayKeys[slot] || n.keys[slot] != ref.keys[slot] || state.Sum != ref.sums[slot] || state.CountRows != ref.counts[slot] || !state.SumValid || ref.valid[slot] != 1 {
+				t.Fatalf("partition%d slot%d key/state mismatch", part, slot)
+			}
+			binary.LittleEndian.PutUint32(buf[:4], uint32(part))
+			binary.LittleEndian.PutUint32(buf[4:8], uint32(slot))
+			binary.LittleEndian.PutUint32(buf[8:12], uint32(n.keys[slot]))
+			binary.LittleEndian.PutUint32(buf[12:16], uint32(state.CountRows))
+			binary.LittleEndian.PutUint64(buf[16:], uint64(state.Sum))
+			_, _ = h.Write(buf[:])
+		}
+	}
+	return totalProbes, hex.EncodeToString(h.Sum(nil))
+}
+func TestI32ControlledHashParity(t *testing.T) {
+	in := makeI32ControlInput()
+	probes, slots := i32ControlVerify(t, in)
+	t.Logf("input=%s slots=%s rows=%d groups=%d checksum=%d probes=%d capacity=2048 partitions=256", in.digest, slots, in.want.Rows, in.want.Groups, in.want.Checksum, probes)
+}
+
+func BenchmarkI32ControlledHash(b *testing.B) {
+	in := makeI32ControlInput()
+	_, _ = i32ControlVerify(b, in)
+	for _, mode := range []string{"native-reset", "native-fresh", "old-reference-reset", "dense-reset", "dense-fresh"} {
+		b.Run(mode, func(b *testing.B) {
+			var native []*I32Table
+			var old []*i32OldNormalized
+			if mode == "native-reset" || mode == "dense-reset" {
+				native = i32ControlTables(b)
+				defer i32ControlClose(native)
+			}
+			if mode == "old-reference-reset" {
+				old = make([]*i32OldNormalized, 256)
+				for i := range old {
+					old[i] = newI32OldNormalized()
+				}
+			}
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				var got Summary
+				switch mode {
+				case "native-fresh":
+					fresh := i32ControlTables(b)
+					got = i32ControlNative(b, in, fresh)
+					i32ControlClose(fresh)
+				case "dense-fresh":
+					fresh := i32ControlTables(b)
+					got = i32ControlDense(b, in, fresh)
+					i32ControlClose(fresh)
+				case "dense-reset":
+					got = i32ControlDense(b, in, native)
+				case "native-reset":
+					got = i32ControlNative(b, in, native)
+				default:
+					got = i32ControlOld(in, old)
+				}
+				if got != in.want {
+					b.Fatalf("got %+v want %+v", got, in.want)
+				}
+			}
+		})
+	}
+}
+
+// TestI32FixedHashProfile runs only when explicitly requested by the timing
+// owner. It does not use testing.B calibration. Source generation, correctness
+// verification, runtime.GC and three warmups precede both CPU and wall bounds.
+func TestI32FixedHashProfile(t *testing.T) {
+	mode := os.Getenv("GOLUME_HASH_MODE")
+	if mode == "" {
+		t.Skip("timing owner must select GOLUME_HASH_MODE")
+	}
+	if mode != "native-reset" && mode != "native-fresh" && mode != "old-reference-reset" && mode != "dense-reset" && mode != "dense-fresh" {
+		t.Fatal("invalid GOLUME_HASH_MODE")
+	}
+	count := 300
+	if v := os.Getenv("GOLUME_HASH_OPS"); v != "" {
+		n, err := strconv.Atoi(v)
+		if err != nil || n < 1 {
+			t.Fatal("invalid GOLUME_HASH_OPS")
+		}
+		count = n
+	}
+	in := makeI32ControlInput()
+	probes, slots := i32ControlVerify(t, in)
+	var native []*I32Table
+	var old []*i32OldNormalized
+	if mode == "native-reset" || mode == "dense-reset" {
+		native = i32ControlTables(t)
+		defer i32ControlClose(native)
+	}
+	if mode == "old-reference-reset" {
+		old = make([]*i32OldNormalized, 256)
+		for i := range old {
+			old[i] = newI32OldNormalized()
+		}
+	}
+	run := func() Summary {
+		switch mode {
+		case "native-fresh":
+			fresh := i32ControlTables(t)
+			got := i32ControlNative(t, in, fresh)
+			i32ControlClose(fresh)
+			return got
+		case "dense-fresh":
+			fresh := i32ControlTables(t)
+			got := i32ControlDense(t, in, fresh)
+			i32ControlClose(fresh)
+			return got
+		case "dense-reset":
+			return i32ControlDense(t, in, native)
+		case "native-reset":
+			return i32ControlNative(t, in, native)
+		default:
+			return i32ControlOld(in, old)
+		}
+	}
+	for i := 0; i < 3; i++ {
+		if got := run(); got != in.want {
+			t.Fatal(got)
+		}
+	}
+	runtime.GC()
+	if path := os.Getenv("GOLUME_HASH_CPU"); path != "" {
+		f, err := os.Create(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer f.Close()
+		if err = pprof.StartCPUProfile(f); err != nil {
+			t.Fatal(err)
+		}
+	}
+	var before, after syscall.Rusage
+	var memBefore, memAfter runtime.MemStats
+	runtime.ReadMemStats(&memBefore)
+	if err := syscall.Getrusage(syscall.RUSAGE_SELF, &before); err != nil {
+		t.Fatal(err)
+	}
+	start := time.Now()
+	for i := 0; i < count; i++ {
+		if got := run(); got != in.want {
+			t.Fatalf("iteration%d got %+v want %+v", i, got, in.want)
+		}
+	}
+	elapsed := time.Since(start)
+	if err := syscall.Getrusage(syscall.RUSAGE_SELF, &after); err != nil {
+		t.Fatal(err)
+	}
+	runtime.ReadMemStats(&memAfter)
+	if os.Getenv("GOLUME_HASH_CPU") != "" {
+		pprof.StopCPUProfile()
+	}
+	cpu := func(r syscall.Rusage) int64 { return r.Utime.Nano() + r.Stime.Nano() }
+	report := map[string]any{"mode": mode, "operations": count, "elapsed_ns": elapsed.Nanoseconds(), "cpu_ns": cpu(after) - cpu(before), "wall_ns_per_op": float64(elapsed.Nanoseconds()) / float64(count), "cpu_ns_per_op": float64(cpu(after)-cpu(before)) / float64(count), "allocated_bytes": memAfter.TotalAlloc - memBefore.TotalAlloc, "allocations": memAfter.Mallocs - memBefore.Mallocs, "input_sha256": in.digest, "slots_sha256": slots, "probes": probes, "rows": in.want.Rows, "groups": in.want.Groups, "checksum": in.want.Checksum, "capacity": 2048, "partitions": 256, "gomaxprocs": runtime.GOMAXPROCS(0)}
+	encoded, err := json.MarshalIndent(report, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if path := os.Getenv("GOLUME_HASH_REPORT"); path != "" {
+		if err = os.WriteFile(path, encoded, 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	fmt.Println(string(encoded))
+}
+
+func TestI32DenseControlledParity(t *testing.T) {
+	in := makeI32ControlInput()
+	dense, selected := i32ControlTables(t), i32ControlTables(t)
+	defer i32ControlClose(dense)
+	defer i32ControlClose(selected)
+	if got := i32ControlDense(t, in, dense); got != in.want {
+		t.Fatalf("dense%+v want%+v", got, in.want)
+	}
+	if got := i32ControlNative(t, in, selected); got != in.want {
+		t.Fatalf("selected%+v want%+v", got, in.want)
+	}
+	for i := range dense {
+		if dense[i].Capacity() != selected[i].Capacity() || !reflect.DeepEqual(dense[i].keys, selected[i].keys) || !reflect.DeepEqual(dense[i].epoch, selected[i].epoch) || !reflect.DeepEqual(dense[i].state, selected[i].state) {
+			t.Fatalf("partition%d layout/state differs", i)
+		}
+	}
+}

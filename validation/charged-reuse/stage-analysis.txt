@@ -1,0 +1,296 @@
+
+MODE wip N 120 median_ms 17.203328 IQR_ms 15.52286275 19.5652785 middle50_count 60
+append_exclusive                     mean_ms    2.858 median_ms    2.832
+append_outer                         mean_ms    8.015 median_ms    7.866
+classify                             mean_ms    1.051 median_ms    0.961
+classify_worker                      mean_ms    2.421 median_ms    2.360
+consumer_accounted                   mean_ms   17.114 median_ms   17.004
+consumer_next                        mean_ms    2.304 median_ms    2.135
+consumer_predicate                   mean_ms    2.639 median_ms    2.651
+ensure_scratch                       mean_ms    0.623 median_ms    0.517
+flush                                mean_ms    8.915 median_ms    8.868
+flush_other                          mean_ms    0.177 median_ms    0.079
+hash                                 mean_ms    5.747 median_ms    5.718
+hash_worker                          mean_ms   18.603 median_ms   18.186
+native_setup                         mean_ms    0.398 median_ms    0.299
+producer_hold                        mean_ms   32.365 median_ms   31.668
+producer_hold_union                  mean_ms   11.373 median_ms   11.340
+producer_next                        mean_ms   16.286 median_ms   16.076
+producer_next_overlap_append_outer   mean_ms    3.298 median_ms    3.319
+producer_next_overlap_flush          mean_ms    0.802 median_ms    0.654
+producer_next_union                  mean_ms    7.813 median_ms    7.843
+producer_open                        mean_ms    1.093 median_ms    0.824
+scatter                              mean_ms    1.317 median_ms    1.290
+scatter_worker                       mean_ms    3.810 median_ms    3.678
+total                                mean_ms   17.268 median_ms   17.203
+unattributed                         mean_ms    0.154 median_ms    0.137
+wave1_classify                       mean_ms    0.680 median_ms    0.614
+wave1_ensure_scratch                 mean_ms    0.622 median_ms    0.516
+wave1_hash                           mean_ms    3.011 median_ms    3.139
+wave1_scatter                        mean_ms    0.735 median_ms    0.670
+wave1_total                          mean_ms    5.157 median_ms    5.090
+wave2_classify                       mean_ms    0.371 median_ms    0.359
+wave2_ensure_scratch                 mean_ms    0.000 median_ms    0.000
+wave2_hash                           mean_ms    2.737 median_ms    2.314
+wave2_scatter                        mean_ms    0.582 median_ms    0.522
+wave2_total                          mean_ms    3.758 median_ms    3.337
+Representative iteration 20 duration 17.15984
+  native_setup               0.017 -   0.613 (  0.596) rows=0
+  consumer_next              0.625 -   1.884 (  1.259) rows=52428
+  consumer_predicate         1.885 -   2.008 (  0.123) rows=52428
+  append_outer               2.008 -   2.122 (  0.114) rows=23033
+  consumer_next              2.122 -   2.127 (  0.005) rows=13093
+  consumer_predicate         2.128 -   2.273 (  0.146) rows=13093
+  append_outer               2.274 -   2.292 (  0.018) rows=6488
+  consumer_next              2.292 -   2.751 (  0.459) rows=52428
+  consumer_predicate         2.751 -   2.864 (  0.112) rows=52428
+  append_outer               2.864 -   2.979 (  0.115) rows=23025
+  consumer_next              2.979 -   2.986 (  0.007) rows=13093
+  consumer_predicate         2.986 -   3.009 (  0.022) rows=13093
+  append_outer               3.009 -   3.124 (  0.115) rows=6496
+  consumer_next              3.125 -   3.554 (  0.429) rows=52428
+  consumer_predicate         3.554 -   3.616 (  0.062) rows=52428
+  append_outer               3.616 -   3.990 (  0.374) rows=23033
+  consumer_next              3.990 -   4.003 (  0.013) rows=13093
+  consumer_predicate         4.004 -   4.028 (  0.024) rows=13093
+  append_outer               4.028 -   4.054 (  0.027) rows=6491
+  consumer_next              4.054 -   4.065 (  0.010) rows=52428
+  consumer_predicate         4.065 -   4.131 (  0.067) rows=52428
+  append_outer               4.132 -   4.224 (  0.092) rows=23025
+  consumer_next              4.224 -   4.227 (  0.003) rows=13093
+  consumer_predicate         4.227 -   4.254 (  0.027) rows=13093
+  append_outer               4.254 -   4.359 (  0.105) rows=6498
+  consumer_next              4.359 -   4.370 (  0.012) rows=52428
+  consumer_predicate         4.371 -   4.439 (  0.069) rows=52428
+  append_outer               4.440 -   4.504 (  0.064) rows=23028
+  consumer_next              4.504 -   4.507 (  0.002) rows=13093
+  consumer_predicate         4.507 -   4.525 (  0.019) rows=13093
+  append_outer               4.525 -   4.544 (  0.019) rows=6493
+  consumer_next              4.544 -   4.555 (  0.011) rows=52428
+  consumer_predicate         4.555 -   4.633 (  0.078) rows=52428
+  append_outer               4.634 -   4.698 (  0.064) rows=23036
+  consumer_next              4.698 -   4.702 (  0.004) rows=13093
+  consumer_predicate         4.702 -   4.721 (  0.019) rows=13093
+  append_outer               4.721 -   4.739 (  0.018) rows=6485
+  consumer_next              4.739 -   4.848 (  0.108) rows=52428
+  consumer_predicate         4.848 -   4.925 (  0.077) rows=52428
+  append_outer               4.925 -   5.275 (  0.349) rows=23032
+  consumer_next              5.275 -   5.280 (  0.004) rows=13093
+  consumer_predicate         5.280 -   5.297 (  0.017) rows=13093
+  append_outer               5.297 -   5.317 (  0.020) rows=6491
+  consumer_next              5.317 -   5.330 (  0.013) rows=52428
+  consumer_predicate         5.331 -   5.405 (  0.075) rows=52428
+  append_outer               5.405 -   5.472 (  0.067) rows=23024
+  consumer_next              5.472 -   5.475 (  0.003) rows=13093
+  consumer_predicate         5.475 -   5.493 (  0.019) rows=13093
+  append_outer               5.494 -   5.672 (  0.178) rows=6499
+  consumer_next              5.672 -   5.687 (  0.016) rows=52428
+  consumer_predicate         5.688 -   5.782 (  0.094) rows=52428
+  append_outer               5.782 -   5.853 (  0.071) rows=23031
+  consumer_next              5.853 -   5.856 (  0.003) rows=13093
+  consumer_predicate         5.856 -   5.875 (  0.019) rows=13093
+  append_outer               5.875 -  10.986 (  5.111) rows=6491
+  flush                      5.885 -  10.971 (  5.086) rows=262144
+  ensure_scratch             5.887 -   6.319 (  0.432) rows=262144
+  classify                   6.366 -   7.098 (  0.733) rows=0
+  scatter                    7.101 -   7.917 (  0.816) rows=0
+  hash                       7.921 -  10.969 (  3.048) rows=0
+  consumer_next             10.986 -  11.001 (  0.015) rows=52428
+  consumer_predicate        11.002 -  11.069 (  0.067) rows=52428
+  append_outer              11.069 -  11.194 (  0.126) rows=23038
+  consumer_next             11.195 -  11.199 (  0.005) rows=13093
+  consumer_predicate        11.200 -  11.226 (  0.027) rows=13093
+  append_outer              11.226 -  11.246 (  0.020) rows=6483
+  consumer_next             11.247 -  11.267 (  0.020) rows=52428
+  consumer_predicate        11.267 -  11.394 (  0.127) rows=52428
+  append_outer              11.395 -  12.075 (  0.681) rows=23031
+  consumer_next             12.075 -  12.091 (  0.016) rows=13093
+  consumer_predicate        12.092 -  12.117 (  0.025) rows=13093
+  append_outer              12.117 -  12.177 (  0.060) rows=6492
+  consumer_next             12.177 -  12.188 (  0.010) rows=52428
+  consumer_predicate        12.188 -  12.379 (  0.191) rows=52428
+  append_outer              12.380 -  12.621 (  0.241) rows=23023
+  consumer_next             12.621 -  12.631 (  0.010) rows=13093
+  consumer_predicate        12.632 -  12.668 (  0.036) rows=13093
+  append_outer              12.668 -  12.700 (  0.032) rows=6500
+  consumer_next             12.700 -  12.708 (  0.008) rows=52428
+  consumer_predicate        12.709 -  12.862 (  0.153) rows=52428
+  append_outer              12.862 -  12.987 (  0.125) rows=23032
+  consumer_next             12.988 -  12.993 (  0.005) rows=13093
+  consumer_predicate        12.993 -  13.010 (  0.017) rows=13093
+  append_outer              13.010 -  13.029 (  0.019) rows=6490
+  consumer_next             13.029 -  13.186 (  0.157) rows=52428
+  consumer_predicate        13.186 -  13.306 (  0.120) rows=52428
+  append_outer              13.306 -  13.412 (  0.106) rows=23039
+  consumer_next             13.412 -  13.419 (  0.007) rows=13093
+  consumer_predicate        13.420 -  13.451 (  0.031) rows=13093
+  append_outer              13.451 -  13.485 (  0.033) rows=6482
+  consumer_next             13.485 -  13.501 (  0.016) rows=52428
+  consumer_predicate        13.502 -  13.626 (  0.124) rows=52428
+  append_outer              13.626 -  13.744 (  0.117) rows=23032
+  consumer_next             13.744 -  13.748 (  0.004) rows=13093
+  consumer_predicate        13.749 -  13.794 (  0.046) rows=13093
+  append_outer              13.795 -  13.814 (  0.019) rows=6491
+  consumer_next             13.814 -  13.830 (  0.016) rows=52428
+  consumer_predicate        13.830 -  13.905 (  0.075) rows=52428
+  append_outer              13.905 -  14.016 (  0.111) rows=23024
+  consumer_next             14.017 -  14.021 (  0.004) rows=13093
+  consumer_predicate        14.021 -  14.050 (  0.029) rows=13093
+  append_outer              14.050 -  14.068 (  0.018) rows=6499
+  consumer_next             14.068 -  14.089 (  0.021) rows=240
+  consumer_predicate        14.089 -  14.091 (  0.001) rows=240
+  append_outer              14.091 -  14.092 (  0.001) rows=120
+  consumer_next             14.092 -  14.132 (  0.040) rows=0
+  flush                     14.132 -  17.078 (  2.946) rows=210331
+  ensure_scratch            14.134 -  14.134 (  0.000) rows=210331
+  classify                  14.141 -  14.441 (  0.301) rows=0
+  scatter                   14.445 -  14.925 (  0.480) rows=0
+  hash                      14.927 -  17.076 (  2.148) rows=0
+
+MODE combined N 120 median_ms 12.9092415 IQR_ms 12.42724525 14.89799975 middle50_count 60
+append_exclusive                     mean_ms    2.499 median_ms    2.457
+append_outer                         mean_ms    5.910 median_ms    5.715
+classify                             mean_ms    1.037 median_ms    0.988
+classify_worker                      mean_ms    2.406 median_ms    2.307
+consumer_accounted                   mean_ms   12.998 median_ms   12.801
+consumer_next                        mean_ms    1.816 median_ms    1.794
+consumer_predicate                   mean_ms    2.411 median_ms    2.402
+ensure_scratch                       mean_ms    0.001 median_ms    0.001
+flush                                mean_ms    6.231 median_ms    6.096
+flush_other                          mean_ms    0.034 median_ms    0.030
+hash                                 mean_ms    3.904 median_ms    3.810
+hash_worker                          mean_ms   14.019 median_ms   14.057
+native_setup                         mean_ms    0.040 median_ms    0.037
+producer_hold                        mean_ms   25.284 median_ms   24.794
+producer_hold_union                  mean_ms    8.856 median_ms    8.736
+producer_next                        mean_ms   12.811 median_ms   12.878
+producer_next_overlap_append_outer   mean_ms    2.734 median_ms    2.646
+producer_next_overlap_flush          mean_ms    0.592 median_ms    0.426
+producer_next_union                  mean_ms    6.333 median_ms    6.324
+producer_open                        mean_ms    0.736 median_ms    0.728
+scatter                              mean_ms    1.256 median_ms    1.189
+scatter_worker                       mean_ms    3.960 median_ms    3.833
+total                                mean_ms   13.104 median_ms   12.909
+unattributed                         mean_ms    0.106 median_ms    0.089
+wave1_classify                       mean_ms    0.684 median_ms    0.653
+wave1_ensure_scratch                 mean_ms    0.000 median_ms    0.000
+wave1_hash                           mean_ms    1.976 median_ms    1.911
+wave1_scatter                        mean_ms    0.733 median_ms    0.670
+wave1_total                          mean_ms    3.411 median_ms    3.272
+wave2_classify                       mean_ms    0.353 median_ms    0.329
+wave2_ensure_scratch                 mean_ms    0.000 median_ms    0.000
+wave2_hash                           mean_ms    1.928 median_ms    1.870
+wave2_scatter                        mean_ms    0.523 median_ms    0.477
+wave2_total                          mean_ms    2.820 median_ms    2.715
+Representative iteration 38 duration 12.919191
+  native_setup               0.014 -   0.057 (  0.043) rows=0
+  consumer_next              0.059 -   1.789 (  1.730) rows=52428
+  consumer_predicate         1.791 -   1.995 (  0.204) rows=52428
+  append_outer               1.995 -   2.129 (  0.134) rows=23025
+  consumer_next              2.129 -   2.135 (  0.006) rows=13093
+  consumer_predicate         2.136 -   2.159 (  0.023) rows=13093
+  append_outer               2.159 -   2.191 (  0.032) rows=6496
+  consumer_next              2.191 -   2.209 (  0.018) rows=52428
+  consumer_predicate         2.210 -   2.329 (  0.120) rows=52428
+  append_outer               2.330 -   2.454 (  0.124) rows=23033
+  consumer_next              2.454 -   2.458 (  0.005) rows=13093
+  consumer_predicate         2.459 -   2.491 (  0.032) rows=13093
+  append_outer               2.491 -   2.524 (  0.033) rows=6488
+  consumer_next              2.524 -   2.544 (  0.020) rows=52428
+  consumer_predicate         2.544 -   2.669 (  0.125) rows=52428
+  append_outer               2.669 -   2.840 (  0.170) rows=23025
+  consumer_next              2.840 -   2.846 (  0.006) rows=13093
+  consumer_predicate         2.846 -   2.878 (  0.032) rows=13093
+  append_outer               2.878 -   2.911 (  0.033) rows=6498
+  consumer_next              2.911 -   2.928 (  0.017) rows=52428
+  consumer_predicate         2.929 -   3.051 (  0.122) rows=52428
+  append_outer               3.051 -   3.180 (  0.129) rows=23033
+  consumer_next              3.180 -   3.184 (  0.004) rows=13093
+  consumer_predicate         3.185 -   3.216 (  0.031) rows=13093
+  append_outer               3.216 -   3.243 (  0.027) rows=6491
+  consumer_next              3.243 -   3.264 (  0.021) rows=52428
+  consumer_predicate         3.264 -   3.387 (  0.123) rows=52428
+  append_outer               3.387 -   3.482 (  0.095) rows=23028
+  consumer_next              3.482 -   3.487 (  0.005) rows=13093
+  consumer_predicate         3.487 -   3.504 (  0.017) rows=13093
+  append_outer               3.504 -   3.523 (  0.019) rows=6493
+  consumer_next              3.523 -   3.542 (  0.019) rows=52428
+  consumer_predicate         3.542 -   3.659 (  0.116) rows=52428
+  append_outer               3.659 -   3.822 (  0.163) rows=23036
+  consumer_next              3.822 -   3.827 (  0.005) rows=13093
+  consumer_predicate         3.828 -   3.860 (  0.032) rows=13093
+  append_outer               3.860 -   3.893 (  0.033) rows=6485
+  consumer_next              3.893 -   3.918 (  0.025) rows=52428
+  consumer_predicate         3.919 -   4.043 (  0.124) rows=52428
+  append_outer               4.043 -   4.160 (  0.117) rows=23024
+  consumer_next              4.160 -   4.165 (  0.005) rows=13093
+  consumer_predicate         4.165 -   4.199 (  0.034) rows=13093
+  append_outer               4.200 -   4.234 (  0.035) rows=6499
+  consumer_next              4.234 -   4.254 (  0.020) rows=52428
+  consumer_predicate         4.255 -   4.370 (  0.115) rows=52428
+  append_outer               4.370 -   4.486 (  0.116) rows=23032
+  consumer_next              4.486 -   4.491 (  0.004) rows=13093
+  consumer_predicate         4.491 -   4.521 (  0.029) rows=13093
+  append_outer               4.521 -   4.556 (  0.035) rows=6491
+  consumer_next              4.556 -   4.576 (  0.020) rows=52428
+  consumer_predicate         4.576 -   4.702 (  0.125) rows=52428
+  append_outer               4.702 -   4.839 (  0.137) rows=23031
+  consumer_next              4.840 -   4.844 (  0.005) rows=13093
+  consumer_predicate         4.845 -   4.876 (  0.032) rows=13093
+  append_outer               4.877 -   7.966 (  3.090) rows=6491
+  flush                      4.892 -   7.953 (  3.061) rows=262144
+  ensure_scratch             4.894 -   4.894 (  0.000) rows=262144
+  classify                   4.898 -   5.401 (  0.503) rows=0
+  scatter                    5.404 -   6.045 (  0.641) rows=0
+  hash                       6.047 -   7.950 (  1.903) rows=0
+  consumer_next              7.967 -   7.983 (  0.016) rows=52428
+  consumer_predicate         7.984 -   8.050 (  0.066) rows=52428
+  append_outer               8.050 -   8.145 (  0.095) rows=23038
+  consumer_next              8.146 -   8.150 (  0.004) rows=13093
+  consumer_predicate         8.150 -   8.169 (  0.019) rows=13093
+  append_outer               8.169 -   8.191 (  0.022) rows=6483
+  consumer_next              8.191 -   8.213 (  0.022) rows=52428
+  consumer_predicate         8.214 -   8.327 (  0.113) rows=52428
+  append_outer               8.327 -   8.442 (  0.115) rows=23023
+  consumer_next              8.442 -   8.449 (  0.007) rows=13093
+  consumer_predicate         8.450 -   8.527 (  0.077) rows=13093
+  append_outer               8.528 -   8.561 (  0.033) rows=6500
+  consumer_next              8.561 -   8.582 (  0.021) rows=52428
+  consumer_predicate         8.582 -   8.709 (  0.127) rows=52428
+  append_outer               8.709 -   8.851 (  0.142) rows=23031
+  consumer_next              8.852 -   8.860 (  0.008) rows=13093
+  consumer_predicate         8.860 -   8.892 (  0.032) rows=13093
+  append_outer               8.892 -   8.927 (  0.035) rows=6492
+  consumer_next              8.927 -   8.946 (  0.020) rows=52428
+  consumer_predicate         8.947 -   9.066 (  0.119) rows=52428
+  append_outer               9.066 -   9.155 (  0.089) rows=23032
+  consumer_next              9.155 -   9.160 (  0.004) rows=13093
+  consumer_predicate         9.160 -   9.180 (  0.019) rows=13093
+  append_outer               9.180 -   9.198 (  0.018) rows=6490
+  consumer_next              9.198 -   9.220 (  0.022) rows=52428
+  consumer_predicate         9.221 -   9.339 (  0.118) rows=52428
+  append_outer               9.339 -   9.440 (  0.100) rows=23039
+  consumer_next              9.440 -   9.443 (  0.003) rows=13093
+  consumer_predicate         9.443 -   9.462 (  0.019) rows=13093
+  append_outer               9.462 -   9.480 (  0.018) rows=6482
+  consumer_next              9.480 -   9.496 (  0.016) rows=52428
+  consumer_predicate         9.496 -   9.571 (  0.075) rows=52428
+  append_outer               9.571 -   9.672 (  0.100) rows=23024
+  consumer_next              9.672 -   9.676 (  0.004) rows=13093
+  consumer_predicate         9.676 -   9.695 (  0.019) rows=13093
+  append_outer               9.695 -   9.713 (  0.018) rows=6499
+  consumer_next              9.713 -   9.725 (  0.012) rows=240
+  consumer_predicate         9.725 -   9.726 (  0.001) rows=240
+  append_outer               9.726 -   9.727 (  0.001) rows=120
+  consumer_next              9.727 -   9.729 (  0.002) rows=52428
+  consumer_predicate         9.729 -   9.832 (  0.102) rows=52428
+  append_outer               9.832 -   9.897 (  0.065) rows=23032
+  consumer_next              9.897 -   9.901 (  0.004) rows=13093
+  consumer_predicate         9.901 -   9.920 (  0.019) rows=13093
+  append_outer               9.920 -   9.938 (  0.018) rows=6491
+  consumer_next              9.938 -   9.973 (  0.035) rows=0
+  flush                      9.973 -  12.874 (  2.900) rows=210331
+  ensure_scratch             9.974 -   9.974 (  0.000) rows=210331
+  classify                   9.982 -  10.297 (  0.315) rows=0
+  scatter                   10.301 -  10.846 (  0.545) rows=0
+  hash                      10.848 -  12.871 (  2.022) rows=0

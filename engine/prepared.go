@@ -38,7 +38,9 @@ type PlanInfo struct {
 }
 
 // PreparedQuery is an immutable compiled plan. Each execution owns its native
-// streams and query-scoped memory; no source-sized buffers survive execution.
+// streams and query-scoped memory. Eligible fixed-width resident state and
+// bounded scratch can remain in the engine's charged, reclaimable cache; source
+// batches and output buffers never survive as cached execution state.
 type PreparedQuery struct {
 	e               *Engine
 	src             source.Source
@@ -52,16 +54,23 @@ type PreparedQuery struct {
 	feedbackSamples uint64
 	executionPolicy ExecutionPolicy
 
-	lifeMu    sync.Mutex
-	active    sync.WaitGroup
-	closed    bool
-	closeDone chan struct{}
+	cacheHandle *preparedCacheHandle
+	lifeMu      sync.Mutex
+	active      sync.WaitGroup
+	closed      bool
+	closeDone   chan struct{}
 }
 
 // Prepare compiles q for src and creates a reusable PreparedQuery.
 func (e *Engine) Prepare(ctx context.Context, src source.Source, q expr.Query, opts PrepareOptions) (*PreparedQuery, error) {
 	if e == nil {
 		return nil, fmt.Errorf("engine is nil")
+	}
+	if err := e.checkOpen(); err != nil {
+		return nil, err
+	}
+	if e.opts.PreparedCacheBytes < 0 {
+		return nil, fmt.Errorf("prepared cache limit must be nonnegative")
 	}
 	if ctx == nil {
 		return nil, fmt.Errorf("prepare context is nil")
@@ -150,7 +159,7 @@ func (e *Engine) Prepare(ctx context.Context, src source.Source, q expr.Query, o
 	if maxConc < 1 {
 		maxConc = 1
 	}
-	pq := &PreparedQuery{e: e, src: src, cq: cq, stats: stats, parts: parts, strategy: strategy, dicts: make(map[string]source.Dictionary), feedbackKey: opts.FeedbackKey, feedbackSamples: feedbackSamples, executionPolicy: policy, executions: make(chan struct{}, maxConc)}
+	pq := &PreparedQuery{e: e, cacheHandle: e.cache.newHandle(), src: src, cq: cq, stats: stats, parts: parts, strategy: strategy, dicts: make(map[string]source.Dictionary), feedbackKey: opts.FeedbackKey, feedbackSamples: feedbackSamples, executionPolicy: policy, executions: make(chan struct{}, maxConc)}
 	// Load source-level dictionaries once when available. Absence is allowed;
 	// materialized results will expose code+domain instead of decoded strings.
 	if dp, ok := src.(source.DictionaryProvider); ok {
@@ -181,10 +190,13 @@ func (p *PreparedQuery) begin() error {
 	if p.closed {
 		return ErrPreparedClosed
 	}
+	if err := p.e.begin(); err != nil {
+		return err
+	}
 	p.active.Add(1)
 	return nil
 }
-func (p *PreparedQuery) end() { p.active.Done() }
+func (p *PreparedQuery) end() { p.active.Done(); p.e.end() }
 
 type profileOperatorIDProvider interface{ OperatorID() string }
 
@@ -201,10 +213,17 @@ func (p *PreparedQuery) Close() error {
 		return nil
 	}
 	p.closed = true
+	if p.cacheHandle != nil {
+		p.cacheHandle.closed.Store(true)
+	}
 	p.closeDone = make(chan struct{})
 	done := p.closeDone
 	p.lifeMu.Unlock()
 	p.active.Wait()
+	if p.cacheHandle != nil {
+		p.e.cache.purge(p.cacheHandle.id)
+		p.cacheHandle.retained.Wait()
+	}
 	close(done)
 	return nil
 }

@@ -114,6 +114,7 @@ func (s *generatedStream) Close() error {
 }
 func streamTestOptions() Options {
 	options := DefaultOptions()
+	options.PreparedCacheBytes = 0 // These tests assert execution-local release, independently of reuse.
 	options.Workers = 1
 	options.MemoryLimitBytes = 128 << 10
 	options.Pipeline = pipeline.Options{Workers: 1, TargetMorselBytes: 1024, MaxMorselBytes: 4096, MaxInFlightBytes: 8192, MinMorselRows: 1, MaxMorselRows: 64}

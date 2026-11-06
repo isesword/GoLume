@@ -25,7 +25,7 @@ type residentAggregateWave struct {
 }
 
 func (s *residentPartitionedState) prepareWave(ctx context.Context, readOpts source.ReadOptions) {
-	if !s.packed() || s.workers < 2 {
+	if s.wave != nil || !s.packed() || s.workers < 2 {
 		return
 	}
 	batchRows := s.query.e.opts.Pipeline.MaxMorselRows

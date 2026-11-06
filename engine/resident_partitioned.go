@@ -20,9 +20,9 @@ type residentPartitionedState struct {
 	parallelClassified                 bool
 	query                              *PreparedQuery
 	budget                             *memory.QueryBudget
-	stateBudget                        *memory.OperatorBudget
+	stateBudget                        residentGrowthManager
 	initialCardinality                 int
-	workspace                          *memory.OperatorBudget
+	workspace                          residentGrowthManager
 	owners                             []*aggregateTableOwner
 	counts, offsets, positions         []int
 	checksums                          []int64
@@ -45,17 +45,22 @@ type residentPartitionedState struct {
 	outputCursor                       int
 }
 
-func newResidentTableOwner(ctx context.Context, query *PreparedQuery, state *memory.OperatorBudget, cardinality int) (*aggregateTableOwner, error) {
-	table, err := newAggregateStateTable(query.cq.GroupShape, query.cq.AggregateLayout, cardinality, query.cq.AverageKeyBytes, 0, func(bytes int64) (memory.Reservation, error) {
-		return state.ReserveGrowth(ctx, bytes)
-	})
+func newResidentTableOwner(ctx context.Context, query *PreparedQuery, state residentGrowthManager, cardinality int) (*aggregateTableOwner, error) {
+	reserve := func(bytes int64) (memory.Reservation, error) { return state.ReserveGrowth(ctx, bytes) }
+	if lane, ok := state.(*residentAllocationLane); ok {
+		reserve = lane.reserveCurrent
+	}
+	table, err := newAggregateStateTable(query.cq.GroupShape, query.cq.AggregateLayout, cardinality, query.cq.AverageKeyBytes, 0, reserve)
 	if err != nil {
 		return nil, err
 	}
 	return &aggregateTableOwner{table: table}, nil
 }
 
-func newResidentPartitionedState(ctx context.Context, query *PreparedQuery, budget *memory.QueryBudget) (_ *residentPartitionedState, err error) {
+func newResidentPartitionedState(ctx context.Context, query *PreparedQuery, budget *memory.QueryBudget) (*residentPartitionedState, error) {
+	return newResidentPartitionedStateOwned(ctx, query, budget, budget.Operator("ResidentPartitionedHashAggregate", memory.MemoryRetainedState), budget.Operator("ResidentAggregatePartitionWorkspace", memory.MemoryWorkspace))
+}
+func newResidentPartitionedStateOwned(ctx context.Context, query *PreparedQuery, budget *memory.QueryBudget, operator, workspace residentGrowthManager) (_ *residentPartitionedState, err error) {
 	workers := max(1, query.strategy.Workers)
 	partitions := 1
 	for partitions < workers {
@@ -74,7 +79,7 @@ func newResidentPartitionedState(ctx context.Context, query *PreparedQuery, budg
 	if partitions > 1<<16 {
 		return nil, fmt.Errorf("partitioned aggregate supports at most 65536 state partitions")
 	}
-	state := &residentPartitionedState{query: query, budget: budget, workers: workers, shift: uint(64 - bits.TrailingZeros(uint(partitions))), workspace: budget.Operator("ResidentAggregatePartitionWorkspace", memory.MemoryWorkspace)}
+	state := &residentPartitionedState{query: query, budget: budget, workers: workers, shift: uint(64 - bits.TrailingZeros(uint(partitions))), workspace: workspace}
 	defer func() {
 		if err != nil {
 			state.close()
@@ -90,7 +95,6 @@ func newResidentPartitionedState(ctx context.Context, query *PreparedQuery, budg
 	state.offsets = make([]int, partitions+1)
 	state.positions = make([]int, partitions)
 	state.checksums = make([]int64, partitions)
-	operator := budget.Operator("ResidentPartitionedHashAggregate", memory.MemoryRetainedState)
 	cardinality := max(8, (query.cq.CardinalityHint+partitions-1)/partitions)
 	// Start within a finite budget, letting accurate runtime growth replace an
 	// optimistic cardinality hint. Actual reservations still enforce the hard cap.
@@ -340,7 +344,14 @@ func (s *residentPartitionedState) aggregatePacked(ctx context.Context, table *a
 		var err error
 		switch table.shape {
 		case GroupShapeI32:
-			summary, err = table.i32.AggregateSelectedNullableValues(s.packedI32[start:next], keyValidity, s.packedValues[start:next], valueValidity, selection)
+			// The packed chunk is dense. Keep nullable and nondefault layouts on
+			// the existing shared selection path; the outer 4096-row chunk
+			// still bounds cancellation checks independently of kernel growth.
+			if keyValidity == nil && valueValidity == nil && table.layout.IsSumCountOnly() {
+				summary, err = table.i32.AggregateValues(s.packedI32[start:next], s.packedValues[start:next])
+			} else {
+				summary, err = table.i32.AggregateSelectedNullableValues(s.packedI32[start:next], keyValidity, s.packedValues[start:next], valueValidity, selection)
+			}
 		case GroupShapeI64:
 			summary, err = table.u64.AggregateSelectedNullableValues(s.packedI64[start:next], keyValidity, s.packedValues[start:next], valueValidity, selection)
 		default:

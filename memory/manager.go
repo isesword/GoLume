@@ -3,6 +3,7 @@ package memory
 import (
 	"context"
 	"errors"
+	"math"
 	"sync/atomic"
 )
 
@@ -53,18 +54,29 @@ func (m *BudgetManager) Reserve(ctx context.Context, bytes int64) (Reservation, 
 	if bytes <= 0 {
 		return &reservation{}, nil
 	}
-	select {
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	default:
+	if err := m.reserveBytes(ctx, bytes); err != nil {
+		return nil, err
+	}
+	return &reservation{bytes: bytes, mgr: m}, nil
+}
+
+// reserveBytes is the allocation-free admission primitive shared by ordinary
+// reservations and reusable accounts. Callers own the corresponding release.
+func (m *BudgetManager) reserveBytes(ctx context.Context, bytes int64) error {
+	if err := ctx.Err(); err != nil {
+		return err
 	}
 	for {
 		cur := m.used.Load()
-		if m.limit > 0 && cur+bytes > m.limit {
-			return nil, ErrBudgetExceeded
+		limit := m.limit
+		if limit <= 0 {
+			limit = math.MaxInt64
+		}
+		if bytes > limit-cur {
+			return ErrBudgetExceeded
 		}
 		if m.used.CompareAndSwap(cur, cur+bytes) {
-			return &reservation{bytes: bytes, mgr: m}, nil
+			return nil
 		}
 	}
 }

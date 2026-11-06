@@ -1,6 +1,7 @@
 # Go Columnar Engine — Phase 3.6 Bounded Streaming and Native Sinks
 
-> **WIP 分支检查点，尚未完成性能验收。** 本次原生流重构包含破坏性 API 变更；正确性验证通过，但 prepared W4 性能门槛仍未达标。请先阅读 [迁移说明](docs/STREAM_MIGRATION.md) 与 [验证及未完成事项](validation/native-stream-unification-review.md)。本检查点不表示可合并。
+> **WIP 分支检查点，尚未完成性能验收。** 本次原生流重构包含破坏性 API 变更；正确性验证通过，但 prepared W4 性能门槛仍未达标。请先阅读 [迁移说明](docs/STREAM_MIGRATION.md) 与 [验证及未完成事项](validation/native-stream-unification-review.md)。最新持续计费复用与共享内核的 [验证数据](validation/charged-reuse/README.md) 显示 W4 仍未达标。本检查点不表示可合并。
+> 最新 [持续计费复用与共享内核证据](validation/charged-reuse/README.md)：组合诊断为 13.338 ms，较前一 WIP 的 17.309 ms 改善，但仍未达到原性能门槛。原验证链接继续保留。
 
 Go Columnar Engine 是一个面向 Go 原生服务、CLI 和嵌入式分析场景的 Polars-like 列式分析引擎。核心路线保持：
 

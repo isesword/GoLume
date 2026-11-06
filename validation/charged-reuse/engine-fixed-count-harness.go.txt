@@ -1,0 +1,174 @@
+package engine
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"gocolumn/expr"
+	"gocolumn/observer"
+	parquetsource "gocolumn/source/parquet"
+	"os"
+	"runtime"
+	"runtime/pprof"
+	"strconv"
+	"syscall"
+	"testing"
+	"time"
+)
+
+// This test is an isolated fixed-count CPU experiment, never a benchmark.
+// Preparation, warmups, final Close, and report construction are not profiled.
+func TestW4FixedIterationCPUProfile(t *testing.T) {
+	if os.Getenv("W4_PROFILE_N") == "" {
+		t.Skip("isolated fixed-count profile requires explicit iteration count")
+	}
+	if runtime.GOMAXPROCS(0) != 4 {
+		t.Fatalf("GOMAXPROCS=%d, require4", runtime.GOMAXPROCS(0))
+	}
+	count, err := strconv.Atoi(os.Getenv("W4_PROFILE_N"))
+	if err != nil || count < 1 {
+		t.Fatal("W4_PROFILE_N must be positive")
+	}
+	path := os.Getenv("GOCOLUMN_TEST_PARQUET")
+	if path == "" {
+		t.Fatal("fixture path required")
+	}
+	profilePath := os.Getenv("W4_PROFILE_PATH")
+	reportPath := os.Getenv("W4_PROFILE_REPORT")
+	if reportPath == "" {
+		t.Fatal("report path required")
+	}
+	src, err := parquetsource.OpenFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	opts := DefaultOptions()
+	opts.Workers = 4
+	if opts.MemoryLimitBytes != 0 || opts.Pipeline.MaxMorselRows != 65536 || opts.Pipeline.MaxInFlightBytes != 64<<20 {
+		t.Fatalf("changed original defaults: %+v", opts)
+	}
+	warmObserver := &observer.Collector{}
+	opts.Observer = warmObserver
+	eng := New(opts)
+	defer eng.Close()
+	query := expr.Query{Filter: expr.GT(expr.Col("pred"), expr.I64(32767)), GroupBy: []string{"key"}, Aggregates: []expr.Aggregate{expr.Sum("value", "sum"), expr.Count("count")}, Hints: expr.Hints{Selectivity: .451, Cardinality: 1 << 18}}
+	prepared, err := eng.Prepare(context.Background(), src, query, PrepareOptions{MaxConcurrency: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer prepared.Close()
+	validate := func(result Result) error {
+		if result.SelectedRows != 472475 || result.GroupCount != 219196 || result.Checksum != 236716301 {
+			return fmt.Errorf("result selected=%d groups=%d checksum=%d", result.SelectedRows, result.GroupCount, result.Checksum)
+		}
+		return nil
+	}
+	for i := 0; i < 3; i++ {
+		result, e := prepared.Execute(context.Background(), ExecuteOptions{Materialize: false})
+		if e != nil {
+			t.Fatal(e)
+		}
+		if e = validate(result); e != nil {
+			t.Fatal(e)
+		}
+	}
+	warmEvents := warmObserver.Events()
+	eng.opts.Observer = observer.Nop{}
+	matched := 0
+	for _, event := range warmEvents {
+		if event.Stage == "resident-stream-aggregate" {
+			matched++
+			if event.Attributes["aggregate_wave_rows"] != "262144" || event.Attributes["state_partitions"] != "256" || event.Attributes["producer_filter"] == "true" {
+				t.Fatalf("changed native plan: %+v", event)
+			}
+		}
+	}
+	if matched != 3 {
+		t.Fatalf("warm events=%d", matched)
+	}
+	retainedBefore := eng.Memory().Used()
+	var profileFile *os.File
+	if profilePath != "" {
+		profileFile, err = os.Create(profilePath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer profileFile.Close()
+	}
+	runtime.GC()
+	var before, after syscall.Rusage
+	var memBefore, memAfter runtime.MemStats
+	runtime.ReadMemStats(&memBefore)
+	profiling := false
+	defer func() {
+		if profiling {
+			pprof.StopCPUProfile()
+		}
+	}()
+	if profileFile != nil {
+		if err = pprof.StartCPUProfile(profileFile); err != nil {
+			t.Fatal(err)
+		}
+		profiling = true
+	}
+	if err = syscall.Getrusage(syscall.RUSAGE_SELF, &before); err != nil {
+		t.Fatal(err)
+	}
+	started := time.Now()
+	completed := 0
+	for i := 0; i < count; i++ {
+		result, e := prepared.Execute(context.Background(), ExecuteOptions{Materialize: false})
+		if e != nil {
+			err = e
+			break
+		}
+		if e = validate(result); e != nil {
+			err = e
+			break
+		}
+		completed++
+	}
+	elapsed := time.Since(started)
+	if e := syscall.Getrusage(syscall.RUSAGE_SELF, &after); e != nil {
+		t.Fatal(e)
+	}
+	if profiling {
+		pprof.StopCPUProfile()
+		profiling = false
+	}
+	if profileFile != nil {
+		if e := profileFile.Close(); e != nil {
+			t.Fatal(e)
+		}
+	}
+	runtime.ReadMemStats(&memAfter)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if completed != count {
+		t.Fatalf("completed %d want%d", completed, count)
+	}
+	retainedAfter := eng.Memory().Used()
+	if retainedAfter != retainedBefore {
+		t.Fatalf("execution accounting drift %d ->%d", retainedBefore, retainedAfter)
+	}
+	if err = prepared.Close(); err != nil {
+		t.Fatal(err)
+	}
+	usedAfterClose := eng.Memory().Used()
+	if usedAfterClose != 0 {
+		t.Fatalf("Close leaked%d", usedAfterClose)
+	}
+	ns := func(v syscall.Timeval) int64 { return v.Sec*1e9 + v.Usec*1e3 }
+	userCPU := ns(after.Utime) - ns(before.Utime)
+	systemCPU := ns(after.Stime) - ns(before.Stime)
+	result := map[string]any{"label": os.Getenv("W4_PROFILE_LABEL"), "source_id": os.Getenv("W4_PROFILE_SOURCE_ID"), "fixture": path, "known_iterations": completed, "warmup_iterations": 3, "gomaxprocs": 4, "profile_path": profilePath, "loop_elapsed_ns": elapsed.Nanoseconds(), "elapsed_ns_per_op": float64(elapsed.Nanoseconds()) / float64(count), "loop_process_user_cpu_ns": userCPU, "loop_process_system_cpu_ns": systemCPU, "loop_process_total_cpu_ns": userCPU + systemCPU, "process_cpu_ns_per_op": float64(userCPU+systemCPU) / float64(count), "process_work_div_four_ns_per_op": float64(userCPU+systemCPU) / float64(count) / 4, "alloc_bytes_per_op": float64(memAfter.TotalAlloc-memBefore.TotalAlloc) / float64(count), "allocs_per_op": float64(memAfter.Mallocs-memBefore.Mallocs) / float64(count), "retained_before_bytes": retainedBefore, "retained_after_bytes": retainedAfter, "used_after_prepared_close_bytes": usedAfterClose, "selected_rows": 472475, "groups": 219196, "checksum": 236716301, "materialize": false, "memory_limit_bytes": opts.MemoryLimitBytes, "max_morsel_rows": opts.Pipeline.MaxMorselRows, "max_inflight_bytes": opts.Pipeline.MaxInFlightBytes, "warmup_events": warmEvents}
+	data, err := json.MarshalIndent(result, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = os.WriteFile(reportPath, data, 0644); err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("knownN=%d elapsed/op=%.3fms processCPU/op=%.3fms work/4=%.3fms CloseUsed=%d profile=%s", count, float64(elapsed.Nanoseconds())/float64(count)/1e6, float64(userCPU+systemCPU)/float64(count)/1e6, float64(userCPU+systemCPU)/float64(count)/4e6, usedAfterClose, profilePath)
+}
