@@ -69,10 +69,13 @@ func (w *queryWorkspace) close() error {
 			_ = w.workers[i].reader.Close()
 		}
 	}
-	for _, r := range w.reservations {
+	reservations := w.reservations
+	// Closed workspaces may remain reachable from the idle pool. Drop every
+	// buffer, table, reader, and reserve-hook closure before returning credit.
+	*w = queryWorkspace{}
+	for _, r := range reservations {
 		r.Release()
 	}
-	w.reservations = nil
 	return nil
 }
 

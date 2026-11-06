@@ -119,15 +119,14 @@ func (w *ScalarWorkspace) SetMemoryManager(ctx context.Context, manager memory.M
 	w.manager = manager
 }
 
-// Close releases every memory reservation retained by the workspace.
+// Close drops all retained and borrowed buffers and releases their reservations.
+// The configured memory manager is kept so the workspace can be reused safely.
 func (w *ScalarWorkspace) Close() error {
-	for i := len(w.reservations) - 1; i >= 0; i-- {
-		w.reservations[i].Release()
-	}
+	reservations := w.reservations
+	w.regs = nil
 	w.reservations = nil
-	for i := range w.regs {
-		w.regs[i].charged = 0
-		w.regs[i].reserve = nil
+	for i := len(reservations) - 1; i >= 0; i-- {
+		reservations[i].Release()
 	}
 	return nil
 }
@@ -310,42 +309,64 @@ func (c *scalarCompiler) compile(e Expr) (int, TypeInfo, error) {
 	return reg, info, nil
 }
 
+// scalarKey frames every component so arbitrary names and nested expressions
+// cannot be mistaken for delimiters or neighboring nodes.
+func scalarKey(parts ...string) string {
+	var b strings.Builder
+	for _, part := range parts {
+		b.WriteString(strconv.Itoa(len(part)))
+		b.WriteByte(':')
+		b.WriteString(part)
+	}
+	return b.String()
+}
+
+func scalarFieldKey(field memory.Field) string {
+	parts := []string{
+		field.Name, strconv.Itoa(int(field.Type)), strconv.FormatBool(field.Nullable),
+		strconv.Itoa(int(field.Encoding)), field.DictionaryDomain, field.ArrowType,
+	}
+	for _, child := range field.Children {
+		parts = append(parts, scalarFieldKey(child))
+	}
+	return scalarKey(parts...)
+}
+
 func scalarExprKey(e Expr) string {
 	switch n := e.(type) {
 	case Column:
-		return "c:" + n.Name
+		return scalarKey("column", n.Name)
 	case Int64Literal:
-		return "i:" + strconv.FormatInt(n.Value, 10)
+		return scalarKey("int64", strconv.FormatInt(n.Value, 10))
 	case Float64Literal:
-		return "f:" + strconv.FormatFloat(n.Value, 'g', -1, 64)
+		// Preserve signed zero and distinct NaN payloads in literal outputs.
+		return scalarKey("float64", strconv.FormatUint(math.Float64bits(n.Value), 16))
 	case StringLiteral:
-		return "s:" + strconv.Quote(n.Value)
+		return scalarKey("string", n.Value)
 	case Date32Literal:
-		return "d32:" + strconv.FormatInt(int64(n.Days), 10)
+		return scalarKey("date32", strconv.FormatInt(int64(n.Days), 10))
 	case TimestampLiteral:
-		return "ts:" + strconv.FormatInt(n.Value, 10)
+		return scalarKey("timestamp", strconv.FormatInt(n.Value, 10))
 	case DurationLiteral:
-		return "duration:" + strconv.FormatInt(int64(n.Value), 10)
+		return scalarKey("duration", strconv.FormatInt(int64(n.Value), 10))
 	case TimestampUnitLiteral:
-		return "tsunit:" + strconv.FormatUint(uint64(n.Unit), 10) + ":" + strconv.FormatInt(n.Value, 10)
+		return scalarKey("timestamp-unit", strconv.FormatUint(uint64(n.Unit), 10), strconv.FormatInt(n.Value, 10))
 	case Cast:
-		return "cast:" + n.Target.String() + ":" + scalarExprKey(n.Value)
+		return scalarKey("cast", strconv.Itoa(int(n.Target)), scalarExprKey(n.Value))
 	case Binary:
-		return "b:" + n.Op.String() + ":" + scalarExprKey(n.Left) + ":" + scalarExprKey(n.Right)
+		return scalarKey("binary", strconv.Itoa(int(n.Op)), scalarExprKey(n.Left), scalarExprKey(n.Right))
 	case Unary:
-		return "u:" + n.Op.String() + ":" + scalarExprKey(n.Value)
+		return scalarKey("unary", strconv.Itoa(int(n.Op)), scalarExprKey(n.Value))
 	case Ternary:
-		return "t:" + n.Op.String() + ":" + scalarExprKey(n.Value) + ":" + scalarExprKey(n.First) + ":" + scalarExprKey(n.Second)
+		return scalarKey("ternary", strconv.Itoa(int(n.Op)), scalarExprKey(n.Value), scalarExprKey(n.First), scalarExprKey(n.Second))
 	case JSONDecodeExpr:
-		var b strings.Builder
-		b.WriteString("json:")
-		b.WriteString(scalarExprKey(n.Value))
+		parts := []string{"json", scalarExprKey(n.Value)}
 		for _, field := range n.Schema.Fields {
-			fmt.Fprintf(&b, ":%s:%s:%t", field.Name, field.Type, field.Nullable)
+			parts = append(parts, scalarFieldKey(field))
 		}
-		return b.String()
+		return scalarKey(parts...)
 	default:
-		return fmt.Sprintf("%T:%s", e, e.String())
+		return scalarKey(fmt.Sprintf("%T", e), e.String())
 	}
 }
 

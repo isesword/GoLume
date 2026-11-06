@@ -629,7 +629,7 @@ func (s *spillableJoinStream) loadBuild(ctx context.Context, refs []joinRunRef) 
 	if err != nil {
 		return nil, err
 	}
-	build := &loadedJoinBuild{reservation: reservation, table: join.NewPairTable(maxInt(8, total))}
+	build := &loadedJoinBuild{reservation: reservation, table: join.NewPairTable(maxInt(8, total)), locations: make([]rowLocation, 0, total)}
 	keys := make([]hashagg.Key128, 0, total)
 	masks := make([]uint8, 0, total)
 	for _, ref := range refs {
@@ -713,10 +713,33 @@ func (s *spillableJoinStream) ownerWithBuild(build *loadedJoinBuild) *JoinSource
 	return &materializer
 }
 
+// Reserve scratch before allocating it so a rejected budget cannot cause a
+// transient allocation proportional to an input partition.
+func newJoinMatchedRows(ctx context.Context, manager memory.Manager, rows int) ([]bool, memory.Reservation, error) {
+	if rows < 0 {
+		return nil, nil, fmt.Errorf("negative join matched row count")
+	}
+	reservation, err := manager.Reserve(ctx, int64(rows))
+	if err != nil {
+		return nil, nil, err
+	}
+	return make([]bool, rows), reservation, nil
+}
+
+func newJoinProbeKeys(ctx context.Context, manager memory.Manager, rows int) ([]hashagg.Key128, []uint8, memory.Reservation, error) {
+	if rows < 0 || int64(rows) > math.MaxInt64/17 {
+		return nil, nil, nil, fmt.Errorf("join probe scratch byte estimate overflows int64")
+	}
+	reservation, err := manager.Reserve(ctx, int64(rows)*17)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	return make([]hashagg.Key128, rows), make([]uint8, rows), reservation, nil
+}
+
 func (s *spillableJoinStream) probePartition(ctx context.Context, build *loadedJoinBuild, leftRefs []joinRunRef, partition int) ([]joinRunRef, error) {
 	created := make([]joinRunRef, 0)
-	matched := make([]bool, len(build.locations))
-	matchedReservation, err := s.state.Reserve(ctx, int64(len(matched)))
+	matched, matchedReservation, err := newJoinMatchedRows(ctx, s.state, len(build.locations))
 	if err != nil {
 		return nil, err
 	}
@@ -728,9 +751,7 @@ func (s *spillableJoinStream) probePartition(ctx context.Context, build *loadedJ
 			return nil, err
 		}
 		batch := decoded.Batch
-		keys := make([]hashagg.Key128, batch.Rows)
-		masks := make([]uint8, batch.Rows)
-		scratch, err := s.state.Reserve(ctx, int64(batch.Rows)*17)
+		keys, masks, scratch, err := newJoinProbeKeys(ctx, s.state, batch.Rows)
 		if err != nil {
 			_ = decoded.Close()
 			s.deleteRefs(context.Background(), created)
