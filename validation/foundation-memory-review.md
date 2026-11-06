@@ -130,3 +130,8 @@ and error propagation. Registers may borrow source buffers or own computed
 buffers and can be reused across programs, so capacity alone does not identify
 already charged ownership. This patch intentionally does not claim to solve
 that broader accounting problem or to make every query strictly memory bounded.
+
+The subsequent expression-accounting implementation and its remaining limits are
+recorded in [expression-budget-review.md](expression-budget-review.md). That
+follow-up supersedes the scalar-budget gap above; neither report claims an exact
+Go heap/RSS cap.

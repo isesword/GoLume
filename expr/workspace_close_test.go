@@ -8,7 +8,7 @@ import (
 )
 
 func TestScalarWorkspaceCloseDropsAllRegisters(t *testing.T) {
-	manager := memory.NewBudgetManager(1024)
+	manager := memory.NewBudgetManager(1 << 20)
 	w := &ScalarWorkspace{}
 	w.SetMemoryManager(context.Background(), manager)
 	w.Ensure(1, 2)
@@ -29,11 +29,12 @@ func TestScalarWorkspaceCloseDropsAllRegisters(t *testing.T) {
 		t.Fatal(err)
 	}
 	w.Ensure(1, 1)
-	if err := w.regs[0].reserve(64); err != nil {
+	before := manager.Used()
+	if err := w.reserve(64); err != nil {
 		t.Fatal(err)
 	}
-	if manager.Used() != 64 {
-		t.Fatalf("reused workspace charge=%d, want 64", manager.Used())
+	if manager.Used() != before+64 {
+		t.Fatalf("reused workspace charge=%d, want metadata plus 64", manager.Used())
 	}
 	_ = w.Close()
 }
