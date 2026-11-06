@@ -15,7 +15,7 @@ Branch: `fix/foundation-cse-memory-lifecycle`.
 - Add regression tests for the collisions, reservation rejection and release,
   zero allocations on rejected join scratch, and workspace Close/reuse.
 
-## Review and verification
+## Initial review and verification
 
 Repository CI and `docs/TESTING_INFRA.md` were read. No `AGENTS.md` or
 `CONTRIBUTING` file exists in the base tree. Changes received a separate static
@@ -68,6 +68,59 @@ GitHub nevertheless recorded a `BuildFailed` run with `startup_failure` and no
 jobs: https://github.com/isesword/GoLume/actions/runs/42174941177 .
 This is not a successful remote CI run; its underlying startup reason was not
 available in the workflow/job responses.
+
+## Synthetic Parquet follow-up
+
+The original binary could not be retrieved through the text-only connector.
+At the user's request, `tools/genfallbackfixture` now generates a separate,
+deterministic functional-test substitute. It does **not** reproduce the original
+fixture's bytes, distributions, encoding choices, statistics, or performance.
+The tracked `testdata/bench-1m.parquet` is unchanged on the remote branch.
+
+Generated artifact:
+
+- Path: `testdata/bench-1m.synthetic.parquet` (local only, not committed).
+- Required schema: `pred:int64`, `key:int32`, `value:int64`.
+- 1,048,576 rows, 17 Snappy row groups, no dictionary encoding, no nulls.
+- 3,566,591 bytes.
+- SHA-256: `115f46c063da52e2b3b8c883522e8d29a4559b410772bc08681a87235d783876`.
+- Two independent generations produced the same bytes.
+
+The synthetic data is deliberately constructed to satisfy the unchanged
+historical summary assertions: 472,475 selected rows, 219,196 groups, and
+236,716,301 sum. This alone is not a correctness oracle. The generator also
+computes a plain row-loop map and compares **every group's count and sum** with
+materialized results from direct-fused, bitmap-direct, and radix execution.
+All three comparisons passed. The input includes threshold boundary values,
+negative rejected values with disjoint keys, repeated keys across row groups,
+and non-round batch/row-group tails.
+
+Generation refuses to overwrite an existing file or symlink; both protections
+are tested. Reproduce with:
+
+```sh
+go run ./tools/genfallbackfixture
+```
+
+During this validation only, the absent local hardcoded fixture path was a
+symlink to the generated synthetic file. No existing tests or assertions were changed,
+and neither binary data nor the local symlink is included in the commit.
+
+Results with the substitute:
+
+- All six previously blocked tests passed: TestRadixHonorsMemoryBudget,
+  TestParquetStrategies (all strategies), TestMaterialize (all strategies),
+  TestPreparedQueryRetainsAndReleasesWorkspace,
+  TestLazyParquetAggregateEndToEnd, TestLazyPreparedRepeatedExecution.
+- Full scalar and SIMD suites ran; the only failing test was the unchanged
+  Linux-sensitive `internal/kernelgate.TestGateErrors` described above.
+- `GOEXPERIMENT=simd go test -race ./engine ./lazy ./physical` passed with the
+  substitute present, including the formerly blocked fixture tests.
+- Generator tests, vet, and GoDoc checks passed.
+
+This establishes functional coverage on the new dataset. Original-fixture
+reproduction, null/dictionary/compression-distribution coverage, performance
+comparability, and a fully green remote CI run remain unverified.
 
 ## Remaining risk
 
