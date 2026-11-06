@@ -17,13 +17,13 @@ type kernelRecordingSource struct {
 	seenOptions []source.ReadOptions
 }
 
-func (s *kernelRecordingSource) NewReader(ctx context.Context, opts source.ReadOptions) (source.Reader, error) {
+func (s *kernelRecordingSource) NewBatchStream(ctx context.Context, opts source.ReadOptions) (source.BatchStream, error) {
 	if err := opts.Validate(); err != nil {
 		return nil, err
 	}
 	s.seen = append(s.seen, opts.Kernels)
 	s.seenOptions = append(s.seenOptions, opts)
-	return openTestReader(ctx, s.Source, opts)
+	return source.OpenBatchStream(ctx, s.Source, opts)
 }
 
 func propagationBase(t *testing.T) source.Source {
@@ -72,7 +72,7 @@ func TestPhysicalWrappersPropagateExactKernelSet(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			reader, err := openTestReader(context.Background(), wrapped, opts)
+			reader, err := source.OpenBatchStream(context.Background(), wrapped, opts)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -83,7 +83,7 @@ func TestPhysicalWrappersPropagateExactKernelSet(t *testing.T) {
 			if len(recorder.seenOptions) != 1 || recorder.seenOptions[0] != opts {
 				t.Fatalf("received read options=%+v want=%+v", recorder.seenOptions, opts)
 			}
-			if _, err := openTestReader(context.Background(), wrapped, source.ReadOptions{}); err == nil {
+			if _, err := source.OpenBatchStream(context.Background(), wrapped, source.ReadOptions{}); err == nil {
 				t.Fatal("zero ReadOptions must fail")
 			}
 		})
@@ -102,7 +102,7 @@ func TestJoinPropagatesAndRequiresExactKernelSet(t *testing.T) {
 	if len(right.seen) != 1 || right.seen[0] != kernels {
 		t.Fatalf("build side received %v", right.seen)
 	}
-	reader, err := openTestReader(context.Background(), joined, source.ReadOptions{Kernels: kernels})
+	reader, err := source.OpenBatchStream(context.Background(), joined, source.ReadOptions{Kernels: kernels})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -110,7 +110,7 @@ func TestJoinPropagatesAndRequiresExactKernelSet(t *testing.T) {
 	if len(left.seen) != 1 || left.seen[0] != kernels {
 		t.Fatalf("probe side received %v", left.seen)
 	}
-	if _, err := openTestReader(context.Background(), joined, source.ReadOptions{Kernels: kernel.New(kernel.ModeSIMD)}); err == nil {
+	if _, err := source.OpenBatchStream(context.Background(), joined, source.ReadOptions{Kernels: kernel.New(kernel.ModeSIMD)}); err == nil {
 		t.Fatal("join accepted a different Set with the same mode")
 	}
 }

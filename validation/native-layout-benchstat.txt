@@ -1,0 +1,28 @@
+goos: linux
+goarch: amd64
+pkg: gocolumn/engine
+cpu: AMD EPYC 9V74 80-Core Processor                
+                                                             │ engine-layout-frozen.txt │ engine-layout-state-cell.txt │ engine-layout-probe-header.txt │
+                                                             │                   sec/op                   │          sec/op           vs base              │           sec/op            vs base              │
+Int32ComparisonKernelMode/direct-fused/select=50/mode=scalar                                 8.303m ± ∞ ¹               8.654m ± ∞ ¹       ~ (p=0.310 n=5)                 8.234m ± ∞ ¹       ~ (p=0.690 n=5)
+Int32ComparisonKernelMode/direct-fused/select=50/mode=simd                                   8.344m ± ∞ ¹               8.570m ± ∞ ¹       ~ (p=0.222 n=5)                 8.582m ± ∞ ¹       ~ (p=0.222 n=5)
+PreparedStreamW4-4                                                                           16.40m ± ∞ ¹               16.73m ± ∞ ¹       ~ (p=0.151 n=5)                 17.71m ± ∞ ¹  +8.01% (p=0.032 n=5)
+geomean                                                                                      10.43m                     10.75m        +2.99%                               10.78m        +3.28%
+¹ need >= 6 samples for confidence interval at level 0.95
+
+                                                             │ engine-layout-frozen.txt │ engine-layout-state-cell.txt │ engine-layout-probe-header.txt │
+                                                             │                    B/op                    │           B/op            vs base              │            B/op             vs base              │
+Int32ComparisonKernelMode/direct-fused/select=50/mode=scalar                                45.01Ki ± ∞ ¹              45.07Ki ± ∞ ¹  +0.14% (p=0.008 n=5)                45.01Ki ± ∞ ¹       ~ (p=1.000 n=5)
+Int32ComparisonKernelMode/direct-fused/select=50/mode=simd                                  45.01Ki ± ∞ ¹              45.07Ki ± ∞ ¹  +0.14% (p=0.008 n=5)                45.01Ki ± ∞ ¹       ~ (p=0.524 n=5)
+PreparedStreamW4-4                                                                          51.22Mi ± ∞ ¹              51.23Mi ± ∞ ¹  +0.03% (p=0.008 n=5)                51.22Mi ± ∞ ¹       ~ (p=0.095 n=5)
+geomean                                                                                     473.6Ki                    474.1Ki        +0.10%                              473.6Ki        -0.00%
+¹ need >= 6 samples for confidence interval at level 0.95
+
+                                                             │ engine-layout-frozen.txt │ engine-layout-state-cell.txt │ engine-layout-probe-header.txt │
+                                                             │                 allocs/op                  │       allocs/op         vs base                │         allocs/op           vs base              │
+Int32ComparisonKernelMode/direct-fused/select=50/mode=scalar                                  169.0 ± ∞ ¹              169.0 ± ∞ ¹       ~ (p=1.000 n=5) ²                  168.0 ± ∞ ¹  -0.59% (p=0.008 n=5)
+Int32ComparisonKernelMode/direct-fused/select=50/mode=simd                                    169.0 ± ∞ ¹              169.0 ± ∞ ¹       ~ (p=1.000 n=5) ²                  168.0 ± ∞ ¹  -0.59% (p=0.008 n=5)
+PreparedStreamW4-4                                                                           11.71k ± ∞ ¹             11.20k ± ∞ ¹  -4.36% (p=0.008 n=5)                   11.46k ± ∞ ¹  -2.19% (p=0.008 n=5)
+geomean                                                                                       694.2                    683.9        -1.48%                                  686.4        -1.13%
+¹ need >= 6 samples for confidence interval at level 0.95
+² all samples are equal

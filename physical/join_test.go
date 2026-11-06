@@ -38,14 +38,14 @@ func TestJoinSourceFeedsColumnarPayload(t *testing.T) {
 	if !stats.RowsUpperBound {
 		t.Fatalf("join stats should mark row count as upper bound: %+v", stats)
 	}
-	r, err := openTestReader(context.Background(), js, source.ReadOptions{Kernels: kernels})
+	r, err := source.OpenBatchStream(context.Background(), js, source.ReadOptions{Kernels: kernels})
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer r.Close()
 	out := memory.NewBatch()
-	if err := r.ReadPartition(context.Background(), parts[0], out); err != nil {
-		t.Fatal(err)
+	if ok, err := r.Next(context.Background(), out); err != nil || !ok {
+		t.Fatalf("next: ok=%v err=%v", ok, err)
 	}
 	ids, _ := out.Int32("id")
 	bonus, _ := out.Int64("bonus")
@@ -87,15 +87,14 @@ func TestJoinSourceNativeInt8KeyAndPayload(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer js.Close()
-	parts, _ := js.Partitions(context.Background())
-	r, err := openTestReader(context.Background(), js, source.ReadOptions{Kernels: kernels})
+	r, err := source.OpenBatchStream(context.Background(), js, source.ReadOptions{Kernels: kernels})
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer r.Close()
 	out := memory.NewBatch()
-	if err := r.ReadPartition(context.Background(), parts[0], out); err != nil {
-		t.Fatal(err)
+	if ok, err := r.Next(context.Background(), out); err != nil || !ok {
+		t.Fatalf("next: ok=%v err=%v", ok, err)
 	}
 	ids, err := out.Int8("id")
 	if err != nil {
@@ -115,25 +114,28 @@ type countingSource struct {
 	reads int
 }
 
-type countingReader struct {
+type countingStream struct {
 	parent *countingSource
-	inner  source.Reader
+	inner  source.BatchStream
 }
 
-func (s *countingSource) NewReader(ctx context.Context, opts source.ReadOptions) (source.Reader, error) {
-	r, err := openTestReader(ctx, s.Source, opts)
+func (s *countingSource) NewBatchStream(ctx context.Context, opts source.ReadOptions) (source.BatchStream, error) {
+	r, err := source.OpenBatchStream(ctx, s.Source, opts)
 	if err != nil {
 		return nil, err
 	}
-	return &countingReader{parent: s, inner: r}, nil
+	return &countingStream{parent: s, inner: r}, nil
 }
 
-func (r *countingReader) ReadPartition(ctx context.Context, p source.Partition, dst *memory.Batch) error {
-	r.parent.reads++
-	return r.inner.ReadPartition(ctx, p, dst)
+func (r *countingStream) Next(ctx context.Context, dst *memory.Batch) (bool, error) {
+	ok, err := r.inner.Next(ctx, dst)
+	if ok {
+		r.parent.reads++
+	}
+	return ok, err
 }
 
-func (r *countingReader) Close() error { return r.inner.Close() }
+func (r *countingStream) Close() error { return r.inner.Close() }
 
 func TestJoinSourcePrepareDoesNotReadProbeSide(t *testing.T) {
 	schema := memory.NewSchema(memory.Field{Name: "id", Type: memory.TypeInt32})
@@ -155,15 +157,14 @@ func TestJoinSourcePrepareDoesNotReadProbeSide(t *testing.T) {
 	if left.reads != 0 {
 		t.Fatalf("prepare read probe side %d times", left.reads)
 	}
-	parts, _ := js.Partitions(context.Background())
-	r, err := openTestReader(context.Background(), js, source.ReadOptions{Kernels: kernels})
+	r, err := source.OpenBatchStream(context.Background(), js, source.ReadOptions{Kernels: kernels})
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer r.Close()
 	out := memory.NewBatch()
-	if err := r.ReadPartition(context.Background(), parts[0], out); err != nil {
-		t.Fatal(err)
+	if ok, err := r.Next(context.Background(), out); err != nil || !ok {
+		t.Fatalf("next: ok=%v err=%v", ok, err)
 	}
 	if left.reads != 1 {
 		t.Fatalf("execute probe reads=%d want=1", left.reads)
@@ -196,12 +197,11 @@ func TestJoinSourceUsesRadixForLargeFixedBuild(t *testing.T) {
 	if got := js.Strategy(); got != "radix-hash/16" {
 		t.Fatalf("strategy=%q", got)
 	}
-	parts, _ := js.Partitions(context.Background())
-	r, _ := openTestReader(context.Background(), js, source.ReadOptions{Kernels: kernels})
+	r, _ := source.OpenBatchStream(context.Background(), js, source.ReadOptions{Kernels: kernels})
 	defer r.Close()
 	out := memory.NewBatch()
-	if err := r.ReadPartition(context.Background(), parts[0], out); err != nil {
-		t.Fatal(err)
+	if ok, err := r.Next(context.Background(), out); err != nil || !ok {
+		t.Fatalf("next: ok=%v err=%v", ok, err)
 	}
 	if out.Rows != 2 {
 		t.Fatalf("rows=%d", out.Rows)
@@ -229,12 +229,11 @@ func TestParallelRadixJoinSource(t *testing.T) {
 	if got := js.Strategy(); got != "parallel-radix-hash/4/w4" {
 		t.Fatalf("strategy=%q", got)
 	}
-	parts, _ := js.Partitions(context.Background())
-	r, _ := openTestReader(context.Background(), js, source.ReadOptions{Kernels: kernels})
+	r, _ := source.OpenBatchStream(context.Background(), js, source.ReadOptions{Kernels: kernels})
 	defer r.Close()
 	out := memory.NewBatch()
-	if err := r.ReadPartition(context.Background(), parts[0], out); err != nil {
-		t.Fatal(err)
+	if ok, err := r.Next(context.Background(), out); err != nil || !ok {
+		t.Fatalf("next: ok=%v err=%v", ok, err)
 	}
 	if out.Rows != 3 {
 		t.Fatalf("rows=%d want=3", out.Rows)
@@ -293,4 +292,122 @@ func TestBoundedBroadcastDictionaryJoinNormalizesDomains(t *testing.T) {
 		t.Fatalf("ok=%v rows=%d diagnostics=%v", ok, batch.Rows, stream.(source.BatchStreamDiagnostics).StreamDiagnostics())
 	}
 	_ = stream.Close()
+}
+
+func TestResidentJoinReadsOnlyRequestedProbePartitions(t *testing.T) {
+	ctx := context.Background()
+	schema := memory.NewSchema(memory.Field{Name: "id", Type: memory.TypeInt32})
+	var batches []*memory.Batch
+	for _, value := range []int32{1, 2, 3} {
+		batch := memory.NewBatch()
+		batch.Int32s["id"] = &memory.Int32Vector{Values: []int32{value}}
+		batch.Reset(1)
+		batches = append(batches, batch)
+	}
+	left, err := inmemory.New(schema, batches...)
+	if err != nil {
+		t.Fatal(err)
+	}
+	right, err := inmemory.New(schema, batches...)
+	if err != nil {
+		t.Fatal(err)
+	}
+	kernels := kernel.New(kernel.ModeScalar)
+	for _, typ := range []join.Type{join.Inner, join.Left, join.Semi, join.Anti} {
+		t.Run(typ.String(), func(t *testing.T) {
+			joined, err := NewJoinSource(ctx, left, right, typ, []JoinKey{{Left: "id", Right: "id"}}, "", nil, kernels)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer joined.Close()
+			parts, err := joined.Partitions(ctx)
+			if err != nil {
+				t.Fatal(err)
+			}
+			stream, err := source.OpenBatchStreamWithPartitions(ctx, joined, source.ReadOptions{Kernels: kernels, BatchRows: 1}, parts[1:2])
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer stream.Close()
+			batch := memory.NewBatch()
+			defer batch.ReleaseOwned()
+			var got []int32
+			for {
+				ok, err := stream.Next(ctx, batch)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if !ok {
+					break
+				}
+				got = append(got, batch.Int32s["id"].Values...)
+			}
+			if typ == join.Anti {
+				if len(got) != 0 {
+					t.Fatalf("anti rows=%v want empty", got)
+				}
+			} else if len(got) != 1 || got[0] != 2 {
+				t.Fatalf("selected partition rows=%v want [2]", got)
+			}
+			empty, err := source.OpenBatchStreamWithPartitions(ctx, joined, source.ReadOptions{Kernels: kernels}, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			stats, err := source.DrainBatchStream(ctx, empty)
+			if err != nil || stats.Rows != 0 {
+				t.Fatalf("empty subset rows=%d err=%v", stats.Rows, err)
+			}
+			repeated, err := source.OpenBatchStreamWithPartitions(ctx, joined, source.ReadOptions{Kernels: kernels}, []source.Partition{parts[1], parts[1]})
+			if err != nil {
+				t.Fatal(err)
+			}
+			repeatedStats, err := source.DrainBatchStream(ctx, repeated)
+			wantRepeated := int64(2)
+			if typ == join.Anti {
+				wantRepeated = 0
+			}
+			if err != nil || repeatedStats.Rows != wantRepeated {
+				t.Fatalf("repeated partition rows=%d want=%d err=%v", repeatedStats.Rows, wantRepeated, err)
+			}
+			if stream, err := source.OpenBatchStreamWithPartitions(ctx, joined, source.ReadOptions{Kernels: kernels}, []source.Partition{{ID: len(parts)}}); err == nil {
+				_ = stream.Close()
+				t.Fatal("invalid partition accepted")
+			}
+		})
+	}
+}
+
+func TestGlobalJoinRejectsPartitionSubsets(t *testing.T) {
+	ctx := context.Background()
+	schema := memory.NewSchema(memory.Field{Name: "id", Type: memory.TypeInt32})
+	batch := memory.NewBatch()
+	batch.Int32s["id"] = &memory.Int32Vector{Values: []int32{1, 2}}
+	batch.Reset(2)
+	input, err := inmemory.New(schema, batch)
+	if err != nil {
+		t.Fatal(err)
+	}
+	kernels := kernel.New(kernel.ModeScalar)
+	for _, typ := range []join.Type{join.Right, join.Full} {
+		joined, err := NewJoinSource(ctx, input, input, typ, []JoinKey{{Left: "id", Right: "id"}}, "", nil, kernels)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if source.CanParallelizePartitions(joined.StreamPlan()) {
+			t.Fatalf("%s join advertises independent partitions", typ)
+		}
+		if stream, err := source.OpenBatchStreamWithPartitions(ctx, joined, source.ReadOptions{Kernels: kernels}, []source.Partition{{ID: 0}}); err == nil {
+			_ = stream.Close()
+			t.Fatalf("%s join accepted partition subset", typ)
+		}
+		stream, err := source.OpenBatchStream(ctx, joined, source.ReadOptions{Kernels: kernels})
+		if err != nil {
+			t.Fatal(err)
+		}
+		stats, err := source.DrainBatchStream(ctx, stream)
+		if err != nil || stats.Rows != 2 {
+			t.Fatalf("%s global rows=%d err=%v", typ, stats.Rows, err)
+		}
+		_ = joined.Close()
+	}
 }

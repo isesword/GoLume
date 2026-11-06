@@ -27,25 +27,25 @@ func TestPreparedLazyPipelinesRetainEngineKernelSet(t *testing.T) {
 	defer eng.Close()
 	session := NewSessionWithEngine(eng)
 
-	frame, err := session.FromSource(kernelSetTestSource(t, []int32{1, 2, 3})).Limit(2).PrepareFrame(context.Background())
+	frame, err := session.FromSource(kernelSetTestSource(t, []int32{1, 2, 3})).Limit(2).Prepare(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer frame.Close()
 	if frame.kernels != eng.KernelSet() {
-		t.Fatal("PreparedFrame did not retain the engine Set handle")
+		t.Fatal("PreparedDataFrame did not retain the engine Set handle")
 	}
 
 	joined := session.FromSource(kernelSetTestSource(t, []int32{1, 2, 3})).Join(
 		session.FromSource(kernelSetTestSource(t, []int32{2, 3, 4})),
 		JoinOptions{Type: InnerJoin, LeftOn: []string{"id"}, RightOn: []string{"id"}},
 	)
-	preparedJoin, err := joined.PrepareJoin(context.Background())
+	preparedJoin, err := joined.Prepare(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer preparedJoin.Close()
-	if preparedJoin.kernel != eng.KernelSet() {
-		t.Fatal("terminal PreparedJoin did not retain the engine Set handle")
+	if preparedJoin.kernels != eng.KernelSet() {
+		t.Fatal("prepared join pipeline did not retain the engine Set handle")
 	}
 }

@@ -244,7 +244,7 @@ func (s *JoinSource) StreamPlan() source.StreamPlanNode {
 		// Right and Full need one query-wide matched-build bitmap before their
 		// unmatched build rows can be emitted. Running one stream per probe
 		// partition would duplicate those rows or require an unbounded merge.
-		PartitionParallel: !s.spillable && !s.merge && s.typ != join.Right && s.typ != join.Full,
+		PartitionParallel: s.partitionParallel(),
 		Children:          []source.StreamPlanNode{source.StreamPlanOf(s.left), source.StreamPlanOf(s.right)},
 	}
 }
@@ -539,9 +539,9 @@ func (s *JoinSource) buildRight(ctx context.Context, manager memory.Manager) err
 		}
 		defer scratch.Release()
 	}
-	rd, err := source.OpenBatchStreamWithPartitions(ctx, s.right, source.ReadOptions{
+	rd, err := source.OpenBatchStream(ctx, s.right, source.ReadOptions{
 		Kernels: s.kernels, MemoryManager: memory.ClassifiedManager(manager, "SourceScan", memory.MemoryWorkspace),
-	}, parts)
+	})
 	if err != nil {
 		return err
 	}

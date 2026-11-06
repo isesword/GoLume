@@ -29,7 +29,7 @@ func TestLazyListStringSurvivesFilterSortLimitAndProjection(t *testing.T) {
 		Sort(Desc("id")).
 		Limit(3).
 		SelectExprs(Col("tags").Alias("result")).
-		CollectFrame(context.Background())
+		Collect(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -74,7 +74,7 @@ func TestLazyLeftJoinMaterializesListStringPayload(t *testing.T) {
 	frame, err := session.FromSource(left).
 		Join(session.FromSource(right), JoinOptions{Type: LeftJoin, LeftOn: []string{"k"}, RightOn: []string{"rk"}}).
 		SelectExprs(Col("k").Alias("k"), Col("tags").Alias("tags")).
-		CollectFrame(context.Background())
+		Collect(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}

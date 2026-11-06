@@ -117,18 +117,14 @@ func TestOpenFileReadsFloat64AndBool(t *testing.T) {
 		}
 	}
 
-	r, err := src.NewReader(context.Background(), testReadOptions())
+	r, err := src.NewBatchStream(context.Background(), testReadOptions())
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer r.Close()
-	parts, err := src.Partitions(context.Background())
-	if err != nil {
-		t.Fatal(err)
-	}
 	batch := memory.NewBatch()
-	if err := r.ReadPartition(context.Background(), parts[0], batch); err != nil {
-		t.Fatal(err)
+	if ok, err := r.Next(context.Background(), batch); !ok || err != nil {
+		t.Fatalf("first batch: ok=%v err=%v", ok, err)
 	}
 	if batch.Rows != 3 {
 		t.Fatalf("rows=%d, want 3", batch.Rows)
@@ -190,18 +186,14 @@ func TestOpenFileReadsFloat64SpecialValues(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	r, err := src.NewReader(context.Background(), testReadOptions())
+	r, err := src.NewBatchStream(context.Background(), testReadOptions())
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer r.Close()
-	parts, err := src.Partitions(context.Background())
-	if err != nil {
-		t.Fatal(err)
-	}
 	batch := memory.NewBatch()
-	if err := r.ReadPartition(context.Background(), parts[0], batch); err != nil {
-		t.Fatal(err)
+	if ok, err := r.Next(context.Background(), batch); !ok || err != nil {
+		t.Fatalf("first batch: ok=%v err=%v", ok, err)
 	}
 	v, err := batch.Float64("f")
 	if err != nil {
@@ -318,20 +310,20 @@ func TestFloat64PruningMatchesRowFilter(t *testing.T) {
 
 	readAll := func(s *Source) []float64 {
 		t.Helper()
-		r, err := s.NewReader(ctx, testReadOptions())
+		r, err := s.NewBatchStream(ctx, testReadOptions())
 		if err != nil {
 			t.Fatal(err)
 		}
 		defer r.Close()
-		parts, err := s.Partitions(ctx)
-		if err != nil {
-			t.Fatal(err)
-		}
 		var out []float64
 		batch := memory.NewBatch()
-		for _, p := range parts {
-			if err := r.ReadPartition(ctx, p, batch); err != nil {
+		for {
+			ok, err := r.Next(ctx, batch)
+			if err != nil {
 				t.Fatal(err)
+			}
+			if !ok {
+				break
 			}
 			v, err := batch.Float64("f")
 			if err != nil {
@@ -490,18 +482,14 @@ func TestFloat64NaNDoesNotFalsePrune(t *testing.T) {
 	if report.SelectedPartitions != 1 {
 		t.Fatalf("NaN row group was pruned despite matching value 5: %+v", report)
 	}
-	r, err := pushed.(source.LegacyReaderSource).NewReader(context.Background(), testReadOptions())
+	r, err := source.OpenBatchStream(context.Background(), pushed, testReadOptions())
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer r.Close()
-	parts, err := pushed.Partitions(context.Background())
-	if err != nil {
-		t.Fatal(err)
-	}
 	batch := memory.NewBatch()
-	if err := r.ReadPartition(context.Background(), parts[0], batch); err != nil {
-		t.Fatal(err)
+	if ok, err := r.Next(context.Background(), batch); !ok || err != nil {
+		t.Fatalf("first batch: ok=%v err=%v", ok, err)
 	}
 	v, err := batch.Float64("f")
 	if err != nil {
@@ -604,14 +592,14 @@ func TestFloat64BoolCombinedPushdown(t *testing.T) {
 	if len(parts) != 1 || parts[0].ID != 1 {
 		t.Fatalf("parts=%v", parts)
 	}
-	r, err := pushed.(source.LegacyReaderSource).NewReader(context.Background(), testReadOptions())
+	r, err := source.OpenBatchStream(context.Background(), pushed, testReadOptions())
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer r.Close()
 	batch := memory.NewBatch()
-	if err := r.ReadPartition(context.Background(), parts[0], batch); err != nil {
-		t.Fatal(err)
+	if ok, err := r.Next(context.Background(), batch); !ok || err != nil {
+		t.Fatalf("first batch: ok=%v err=%v", ok, err)
 	}
 	v, err := batch.Float64("f")
 	if err != nil {

@@ -3,7 +3,6 @@ package lazy
 import (
 	"context"
 	"errors"
-	"fmt"
 	"gocolumn/engine"
 	"gocolumn/memory"
 	"gocolumn/source"
@@ -28,8 +27,8 @@ func TestPhase30CollectUsesNativeStreamAndAcceptsMultipleOutputs(t *testing.T) {
 	if got := frameInt64Column(t, df, "x"); !equalI64(got, []int64{1, 2, 3, 4, 5, 6}) {
 		t.Fatalf("stream output=%v", got)
 	}
-	if src.readerCalls.Load() != 0 || src.streamCalls.Load() != 1 || src.closeCalls.Load() != 1 {
-		t.Fatalf("reader=%d stream=%d close=%d", src.readerCalls.Load(), src.streamCalls.Load(), src.closeCalls.Load())
+	if src.streamCalls.Load() != 1 || src.closeCalls.Load() != 1 {
+		t.Fatalf("stream=%d close=%d", src.streamCalls.Load(), src.closeCalls.Load())
 	}
 }
 
@@ -156,8 +155,8 @@ func TestPhase30LimitStopsReadingUpstreamPartitions(t *testing.T) {
 	if got := frameInt64Column(t, df, "x"); !equalI64(got, []int64{1}) {
 		t.Fatalf("limit output=%v", got)
 	}
-	if src.reader.readCalls != 1 || src.reader.closeCalls != 1 {
-		t.Fatalf("upstream read calls=%d close calls=%d", src.reader.readCalls, src.reader.closeCalls)
+	if src.stream.readCalls != 1 || src.stream.closeCalls != 1 {
+		t.Fatalf("upstream read calls=%d close calls=%d", src.stream.readCalls, src.stream.closeCalls)
 	}
 }
 
@@ -190,7 +189,6 @@ func TestPhase30CollectJoinsStreamAndCloseErrorsWithoutBudgetLeak(t *testing.T) 
 type phase30NativeStreamSource struct {
 	schema      memory.Schema
 	values      [][]int64
-	readerCalls atomic.Int64
 	streamCalls atomic.Int64
 	closeCalls  atomic.Int64
 	nextErr     error
@@ -208,10 +206,6 @@ func (s *phase30NativeStreamSource) Stats(context.Context) (source.Stats, error)
 }
 func (s *phase30NativeStreamSource) Partitions(context.Context) ([]source.Partition, error) {
 	return []source.Partition{{ID: 0}}, nil
-}
-func (s *phase30NativeStreamSource) NewReader(context.Context, source.ReadOptions) (source.Reader, error) {
-	s.readerCalls.Add(1)
-	return nil, fmt.Errorf("partition reader must not be opened")
 }
 func (s *phase30NativeStreamSource) NewBatchStream(_ context.Context, opts source.ReadOptions) (source.BatchStream, error) {
 	if err := opts.Validate(); err != nil {
@@ -260,7 +254,7 @@ func (s *phase30NativeStream) Close() error {
 
 type phase30CountingPartitionSource struct {
 	parts  []source.Partition
-	reader *phase30CountingPartitionReader
+	stream *phase30CountingStream
 }
 
 func newPhase30CountingPartitionSource(partitions int) *phase30CountingPartitionSource {
@@ -268,7 +262,7 @@ func newPhase30CountingPartitionSource(partitions int) *phase30CountingPartition
 	for i := range parts {
 		parts[i] = source.Partition{ID: i, Rows: 2}
 	}
-	return &phase30CountingPartitionSource{parts: parts, reader: &phase30CountingPartitionReader{}}
+	return &phase30CountingPartitionSource{parts: parts, stream: &phase30CountingStream{rows: partitions * 2}}
 }
 
 func (*phase30CountingPartitionSource) Schema() memory.Schema {
@@ -280,32 +274,53 @@ func (s *phase30CountingPartitionSource) Stats(context.Context) (source.Stats, e
 func (s *phase30CountingPartitionSource) Partitions(context.Context) ([]source.Partition, error) {
 	return append([]source.Partition(nil), s.parts...), nil
 }
-func (s *phase30CountingPartitionSource) NewReader(_ context.Context, opts source.ReadOptions) (source.Reader, error) {
+func (s *phase30CountingPartitionSource) NewBatchStream(_ context.Context, opts source.ReadOptions) (source.BatchStream, error) {
 	if err := opts.Validate(); err != nil {
 		return nil, err
 	}
-	return s.reader, nil
+	s.stream.batchRows = opts.Normalize().BatchRows
+	return s.stream, nil
 }
 
-type phase30CountingPartitionReader struct {
-	readCalls  int
-	closeCalls int
+type phase30CountingStream struct {
+	rows, next, batchRows int
+	readCalls, closeCalls int
+	closed                bool
 }
 
-func (r *phase30CountingPartitionReader) ReadPartition(_ context.Context, part source.Partition, dst *memory.Batch) error {
-	r.readCalls++
-	base := int64(part.ID*2 + 1)
+func (s *phase30CountingStream) Next(ctx context.Context, dst *memory.Batch) (bool, error) {
 	dst.ClearColumns()
-	dst.Int64s["x"] = &memory.Int64Vector{Values: []int64{base, base + 1}}
-	dst.Reset(2)
-	return nil
+	if s.closed {
+		return false, source.ErrBatchStreamClosed
+	}
+	if err := ctx.Err(); err != nil {
+		return false, err
+	}
+	if s.next == s.rows {
+		return false, nil
+	}
+	// Deliberately emit two rows at a time, independent of source partitions,
+	// while honoring a smaller caller-provided batch bound.
+	count := min(2, s.batchRows, s.rows-s.next)
+	values := make([]int64, count)
+	for i := range values {
+		values[i] = int64(s.next + i + 1)
+	}
+	s.next += count
+	s.readCalls++
+	dst.Int64s["x"] = &memory.Int64Vector{Values: values}
+	dst.Reset(count)
+	return true, nil
 }
-func (r *phase30CountingPartitionReader) Close() error {
-	r.closeCalls++
+func (s *phase30CountingStream) Close() error {
+	if !s.closed {
+		s.closed = true
+		s.closeCalls++
+	}
 	return nil
 }
 
 var _ source.BatchStreamProvider = (*phase30NativeStreamSource)(nil)
 var _ source.BatchStream = (*phase30NativeStream)(nil)
 var _ source.Source = (*phase30CountingPartitionSource)(nil)
-var _ source.Reader = (*phase30CountingPartitionReader)(nil)
+var _ source.BatchStream = (*phase30CountingStream)(nil)

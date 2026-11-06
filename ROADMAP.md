@@ -1,5 +1,8 @@
 # Roadmap
 
+Historical phase reports below describe the API at their original dates. For the
+current breaking native-stream migration, see [STREAM_MIGRATION.md](docs/STREAM_MIGRATION.md).
+
 ## Completed
 
 ### Phase 1

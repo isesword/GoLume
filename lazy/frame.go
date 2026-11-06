@@ -19,7 +19,6 @@ import (
 	"math"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 )
 
@@ -36,13 +35,6 @@ type LazyFrame struct {
 
 func parseDiagInt(values map[string]string, key string, fallback int) int {
 	if value, err := strconv.Atoi(values[key]); err == nil {
-		return value
-	}
-	return fallback
-}
-
-func parseDiagInt64(values map[string]string, key string, fallback int64) int64 {
-	if value, err := strconv.ParseInt(values[key], 10, 64); err == nil {
 		return value
 	}
 	return fallback
@@ -107,7 +99,7 @@ func PartitionBy(columns ...string) []string { return append([]string(nil), colu
 func OrderBy(keys ...SortExpr) []SortExpr { return append([]SortExpr(nil), keys...) }
 
 // NewWindow creates a window specification. Validation is deferred to Schema,
-// PrepareFrame, or CollectFrame so builders remain immutable and composable.
+// Prepare, or Collect so builders remain immutable and composable.
 func NewWindow(partitionBy []string, orderBy []SortExpr) WindowSpec {
 	keys := make([]logical.SortKey, len(orderBy))
 	for i, key := range orderBy {
@@ -203,19 +195,13 @@ func DescExprNullsFirst(value expr.Expr) SortExpr {
 	return SortExpr{Expr: value, Descending: true}
 }
 
-// PreparedResult is a specialized aggregate query with reusable engine
-// workspaces and execution diagnostics.
+// PreparedResult is a reusable aggregate result terminal over a prepared
+// DataFrame stream graph.
 type PreparedResult struct {
-	mu    sync.Mutex
-	frame *PreparedFrame
+	frame *PreparedDataFrame
+	query *engine.PreparedQuery
 	plan  engine.PlanInfo
-	// executeSlots preserves the legacy PrepareOptions.MaxConcurrency bound
-	// while executions are served by the native DataFrame stream graph.
-	executeSlots chan struct{}
 }
-
-// Prepared is a deprecated compatibility alias for PreparedResult.
-type Prepared = PreparedResult
 
 // Col constructs a logical column reference for fluent lazy expressions.
 func Col(name string) expr.Column { return expr.Col(name) }
@@ -584,7 +570,7 @@ func (f LazyFrame) ExplainPhysical(ctx context.Context) (string, error) {
 		return "", err
 	}
 	fmt.Fprintf(&b, "\n%s", summary)
-	fmt.Fprintf(&b, "\nPHYSICAL strategy=%s workers=%d radix_bits=%d key_width=%d predicate_ops=%d feedback_samples=%d est_selectivity=%.4f est_cardinality=%d", info.Strategy.Kind, info.Strategy.Workers, info.Strategy.RadixBits, info.KeyWidthBytes, info.PredicateOps, info.FeedbackSamples, info.EstimatedSelectivity, info.EstimatedCardinality)
+	fmt.Fprintf(&b, "\nPHYSICAL strategy=%s workers=%d key_width=%d predicate_ops=%d feedback_samples=%d est_selectivity=%.4f est_cardinality=%d", info.Strategy.Kind, info.Strategy.Workers, info.KeyWidthBytes, info.PredicateOps, info.FeedbackSamples, info.EstimatedSelectivity, info.EstimatedCardinality)
 	appendPushdownExplain(&b, report)
 	policy, policyErr := f.effectiveExecutionPolicy()
 	if policyErr != nil {
@@ -685,9 +671,20 @@ func closeClosers(closers []io.Closer) {
 	}
 }
 
-// PrepareResult creates the legacy specialized aggregate query. New code that
-// needs a DataFrame should use Prepare.
+// PrepareResult requires a terminal Aggregate and prepares the same physical
+// stream graph as Prepare. Execute can return counters and checksums without
+// retaining output rows, or materialize aggregate records when requested.
+// Use Prepare for row plans or operations applied after aggregation.
 func (f LazyFrame) PrepareResult(ctx context.Context, opts engine.PrepareOptions) (*PreparedResult, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	if ctx == nil {
+		return nil, fmt.Errorf("lazy prepared result context is nil")
+	}
+	if _, ok := f.plan.(*logical.Aggregate); !ok {
+		return nil, fmt.Errorf("PrepareResult requires a terminal Aggregate, got %T; use Prepare for row-producing plans", f.plan)
+	}
 	if opts.MaxConcurrency < 1 {
 		opts.MaxConcurrency = 1
 	}
@@ -696,11 +693,16 @@ func (f LazyFrame) PrepareResult(ctx context.Context, opts engine.PrepareOptions
 	if err != nil {
 		return nil, err
 	}
-	return &PreparedResult{frame: frame, plan: frame.planInfo, executeSlots: make(chan struct{}, opts.MaxConcurrency)}, nil
+	query := preparedAggregateQuery(frame.src)
+	if query == nil {
+		_ = frame.Close()
+		return nil, fmt.Errorf("PrepareResult physical root is not an aggregate: %T", frame.src)
+	}
+	return &PreparedResult{frame: frame, query: query, plan: query.Plan()}, nil
 }
 
-// CollectResult executes the legacy specialized aggregate path and returns
-// engine diagnostics. New code should use Collect for ordinary DataFrames.
+// CollectResult consumes the physical stream graph and returns aggregate
+// statistics and materialized records. Collect returns a columnar DataFrame.
 func (f LazyFrame) CollectResult(ctx context.Context) (engine.Result, error) {
 	prepared, err := f.PrepareResult(ctx, engine.PrepareOptions{})
 	if err != nil {
@@ -712,40 +714,24 @@ func (f LazyFrame) CollectResult(ctx context.Context) (engine.Result, error) {
 
 // Execute runs the prepared physical plan with caller-selected materialization.
 func (p *PreparedResult) Execute(ctx context.Context, opts engine.ExecuteOptions) (engine.Result, error) {
-	if p == nil {
-		return engine.Result{}, fmt.Errorf("lazy prepared query is nil")
+	if p == nil || p.frame == nil || p.query == nil {
+		return engine.Result{}, fmt.Errorf("lazy prepared result is nil")
 	}
 	if ctx == nil {
-		return engine.Result{}, fmt.Errorf("lazy prepared query context is nil")
+		return engine.Result{}, fmt.Errorf("lazy prepared result context is nil")
 	}
-	p.mu.Lock()
-	frame := p.frame
-	slots := p.executeSlots
-	p.mu.Unlock()
-	if frame == nil {
-		return engine.Result{}, fmt.Errorf("lazy prepared query is nil")
+	// Protect the complete prepared graph, including retained join build state,
+	// while the shared aggregate record terminal consumes it. The query owns its
+	// concurrency slots, execution budget, cancellation and result materialization.
+	p.frame.lifeMu.Lock()
+	if p.frame.closed {
+		p.frame.lifeMu.Unlock()
+		return engine.Result{}, engine.ErrPreparedClosed
 	}
-	if slots != nil {
-		select {
-		case slots <- struct{}{}:
-			defer func() { <-slots }()
-		case <-ctx.Done():
-			return engine.Result{}, ctx.Err()
-		}
-	}
-	preparedFrame := frame
-	dataFrame, err := preparedFrame.Execute(ctx)
-	if err != nil {
-		return engine.Result{}, err
-	}
-	defer dataFrame.Close()
-	diag := preparedFrame.lastDiagnostics()
-	result := engine.Result{Strategy: p.plan.Strategy}
-	result.GroupCount = parseDiagInt(diag, "groups", int(dataFrame.Height()))
-	result.SelectedRows = parseDiagInt(diag, "selected_rows", int(dataFrame.Height()))
-	result.Checksum = parseDiagInt64(diag, "checksum", 0)
-	result.Elapsed = 0
-	return result, nil
+	p.frame.active.Add(1)
+	p.frame.lifeMu.Unlock()
+	defer p.frame.active.Done()
+	return p.query.Execute(ctx, opts)
 }
 
 // Plan returns diagnostics from the underlying physical prepared query.
@@ -756,19 +742,12 @@ func (p *PreparedResult) Plan() engine.PlanInfo {
 	return p.plan
 }
 
-// Close releases retained workspaces owned by the prepared query.
+// Close waits for active terminal executions and releases the prepared graph.
 func (p *PreparedResult) Close() error {
-	if p == nil {
+	if p == nil || p.frame == nil {
 		return nil
 	}
-	p.mu.Lock()
-	frame := p.frame
-	p.frame = nil
-	p.mu.Unlock()
-	if frame == nil {
-		return nil
-	}
-	return frame.Close()
+	return p.frame.Close()
 }
 
 func (f LazyFrame) prepare(ctx context.Context, opts engine.PrepareOptions) (*engine.PreparedQuery, logical.Plan, source.PushdownReport, []io.Closer, error) {
@@ -1531,14 +1510,26 @@ func shouldUseExternalOrder(ctx context.Context, input source.Source, limit int6
 
 type profileIDProvider interface{ OperatorID() string }
 
+// preparedAggregateQuery unwraps only diagnostic nodes. It must not skip a
+// projection, filter, sort or limit and thereby change the terminal semantics.
+func preparedAggregateQuery(src source.Source) *engine.PreparedQuery {
+	for {
+		switch value := src.(type) {
+		case *aggregateResultSource:
+			return value.query
+		case *physical.ProfileSource:
+			src = value.ChildSource()
+		default:
+			return nil
+		}
+	}
+}
+
 // preparedPlanInfo reaches the aggregate compiler through diagnostic wrappers
 // without exposing physical implementation details in the public API.
 func preparedPlanInfo(src source.Source) engine.PlanInfo {
-	if aggregate, ok := src.(*aggregateResultSource); ok && aggregate.query != nil {
-		return aggregate.query.Plan()
-	}
-	if wrapper, ok := src.(interface{ ChildSource() source.Source }); ok {
-		return preparedPlanInfo(wrapper.ChildSource())
+	if query := preparedAggregateQuery(src); query != nil {
+		return query.Plan()
 	}
 	return engine.PlanInfo{}
 }

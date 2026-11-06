@@ -90,8 +90,8 @@ func (e *Engine) Observer() observer.Observer {
 }
 
 // Execute is the convenience one-shot API. Repeated workloads should call
-// Prepare once and reuse PreparedQuery.Execute so readers, hash tables,
-// selection buffers, and radix workspaces are retained under the memory budget.
+// Prepare once and reuse the compiled plan. Each Execute opens native streams
+// with query-scoped memory and releases all execution state before returning.
 func (e *Engine) Execute(ctx context.Context, src source.Source, q expr.Query, execOpts ExecuteOptions) (Result, error) {
 	p, err := e.Prepare(ctx, src, q, PrepareOptions{MaxConcurrency: 1})
 	if err != nil {

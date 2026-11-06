@@ -7,6 +7,7 @@ import (
 	"gocolumn/expr"
 	"gocolumn/memory"
 	"gocolumn/observer"
+	"gocolumn/planner"
 	"gocolumn/source"
 	"math"
 	"time"
@@ -521,6 +522,7 @@ func (s *spillableAggregateStream) materializeOutputRun(ctx context.Context, ref
 		return nil, fmt.Errorf("aggregate output strings exceed addressable memory")
 	}
 	if err := s.allocateOutputBatch(dst, ref.groups, int(plainStringBytes)); err != nil {
+		dst.ClearColumns()
 		lease.Release()
 		return nil, err
 	}
@@ -581,6 +583,7 @@ func (s *spillableAggregateStream) StreamDiagnostics() map[string]string {
 		peak = s.budget.Snapshot().PeakBytes
 	}
 	return map[string]string{
+		"strategy": planner.StrategySpillHash.String(), "workers": "1",
 		"groups": fmt.Sprint(stats.Groups), "selected_rows": fmt.Sprint(stats.SelectedRows),
 		"checksum":   fmt.Sprint(stats.Checksum),
 		"spill_runs": fmt.Sprint(stats.SpillRuns), "spill_bytes": fmt.Sprint(stats.SpillBytes),
@@ -608,10 +611,7 @@ func (s *spillableAggregateStream) recordStats() {
 	}
 	s.query.e.opts.Observer.Observe(observer.Event{
 		Stage: "spillable-aggregate", Duration: stats.Elapsed, Rows: s.query.stats.Rows, Bytes: stats.SpillBytes,
-		Attributes: map[string]string{
-			"groups": fmt.Sprint(stats.Groups), "spill_runs": fmt.Sprint(stats.SpillRuns),
-			"max_radix_depth": fmt.Sprint(stats.MaxRadixDepth), "max_partition_groups": fmt.Sprint(stats.MaxPartitionGroups),
-		},
+		Workers: 1, Attributes: s.StreamDiagnostics(),
 	})
 }
 
@@ -641,9 +641,12 @@ func (s *spillableAggregateStream) abort(err error) error {
 	s.partitions = nil
 	outputs := s.outputRuns
 	s.outputRuns = nil
-	lease := s.outputLease
-	s.outputLease = nil
+	lease, outputDst := s.outputLease, s.outputDst
+	s.outputLease, s.outputDst = nil, nil
 	s.mu.Unlock()
+	if outputDst != nil {
+		outputDst.ClearColumns()
+	}
 	if owner != nil {
 		owner.close()
 	}
@@ -667,6 +670,10 @@ func (s *spillableAggregateStream) Next(ctx context.Context, dst *memory.Batch) 
 	}
 	dst.ClearColumns()
 	s.mu.Lock()
+	if s.outputDst != nil {
+		s.outputDst.ClearColumns()
+		s.outputDst = nil
+	}
 	if s.outputLease != nil {
 		s.outputLease.Release()
 		s.outputLease = nil
@@ -689,22 +696,20 @@ func (s *spillableAggregateStream) Next(ctx context.Context, dst *memory.Batch) 
 	if ctx == nil {
 		return false, s.abort(fmt.Errorf("aggregate stream context is nil"))
 	}
+	var ownershipErr error
+	ctx, ownershipErr = aggregateStreamContext(ctx, s.budget)
+	if ownershipErr != nil {
+		return false, s.abort(ownershipErr)
+	}
 	if err := ctx.Err(); err != nil {
 		return false, s.abort(err)
 	}
 	if !prepared {
-		if err := s.consumeInput(ctx); err != nil {
+		if err := s.prepareInput(ctx); err != nil {
 			return false, s.abort(err)
 		}
-		if err := s.finishPartitions(ctx); err != nil {
-			return false, s.abort(err)
-		}
-		s.mu.Lock()
-		s.prepared = true
-		s.partitions = nil
-		s.mu.Unlock()
-		s.recordStats()
 	}
+
 	s.mu.Lock()
 	if len(s.outputRuns) == 0 {
 		s.exhausted = true
@@ -725,7 +730,7 @@ func (s *spillableAggregateStream) Next(ctx context.Context, dst *memory.Batch) 
 	}
 	s.mu.Lock()
 	s.outputRuns = s.outputRuns[1:]
-	s.outputLease = lease
+	s.outputLease, s.outputDst = lease, dst
 	s.mu.Unlock()
 	return true, nil
 }
@@ -749,9 +754,12 @@ func (s *spillableAggregateStream) Close() error {
 	s.partitions = nil
 	outputs := s.outputRuns
 	s.outputRuns = nil
-	lease := s.outputLease
-	s.outputLease = nil
+	lease, outputDst := s.outputLease, s.outputDst
+	s.outputLease, s.outputDst = nil, nil
 	s.mu.Unlock()
+	if outputDst != nil {
+		outputDst.ClearColumns()
+	}
 	if owner != nil {
 		owner.close()
 	}

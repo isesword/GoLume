@@ -358,14 +358,15 @@ _, err := lf.SinkParquet(ctx, path, ParquetSinkOptions{})
 
 - [x] Lazy 查询全部 lowering 到新 physical graph；不保留两套优化或表达式语义。
 - [x] 删除物理算子内部的旧 Reader 兼容分支和静默全量物化 fallback。
-- [x] 外部 Source 兼容只允许停留在 Source Adapter 边界；`LegacyReaderSource` 迁移期为当前版本至 v0.8，之后删除。
+- [x] 外部 Source Adapter 迁移层已彻底删除；`Source.NewBatchStream` 为必需接口，见 `STREAM_MIGRATION.md`。
 - [x] Prepared 查询复用编译产物，但每次执行创建独立 QueryBudget、pipeline 状态和 Spill 目录。
 - [x] 更新 Extension Points、性能文档、迁移文档、examples 和 CHANGELOG。
 - [x] 将全套流式 fault/race/benchmark gate 纳入 `scripts/validate.sh` 或独立 CI job。
 
 完成标准：同一 LazyPlan 只有一个物理执行语义；`MemoryOnly` 和 `ExecutionBounded`
-只改变物理策略和资源边界，不改变结果。`CollectResult`/`PrepareResult` 仅保留为
-deprecated 结果统计外观，内部转发同一 DataFrame BatchStream，不再触发旧物理执行。
+只改变物理策略和资源边界，不改变结果。`CollectResult`/`PrepareResult` 要求根节点为 Aggregate，
+直接复用同一物理聚合的 record collector；不物化模式只返回统计，物化模式返回独立结果记录。
+聚合后的排序、过滤等操作使用 `Prepare`/`Collect`，不再触发旧物理执行。
 
 ## 5. SIMD 策略
 

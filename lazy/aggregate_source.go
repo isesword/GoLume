@@ -59,7 +59,7 @@ func (s *aggregateResultSource) StreamPlan() source.StreamPlanNode {
 	}
 	return source.StreamPlanNode{
 		Operator: "Aggregate", Class: class,
-		Detail: fmt.Sprintf("groups=%d aggregates=%d strategy=%s", len(s.groupBy), len(s.aggs), mode),
+		Detail: fmt.Sprintf("groups=%d aggregates=%d mode=%s strategy=%s workers=%d", len(s.groupBy), len(s.aggs), mode, s.query.Plan().Strategy.Kind, s.query.Plan().Strategy.Workers),
 	}
 }
 
@@ -94,11 +94,6 @@ func (s *aggregateResultSource) NewBatchStream(ctx context.Context, opts source.
 	return s.query.NewResidentAggregateStreamWithReadOptions(ctx, s.schema, 0, opts)
 }
 
-// NewBatchStreamWithPartitions opens the aggregate stream for the requested output partitions.
-func (s *aggregateResultSource) NewBatchStreamWithPartitions(ctx context.Context, opts source.ReadOptions, _ []source.Partition) (source.BatchStream, error) {
-	return s.NewBatchStream(ctx, opts)
-}
-
 // Dictionary returns stable dictionary metadata for a grouped string column.
 func (s *aggregateResultSource) Dictionary(_ context.Context, column string) (source.Dictionary, error) {
 	d, ok := s.dicts[column]
@@ -110,4 +105,3 @@ func (s *aggregateResultSource) Dictionary(_ context.Context, column string) (so
 
 var _ source.Source = (*aggregateResultSource)(nil)
 var _ source.BatchStreamProvider = (*aggregateResultSource)(nil)
-var _ source.PreparedBatchStreamProvider = (*aggregateResultSource)(nil)

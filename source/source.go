@@ -21,26 +21,34 @@ type Stats struct {
 	RowsUpperBound bool
 }
 
-// Reader reads source partitions into a caller-owned reusable Batch.
-type Reader interface {
-	ReadPartition(ctx context.Context, p Partition, dst *memory.Batch) error
-	Close() error
-}
-
 // ReadOptions carries immutable execution services into a complete source
-// reader chain. Kernels is mandatory so wrappers cannot silently rebuild or
+// stream chain. Kernels is mandatory so wrappers cannot silently rebuild or
 // substitute a dispatch table.
 type ReadOptions struct {
 	Kernels kernel.Set
 	// BatchRows caps the rows decoded by a native scan at once. Zero selects
-	// DefaultBatchRows. Legacy partition readers may ignore this setting.
+	// DefaultBatchRows.
 	BatchRows int
 	// BatchBytes caps engine-owned decoded buffers and explicit scan scratch.
 	// Zero selects DefaultBatchBytes. An oversized row/value returns a
 	// resource error. Third-party decoder pages, codecs, and runtime overhead
-	// are excluded, so this is not a hard heap/RSS cap. Legacy readers may
-	// ignore this setting.
+	// and immutable source-owned buffers are excluded, so this is not a hard
+	// heap/RSS cap.
 	BatchBytes int64
+	// BatchPayloadBytes optionally bounds the logical payload exposed by each
+	// native output batch, including borrowed immutable values/dictionaries.
+	// Zero adds no payload bound. This is distinct from owned allocation
+	// accounting through BatchBytes and MemoryManager; it is not an RSS cap.
+	BatchPayloadBytes int64
+	// BatchPayloadTargetBytes is a soft payload target. A single row may
+	// exceed this target up to BatchPayloadBytes; zero adds no soft target.
+	BatchPayloadTargetBytes int64
+	// MaxCompressedPageBytes and MaxUncompressedPageBytes bound decoder page
+	// allocations independently of engine-owned BatchBytes. Zero selects the
+	// corresponding default. These are per-page limits, not a heap/RSS cap;
+	// sources without compressed pages do not use them.
+	MaxCompressedPageBytes   int64
+	MaxUncompressedPageBytes int64
 	// MemoryManager charges live scan buffers to the owning query. A nil
 	// manager leaves direct scans uncharged; OpenBatchStream binds the query
 	// budget from its context when available.
@@ -52,6 +60,10 @@ const (
 	DefaultBatchRows = 8192
 	// DefaultBatchBytes is the native scan byte limit when BatchBytes is zero.
 	DefaultBatchBytes = int64(8 << 20)
+	// DefaultMaxCompressedPageBytes limits an encoded decoder page to 8 MiB.
+	DefaultMaxCompressedPageBytes = int64(8 << 20)
+	// DefaultMaxUncompressedPageBytes limits a decoded decoder page to 8 MiB.
+	DefaultMaxUncompressedPageBytes = int64(8 << 20)
 )
 
 // Normalize fills zero batch limits without replacing the kernel set or
@@ -63,6 +75,12 @@ func (o ReadOptions) Normalize() ReadOptions {
 	if o.BatchBytes == 0 {
 		o.BatchBytes = DefaultBatchBytes
 	}
+	if o.MaxCompressedPageBytes == 0 {
+		o.MaxCompressedPageBytes = DefaultMaxCompressedPageBytes
+	}
+	if o.MaxUncompressedPageBytes == 0 {
+		o.MaxUncompressedPageBytes = DefaultMaxUncompressedPageBytes
+	}
 	return o
 }
 
@@ -71,31 +89,22 @@ func (o ReadOptions) Validate() error {
 	if !o.Kernels.Valid() {
 		return fmt.Errorf("source read options require a valid kernel set")
 	}
-	if o.BatchRows < 0 || o.BatchBytes < 0 {
-		return fmt.Errorf("source batch limits must be non-negative")
+	if o.BatchRows < 0 || o.BatchBytes < 0 || o.BatchPayloadBytes < 0 || o.BatchPayloadTargetBytes < 0 || o.MaxCompressedPageBytes < 0 || o.MaxUncompressedPageBytes < 0 {
+		return fmt.Errorf("source batch and decoder page limits must be non-negative")
+	}
+	if o.BatchPayloadBytes > 0 && o.BatchPayloadTargetBytes > o.BatchPayloadBytes {
+		return fmt.Errorf("source payload target exceeds hard limit")
 	}
 	return nil
 }
 
-// Source describes the metadata required to plan a partitioned columnar input.
-// Execution is provided by BatchStreamProvider. During the Phase 3 migration,
-// scan implementations may instead implement LegacyReaderSource and are
-// adapted exactly once by OpenBatchStream at the external source boundary.
+// Source describes a partitioned columnar input with native streaming execution.
+// Every source must implement NewBatchStream; there is no eager partition API.
 type Source interface {
+	BatchStreamProvider
 	Schema() memory.Schema
 	Stats(ctx context.Context) (Stats, error)
 	Partitions(ctx context.Context) ([]Partition, error)
-}
-
-// LegacyReaderSource is the temporary compatibility contract for external
-// scan extensions written against the pre-Phase-3 partition Reader API.
-//
-// Deprecated: implement BatchStreamProvider. This adapter is scheduled for
-// removal in GoLume v0.8. Physical operators must never implement this
-// interface; it exists only at the external source boundary.
-type LegacyReaderSource interface {
-	Source
-	NewReader(ctx context.Context, opts ReadOptions) (Reader, error)
 }
 
 // Dictionary is source-level dictionary metadata. A source may implement

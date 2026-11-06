@@ -149,6 +149,33 @@ func TestJSONCancellationReleasesConstructionReservations(t *testing.T) {
 
 func jsonRetainedBufferCapacity(v *memory.StructVector) int64 {
 	n := int64(cap(v.Validity)) * 8
+	for _, x := range v.Values.Int8s {
+		n += int64(cap(x.Values))*1 + int64(cap(x.Validity))*8
+	}
+	for _, x := range v.Values.Int16s {
+		n += int64(cap(x.Values))*2 + int64(cap(x.Validity))*8
+	}
+	for _, x := range v.Values.Int32s {
+		n += int64(cap(x.Values))*4 + int64(cap(x.Validity))*8
+	}
+	for _, x := range v.Values.Uint8s {
+		n += int64(cap(x.Values))*1 + int64(cap(x.Validity))*8
+	}
+	for _, x := range v.Values.Uint16s {
+		n += int64(cap(x.Values))*2 + int64(cap(x.Validity))*8
+	}
+	for _, x := range v.Values.Uint32s {
+		n += int64(cap(x.Values))*4 + int64(cap(x.Validity))*8
+	}
+	for _, x := range v.Values.Uint64s {
+		n += int64(cap(x.Values))*8 + int64(cap(x.Validity))*8
+	}
+	for _, x := range v.Values.Float32s {
+		n += int64(cap(x.Values))*4 + int64(cap(x.Validity))*8
+	}
+	for _, x := range v.Values.Float64s {
+		n += int64(cap(x.Values))*8 + int64(cap(x.Validity))*8
+	}
 	for _, x := range v.Values.Int64s {
 		n += int64(cap(x.Values)+cap(x.Validity)) * 8
 	}
@@ -193,5 +220,49 @@ func BenchmarkJSONDecodeBudgetAccounting(b *testing.B) {
 				}
 			}
 		})
+	}
+}
+
+func TestJSONNativeBudgetDenialAndReplacementOverlap(t *testing.T) {
+	fields := []memory.Field{
+		{Name: "i8", Type: memory.TypeInt8}, {Name: "i16", Type: memory.TypeInt16},
+		{Name: "u8", Type: memory.TypeUint8}, {Name: "u16", Type: memory.TypeUint16},
+		{Name: "f32", Type: memory.TypeFloat32},
+	}
+	input := scalarRegister{typ: memory.TypeString, strView: testStringVector([]string{`{"i8":-128,"i16":32767,"u8":255,"u16":65535,"f32":1.25}`}, nil)}
+	var shape scalarRegister
+	output, scratch, err := jsonAllocationSizes(&shape, &input, len(fields), 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, limit := range []int64{output - 1, output + scratch - 1, output + scratch} {
+		manager := memory.NewBudgetManager(limit)
+		out := scalarRegister{acquire: func(n int64) (memory.Reservation, error) { return manager.Reserve(context.Background(), n) }}
+		err := evalJSONDecode(&out, &input, fields, 1)
+		if limit < output+scratch {
+			if !errors.Is(err, memory.ErrBudgetExceeded) || manager.Used() != 0 || out.strct != nil {
+				t.Fatalf("limit=%d err=%v used=%d", limit, err, manager.Used())
+			}
+			continue
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
+		if manager.Used() != output || jsonRetainedBufferCapacity(out.strct) > output {
+			t.Fatal("native output reservation does not cover retained capacities")
+		}
+		old := out.strct
+		if err := evalJSONDecode(&out, &input, fields, 1); !errors.Is(err, memory.ErrBudgetExceeded) {
+			t.Fatalf("old/new overlap was not enforced: %v", err)
+		}
+		if out.strct != old || manager.Used() != output {
+			t.Fatal("failed replacement changed output or leaked reservation")
+		}
+		out.strct = nil
+		out.validity = nil
+		out.jsonReservation.Release()
+		if manager.Used() != 0 {
+			t.Fatal("native result release leaked budget")
+		}
 	}
 }

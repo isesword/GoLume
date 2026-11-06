@@ -56,17 +56,31 @@ type residentJoinBatchStream struct {
 // NewBatchStream opens either the execution-scoped spill implementation or a
 // native stream over the retained broadcast build.
 func (s *JoinSource) NewBatchStream(ctx context.Context, opts source.ReadOptions) (source.BatchStream, error) {
-	parts, err := s.Partitions(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return s.NewBatchStreamWithPartitions(ctx, opts, parts)
+	return s.newBatchStream(ctx, opts, nil, false)
 }
 
-// NewBatchStreamWithPartitions preserves the prepared physical graph. Join
-// output partitions are synthetic; every strategy opens its child stream and
-// supports zero or many output batches per source partition.
+func (s *JoinSource) partitionParallel() bool {
+	return !s.spillable && !s.merge && s.typ != join.Right && s.typ != join.Full && source.CanParallelizePartitions(source.StreamPlanOf(s.left))
+}
+
+// NewBatchStreamWithPartitions restricts a partition-safe resident join to the
+// requested probe fragments. Global joins reject subsets instead of replaying
+// the entire probe side for every worker.
 func (s *JoinSource) NewBatchStreamWithPartitions(ctx context.Context, opts source.ReadOptions, parts []source.Partition) (source.BatchStream, error) {
+	if !s.partitionParallel() {
+		return nil, fmt.Errorf("join strategy %s type %s does not support partition subsets", s.Strategy(), s.typ)
+	}
+	selected := make([]source.Partition, len(parts))
+	for i, part := range parts {
+		if part.ID < 0 || part.ID >= len(s.leftParts) {
+			return nil, fmt.Errorf("invalid join partition ID %d", part.ID)
+		}
+		selected[i] = s.leftParts[part.ID]
+	}
+	return s.newBatchStream(ctx, opts, selected, true)
+}
+
+func (s *JoinSource) newBatchStream(ctx context.Context, opts source.ReadOptions, probeParts []source.Partition, subset bool) (source.BatchStream, error) {
 	if err := opts.Validate(); err != nil {
 		return nil, err
 	}
@@ -82,14 +96,20 @@ func (s *JoinSource) NewBatchStreamWithPartitions(ctx context.Context, opts sour
 	if s.merge {
 		return newMergeJoinStream(ctx, s, opts)
 	}
-	left, err := source.OpenBatchStreamWithPartitions(ctx, s.left, opts, s.leftParts)
+	var left source.BatchStream
+	var err error
+	if subset {
+		left, err = source.OpenBatchStreamWithPartitions(ctx, s.left, opts, probeParts)
+	} else {
+		left, err = source.OpenBatchStream(ctx, s.left, opts)
+	}
 	if err != nil {
 		return nil, err
 	}
 	stream := &residentJoinBatchStream{
 		reader:           &joinReader{owner: s, left: left, leftBatch: memory.NewBatch()},
 		started:          time.Now(),
-		feedbackEligible: len(parts) == len(s.parts),
+		feedbackEligible: !subset,
 	}
 	if query := memory.QueryBudgetFromContext(ctx); query != nil && query.Limit() > 0 {
 		stream.workspace = query.Operator("BroadcastJoinWorkspace", memory.MemoryWorkspace)

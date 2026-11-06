@@ -37,12 +37,10 @@ type Query struct {
 
 // Hints supplies optional physical-planning estimates and test overrides.
 type Hints struct {
-	Selectivity      float64
-	Cardinality      int
-	ReuseSelection   bool
-	ForceStrategy    string
-	ForceRadixBits   uint
-	ForceWorkerCount int
+	Selectivity    float64
+	Cardinality    int
+	ReuseSelection bool
+	ForceStrategy  string
 	// AverageKeyBytes guides string arena/memory costing. Zero means 16 bytes.
 	AverageKeyBytes int
 }

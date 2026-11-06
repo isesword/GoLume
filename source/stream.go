@@ -28,8 +28,7 @@ type BatchStreamDiagnostics interface {
 	StreamDiagnostics() map[string]string
 }
 
-// BatchStreamProvider lets a source provide a native stream. External scans
-// still implementing LegacyReaderSource are adapted by OpenBatchStream.
+// BatchStreamProvider is the native execution contract required by Source.
 type BatchStreamProvider interface {
 	NewBatchStream(ctx context.Context, opts ReadOptions) (BatchStream, error)
 }
@@ -37,21 +36,20 @@ type BatchStreamProvider interface {
 // PreparedBatchStreamProvider lets a physical wrapper propagate the immutable
 // partition list already resolved during Prepare through a native stream chain.
 // It prevents re-listing or copying one entry per morsel on every execution.
+// Implementations must use exactly this sequence, including duplicates and
+// an empty/nil sequence, and must not modify the borrowed immutable slice.
 type PreparedBatchStreamProvider interface {
 	NewBatchStreamWithPartitions(ctx context.Context, opts ReadOptions, parts []Partition) (BatchStream, error)
 }
 
-// OpenBatchStream opens a native stream when available, otherwise it adapts the
-// existing Source/Reader partition contract. The adapter deliberately lives at
-// the source boundary so physical consumers do not need a second eager path.
+// OpenBatchStream validates execution options and opens the source's native stream.
 func OpenBatchStream(ctx context.Context, src Source, opts ReadOptions) (BatchStream, error) {
 	return openBatchStream(ctx, src, opts, nil, false)
 }
 
-// OpenBatchStreamWithPartitions is the prepared-plan variant of
-// OpenBatchStream. Legacy Source adapters borrow the immutable partition slice
-// already resolved during Prepare instead of listing and copying it again.
-// Native BatchStreamProvider implementations ignore parts.
+// OpenBatchStreamWithPartitions opens exactly the supplied partition sequence.
+// Sources without prepared partition support return an error rather than
+// silently ignoring the caller's selected sequence.
 func OpenBatchStreamWithPartitions(ctx context.Context, src Source, opts ReadOptions, parts []Partition) (BatchStream, error) {
 	return openBatchStream(ctx, src, opts, parts, true)
 }
@@ -74,131 +72,24 @@ func openBatchStream(ctx context.Context, src Source, opts ReadOptions, prepared
 			opts.MemoryManager = query.Operator("SourceScan", memory.MemoryWorkspace)
 		}
 	}
+	var stream BatchStream
+	var err error
 	if havePreparedParts {
-		if provider, ok := src.(PreparedBatchStreamProvider); ok {
-			stream, err := provider.NewBatchStreamWithPartitions(ctx, opts, preparedParts)
-			if err != nil {
-				return nil, err
-			}
-			if stream == nil {
-				return nil, fmt.Errorf("source %T returned a nil prepared batch stream", src)
-			}
-			return stream, nil
+		provider, ok := src.(PreparedBatchStreamProvider)
+		if !ok {
+			return nil, fmt.Errorf("source %T does not support prepared partition streams", src)
 		}
+		stream, err = provider.NewBatchStreamWithPartitions(ctx, opts, preparedParts)
+	} else {
+		stream, err = src.NewBatchStream(ctx, opts)
 	}
-	if provider, ok := src.(BatchStreamProvider); ok {
-		stream, err := provider.NewBatchStream(ctx, opts)
-		if err != nil {
-			return nil, err
-		}
-		if stream == nil {
-			return nil, fmt.Errorf("source %T returned a nil batch stream", src)
-		}
-		return stream, nil
-	}
-	parts := preparedParts
-	if !havePreparedParts {
-		var err error
-		parts, err = src.Partitions(ctx)
-		if err != nil {
-			return nil, err
-		}
-	}
-	legacy, ok := src.(LegacyReaderSource)
-	if !ok {
-		return nil, fmt.Errorf("source %T implements neither BatchStreamProvider nor deprecated LegacyReaderSource", src)
-	}
-	reader, err := legacy.NewReader(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	if reader == nil {
-		return nil, fmt.Errorf("source %T returned a nil reader", src)
+	if stream == nil {
+		return nil, fmt.Errorf("source %T returned a nil batch stream", src)
 	}
-	return &partitionBatchStream{reader: reader, parts: parts}, nil
-}
-
-type partitionBatchStream struct {
-	reader      Reader
-	parts       []Partition
-	next        int
-	exhausted   bool
-	closed      bool
-	terminalErr error
-	closeErr    error
-}
-
-// Next adapts the next legacy partition into one borrowed output Batch.
-func (s *partitionBatchStream) Next(ctx context.Context, dst *memory.Batch) (bool, error) {
-	if dst == nil {
-		return false, fmt.Errorf("batch stream destination is nil")
-	}
-	if ctx == nil {
-		dst.ClearColumns()
-		return false, fmt.Errorf("batch stream context is nil")
-	}
-	if s.closed {
-		dst.ClearColumns()
-		return false, ErrBatchStreamClosed
-	}
-	if s.terminalErr != nil {
-		dst.ClearColumns()
-		return false, s.terminalErr
-	}
-	if s.exhausted {
-		dst.ClearColumns()
-		return false, nil
-	}
-	for s.next < len(s.parts) {
-		if err := ctx.Err(); err != nil {
-			dst.ClearColumns()
-			return false, s.fail(err)
-		}
-		part := s.parts[s.next]
-		s.next++
-		if err := s.reader.ReadPartition(ctx, part, dst); err != nil {
-			dst.ClearColumns()
-			return false, s.fail(err)
-		}
-		// The legacy partition adapter preserves one output per partition,
-		// including a schema-bearing zero-row Batch. Native stream operators may
-		// instead consume an input without returning from Next, which is how the
-		// protocol represents zero outputs without losing empty-result schemas.
-		return true, nil
-	}
-	s.exhausted = true
-	dst.ClearColumns()
-	if err := s.closeReader(); err != nil {
-		s.terminalErr = err
-		return false, err
-	}
-	return false, nil
-}
-
-func (s *partitionBatchStream) fail(err error) error {
-	if closeErr := s.closeReader(); closeErr != nil {
-		err = errors.Join(err, closeErr)
-	}
-	s.terminalErr = err
-	return err
-}
-
-func (s *partitionBatchStream) closeReader() error {
-	if s.reader == nil {
-		return s.closeErr
-	}
-	s.closeErr = s.reader.Close()
-	s.reader = nil
-	return s.closeErr
-}
-
-// Close releases the adapted Reader exactly once.
-func (s *partitionBatchStream) Close() error {
-	if s == nil || s.closed {
-		return s.closeErr
-	}
-	s.closed = true
-	return s.closeReader()
+	return stream, nil
 }
 
 // DrainStats summarizes an internal stream sink without retaining output.

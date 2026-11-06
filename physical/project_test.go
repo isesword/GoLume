@@ -4,6 +4,7 @@ import (
 	"context"
 	"gocolumn/expr"
 	"gocolumn/memory"
+	"gocolumn/source"
 	"gocolumn/source/inmemory"
 	"testing"
 )
@@ -22,12 +23,11 @@ func TestProjectSourceWithColumnsAndNullPropagation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	r, _ := openTestReader(context.Background(), ps, testReadOptions())
+	r, _ := source.OpenBatchStream(context.Background(), ps, testReadOptions())
 	defer r.Close()
-	parts, _ := ps.Partitions(context.Background())
 	out := memory.NewBatch()
-	if err := r.ReadPartition(context.Background(), parts[0], out); err != nil {
-		t.Fatal(err)
+	if ok, err := r.Next(context.Background(), out); err != nil || !ok {
+		t.Fatalf("next: ok=%v err=%v", ok, err)
 	}
 	v, err := out.Int64("score")
 	if err != nil {

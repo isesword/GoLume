@@ -1,0 +1,21 @@
+pair=1 mode=hotloop
+goos: linux
+goarch: amd64
+pkg: gocolumn/engine
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkPreparedStreamW4-4   	      78	  14780731 ns/op	53706297 B/op	   11712 allocs/op
+PASS
+pair=2 mode=hotloop
+goos: linux
+goarch: amd64
+pkg: gocolumn/engine
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkPreparedStreamW4-4   	      96	  14945230 ns/op	53709687 B/op	   11713 allocs/op
+PASS
+pair=3 mode=hotloop
+goos: linux
+goarch: amd64
+pkg: gocolumn/engine
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkPreparedStreamW4-4   	      79	  14859664 ns/op	53707209 B/op	   11713 allocs/op
+PASS

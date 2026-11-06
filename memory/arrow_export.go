@@ -155,9 +155,9 @@ func appendArrowValue(builder array.Builder, batch *Batch, field Field, row int)
 	case TypeBool:
 		builder.(*array.BooleanBuilder).Append(batch.Uint32s[field.Name].Values[row] != 0)
 	case TypeInt8:
-		builder.(*array.Int8Builder).Append(int8(batch.Int32s[field.Name].Values[row]))
+		builder.(*array.Int8Builder).Append(batch.Int8s[field.Name].Values[row])
 	case TypeInt16:
-		builder.(*array.Int16Builder).Append(int16(batch.Int32s[field.Name].Values[row]))
+		builder.(*array.Int16Builder).Append(batch.Int16s[field.Name].Values[row])
 	case TypeInt32:
 		builder.(*array.Int32Builder).Append(batch.Int32s[field.Name].Values[row])
 	case TypeDate32:
@@ -175,15 +175,15 @@ func appendArrowValue(builder array.Builder, batch *Batch, field Field, row int)
 	case TypeDuration:
 		builder.(*array.DurationBuilder).Append(arrow.Duration(batch.Int64s[field.Name].Values[row]))
 	case TypeUint8:
-		builder.(*array.Uint8Builder).Append(uint8(batch.Uint32s[field.Name].Values[row]))
+		builder.(*array.Uint8Builder).Append(batch.Uint8s[field.Name].Values[row])
 	case TypeUint16:
-		builder.(*array.Uint16Builder).Append(uint16(batch.Uint32s[field.Name].Values[row]))
+		builder.(*array.Uint16Builder).Append(batch.Uint16s[field.Name].Values[row])
 	case TypeUint32:
 		builder.(*array.Uint32Builder).Append(batch.Uint32s[field.Name].Values[row])
 	case TypeUint64:
 		builder.(*array.Uint64Builder).Append(batch.Uint64s[field.Name].Values[row])
 	case TypeFloat32:
-		builder.(*array.Float32Builder).Append(float32(batch.Float64s[field.Name].Values[row]))
+		builder.(*array.Float32Builder).Append(batch.Float32s[field.Name].Values[row])
 	case TypeFloat64:
 		builder.(*array.Float64Builder).Append(batch.Float64s[field.Name].Values[row])
 	case TypeString:
@@ -230,13 +230,44 @@ func appendArrowValue(builder array.Builder, batch *Batch, field Field, row int)
 
 func batchValueValid(batch *Batch, field Field, row int) (bool, error) {
 	switch field.Type {
-	case TypeBool, TypeUint8, TypeUint16, TypeUint32:
+	case TypeInt8:
+		value := batch.Int8s[field.Name]
+		if value == nil {
+			return false, fmt.Errorf("int8 vector is missing")
+		}
+		return value.IsValid(row), nil
+	case TypeInt16:
+		value := batch.Int16s[field.Name]
+		if value == nil {
+			return false, fmt.Errorf("int16 vector is missing")
+		}
+		return value.IsValid(row), nil
+	case TypeUint8:
+		value := batch.Uint8s[field.Name]
+		if value == nil {
+			return false, fmt.Errorf("uint8 vector is missing")
+		}
+		return value.IsValid(row), nil
+	case TypeUint16:
+		value := batch.Uint16s[field.Name]
+		if value == nil {
+			return false, fmt.Errorf("uint16 vector is missing")
+		}
+		return value.IsValid(row), nil
+	case TypeFloat32:
+		value := batch.Float32s[field.Name]
+		if value == nil {
+			return false, fmt.Errorf("float32 vector is missing")
+		}
+		return value.IsValid(row), nil
+
+	case TypeBool, TypeUint32:
 		value, ok := batch.Uint32s[field.Name]
 		if !ok {
 			return false, fmt.Errorf("uint32 vector is missing")
 		}
 		return value.IsValid(row), nil
-	case TypeInt8, TypeInt16, TypeInt32, TypeDate32, TypeTime32:
+	case TypeInt32, TypeDate32, TypeTime32:
 		value, ok := batch.Int32s[field.Name]
 		if !ok {
 			return false, fmt.Errorf("int32 vector is missing")
@@ -254,7 +285,7 @@ func batchValueValid(batch *Batch, field Field, row int) (bool, error) {
 			return false, fmt.Errorf("uint64 vector is missing")
 		}
 		return value.IsValid(row), nil
-	case TypeFloat32, TypeFloat64:
+	case TypeFloat64:
 		value, ok := batch.Float64s[field.Name]
 		if !ok {
 			return false, fmt.Errorf("float64 vector is missing")

@@ -107,7 +107,7 @@ func expireBatchView(state *dataFrameState) {
 // BatchReader is a single-consumer pull iterator. Next invalidates the previous
 // BatchView. Close is mandatory when iteration stops early and is idempotent.
 type BatchReader struct {
-	prepared     *PreparedFrame
+	prepared     *PreparedDataFrame
 	ownedPrepare bool
 	stream       source.BatchStream
 	budget       *memory.QueryBudget
@@ -146,9 +146,9 @@ func (f LazyFrame) CollectBatches(ctx context.Context, opts BatchOptions) (*Batc
 // ExecuteBatches opens one independent borrowed result stream from a prepared
 // DataFrame plan. Multiple streams may run concurrently when the source allows
 // concurrent readers.
-func (p *PreparedFrame) ExecuteBatches(ctx context.Context, opts BatchOptions) (*BatchReader, error) {
+func (p *PreparedDataFrame) ExecuteBatches(ctx context.Context, opts BatchOptions) (*BatchReader, error) {
 	if p == nil {
-		return nil, fmt.Errorf("nil PreparedFrame")
+		return nil, fmt.Errorf("nil PreparedDataFrame")
 	}
 	if ctx == nil {
 		return nil, fmt.Errorf("prepared batch context is nil")

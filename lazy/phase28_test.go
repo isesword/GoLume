@@ -36,12 +36,12 @@ func TestLazySortLimitAndTopKAgree(t *testing.T) {
 	s := NewSession(engine.DefaultOptions())
 	defer s.Close()
 
-	sorted, err := s.FromSource(src).Sort(Desc("score")).Limit(3).Select("id", "score").CollectFrame(context.Background())
+	sorted, err := s.FromSource(src).Sort(Desc("score")).Limit(3).Select("id", "score").Collect(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer sorted.Close()
-	top, err := s.FromSource(src).TopK(3, Desc("score")).Select("id", "score").CollectFrame(context.Background())
+	top, err := s.FromSource(src).TopK(3, Desc("score")).Select("id", "score").Collect(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,7 +66,7 @@ func TestLimitRunsAfterResidualFilter(t *testing.T) {
 	src, _ := inmemory.New(schema, b1, b2)
 	s := NewSession(engine.DefaultOptions())
 	defer s.Close()
-	frame, err := s.FromSource(src).Filter(Col("x").Gt(Lit(5))).Limit(2).CollectFrame(context.Background())
+	frame, err := s.FromSource(src).Filter(Col("x").Gt(Lit(5))).Limit(2).Collect(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,7 +106,7 @@ func TestLazyTopKReplaysOnlyOrderingAndFilterColumnsOnFirstPass(t *testing.T) {
 		Filter(Col("pred").Gt(Lit(9))).
 		TopK(2, Desc("score")).
 		Select("payload").
-		CollectFrame(context.Background())
+		Collect(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -146,12 +146,8 @@ func (s *topKPushdownRecorder) Replayability() source.Replayability {
 	return source.ReplayabilityOf(s.input)
 }
 
-func (s *topKPushdownRecorder) NewReader(ctx context.Context, opts source.ReadOptions) (source.Reader, error) {
-	legacy, ok := s.input.(source.LegacyReaderSource)
-	if !ok {
-		return nil, fmt.Errorf("top-k recorder requires legacy source")
-	}
-	return legacy.NewReader(ctx, opts)
+func (s *topKPushdownRecorder) NewBatchStream(ctx context.Context, opts source.ReadOptions) (source.BatchStream, error) {
+	return source.OpenBatchStream(ctx, s.input, opts)
 }
 
 func (s *topKPushdownRecorder) ApplyPushdown(ctx context.Context, req source.PushdownRequest) (source.Source, source.PushdownReport, error) {
@@ -193,7 +189,7 @@ func TestOpaqueArrowSurvivesFilterTopKAndMaterialization(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	frame, err := lf.Filter(Col("x").Gt(Lit(1))).TopK(2, Desc("x")).Select("x", "nested").CollectFrame(context.Background())
+	frame, err := lf.Filter(Col("x").Gt(Lit(1))).TopK(2, Desc("x")).Select("x", "nested").Collect(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -227,7 +223,7 @@ func TestOpaqueArrowSurvivesFilterTopKAndMaterialization(t *testing.T) {
 	}
 }
 
-func frameInt64Column(t *testing.T, f Frame, name string) []int64 {
+func frameInt64Column(t *testing.T, f DataFrame, name string) []int64 {
 	t.Helper()
 	var out []int64
 	for _, b := range f.batches() {
@@ -331,7 +327,7 @@ func TestAggregateCanFeedTopKAndLimit(t *testing.T) {
 	if !strings.Contains(optimized, "TOPK k=2") {
 		t.Fatalf("expected sort+limit topk rewrite:\n%s", optimized)
 	}
-	frame, err := lf.CollectFrame(context.Background())
+	frame, err := lf.Collect(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -343,7 +339,7 @@ func TestAggregateCanFeedTopKAndLimit(t *testing.T) {
 	}
 }
 
-func frameInt32Column(t *testing.T, f Frame, name string) []int32 {
+func frameInt32Column(t *testing.T, f DataFrame, name string) []int32 {
 	t.Helper()
 	var out []int32
 	for _, b := range f.batches() {
@@ -367,7 +363,7 @@ func equalI32(a, b []int32) bool {
 	return true
 }
 
-func TestRuntimeFeedbackChangesCostModelStrategy(t *testing.T) {
+func TestRuntimeFeedbackUpdatesNativeAggregateEstimates(t *testing.T) {
 	const rowsPerBatch = 75000
 	schema := memory.NewSchema(
 		memory.Field{Name: "key", Type: memory.TypeInt32},
@@ -399,9 +395,9 @@ func TestRuntimeFeedbackChangesCostModelStrategy(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := p1.Plan().Strategy.Kind.String(); got != "radix" {
+	if info := p1.Plan(); info.FeedbackSamples != 0 || info.EstimatedCardinality <= 2 {
 		p1.Close()
-		t.Fatalf("first strategy=%s, want radix from default estimates", got)
+		t.Fatalf("first plan=%+v, want unobserved default cardinality", info)
 	}
 	res, err := p1.Execute(context.Background(), engine.ExecuteOptions{})
 	if err != nil {
@@ -422,9 +418,6 @@ func TestRuntimeFeedbackChangesCostModelStrategy(t *testing.T) {
 	info := p2.Plan()
 	if info.FeedbackSamples != 1 {
 		t.Fatalf("feedback samples=%d, want 1", info.FeedbackSamples)
-	}
-	if info.Strategy.Kind.String() == "radix" {
-		t.Fatalf("feedback strategy=%s, want non-radix after observing cardinality=2", info.Strategy.Kind.String())
 	}
 	if info.EstimatedCardinality != 2 {
 		t.Fatalf("feedback cardinality=%d, want 2", info.EstimatedCardinality)

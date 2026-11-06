@@ -1,0 +1,21 @@
+pair=1 mode=checkpoint
+goos: linux
+goarch: amd64
+pkg: gocolumn/engine
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkPreparedStreamW4-4   	      72	  16112783 ns/op	53709917 B/op	   11712 allocs/op
+PASS
+pair=2 mode=checkpoint
+goos: linux
+goarch: amd64
+pkg: gocolumn/engine
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkPreparedStreamW4-4   	      72	  15815013 ns/op	53709450 B/op	   11713 allocs/op
+PASS
+pair=3 mode=checkpoint
+goos: linux
+goarch: amd64
+pkg: gocolumn/engine
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkPreparedStreamW4-4   	      80	  15992040 ns/op	53714632 B/op	   11714 allocs/op
+PASS

@@ -9,6 +9,7 @@ import (
 	"math"
 	"strconv"
 	"unicode/utf8"
+	"unsafe"
 
 	arrowparquet "github.com/apache/arrow-go/v18/parquet"
 	"github.com/apache/arrow-go/v18/parquet/file"
@@ -16,16 +17,19 @@ import (
 
 // NewBatchStream decodes projected row groups incrementally. BatchRows and
 // BatchBytes bound GoLume's live decoded vector buffers and decode scratch,
-// including allocation overlap. O(columns) stream metadata (including inline
-// single-value lookahead), Go object overhead, and Arrow page, dictionary,
+// including allocation overlap and borrowed string-view header arrays.
+// O(columns) stream metadata (including inline single-value lookahead), Go
+// object overhead, and Arrow page, dictionary,
 // codec and metadata allocations are excluded; this is not an RSS limit. Input
 // chunks use buffered I/O rather than whole-column compressed buffering.
+// Separate compressed/uncompressed page caps reject oversized declared page
+// bodies before Arrow allocates them; these caps are not aggregate quotas.
 //
 // A row that cannot fit by itself fails with memory.ErrBudgetExceeded. Strings
 // are inspected through borrowed Arrow page views before any GoLume payload
-// allocation. A byte boundary may produce fewer rows than BatchRows. If a
-// large row reduces fixed-vector capacity, that smaller capacity is retained
-// for the rest of its row group and reconsidered at the next row group.
+// allocation. A byte boundary may produce fewer rows than BatchRows. A
+// large row can temporarily reduce fixed-vector capacity; later batches
+// reconsider capacity, so one outlier does not throttle the rest of its group.
 func (s *Source) NewBatchStream(ctx context.Context, opts source.ReadOptions) (source.BatchStream, error) {
 	if s == nil {
 		return nil, fmt.Errorf("nil parquet source")
@@ -54,15 +58,33 @@ func (s *Source) NewBatchStreamWithPartitions(ctx context.Context, opts source.R
 	props := arrowparquet.NewReaderProperties(nil)
 	props.BufferedStreamEnabled = true
 	props.PageStreamingEnabled = true
+	props.MaxCompressedPageSize = opts.MaxCompressedPageBytes
+	props.MaxUncompressedPageSize = opts.MaxUncompressedPageBytes
 	r, err := file.OpenParquetFile(s.path, false, file.WithReadProps(props))
 	if err != nil {
 		return nil, err
 	}
 	out := &batchStream{
 		ctx: ctx, r: r, parts: parts, bindings: s.bindings, opts: opts,
-		decode: reader{kernels: opts.Kernels},
+		decode: typedDecoder{kernels: opts.Kernels},
 	}
 	for i, b := range s.bindings {
+		switch b.Type {
+		case memory.TypeInt8, memory.TypeUint8:
+			out.payloadRowBytes++
+		case memory.TypeInt16, memory.TypeUint16:
+			out.payloadRowBytes += 2
+		case memory.TypeInt32, memory.TypeDate32, memory.TypeFloat32, memory.TypeBool:
+			out.payloadRowBytes += 4
+		case memory.TypeInt64, memory.TypeTimestamp, memory.TypeFloat64:
+			out.payloadRowBytes += 8
+		case memory.TypeString:
+			out.payloadRowBytes += 4
+			out.payloadOffsetBytes += 4
+		}
+		if b.Nullable {
+			out.payloadValidityColumns++
+		}
 		if b.Type == memory.TypeString {
 			out.strings = append(out.strings, streamString{binding: b, column: i})
 		}
@@ -70,41 +92,56 @@ func (s *Source) NewBatchStreamWithPartitions(ctx context.Context, opts source.R
 	return out, nil
 }
 
+// streamString owns only bounded headers. Payloads borrow exactly one Arrow
+// page per column and are never carried across a reader advance. Inline slots
+// preserve single-row admission when even bulk headers would crowd out a row.
 type streamString struct {
-	binding columnBinding
-	column  int
-	// One borrowed value per column is the only lookahead. Never advance its
-	// column reader until this value has been copied into an owned vector.
-	value  [1]arrowparquet.ByteArray
-	defs   [1]int16
-	valid  bool
-	charge memory.Reservation
+	binding     columnBinding
+	column      int
+	inlineValue [1]arrowparquet.ByteArray
+	inlineDef   [1]int16
+	values      []arrowparquet.ByteArray
+	defs        []int16
+	pos, rows   int
+	target      int
+	vector      *memory.StringViewVector
+	charge      memory.Reservation
 }
 
 type batchStream struct {
-	ctx         context.Context
-	r           *file.Reader
-	parts       []source.Partition
-	bindings    []columnBinding
-	opts        source.ReadOptions
-	decode      reader
-	strings     []streamString
-	chunks      []file.ColumnChunkReader
-	part        int
-	remaining   int64
-	groupOpen   bool
-	pending     bool
-	batch       *memory.Batch
-	capacity    int
-	fixedCharge memory.Reservation
-	managed     int64
-	peak        int64
-	batches     int64
-	rows        int64
-	exhausted   bool
-	closed      bool
-	terminalErr error
-	closeErr    error
+	ctx                    context.Context
+	r                      *file.Reader
+	parts                  []source.Partition
+	bindings               []columnBinding
+	opts                   source.ReadOptions
+	decode                 typedDecoder
+	strings                []streamString
+	chunks                 []file.ColumnChunkReader
+	part                   int
+	remaining              int64
+	groupOpen              bool
+	groupID                int
+	groupRows              int64
+	payloadRowBytes        int64
+	payloadOffsetBytes     int64
+	payloadValidityColumns int64
+	headerCapacity         int
+	headerBytes            int64
+	headerCharge           memory.Reservation
+	restoreCapacity        bool
+	stringReadCalls        int64
+	stringReplays          int64
+	batch                  *memory.Batch
+	capacity               int
+	fixedCharge            memory.Reservation
+	managed                int64
+	peak                   int64
+	batches                int64
+	rows                   int64
+	exhausted              bool
+	closed                 bool
+	terminalErr            error
+	closeErr               error
 }
 
 func (s *batchStream) checkContext(ctx context.Context) error {
@@ -137,11 +174,20 @@ func (s *batchStream) Next(ctx context.Context, dst *memory.Batch) (bool, error)
 	if err := s.checkContext(ctx); err != nil {
 		return false, s.fail(err)
 	}
+	groupChanged := false
 	for !s.groupOpen || s.remaining == 0 {
 		if err := s.closeChunks(); err != nil {
 			return false, s.fail(err)
 		}
-		s.releaseBuffers()
+		// Owned vectors/scratch can serve the next group unchanged. Drop only
+		// borrowed page references and cursor positions at a group boundary.
+		// Releasing every vector here turns a bounded scan into one large
+		// allocation per group when consumers request large batches.
+		for i := range s.strings {
+			c := &s.strings[i]
+			clear(c.values)
+			c.pos, c.rows = 0, 0
+		}
 		if s.part == len(s.parts) {
 			s.exhausted = true
 			if err := s.release(); err != nil {
@@ -153,11 +199,43 @@ func (s *batchStream) Next(ctx context.Context, dst *memory.Batch) (bool, error)
 		if err := s.openGroup(ctx); err != nil {
 			return false, s.fail(err)
 		}
+		groupChanged = true
 		// Empty groups do not create data batches; schema is source metadata.
 	}
 	want := s.opts.BatchRows
 	if int64(want) > s.remaining {
 		want = int(s.remaining)
+	}
+	var err error
+	want, err = s.limitPayloadRows(want)
+	if err != nil {
+		return false, s.fail(err)
+	}
+	if groupChanged && s.batch != nil && want > s.capacity {
+		// A preceding small group must not constrain a larger one. Release
+		// before rebuilding so the replacement never overlaps uncharged.
+		s.releaseBuffers()
+		s.releaseHeaders()
+	}
+	if s.restoreCapacity {
+		s.releaseBuffers()
+		s.restoreCapacity = false
+		// An inline outlier cursor is exhausted here. Restore batched page
+		// reads along with normal output capacity on the very next batch.
+		if s.headerCapacity == 1 {
+			exhausted := true
+			for i := range s.strings {
+				exhausted = exhausted && s.strings[i].pos == s.strings[i].rows
+			}
+			if exhausted {
+				s.releaseHeaders()
+			}
+		}
+	}
+	if s.headerCapacity == 0 {
+		if err := s.allocateHeaders(ctx, want); err != nil {
+			return false, s.fail(err)
+		}
 	}
 	if s.batch == nil {
 		if err := s.allocateFixed(ctx, want, 0); err != nil {
@@ -227,6 +305,7 @@ func (s *batchStream) openGroup(ctx context.Context) error {
 	}
 	rg := s.r.RowGroup(p.ID)
 	s.remaining = rg.MetaData().NumRows()
+	s.groupID, s.groupRows = p.ID, s.remaining
 	if s.remaining < 0 {
 		return fmt.Errorf("row group %d has negative row count", p.ID)
 	}
@@ -245,7 +324,69 @@ func (s *batchStream) openGroup(ctx context.Context) error {
 	return nil
 }
 
-// fixedBytes includes every typed scratch buffer the legacy typed decoders
+// outputFixedBytes counts output lengths only, independently of owned decode
+// scratch, header capacities, and replacement overlap. Saturation also keeps
+// extreme row options safe before allocateFixed applies its tighter bound.
+func (s *batchStream) outputFixedBytes(rows int) int64 {
+	n := s.payloadOffsetBytes
+	if rows < 0 {
+		return math.MaxInt64
+	}
+	if s.payloadRowBytes > 0 && int64(rows) > (math.MaxInt64-n)/s.payloadRowBytes {
+		return math.MaxInt64
+	}
+	n += int64(rows) * s.payloadRowBytes
+	var words int64
+	if rows > 0 {
+		words = int64((rows-1)/64) + 1
+	}
+	if s.payloadValidityColumns > 0 && words > (math.MaxInt64-n)/s.payloadValidityColumns/8 {
+		return math.MaxInt64
+	}
+	return n + words*s.payloadValidityColumns*8
+}
+
+func (s *batchStream) payloadLimit(rows int) int64 {
+	limit := s.opts.BatchPayloadBytes
+	if target := s.opts.BatchPayloadTargetBytes; rows > 1 && target > 0 && (limit == 0 || target < limit) {
+		limit = target
+	}
+	return limit
+}
+
+func (s *batchStream) payloadError(n int64) error {
+	return fmt.Errorf("parquet row output payload %d exceeds hard limit %d: %w", n, s.opts.BatchPayloadBytes, memory.ErrBudgetExceeded)
+}
+
+func (s *batchStream) limitPayloadRows(want int) (int, error) {
+	hard, target := s.opts.BatchPayloadBytes, s.opts.BatchPayloadTargetBytes
+	if hard == 0 && target == 0 {
+		return want, nil
+	}
+	one := s.outputFixedBytes(1)
+	if hard > 0 && one > hard {
+		return 0, s.payloadError(one)
+	}
+	limit := hard
+	if target > 0 && (limit == 0 || target < limit) {
+		limit = target
+	}
+	if one > limit {
+		return 1, nil
+	} // A legal single row may exceed the soft target.
+	lo, hi := 1, want
+	for lo < hi {
+		mid := lo + (hi-lo+1)/2
+		if s.outputFixedBytes(mid) <= limit {
+			lo = mid
+		} else {
+			hi = mid - 1
+		}
+	}
+	return lo, nil
+}
+
+// fixedBytes includes every typed scratch buffer the native typed decoders
 // may retain simultaneously, not merely the largest scratch buffer.
 func (s *batchStream) fixedBytes(rows int) int64 {
 	var bytes int64
@@ -435,64 +576,258 @@ func (s *batchStream) allocateFixed(ctx context.Context, want int, stringBytes i
 	return nil
 }
 
+func resize[T any](s []T, n int) []T {
+	if cap(s) < n {
+		return make([]T, n)
+	}
+	return s[:n]
+}
+
 func isNarrowBinding(b columnBinding) bool {
 	return b.Type == memory.TypeInt8 || b.Type == memory.TypeInt16 || b.Type == memory.TypeUint8 || b.Type == memory.TypeUint16
+}
+
+// allocateHeaders reserves all slice backing arrays before reading any borrowed
+// values. Header storage uses at most one eighth of the available budget and
+// is independent of row-group size. A one-row cursor lives in stream metadata.
+func (s *batchStream) allocateHeaders(ctx context.Context, want int) error {
+	if len(s.strings) == 0 {
+		s.headerCapacity = 1
+		return nil
+	}
+	width := int64(len(s.strings)) * int64(unsafe.Sizeof(arrowparquet.ByteArray{}))
+	for i := range s.strings {
+		if s.strings[i].binding.Nullable {
+			width += 2
+		}
+	}
+	n := int(min(int64(want), 1024, s.available()/8/width))
+	if n < 2 {
+		n = 1
+	}
+	if n > 1 {
+		bytes := int64(n) * width
+		charge, err := s.reserve(ctx, bytes)
+		if err != nil {
+			return err
+		}
+		s.headerCharge, s.headerBytes = charge, bytes
+	}
+	s.headerCapacity = n
+	for i := range s.strings {
+		c := &s.strings[i]
+		if n == 1 {
+			c.values, c.defs = c.inlineValue[:], c.inlineDef[:]
+		} else {
+			c.values = make([]arrowparquet.ByteArray, n)
+			if c.binding.Nullable {
+				c.defs = make([]int16, n)
+			}
+		}
+	}
+	return nil
+}
+
+func (s *batchStream) releaseHeaders() {
+	for i := range s.strings {
+		c := &s.strings[i]
+		c.values, c.defs = nil, nil
+		c.inlineValue[0] = nil
+		c.pos, c.rows = 0, 0
+	}
+	if s.headerCharge != nil {
+		s.headerCharge.Release()
+		s.headerCharge = nil
+	}
+	s.managed -= s.headerBytes
+	s.headerBytes, s.headerCapacity = 0, 0
 }
 
 func (s *batchStream) resetStrings() {
 	for i := range s.strings {
 		c := &s.strings[i]
 		v := s.batch.Strings[c.binding.Name]
+		c.vector = v
 		v.Offsets = v.Offsets[:s.capacity+1]
 		v.Offsets[0] = 0
 		v.Data = v.Data[:0]
 		if c.binding.Nullable {
-			v.Validity = memory.EnsureBitmap(v.Validity, s.capacity)
+			v.Validity = v.Validity[:memory.WordsFor(s.capacity)]
+			clear(v.Validity)
 		}
 	}
 }
 
-func (s *batchStream) readPending(ctx context.Context) error {
+// refillStrings returns an aligned span available in every string cursor.
+// Different columns may end their pages on different logical rows. A reader
+// advances only after every borrowed value from its preceding read was copied.
+func (s *batchStream) refillStrings(ctx context.Context, want int) (int, error) {
+	span := want
 	for i := range s.strings {
-		if err := s.checkContext(ctx); err != nil {
-			return err
-		}
 		c := &s.strings[i]
-		chunk, ok := s.chunks[c.column].(*file.ByteArrayColumnChunkReader)
-		if !ok {
-			return fmt.Errorf("column %q is not a byte-array chunk reader", c.binding.Name)
+		if c.pos == c.rows {
+			if err := s.checkContext(ctx); err != nil {
+				return 0, err
+			}
+			chunk, ok := s.chunks[c.column].(*file.ByteArrayColumnChunkReader)
+			if !ok {
+				return 0, fmt.Errorf("column %q is not a byte-array chunk reader", c.binding.Name)
+			}
+			clear(c.values)
+			var defs []int16
+			if c.binding.Nullable {
+				defs = c.defs
+			}
+			// Never look past the output row limit, even when a previous call retained
+			// a larger header buffer. Invalid later rows are reported by their batch.
+			n := min(want, len(c.values))
+			total, values, err := chunk.ReadBatchInPage(int64(n), c.values, defs, nil)
+			s.stringReadCalls++
+			if err != nil {
+				return 0, err
+			}
+			if total <= 0 || total > int64(n) || values < 0 || int64(values) > total || (!c.binding.Nullable && int64(values) != total) {
+				return 0, fmt.Errorf("column %q row count mismatch total=%d values=%d want<=%d", c.binding.Name, total, values, n)
+			}
+			c.pos, c.rows = 0, int(total)
+			if c.binding.Nullable {
+				// Scatter dense page views backwards into row order without another
+				// header allocation. Definitions distinguish empty strings from NULL.
+				dense := values
+				for row := c.rows - 1; row >= 0; row-- {
+					if c.defs[row] == 0 {
+						c.values[row] = nil
+						continue
+					}
+					if c.defs[row] != 1 || dense == 0 {
+						return 0, fmt.Errorf("column %q definition/value count mismatch", c.binding.Name)
+					}
+					dense--
+					c.values[row] = c.values[dense]
+				}
+				if dense != 0 {
+					return 0, fmt.Errorf("column %q definition/value count mismatch", c.binding.Name)
+				}
+			}
 		}
-		c.value[0] = nil
-		var defs []int16
-		if c.binding.Nullable {
-			defs = c.defs[:]
+		span = min(span, c.rows-c.pos)
+	}
+	return span, nil
+}
+
+// admissibleSpan checks payload lengths in batches, with no per-row allocator,
+// context, or Arrow calls. All replacement buffers must fit together while the
+// preceding allocations remain live. No unaccounted append growth is possible.
+func (s *batchStream) admissibleSpan(baseRows, span int) (int, error) {
+	for i := range s.strings {
+		c := &s.strings[i]
+		c.target = len(c.vector.Data)
+	}
+	free := s.available()
+	for row := 0; row < span; row++ {
+		payloadLimit := s.payloadLimit(baseRows + row + 1)
+		var payload int64
+		var replacements int64
+		fits := true
+		for i := range s.strings {
+			c := &s.strings[i]
+			value := c.values[c.pos+row]
+			if !utf8.Valid(value) {
+				return 0, fmt.Errorf("column %q contains invalid UTF-8", c.binding.Name)
+			}
+			if len(value) > math.MaxInt-c.target || int64(len(value))+int64(c.target) > math.MaxUint32 {
+				fits = false
+				continue
+			}
+			c.target += len(value)
+			if payloadLimit > 0 {
+				if int64(c.target) > math.MaxInt64-payload {
+					fits = false
+				} else {
+					payload += int64(c.target)
+				}
+			}
+			if c.target > cap(c.vector.Data) {
+				// Each target is at most MaxUint32. Saturate against the actual free
+				// capacity to avoid overflow even with an extreme column count.
+				if int64(c.target) > free-replacements {
+					fits = false
+				} else {
+					replacements += int64(c.target)
+				}
+			}
 		}
-		total, values, err := chunk.ReadBatchInPage(1, c.value[:], defs, nil)
+		if payloadLimit > 0 {
+			fixed := s.outputFixedBytes(baseRows + row + 1)
+			if fixed > payloadLimit || payload > payloadLimit-fixed {
+				fits = false
+			}
+		}
+		if !fits {
+			for i := range s.strings {
+				c := &s.strings[i]
+				c.target = len(c.vector.Data)
+				for prior := 0; prior < row; prior++ {
+					c.target += len(c.values[c.pos+prior])
+				}
+			}
+			return row, nil
+		}
+	}
+	return span, nil
+}
+
+func (s *batchStream) growStrings(ctx context.Context) error {
+	// Admission checked aggregate replacement capacity. Reserve and allocate
+	// exact targets, releasing each old allocation only after copying it.
+	for i := range s.strings {
+		c := &s.strings[i]
+		v := c.vector
+		if c.target <= cap(v.Data) {
+			continue
+		}
+		charge, err := s.reserve(ctx, int64(c.target))
 		if err != nil {
 			return err
 		}
-		if total != 1 || values < 0 || values > 1 || (!c.binding.Nullable && values != 1) {
-			return fmt.Errorf("column %q row count mismatch total=%d values=%d want=1", c.binding.Name, total, values)
+		data := make([]byte, len(v.Data), c.target)
+		copy(data, v.Data)
+		old := cap(v.Data)
+		v.Data = data
+		if c.charge != nil {
+			c.charge.Release()
 		}
-		c.valid = !c.binding.Nullable || c.defs[0] != 0
-		if c.valid != (values == 1) {
-			return fmt.Errorf("column %q definition/value count mismatch", c.binding.Name)
-		}
-		if !c.valid {
-			c.value[0] = nil
-		}
-		if !utf8.Valid(c.value[0]) {
-			return fmt.Errorf("column %q contains invalid UTF-8", c.binding.Name)
-		}
+		c.charge = charge
+		s.managed -= int64(old)
 	}
-	s.pending = true
 	return nil
+}
+
+func (s *batchStream) copyStrings(row, count int) {
+	for i := range s.strings {
+		c := &s.strings[i]
+		v := c.vector
+		for j := 0; j < count; j++ {
+			at := c.pos + j
+			value := c.values[at]
+			start := len(v.Data)
+			v.Data = v.Data[:start+len(value)]
+			copy(v.Data[start:], value)
+			v.Offsets[row+j+1] = uint32(len(v.Data))
+			if c.binding.Nullable && c.defs[at] != 0 {
+				memory.Set(v.Validity, row+j)
+			}
+			c.values[at] = nil
+		}
+		c.pos += count
+	}
 }
 
 func (s *batchStream) pendingBytes() (int64, error) {
 	var n int64
 	for i := range s.strings {
-		length := int64(len(s.strings[i].value[0]))
+		c := &s.strings[i]
+		length := int64(len(c.values[c.pos]))
 		if length > math.MaxUint32 || length > math.MaxInt64-n {
 			return 0, s.budgetError(length)
 		}
@@ -501,106 +836,111 @@ func (s *batchStream) pendingBytes() (int64, error) {
 	return n, nil
 }
 
-// growString reserves the complete replacement allocation while the old one
-// remains live. No append is allowed to choose an unaccounted Go capacity.
-func (s *batchStream) growString(ctx context.Context, c *streamString, need int) error {
-	v := s.batch.Strings[c.binding.Name]
-	maxData := min(int64(math.MaxUint32), int64(math.MaxInt))
-	if need < 0 || int64(need) > maxData {
-		return s.budgetError(int64(need))
-	}
-	if need <= cap(v.Data) {
-		return nil
-	}
-	free := s.available()
-	if int64(need) > free {
-		return s.budgetError(int64(need))
-	}
-	target := int64(need)
-	// Geometric growth is only an optimization, not an additional reason to
-	// reject a row. Exact required capacity is used near either limit.
-	if doubled := min(int64(cap(v.Data))*2, maxData); doubled > target && doubled <= free {
-		target = doubled
-	}
-	charge, err := s.reserve(ctx, target)
-	if err != nil {
-		return err
-	}
-	data := make([]byte, len(v.Data), int(target))
-	copy(data, v.Data)
-	old := cap(v.Data)
-	v.Data = data
-	if c.charge != nil {
-		c.charge.Release()
-	}
-	c.charge = charge
-	s.managed -= int64(old)
-	return nil
-}
-
-func (s *batchStream) fitPending(ctx context.Context) error {
+// replayInline is an exceptional outlier path, not a second reader API. If
+// charged lookahead headers prevent a row from fitting by itself, discard the
+// views and reopen only string chunks at the committed row. This preserves
+// exact admission without uncharged clones or dropping prefetched rows.
+// Replaying can reread preceding pages, so an adversarial outlier distribution
+// trades throughput for exact bounded admission; no whole group is buffered.
+func (s *batchStream) replayInline(ctx context.Context) error {
+	s.releaseHeaders()
+	s.headerCapacity = 1
 	for i := range s.strings {
-		c := &s.strings[i]
-		v := s.batch.Strings[c.binding.Name]
-		if len(c.value[0]) > math.MaxInt-len(v.Data) {
-			return s.budgetError(math.MaxInt64)
-		}
-		if err := s.growString(ctx, c, len(v.Data)+len(c.value[0])); err != nil {
+		if err := s.checkContext(ctx); err != nil {
 			return err
 		}
+		c := &s.strings[i]
+		if err := s.chunks[c.column].Close(); err != nil {
+			return err
+		}
+		s.chunks[c.column] = nil
+		chunk, err := s.r.RowGroup(s.groupID).Column(c.binding.Index)
+		if err != nil {
+			return err
+		}
+		s.chunks[c.column] = chunk
+		// Skip on a fresh reader handles files with or without an offset index.
+		skip := s.groupRows - s.remaining
+		for skip > 0 {
+			if err := s.checkContext(ctx); err != nil {
+				return err
+			}
+			// Arrow may allocate a definition-level scratch slice for a
+			// partial-page skip. Bound each request instead of letting a
+			// row-group-sized skip create row-group-sized decode scratch.
+			step := min(skip, 1024)
+			n, err := chunk.(*file.ByteArrayColumnChunkReader).Skip(step)
+			if err != nil {
+				return err
+			}
+			if n != step {
+				return fmt.Errorf("column %q replay skipped %d rows, want %d", c.binding.Name, n, step)
+			}
+			skip -= step
+		}
+		c.values, c.defs = c.inlineValue[:], c.inlineDef[:]
 	}
-	return nil
+	s.stringReplays++
+	_, err := s.refillStrings(ctx, 1)
+	return err
 }
 
 func (s *batchStream) readStrings(ctx context.Context, want int) (int, error) {
-	for row := 0; row < want; row++ {
-		if err := s.checkContext(ctx); err != nil {
+	row := 0
+	for row < want {
+		span, err := s.refillStrings(ctx, want-row)
+		if err != nil {
 			return 0, err
 		}
-		if !s.pending {
-			if err := s.readPending(ctx); err != nil {
-				return 0, err
-			}
+		count, err := s.admissibleSpan(row, span)
+		if err != nil {
+			return 0, err
 		}
-		if err := s.fitPending(ctx); err != nil {
-			if !errors.Is(err, memory.ErrBudgetExceeded) {
-				return 0, err
-			}
+		if count == 0 {
 			if row != 0 {
 				return row, nil
 			}
-			// Previous buffers may have capacity skewed toward another string
-			// column, or fixed capacity may crowd out this larger single row.
-			// Drop them before retrying so an individually admissible row works.
-			bytes, sizeErr := s.pendingBytes()
-			if sizeErr != nil {
-				return 0, sizeErr
-			}
-			s.releaseBuffers()
-			if err := s.allocateFixed(ctx, want, bytes); err != nil {
+			bytes, err := s.pendingBytes()
+			if err != nil {
 				return 0, err
 			}
+			if hard := s.opts.BatchPayloadBytes; hard > 0 {
+				fixed := s.outputFixedBytes(1)
+				if fixed > hard || bytes > hard-fixed {
+					return 0, s.payloadError(min(math.MaxInt64-bytes, fixed) + bytes)
+				}
+			}
+			// Release old output before resizing, never alongside a live replacement.
+			// Header arrays and borrowed pages remain intact unless a replay is needed.
+			s.releaseBuffers()
+			err = s.allocateFixed(ctx, want, bytes)
+			if errors.Is(err, memory.ErrBudgetExceeded) && s.headerBytes != 0 {
+				if err := s.replayInline(ctx); err != nil {
+					return 0, err
+				}
+				err = s.allocateFixed(ctx, want, bytes)
+			}
+			if err != nil {
+				return 0, err
+			}
+			s.restoreCapacity = true
 			want = min(want, s.capacity)
 			s.resetStrings()
-			if err := s.fitPending(ctx); err != nil {
+			count, err = s.admissibleSpan(0, 1)
+			if err != nil {
 				return 0, err
 			}
-		}
-		for i := range s.strings {
-			c := &s.strings[i]
-			v := s.batch.Strings[c.binding.Name]
-			start := len(v.Data)
-			v.Data = v.Data[:start+len(c.value[0])]
-			copy(v.Data[start:], c.value[0])
-			v.Offsets[row+1] = uint32(len(v.Data))
-			if c.binding.Nullable && c.valid {
-				memory.Set(v.Validity, row)
+			if count == 0 {
+				return 0, s.budgetError(bytes)
 			}
-			c.value[0] = nil
 		}
-		s.pending = false
+		if err := s.growStrings(ctx); err != nil {
+			return 0, err
+		}
+		s.copyStrings(row, count)
+		row += count
 	}
-	return want, nil
+	return row, nil
 }
 
 func (s *batchStream) closeChunks() error {
@@ -633,17 +973,17 @@ func (s *batchStream) releaseBuffers() {
 			s.strings[i].charge = nil
 		}
 	}
-	s.managed = 0
+	s.managed = s.headerBytes
 	s.capacity = 0
+	for i := range s.strings {
+		s.strings[i].vector = nil
+	}
 }
 
 func (s *batchStream) release() error {
 	err := s.closeChunks()
 	s.releaseBuffers()
-	for i := range s.strings {
-		s.strings[i].value[0] = nil
-	}
-	s.pending = false
+	s.releaseHeaders()
 	if s.r != nil {
 		err = errors.Join(err, s.r.Close())
 		s.r = nil
@@ -672,10 +1012,14 @@ func (s *batchStream) Close() error {
 // StreamDiagnostics describes only managed decode buffers, not process RSS.
 func (s *batchStream) StreamDiagnostics() map[string]string {
 	return map[string]string{
-		"parquet_batches":            strconv.FormatInt(s.batches, 10),
-		"parquet_rows":               strconv.FormatInt(s.rows, 10),
-		"parquet_peak_managed_bytes": strconv.FormatInt(s.peak, 10),
-		"parquet_memory_scope":       "decoded vector capacities and scratch; excludes Arrow pages, dictionaries, codecs, stream metadata and Go object overhead",
+		"parquet_batches":                     strconv.FormatInt(s.batches, 10),
+		"parquet_rows":                        strconv.FormatInt(s.rows, 10),
+		"parquet_peak_managed_bytes":          strconv.FormatInt(s.peak, 10),
+		"parquet_max_compressed_page_bytes":   strconv.FormatInt(s.opts.MaxCompressedPageBytes, 10),
+		"parquet_max_uncompressed_page_bytes": strconv.FormatInt(s.opts.MaxUncompressedPageBytes, 10),
+		"parquet_string_page_reads":           strconv.FormatInt(s.stringReadCalls, 10),
+		"parquet_string_replays":              strconv.FormatInt(s.stringReplays, 10),
+		"parquet_memory_scope":                "decoded vector capacities, typed scratch and borrowed-view headers; excludes Arrow pages, dictionaries, codecs, stream metadata and Go object overhead",
 	}
 }
 

@@ -161,7 +161,7 @@ func TestBoundedAggregateDrainHandlesInputMuchLargerThanBudget(t *testing.T) {
 		t.Fatal(err)
 	}
 	ctx := memory.WithQueryBudget(context.Background(), queryBudget)
-	stream, err := source.OpenBatchStreamWithPartitions(ctx, prepared.src, source.ReadOptions{Kernels: prepared.kernels}, prepared.parts)
+	stream, err := source.OpenBatchStream(ctx, prepared.src, source.ReadOptions{Kernels: prepared.kernels})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -380,7 +380,7 @@ func TestBoundedSortedAggregateStreamsResultLargerThanBudget(t *testing.T) {
 		t.Fatal(err)
 	}
 	ctx := memory.WithQueryBudget(context.Background(), queryBudget)
-	stream, err := source.OpenBatchStreamWithPartitions(ctx, prepared.src, source.ReadOptions{Kernels: prepared.kernels}, prepared.parts)
+	stream, err := source.OpenBatchStream(ctx, prepared.src, source.ReadOptions{Kernels: prepared.kernels})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -475,7 +475,7 @@ func BenchmarkPhase33SpillableAggregateDrain(b *testing.B) {
 			b.Fatal(err)
 		}
 		ctx := memory.WithQueryBudget(context.Background(), queryBudget)
-		stream, err := source.OpenBatchStreamWithPartitions(ctx, prepared.src, source.ReadOptions{Kernels: prepared.kernels}, prepared.parts)
+		stream, err := source.OpenBatchStream(ctx, prepared.src, source.ReadOptions{Kernels: prepared.kernels})
 		if err != nil {
 			_ = queryBudget.Close()
 			b.Fatal(err)
@@ -532,7 +532,7 @@ func TestBoundedAggregateRecursivelyRepartitionsOversizedRadixBucket(t *testing.
 		t.Fatal(err)
 	}
 	ctx := memory.WithQueryBudget(context.Background(), queryBudget)
-	stream, err := source.OpenBatchStreamWithPartitions(ctx, prepared.src, source.ReadOptions{Kernels: prepared.kernels}, prepared.parts)
+	stream, err := source.OpenBatchStream(ctx, prepared.src, source.ReadOptions{Kernels: prepared.kernels})
 	if err != nil {
 		t.Fatal(err)
 	}

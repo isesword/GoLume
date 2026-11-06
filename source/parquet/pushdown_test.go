@@ -52,15 +52,14 @@ func TestApplyPushdownProjectionAndRowGroupPruning(t *testing.T) {
 		t.Fatalf("parts=%v", parts)
 	}
 
-	legacy := pushed.(source.LegacyReaderSource)
-	r, err := legacy.NewReader(context.Background(), testReadOptions())
+	r, err := source.OpenBatchStream(context.Background(), pushed, testReadOptions())
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer r.Close()
 	batch := newTestBatch()
-	if err := r.ReadPartition(context.Background(), parts[0], batch); err != nil {
-		t.Fatal(err)
+	if ok, err := r.Next(context.Background(), batch); !ok || err != nil {
+		t.Fatalf("first batch: ok=%v err=%v", ok, err)
 	}
 	if _, ok := batch.Int64s["unused"]; ok {
 		t.Fatal("reader decoded unused column")

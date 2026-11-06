@@ -33,7 +33,7 @@ func OpenFanOut(ctx context.Context, src source.Source, readOpts source.ReadOpti
 	if plan.Strategy == FanOutRescan {
 		streams := make([]source.BatchStream, 0, branches)
 		for branch := 0; branch < branches; branch++ {
-			stream, openErr := source.OpenBatchStreamWithPartitions(ctx, src, readOpts, parts)
+			stream, openErr := openWholeStream(ctx, src, readOpts, parts)
 			if openErr != nil {
 				for _, opened := range streams {
 					_ = opened.Close()
@@ -119,7 +119,7 @@ func (m *boundedMultiplexer) run() {
 		}
 		m.observeOnce()
 	}()
-	stream, err := source.OpenBatchStreamWithPartitions(m.ctx, m.src, m.readOpts, m.parts)
+	stream, err := openWholeStream(m.ctx, m.src, m.readOpts, m.parts)
 	if err != nil {
 		m.fail(err)
 		return

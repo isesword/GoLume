@@ -1,5 +1,7 @@
 # Go Columnar Engine — Phase 3.6 Bounded Streaming and Native Sinks
 
+> **WIP 分支检查点，尚未完成性能验收。** 本次原生流重构包含破坏性 API 变更；正确性验证通过，但 prepared W4 性能门槛仍未达标。请先阅读 [迁移说明](docs/STREAM_MIGRATION.md) 与 [验证及未完成事项](validation/native-stream-unification-review.md)。本检查点不表示可合并。
+
 Go Columnar Engine 是一个面向 Go 原生服务、CLI 和嵌入式分析场景的 Polars-like 列式分析引擎。核心路线保持：
 
 ```text
@@ -193,7 +195,7 @@ new = old * 0.75 + observed * 0.25
 
 feedback cache 最多保留 1024 个 plan signature。用户显式 `WithHints` 永远优先。
 
-已经有回归测试证明：一个默认估算会选择 radix 的 300K-row/4-partition 聚合，在观察到实际 cardinality=2 后，下一次 Prepare 自动切换到非 radix strategy。
+原生聚合计划保留执行反馈，下一次 Prepare 使用已观察的 cardinality；旧整行组 radix 聚合后端已删除，实际策略为 direct-fused、bitmap-direct、sorted 或预算驱动的 spill-hash。迁移见 [STREAM_MIGRATION.md](docs/STREAM_MIGRATION.md)。
 
 ## Existing execution capabilities
 

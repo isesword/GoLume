@@ -107,7 +107,73 @@ func AppendStructRow(dst, src *StructVector, row int, parentValid bool) error {
 	for _, field := range src.Fields {
 		valid := parentValid && batchFieldValid(src.Values, field, row)
 		switch field.Type {
-		case TypeInt8, TypeInt16, TypeInt32, TypeDate32, TypeTime32:
+		case TypeInt8:
+			v := src.Values.Int8s[field.Name]
+			out := dst.Values.Int8s[field.Name]
+			if out == nil {
+				out = &Int8Vector{Encoding: field.Encoding}
+			}
+			if valid {
+				out.Values = append(out.Values, v.Values[row])
+			} else {
+				out.Values = append(out.Values, 0)
+			}
+			out.Validity = appendValidity(out.Validity, valid, dstRow)
+			dst.Values.Int8s[field.Name] = out
+		case TypeInt16:
+			v := src.Values.Int16s[field.Name]
+			out := dst.Values.Int16s[field.Name]
+			if out == nil {
+				out = &Int16Vector{Encoding: field.Encoding}
+			}
+			if valid {
+				out.Values = append(out.Values, v.Values[row])
+			} else {
+				out.Values = append(out.Values, 0)
+			}
+			out.Validity = appendValidity(out.Validity, valid, dstRow)
+			dst.Values.Int16s[field.Name] = out
+		case TypeUint8:
+			v := src.Values.Uint8s[field.Name]
+			out := dst.Values.Uint8s[field.Name]
+			if out == nil {
+				out = &Uint8Vector{Encoding: field.Encoding}
+			}
+			if valid {
+				out.Values = append(out.Values, v.Values[row])
+			} else {
+				out.Values = append(out.Values, 0)
+			}
+			out.Validity = appendValidity(out.Validity, valid, dstRow)
+			dst.Values.Uint8s[field.Name] = out
+		case TypeUint16:
+			v := src.Values.Uint16s[field.Name]
+			out := dst.Values.Uint16s[field.Name]
+			if out == nil {
+				out = &Uint16Vector{Encoding: field.Encoding}
+			}
+			if valid {
+				out.Values = append(out.Values, v.Values[row])
+			} else {
+				out.Values = append(out.Values, 0)
+			}
+			out.Validity = appendValidity(out.Validity, valid, dstRow)
+			dst.Values.Uint16s[field.Name] = out
+		case TypeFloat32:
+			v := src.Values.Float32s[field.Name]
+			out := dst.Values.Float32s[field.Name]
+			if out == nil {
+				out = &Float32Vector{Encoding: field.Encoding}
+			}
+			if valid {
+				out.Values = append(out.Values, v.Values[row])
+			} else {
+				out.Values = append(out.Values, 0)
+			}
+			out.Validity = appendValidity(out.Validity, valid, dstRow)
+			dst.Values.Float32s[field.Name] = out
+
+		case TypeInt32, TypeDate32, TypeTime32:
 			v := src.Values.Int32s[field.Name]
 			out := dst.Values.Int32s[field.Name]
 			if out == nil {
@@ -133,7 +199,7 @@ func AppendStructRow(dst, src *StructVector, row int, parentValid bool) error {
 			}
 			out.Validity = appendValidity(out.Validity, valid, dstRow)
 			dst.Values.Int64s[field.Name] = out
-		case TypeUint8, TypeUint16, TypeUint32, TypeBool:
+		case TypeUint32, TypeBool:
 			v := src.Values.Uint32s[field.Name]
 			out := dst.Values.Uint32s[field.Name]
 			if out == nil {
@@ -159,7 +225,7 @@ func AppendStructRow(dst, src *StructVector, row int, parentValid bool) error {
 			}
 			out.Validity = appendValidity(out.Validity, valid, dstRow)
 			dst.Values.Uint64s[field.Name] = out
-		case TypeFloat32, TypeFloat64:
+		case TypeFloat64:
 			v := src.Values.Float64s[field.Name]
 			out := dst.Values.Float64s[field.Name]
 			if out == nil {
@@ -174,6 +240,24 @@ func AppendStructRow(dst, src *StructVector, row int, parentValid bool) error {
 			dst.Values.Float64s[field.Name] = out
 		case TypeString:
 			v := src.Values.Strings[field.Name]
+			if v == nil {
+				dictionary := src.Values.DictStrings[field.Name]
+				if dictionary == nil {
+					return fmt.Errorf("struct string child %q is missing", field.Name)
+				}
+				out := dst.Values.DictStrings[field.Name]
+				if out == nil {
+					out = &DictionaryStringVector{Offsets: append([]uint32(nil), dictionary.Offsets...), Data: append([]byte(nil), dictionary.Data...), DictionaryDomain: dictionary.DictionaryDomain, Encoding: dictionary.Encoding}
+				}
+				code := uint32(0)
+				if valid {
+					code = dictionary.Indices[row]
+				}
+				out.Indices = append(out.Indices, code)
+				out.Validity = appendValidity(out.Validity, valid, dstRow)
+				dst.Values.DictStrings[field.Name] = out
+				continue
+			}
 			out := dst.Values.Strings[field.Name]
 			if out == nil {
 				out = &StringViewVector{Offsets: []uint32{0}, Encoding: EncodingView}
@@ -216,15 +300,26 @@ func AppendStructRow(dst, src *StructVector, row int, parentValid bool) error {
 
 func batchHasField(b *Batch, f Field) bool {
 	switch f.Type {
-	case TypeInt8, TypeInt16, TypeInt32, TypeDate32, TypeTime32:
+	case TypeInt8:
+		return b.Int8s[f.Name] != nil
+	case TypeInt16:
+		return b.Int16s[f.Name] != nil
+	case TypeUint8:
+		return b.Uint8s[f.Name] != nil
+	case TypeUint16:
+		return b.Uint16s[f.Name] != nil
+	case TypeFloat32:
+		return b.Float32s[f.Name] != nil
+
+	case TypeInt32, TypeDate32, TypeTime32:
 		return b.Int32s[f.Name] != nil
 	case TypeInt64, TypeDate64, TypeTimestamp, TypeTime64, TypeDuration:
 		return b.Int64s[f.Name] != nil
-	case TypeUint8, TypeUint16, TypeUint32, TypeBool:
+	case TypeUint32, TypeBool:
 		return b.Uint32s[f.Name] != nil
 	case TypeUint64:
 		return b.Uint64s[f.Name] != nil
-	case TypeFloat32, TypeFloat64:
+	case TypeFloat64:
 		return b.Float64s[f.Name] != nil
 	case TypeString:
 		return b.Strings[f.Name] != nil || b.DictStrings[f.Name] != nil
@@ -235,19 +330,35 @@ func batchHasField(b *Batch, f Field) bool {
 }
 func batchFieldValid(b *Batch, f Field, row int) bool {
 	switch f.Type {
-	case TypeInt8, TypeInt16, TypeInt32, TypeDate32, TypeTime32:
+	case TypeInt8:
+		v := b.Int8s[f.Name]
+		return v != nil && v.IsValid(row)
+	case TypeInt16:
+		v := b.Int16s[f.Name]
+		return v != nil && v.IsValid(row)
+	case TypeUint8:
+		v := b.Uint8s[f.Name]
+		return v != nil && v.IsValid(row)
+	case TypeUint16:
+		v := b.Uint16s[f.Name]
+		return v != nil && v.IsValid(row)
+	case TypeFloat32:
+		v := b.Float32s[f.Name]
+		return v != nil && v.IsValid(row)
+
+	case TypeInt32, TypeDate32, TypeTime32:
 		v := b.Int32s[f.Name]
 		return v != nil && v.IsValid(row)
 	case TypeInt64, TypeDate64, TypeTimestamp, TypeTime64, TypeDuration:
 		v := b.Int64s[f.Name]
 		return v != nil && v.IsValid(row)
-	case TypeUint8, TypeUint16, TypeUint32, TypeBool:
+	case TypeUint32, TypeBool:
 		v := b.Uint32s[f.Name]
 		return v != nil && v.IsValid(row)
 	case TypeUint64:
 		v := b.Uint64s[f.Name]
 		return v != nil && v.IsValid(row)
-	case TypeFloat32, TypeFloat64:
+	case TypeFloat64:
 		v := b.Float64s[f.Name]
 		return v != nil && v.IsValid(row)
 	case TypeString:

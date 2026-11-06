@@ -3,7 +3,6 @@ package lazy
 import (
 	"context"
 	"fmt"
-	"gocolumn/engine"
 	"gocolumn/logical"
 	"gocolumn/observer"
 	"runtime"
@@ -103,44 +102,6 @@ func (f LazyFrame) Analyze(ctx context.Context) (AnalyzeReport, error) {
 	prepareCtx := observer.WithOperatorTrace(observer.WithPhase(ctx, observer.PhasePrepare), trace)
 
 	_, terminalAggregate := f.plan.(*logical.Aggregate)
-	// Analyze follows the same native physical stream graph as Collect for every
-	// terminal aggregate. The former resident engine.Result branch made
-	// diagnostics observe a different optimizer/execution semantic.
-	streamAggregate := terminalAggregate
-	if terminalAggregate && !streamAggregate {
-		alloc0 := totalAlloc()
-		start := time.Now()
-		query, physicalLogical, pushdown, closers, err := f.prepare(prepareCtx, engine.PrepareOptions{})
-		report.PrepareDuration = time.Since(start)
-		report.PrepareAllocBytes = totalAlloc() - alloc0
-		if err != nil {
-			return AnalyzeReport{}, err
-		}
-		defer closePreparedResources(query, closers)
-		info := query.Plan()
-		report.Strategy = info.Strategy.Kind.String()
-		var physical strings.Builder
-		physical.WriteString(logical.Explain(physicalLogical))
-		fmt.Fprintf(&physical, "\nPHYSICAL strategy=%s workers=%d radix_bits=%d key_width=%d predicate_ops=%d feedback_samples=%d est_selectivity=%.4f est_cardinality=%d", info.Strategy.Kind, info.Strategy.Workers, info.Strategy.RadixBits, info.KeyWidthBytes, info.PredicateOps, info.FeedbackSamples, info.EstimatedSelectivity, info.EstimatedCardinality)
-		appendPushdownExplain(&physical, pushdown)
-		report.PhysicalPlan = physical.String()
-
-		execCtx := observer.WithOperatorTrace(observer.WithPhase(ctx, observer.PhaseExecute), trace)
-		alloc0 = totalAlloc()
-		start = time.Now()
-		result, err := query.Execute(execCtx, engine.ExecuteOptions{Materialize: false})
-		report.ExecuteDuration = time.Since(start)
-		report.ExecuteAllocBytes = totalAlloc() - alloc0
-		if err != nil {
-			return AnalyzeReport{}, err
-		}
-		report.OutputRows = int64(result.GroupCount)
-		report.GroupCount = result.GroupCount
-		report.SelectedRows = int64(result.SelectedRows)
-		report.PrepareOperators = trace.Stats(observer.PhasePrepare)
-		report.ExecuteOperators = trace.Stats(observer.PhaseExecute)
-		return report, nil
-	}
 
 	alloc0 := totalAlloc()
 	start := time.Now()
@@ -170,11 +131,15 @@ func (f LazyFrame) Analyze(ctx context.Context) (AnalyzeReport, error) {
 	if err != nil {
 		return AnalyzeReport{}, err
 	}
+	defer frame.Close()
 	report.OutputRows = frame.Height()
 	if terminalAggregate {
 		report.GroupCount = int(frame.Height())
-		report.Strategy = "stream"
 		diagnostics := prepared.lastDiagnostics()
+		report.Strategy = diagnostics["strategy"]
+		if report.Strategy == "" {
+			report.Strategy = "unknown"
+		}
 		report.SelectedRows = int64(parseDiagInt(diagnostics, "selected_rows", 0))
 	}
 	for _, batch := range frame.batches() {

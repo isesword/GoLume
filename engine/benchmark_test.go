@@ -37,22 +37,22 @@ func benchmarkStrategy(b *testing.B, strategy string, workers int) {
 
 func BenchmarkDirectFused(b *testing.B)  { benchmarkStrategy(b, "direct-fused", 1) }
 func BenchmarkBitmapDirect(b *testing.B) { benchmarkStrategy(b, "bitmap-direct", 1) }
-func BenchmarkRadixW4(b *testing.B)      { benchmarkStrategy(b, "radix", 4) }
+func BenchmarkStreamW4(b *testing.B)     { benchmarkStrategy(b, "", 4) }
 
-func BenchmarkPreparedRadixW4(b *testing.B) {
-	benchmarkPreparedRadixW4(b, kernel.ModeAuto)
+func BenchmarkPreparedStreamW4(b *testing.B) {
+	benchmarkPreparedStreamW4(b, kernel.ModeAuto)
 }
 
-func BenchmarkPreparedRadixKernelMode(b *testing.B) {
+func BenchmarkPreparedStreamKernelMode(b *testing.B) {
 	for _, mode := range []struct {
 		name string
 		mode kernel.Mode
 	}{{"mode=scalar", kernel.ModeScalar}, {"mode=auto", kernel.ModeAuto}} {
-		b.Run(mode.name, func(b *testing.B) { benchmarkPreparedRadixW4(b, mode.mode) })
+		b.Run(mode.name, func(b *testing.B) { benchmarkPreparedStreamW4(b, mode.mode) })
 	}
 }
 
-func benchmarkPreparedRadixW4(b *testing.B, mode kernel.Mode) {
+func benchmarkPreparedStreamW4(b *testing.B, mode kernel.Mode) {
 	src, err := parquetsource.OpenFile(testPath(b))
 	if err != nil {
 		b.Fatal(err)
@@ -62,7 +62,7 @@ func benchmarkPreparedRadixW4(b *testing.B, mode kernel.Mode) {
 	opts.KernelMode = mode
 	eng := engine.New(opts)
 	defer eng.Close()
-	p, err := eng.Prepare(context.Background(), src, query("radix", 4), engine.PrepareOptions{MaxConcurrency: 1})
+	p, err := eng.Prepare(context.Background(), src, query("", 4), engine.PrepareOptions{MaxConcurrency: 1})
 	if err != nil {
 		b.Fatal(err)
 	}

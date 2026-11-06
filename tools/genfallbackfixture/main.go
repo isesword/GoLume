@@ -128,11 +128,11 @@ func verifyFixture(path string, oracle map[int32]aggregate) error {
 			return fmt.Errorf("unexpected schema for %s", name)
 		}
 	}
-	for _, strategy := range []string{"direct-fused", "bitmap-direct", "radix"} {
+	for _, strategy := range []string{"direct-fused", "bitmap-direct"} {
 		opts := engine.DefaultOptions()
 		opts.Workers = 4
 		eng := engine.New(opts)
-		q := expr.Query{Filter: expr.GT(expr.Col("pred"), expr.I64(32767)), GroupBy: []string{"key"}, Aggregates: []expr.Aggregate{expr.Sum("value", "sum"), expr.Count("count")}, Hints: expr.Hints{Selectivity: .451, Cardinality: 1 << 18, ForceStrategy: strategy, ForceWorkerCount: 4}}
+		q := expr.Query{Filter: expr.GT(expr.Col("pred"), expr.I64(32767)), GroupBy: []string{"key"}, Aggregates: []expr.Aggregate{expr.Sum("value", "sum"), expr.Count("count")}, Hints: expr.Hints{Selectivity: .451, Cardinality: 1 << 18, ForceStrategy: strategy}}
 		result, err := eng.Execute(context.Background(), src, q, engine.ExecuteOptions{Materialize: true})
 		eng.Close()
 		if err != nil {

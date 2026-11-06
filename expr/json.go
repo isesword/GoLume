@@ -202,11 +202,18 @@ func jsonStructRow(fields []memory.Field, object map[string]json.RawMessage, par
 					return nil, jsonFieldError(row, field.Name, err)
 				}
 			}
-			vec := &memory.Int32Vector{Values: []int32{int32(value)}, Encoding: field.Encoding}
+			var validity memory.Bitmap
 			if !valid {
-				vec.Validity = memory.EnsureBitmap(nil, 1)
+				validity = memory.EnsureBitmap(nil, 1)
 			}
-			v.Values.Int32s[field.Name] = vec
+			switch field.Type {
+			case memory.TypeInt8:
+				v.Values.Int8s[field.Name] = &memory.Int8Vector{Values: []int8{int8(value)}, Validity: validity, Encoding: field.Encoding}
+			case memory.TypeInt16:
+				v.Values.Int16s[field.Name] = &memory.Int16Vector{Values: []int16{int16(value)}, Validity: validity, Encoding: field.Encoding}
+			default:
+				v.Values.Int32s[field.Name] = &memory.Int32Vector{Values: []int32{int32(value)}, Validity: validity, Encoding: field.Encoding}
+			}
 		case memory.TypeInt64, memory.TypeDate64, memory.TypeTimestamp, memory.TypeTime64, memory.TypeDuration:
 			value := int64(0)
 			var err error
@@ -243,11 +250,18 @@ func jsonStructRow(fields []memory.Field, object map[string]json.RawMessage, par
 					return nil, jsonFieldError(row, field.Name, err)
 				}
 			}
-			vec := &memory.Uint32Vector{Values: []uint32{uint32(value)}, Encoding: field.Encoding}
+			var validity memory.Bitmap
 			if !valid {
-				vec.Validity = memory.EnsureBitmap(nil, 1)
+				validity = memory.EnsureBitmap(nil, 1)
 			}
-			v.Values.Uint32s[field.Name] = vec
+			switch field.Type {
+			case memory.TypeUint8:
+				v.Values.Uint8s[field.Name] = &memory.Uint8Vector{Values: []uint8{uint8(value)}, Validity: validity, Encoding: field.Encoding}
+			case memory.TypeUint16:
+				v.Values.Uint16s[field.Name] = &memory.Uint16Vector{Values: []uint16{uint16(value)}, Validity: validity, Encoding: field.Encoding}
+			default:
+				v.Values.Uint32s[field.Name] = &memory.Uint32Vector{Values: []uint32{uint32(value)}, Validity: validity, Encoding: field.Encoding}
+			}
 		case memory.TypeUint64:
 			value := uint64(0)
 			var err error
@@ -266,19 +280,30 @@ func jsonStructRow(fields []memory.Field, object map[string]json.RawMessage, par
 			value := float64(0)
 			var err error
 			if valid {
-				value, err = strconv.ParseFloat(string(raw), 64)
+				bits := 64
+				if field.Type == memory.TypeFloat32 {
+					bits = 32
+				}
+				value, err = strconv.ParseFloat(string(raw), bits)
+				if math.IsInf(value, 0) {
+					return nil, jsonFieldError(row, field.Name, fmt.Errorf("value overflows %s", field.Type))
+				}
 				if err != nil {
 					return nil, jsonFieldError(row, field.Name, fmt.Errorf("expected number"))
 				}
-				if math.IsInf(value, 0) || (field.Type == memory.TypeFloat32 && math.Abs(value) > math.MaxFloat32) {
+				if math.IsNaN(value) {
 					return nil, jsonFieldError(row, field.Name, fmt.Errorf("value overflows %s", field.Type))
 				}
 			}
-			vec := &memory.Float64Vector{Values: []float64{value}, Encoding: field.Encoding}
+			var validity memory.Bitmap
 			if !valid {
-				vec.Validity = memory.EnsureBitmap(nil, 1)
+				validity = memory.EnsureBitmap(nil, 1)
 			}
-			v.Values.Float64s[field.Name] = vec
+			if field.Type == memory.TypeFloat32 {
+				v.Values.Float32s[field.Name] = &memory.Float32Vector{Values: []float32{float32(value)}, Validity: validity, Encoding: field.Encoding}
+			} else {
+				v.Values.Float64s[field.Name] = &memory.Float64Vector{Values: []float64{value}, Validity: validity, Encoding: field.Encoding}
+			}
 		case memory.TypeString:
 			value := ""
 			var err error

@@ -250,7 +250,7 @@ func (l Layout) IsZero() bool {
 	return !l.Sum && !l.CountRows && !l.CountValues && !l.Min && !l.Max && !l.Avg
 }
 
-// IsSumCountOnly reports whether the layout can use the current radix
+// IsSumCountOnly reports whether the layout can use the shared
 // SUM+COUNT specialization without additional aggregate state.
 func (l Layout) IsSumCountOnly() bool {
 	return l.Sum && l.CountRows && !l.CountValues && !l.Min && !l.Max && !l.Avg
@@ -282,21 +282,43 @@ type Int64Result struct {
 // It avoids interface dispatch in row loops while retaining a generic
 // control-plane Layout selected by the planner.
 type Int64Vector struct {
-	layout      Layout
-	sums        []int64
-	sumValid    []uint8
-	countRows   []uint64
-	countValues []uint64
-	mins        []int64
-	minValid    []uint8
-	maxs        []int64
-	maxValid    []uint8
+	layout       Layout
+	sumCountOnly bool
+	sums         []int64
+	sumValid     []uint8
+	countRows    []uint64
+	countValues  []uint64
+	mins         []int64
+	minValid     []uint8
+	maxs         []int64
+	maxValid     []uint8
+}
+
+// SumCountUpdater is a checked, non-owning update view for a SUM+COUNT(*)
+// vector. It must come from Int64Vector.SumCountUpdater and remains valid only
+// while that vector keeps the same layout and has not been released. It owns
+// no buffers and observes replacement backing arrays through the vector.
+type SumCountUpdater struct{ vector *Int64Vector }
+
+// SumCountUpdater selects the narrow state transition once outside a batch
+// loop. Other layouts return false and must use the general vector methods.
+func (v *Int64Vector) SumCountUpdater() (SumCountUpdater, bool) {
+	if v == nil || !v.sumCountOnly {
+		return SumCountUpdater{}, false
+	}
+	return SumCountUpdater{vector: v}, true
+}
+
+// AddValue updates an occupied slot, counting NULL rows without changing SUM.
+// Slot bounds and initialization follow the Int64Vector.AddValue contract.
+func (u SumCountUpdater) AddValue(slot int, value int64, valid bool) {
+	u.vector.addSumCountValue(slot, value, valid)
 }
 
 // NewInt64Vector allocates aggregate state for slots according to layout.
 func NewInt64Vector(slots int, layout Layout) Int64Vector {
 	layout = normalizeLayout(layout)
-	v := Int64Vector{layout: layout}
+	v := Int64Vector{layout: layout, sumCountOnly: layout.IsSumCountOnly()}
 	if layout.Sum || layout.Avg {
 		v.sums = make([]int64, slots)
 	}
@@ -374,6 +396,10 @@ func (v *Int64Vector) Add(slot int, value int64) { v.AddValue(slot, value, true)
 
 // AddValue updates an existing slot and applies SQL aggregate NULL semantics.
 func (v *Int64Vector) AddValue(slot int, value int64, valid bool) {
+	if v.sumCountOnly {
+		v.addSumCountValue(slot, value, valid)
+		return
+	}
 	if v.layout.CountRows {
 		v.countRows[slot]++
 	}
@@ -394,6 +420,16 @@ func (v *Int64Vector) AddValue(slot int, value int64, valid bool) {
 	}
 	if v.layout.Max && (v.maxValid[slot] == 0 || value > v.maxs[slot]) {
 		v.maxs[slot], v.maxValid[slot] = value, 1
+	}
+}
+
+// addSumCountValue is the shared narrow state transition for SUM+COUNT(*).
+// It counts NULL rows while leaving SUM invalid until a non-NULL value arrives.
+func (v *Int64Vector) addSumCountValue(slot int, value int64, valid bool) {
+	v.countRows[slot]++
+	if valid {
+		v.sums[slot] += value
+		v.sumValid[slot] = 1
 	}
 }
 

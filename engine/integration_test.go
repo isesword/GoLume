@@ -23,7 +23,7 @@ func testPath(t testing.TB) string {
 	return p
 }
 func query(force string, workers int) expr.Query {
-	return expr.Query{Filter: expr.GT(expr.Col("pred"), expr.I64(32767)), GroupBy: []string{"key"}, Aggregates: []expr.Aggregate{expr.Sum("value", "sum"), expr.Count("count")}, Hints: expr.Hints{Selectivity: .451, Cardinality: 1 << 18, ForceStrategy: force, ForceWorkerCount: workers}}
+	return expr.Query{Filter: expr.GT(expr.Col("pred"), expr.I64(32767)), GroupBy: []string{"key"}, Aggregates: []expr.Aggregate{expr.Sum("value", "sum"), expr.Count("count")}, Hints: expr.Hints{Selectivity: .451, Cardinality: 1 << 18, ForceStrategy: force}}
 }
 func TestParquetStrategies(t *testing.T) {
 	src, err := parquetsource.OpenFile(testPath(t))
@@ -33,7 +33,7 @@ func TestParquetStrategies(t *testing.T) {
 	for _, tc := range []struct {
 		name, strategy string
 		workers        int
-	}{{"fused", "direct-fused", 1}, {"bitmap", "bitmap-direct", 1}, {"radix", "radix", 4}} {
+	}{{"fused", "direct-fused", 1}, {"bitmap", "bitmap-direct", 1}, {"", "", 4}} {
 		t.Run(tc.name, func(t *testing.T) {
 			opts := engine.DefaultOptions()
 			opts.Workers = 4

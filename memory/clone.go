@@ -11,6 +11,21 @@ func CloneBatch(src *Batch) (*Batch, error) {
 	}
 	dst := NewBatch()
 	dst.Reset(src.Rows)
+	for k, v := range src.Int8s {
+		dst.Int8s[k] = &Int8Vector{Values: append([]int8(nil), v.Values...), Validity: append(Bitmap(nil), v.Validity...), Encoding: v.Encoding}
+	}
+	for k, v := range src.Int16s {
+		dst.Int16s[k] = &Int16Vector{Values: append([]int16(nil), v.Values...), Validity: append(Bitmap(nil), v.Validity...), Encoding: v.Encoding}
+	}
+	for k, v := range src.Uint8s {
+		dst.Uint8s[k] = &Uint8Vector{Values: append([]uint8(nil), v.Values...), Validity: append(Bitmap(nil), v.Validity...), Encoding: v.Encoding}
+	}
+	for k, v := range src.Uint16s {
+		dst.Uint16s[k] = &Uint16Vector{Values: append([]uint16(nil), v.Values...), Validity: append(Bitmap(nil), v.Validity...), Encoding: v.Encoding}
+	}
+	for k, v := range src.Float32s {
+		dst.Float32s[k] = &Float32Vector{Values: append([]float32(nil), v.Values...), Validity: append(Bitmap(nil), v.Validity...), Encoding: v.Encoding}
+	}
 	for k, v := range src.Int64s {
 		dst.Int64s[k] = &Int64Vector{Values: append([]int64(nil), v.Values...), Validity: append(Bitmap(nil), v.Validity...), Encoding: v.Encoding}
 	}

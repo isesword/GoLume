@@ -34,9 +34,9 @@ FilterSource  ProjectSource    JoinSource
                   |
           +-------+--------+
           |                |
-     PreparedFrame    PreparedQuery
+     PreparedDataFrame    PreparedQuery
                            |
-                direct / bitmap / radix
+                direct / bitmap / partitioned-hash / sorted / spill-hash
                            |
                   scalar / SIMD kernels
 ```
@@ -58,7 +58,7 @@ Limit
 ```
 
 `LazyFrame` is immutable. Transformations do not read data. Planning and source
-pushdown happen in `Prepare`, `PrepareFrame`, or one-shot Collect helpers.
+pushdown happen in `Prepare`, `PrepareResult`, or one-shot Collect helpers.
 
 ## 3. Expression system
 
@@ -67,7 +67,7 @@ Scalar projections use `expr.ScalarProgram`.
 
 The typed scalar IR supports signed/unsigned numerics, float, UTF-8 string views, date32 and timestamp semantics, explicit Cast, arithmetic and string concat. Projection expressions compile into one shared instruction DAG with compile-time common-subexpression elimination.
 
-Programs are compiled once; `ScalarWorkspace` stores reusable typed vector registers and validity bitmaps per reader. This deliberately avoids AST interface dispatch for each row.
+Programs are compiled once; `ScalarWorkspace` stores reusable typed vector registers and validity bitmaps per execution stream. This deliberately avoids AST interface dispatch for each row.
 
 ## 4. Optimizer
 
@@ -96,7 +96,7 @@ Projection pruning has two levels:
 Schema()
 Stats(ctx)
 Partitions(ctx)
-NewReader(ctx)
+NewBatchStream(ctx, ReadOptions)
 ```
 
 Parquet, Arrow RecordBatch, in-memory data, FilterSource, ProjectSource and
@@ -154,29 +154,31 @@ JoinSource no longer pre-reads probe rows during prepare. The immutable build ta
 
 For fixed-width large joins, Phase 2.7 can radix-partition build/probe keys and assign independent buckets to the engine's persistent worker pool. The automatic policy is deliberately narrow: at least four workers, build >= 1,048,576 rows and probe >= 4,194,304 rows. Smaller workloads remain on the single hash table because pinned four-worker benchmarks showed the medium case to be effectively tied.
 
-`PrepareJoin` remains a lower-materialization terminal alternative returning
-row references.
+`PrepareJoin` and row-reference join results have been removed. All joins use
+the same physical stream through `Join(...).Collect()` or `Join(...).Prepare()`.
+See [STREAM_MIGRATION.md](STREAM_MIGRATION.md) for breaking API changes.
 
 ## 9. Prepared execution
 
 Aggregate terminal:
 
 ```text
-LazyFrame.Prepare
- -> PreparedQuery
- -> reusable aggregate workspace
+LazyFrame.PrepareResult
+ -> PreparedResult / PreparedQuery
+ -> query-owned native aggregate stream
+ -> terminal record collector
 ```
 
 Row terminal:
 
 ```text
-LazyFrame.PrepareFrame
+LazyFrame.Prepare
  -> prepared physical source DAG
  -> reusable Join build / scalar programs
- -> independent reader per Execute
+ -> independent native stream per Execute
 ```
 
-`PreparedFrame.Close` waits for active executions before closing retained
+`PreparedDataFrame.Close` waits for active executions before closing retained
 physical resources.
 
 ## 10. Memory ownership
@@ -185,26 +187,28 @@ Hot analytical storage uses primitive contiguous buffers and validity bitmaps.
 Strings use offsets + bytes or dictionary codes, not `[]string`.
 
 Join build payload/hash memory is reserved through `memory.Manager`.
-Prepared aggregate workspaces remain budget-accounted while retained.
+Prepared aggregate plans retain compilation and concurrency slots, not input-sized
+workspaces. Each execution reserves scan, aggregate-state and output memory before
+allocation and releases its owned resources on completion or Close.
 
-`CollectFrame` returns owned copies of specialized vectors. Opaque Arrow values
+`Collect` returns owned copies of specialized vectors. Opaque Arrow values
 are intentionally not deep-cloned without an explicit Arrow ownership/gather
 operator.
 
 ## 11. Aggregate execution
 
-The established execution layer remains unchanged:
+All aggregate terminals use the same native execution layer:
 
 ```text
 source batch
  -> predicate / selection
- -> direct or radix strategy
+ -> native direct / bitmap / partitioned-hash / sorted / spill-hash strategy
  -> specialized hash table
  -> SoA aggregate state
 ```
 
 Supported aggregate states include SUM, COUNT(*), COUNT(value), MIN, MAX, AVG.
-High-cardinality group-by can use radix ownership and the persistent scheduler.
+High-cardinality aggregation uses the same native aggregate stream and query-budgeted partition spill when configured. The former input-wide radix execution backend is removed.
 
 ## 12. Analyze diagnostics
 
@@ -212,7 +216,7 @@ High-cardinality group-by can use radix ownership and the persistent scheduler.
 
 Aggregate terminal execution registers a fused aggregate root so predicate+aggregate work remains visible even when no standalone FilterSource exists. Derived self time subtracts direct-child inclusive time and is diagnostic rather than CPU-cycle accounting when child operators overlap.
 
-Go heap counters are process-wide, so allocation is reported only as whole Prepare/Execute `TotalAlloc` deltas. Ordinary `Collect`, `Prepare` and `PrepareFrame` do not install profile wrappers.
+Go heap counters are process-wide, so allocation is reported only as whole Prepare/Execute `TotalAlloc` deltas. Ordinary `Collect` and `Prepare` do not install profile wrappers.
 
 
 ## 13. Ordering and row selection

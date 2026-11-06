@@ -251,40 +251,47 @@ func newTrackedIntSource(t *testing.T, partitions, rows int) *trackedSource {
 	return &trackedSource{Source: base, failPartition: -1}
 }
 
-func (s *trackedSource) NewReader(ctx context.Context, opts source.ReadOptions) (source.Reader, error) {
-	legacy, ok := s.Source.(source.LegacyReaderSource)
-	if !ok {
-		return nil, fmt.Errorf("tracked source requires legacy reader")
-	}
-	reader, err := legacy.NewReader(ctx, opts)
+func (s *trackedSource) NewBatchStream(ctx context.Context, opts source.ReadOptions) (source.BatchStream, error) {
+	parts, err := s.Partitions(ctx)
 	if err != nil {
 		return nil, err
 	}
+	return s.NewBatchStreamWithPartitions(ctx, opts, parts)
+}
+func (s *trackedSource) NewBatchStreamWithPartitions(ctx context.Context, opts source.ReadOptions, parts []source.Partition) (source.BatchStream, error) {
+	child, err := source.OpenBatchStreamWithPartitions(ctx, s.Source, opts, parts)
+	if err != nil {
+		return nil, err
+	}
+	fail := false
+	for _, part := range parts {
+		if part.ID == s.failPartition {
+			fail = true
+		}
+	}
 	s.opened.Add(1)
-	return &trackedReader{owner: s, child: reader}, nil
+	return &trackedReader{owner: s, child: child, fail: fail}, nil
 }
 
 type trackedReader struct {
 	owner *trackedSource
-	child source.Reader
+	child source.BatchStream
+	fail  bool
 	once  sync.Once
 }
 
-func (r *trackedReader) ReadPartition(ctx context.Context, part source.Partition, dst *memory.Batch) error {
-	if part.ID == r.owner.failPartition {
-		return errInjectedRead
+func (r *trackedReader) Next(ctx context.Context, dst *memory.Batch) (bool, error) {
+	if r.fail {
+		dst.ClearColumns()
+		return false, errInjectedRead
 	}
-	return r.child.ReadPartition(ctx, part, dst)
+	return r.child.Next(ctx, dst)
 }
-
 func (r *trackedReader) Close() error {
 	var err error
-	r.once.Do(func() {
-		r.owner.closed.Add(1)
-		err = r.child.Close()
-	})
+	r.once.Do(func() { r.owner.closed.Add(1); err = r.child.Close() })
 	return err
 }
 
 var _ source.Source = (*trackedSource)(nil)
-var _ source.Reader = (*trackedReader)(nil)
+var _ source.BatchStream = (*trackedReader)(nil)

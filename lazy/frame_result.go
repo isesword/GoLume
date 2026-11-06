@@ -39,9 +39,6 @@ type dataFrameState struct {
 // observe Close reliably.
 type DataFrame struct{ state *dataFrameState }
 
-// Frame is retained as a compatibility alias for DataFrame.
-type Frame = DataFrame
-
 func newDataFrame(schema memory.Schema) DataFrame {
 	return DataFrame{state: &dataFrameState{schema: schema}}
 }
@@ -86,35 +83,34 @@ func (f DataFrame) batches() []*memory.Batch {
 	return f.state.batches
 }
 
-// PreparedFrame is a reusable row-producing physical pipeline. Join build
+// PreparedDataFrame is a reusable row-producing physical pipeline. Join build
 // state, scalar programs, pushdown decisions, and source wrappers are prepared
-// once; each Execute creates only independent readers and owned result batches.
-type PreparedFrame struct {
-	engine   *engine.Engine
-	src      source.Source
-	parts    []source.Partition
-	schema   memory.Schema
-	kernels  kernel.Set
-	manager  memory.Manager
-	pipeline pipeline.Options
-	observer observer.Observer
-	planInfo engine.PlanInfo
-	closers  []io.Closer
-	lifeMu   sync.Mutex
-	lastMu   sync.Mutex
-	lastDiag map[string]string
-	active   sync.WaitGroup
-	closed   bool
+// once; each Execute opens independent streams and owns its result batches.
+type PreparedDataFrame struct {
+	engine    *engine.Engine
+	src       source.Source
+	parts     []source.Partition
+	schema    memory.Schema
+	kernels   kernel.Set
+	manager   memory.Manager
+	pipeline  pipeline.Options
+	observer  observer.Observer
+	planInfo  engine.PlanInfo
+	closers   []io.Closer
+	lifeMu    sync.Mutex
+	lastMu    sync.Mutex
+	lastDiag  map[string]string
+	active    sync.WaitGroup
+	closed    bool
+	closeDone chan struct{}
+	closeErr  error
 }
-
-// PreparedDataFrame is the primary name for a reusable DataFrame-producing
-// physical pipeline.
-type PreparedDataFrame = PreparedFrame
 
 // Prepare optimizes and lowers any row-producing plan, including a terminal
 // Aggregate, into a reusable DataFrame pipeline.
 func (f LazyFrame) Prepare(ctx context.Context) (*PreparedDataFrame, error) {
-	return f.PrepareFrame(ctx)
+	prepared, _, _, err := f.prepareFrame(ctx)
+	return prepared, err
 }
 
 // Collect executes the lazy plan once and returns an owned DataFrame.
@@ -127,15 +123,7 @@ func (f LazyFrame) Collect(ctx context.Context) (DataFrame, error) {
 	return p.Execute(ctx)
 }
 
-// PrepareFrame is a compatibility spelling of Prepare.
-//
-// Deprecated: use Prepare.
-func (f LazyFrame) PrepareFrame(ctx context.Context) (*PreparedFrame, error) {
-	prepared, _, _, err := f.prepareFrame(ctx)
-	return prepared, err
-}
-
-func (f LazyFrame) prepareFrame(ctx context.Context) (*PreparedFrame, logical.Plan, source.PushdownReport, error) {
+func (f LazyFrame) prepareFrame(ctx context.Context) (*PreparedDataFrame, logical.Plan, source.PushdownReport, error) {
 	if f.err != nil {
 		return nil, nil, source.PushdownReport{}, f.err
 	}
@@ -191,57 +179,45 @@ func (f LazyFrame) prepareFrame(ctx context.Context) (*PreparedFrame, logical.Pl
 		cleanup()
 		return nil, nil, source.PushdownReport{}, err
 	}
-	return &PreparedFrame{engine: f.session.engine, src: src, parts: parts, schema: src.Schema(), kernels: f.session.engine.KernelSet(), manager: f.session.engine.Memory(), pipeline: pipelineOpts, observer: f.session.engine.Observer(), planInfo: preparedPlanInfo(src), closers: closers}, physicalPlan, report, nil
-}
-
-// CollectFrame is a compatibility spelling of Collect.
-//
-// Deprecated: use Collect.
-func (f LazyFrame) CollectFrame(ctx context.Context) (Frame, error) {
-	p, err := f.PrepareFrame(ctx)
-	if err != nil {
-		return Frame{}, err
-	}
-	defer p.Close()
-	return p.Execute(ctx)
+	return &PreparedDataFrame{engine: f.session.engine, src: src, parts: parts, schema: src.Schema(), kernels: f.session.engine.KernelSet(), manager: f.session.engine.Memory(), pipeline: pipelineOpts, observer: f.session.engine.Observer(), planInfo: preparedPlanInfo(src), closers: closers}, physicalPlan, report, nil
 }
 
 // Schema returns the prepared row-pipeline output schema.
-func (p *PreparedFrame) Schema() memory.Schema {
+func (p *PreparedDataFrame) Schema() memory.Schema {
 	if p == nil {
 		return memory.Schema{}
 	}
 	return p.schema
 }
 
-// Execute reads every prepared partition and returns owned materialized columnar
-// batches. Multiple Execute calls may run concurrently using independent source
-// readers when the underlying source supports concurrent readers.
-func (p *PreparedFrame) Execute(ctx context.Context) (frame Frame, resultErr error) {
+// Execute consumes the prepared stream graph and returns owned columnar batches.
+// Multiple Execute calls may run concurrently when the underlying sources support
+// independent concurrent streams.
+func (p *PreparedDataFrame) Execute(ctx context.Context) (frame DataFrame, resultErr error) {
 	if p == nil {
-		return Frame{}, fmt.Errorf("nil PreparedFrame")
+		return DataFrame{}, fmt.Errorf("nil PreparedDataFrame")
 	}
 	p.lifeMu.Lock()
 	if p.closed {
 		p.lifeMu.Unlock()
-		return Frame{}, ErrPreparedFrameClosed
+		return DataFrame{}, ErrPreparedFrameClosed
 	}
 	p.active.Add(1)
 	p.lifeMu.Unlock()
 	defer p.active.Done()
 	if ctx == nil {
-		return Frame{}, fmt.Errorf("prepared frame context is nil")
+		return DataFrame{}, fmt.Errorf("prepared frame context is nil")
 	}
 	queryBudget, err := p.engine.BeginQueryMemory()
 	if err != nil {
-		return Frame{}, err
+		return DataFrame{}, err
 	}
 	ctx = memory.WithQueryBudget(ctx, queryBudget)
 	defer func() {
 		if closeErr := queryBudget.Close(); closeErr != nil {
 			if resultErr == nil {
 				_ = frame.Close()
-				frame = Frame{}
+				frame = DataFrame{}
 			}
 			resultErr = errors.Join(resultErr, closeErr)
 		}
@@ -250,7 +226,7 @@ func (p *PreparedFrame) Execute(ctx context.Context) (frame Frame, resultErr err
 	exchangeManager := memory.ClassifiedManager(p.manager, "Exchange", memory.MemoryInFlightBatch)
 	stream, err := pipeline.OpenBatchStream(ctx, p.src, source.ReadOptions{Kernels: p.kernels}, p.parts, exchangeManager, p.pipeline, p.observer)
 	if err != nil {
-		return Frame{}, err
+		return DataFrame{}, err
 	}
 	out := newDataFrame(p.schema)
 	scratch := memory.NewBatch()
@@ -261,7 +237,7 @@ func (p *PreparedFrame) Execute(ctx context.Context) (frame Frame, resultErr err
 		if nextErr != nil {
 			closeErr := stream.Close()
 			_ = out.Close()
-			return Frame{}, errors.Join(nextErr, closeErr)
+			return DataFrame{}, errors.Join(nextErr, closeErr)
 		}
 		if !ok {
 			p.rememberDiagnostics(stream)
@@ -271,14 +247,14 @@ func (p *PreparedFrame) Execute(ctx context.Context) (frame Frame, resultErr err
 		if err != nil {
 			closeErr := stream.Close()
 			_ = out.Close()
-			return Frame{}, errors.Join(err, closeErr)
+			return DataFrame{}, errors.Join(err, closeErr)
 		}
 		owned, err := memory.CloneBatch(scratch)
 		if err != nil {
 			reservation.Release()
 			closeErr := stream.Close()
 			_ = out.Close()
-			return Frame{}, errors.Join(err, closeErr)
+			return DataFrame{}, errors.Join(err, closeErr)
 		}
 		out.state.batches = append(out.state.batches, owned)
 		out.state.reservations = append(out.state.reservations, reservation)
@@ -286,12 +262,12 @@ func (p *PreparedFrame) Execute(ctx context.Context) (frame Frame, resultErr err
 	}
 	if err := stream.Close(); err != nil {
 		_ = out.Close()
-		return Frame{}, err
+		return DataFrame{}, err
 	}
 	return out, nil
 }
 
-func (p *PreparedFrame) rememberDiagnostics(stream source.BatchStream) {
+func (p *PreparedDataFrame) rememberDiagnostics(stream source.BatchStream) {
 	diagnostics, ok := stream.(source.BatchStreamDiagnostics)
 	if !ok {
 		return
@@ -301,7 +277,7 @@ func (p *PreparedFrame) rememberDiagnostics(stream source.BatchStream) {
 	p.lastMu.Unlock()
 }
 
-func (p *PreparedFrame) lastDiagnostics() map[string]string {
+func (p *PreparedDataFrame) lastDiagnostics() map[string]string {
 	p.lastMu.Lock()
 	defer p.lastMu.Unlock()
 	out := make(map[string]string, len(p.lastDiag))
@@ -312,17 +288,21 @@ func (p *PreparedFrame) lastDiagnostics() map[string]string {
 }
 
 // Close waits for active executions and releases retained physical resources,
-// including prepared join build-side memory reservations.
-func (p *PreparedFrame) Close() error {
+// including prepared join build-side memory reservations. Concurrent callers all
+// wait for the same cleanup and receive its error; resources are closed once.
+func (p *PreparedDataFrame) Close() error {
 	if p == nil {
 		return nil
 	}
 	p.lifeMu.Lock()
 	if p.closed {
+		done := p.closeDone
 		p.lifeMu.Unlock()
-		return nil
+		<-done
+		return p.closeErr
 	}
 	p.closed = true
+	p.closeDone = make(chan struct{})
 	p.lifeMu.Unlock()
 	p.active.Wait()
 	var first error
@@ -332,5 +312,7 @@ func (p *PreparedFrame) Close() error {
 		}
 	}
 	p.closers = nil
+	p.closeErr = first
+	close(p.closeDone)
 	return first
 }

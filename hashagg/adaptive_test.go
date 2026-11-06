@@ -1,6 +1,7 @@
 package hashagg
 
 import (
+	"context"
 	"errors"
 	"gocolumn/aggregate"
 	"gocolumn/memory"
@@ -9,10 +10,10 @@ import (
 
 func TestI32TableAdaptiveGrowth(t *testing.T) {
 	var reserved int64
-	tab := NewI32TableWithOptions(8, TableOptions{Reserve: func(n int64) error {
+	tab := mustHashTable(NewI32TableWithOptions(8, TableOptions{Reserve: func(n int64) (memory.Reservation, error) {
 		reserved += n
-		return nil
-	}})
+		return memory.NewBudgetManager(0).Reserve(context.Background(), n)
+	}}))
 	initial := tab.Capacity()
 	tab.Reset()
 	for i := 0; i < 10_000; i++ {
@@ -49,7 +50,7 @@ func TestI32TableAdaptiveGrowth(t *testing.T) {
 
 func TestI32TableGrowthBudgetFailure(t *testing.T) {
 	denied := errors.New("denied")
-	tab := NewI32TableWithOptions(8, TableOptions{MaxLoadFactor: 0.5, Reserve: func(int64) error { return denied }})
+	tab := mustHashTable(NewI32TableWithOptions(8, TableOptions{MaxLoadFactor: 0.5, Reserve: denyFixedGrowth(denied)}))
 	tab.Reset()
 	for i := 0; ; i++ {
 		_, err := tab.TryAdd(int32(i), 1)
@@ -142,9 +143,9 @@ func TestPairTableNullableValidityMask(t *testing.T) {
 }
 
 func TestI32GrowthPreservesAdvancedAggregateState(t *testing.T) {
-	tab := NewI32TableWithOptions(1, TableOptions{Aggregates: aggregate.Layout{
+	tab := mustHashTable(NewI32TableWithOptions(1, TableOptions{Aggregates: aggregate.Layout{
 		Sum: true, CountRows: true, CountValues: true, Min: true, Max: true, Avg: true,
-	}})
+	}}))
 	tab.Reset()
 	for i := 0; i < 4096; i++ {
 		key := int32(i % 257)

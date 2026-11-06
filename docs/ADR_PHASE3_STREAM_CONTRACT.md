@@ -1,6 +1,7 @@
 # ADR：Phase 3 内部 BatchStream 契约
 
-状态：已决定，Phase 3.0 实现与后续 Pipeline/Exchange 按本文执行。
+状态：已决定。下文历史 Adapter 说明已由 [STREAM_MIGRATION.md](STREAM_MIGRATION.md)
+的单流接口收口取代；Reader/LegacyReaderSource 已删除，destination-fill 协议不变。
 
 ## 背景
 
@@ -59,7 +60,9 @@ type BatchStream interface {
 
 ### Batch ownership
 
-- `dst` 由调用方创建并复用；stream 不保存 `dst` 指针到 `Next` 返回之后。
+- `dst` 由调用方创建并复用；stream 可在当前 borrowed view 的生命周期内保留
+  `dst` 清理引用，以便下一次 `Next`/`Close` 释放 slot。调用方不能并发操作该
+  destination，或在借用结束后继续使用其中的旧绑定。
 - `ok=true` 返回的列绑定是 borrowed view，只保证到下一次 `Next`、调用方清空 `dst`
   或 stream/query `Close` 之前有效。
 - 下游要跨越该边界保存值，必须显式 `memory.CloneBatch`/Copy，并承担所得 owned Batch

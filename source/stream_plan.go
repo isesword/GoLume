@@ -57,7 +57,7 @@ type StreamPlanProvider interface {
 }
 
 // StreamPlanOf returns a source-provided plan or a conservative scan leaf for
-// legacy and external Source implementations.
+// external Source implementations.
 func StreamPlanOf(src Source) StreamPlanNode {
 	if provider, ok := src.(StreamPlanProvider); ok {
 		return provider.StreamPlan()
@@ -66,10 +66,7 @@ func StreamPlanOf(src Source) StreamPlanNode {
 	if describer, ok := src.(Describer); ok {
 		detail = describer.Description()
 	}
-	partitionParallel := true
-	if _, native := src.(BatchStreamProvider); native {
-		_, partitionParallel = src.(PreparedBatchStreamProvider)
-	}
+	_, partitionParallel := src.(PreparedBatchStreamProvider)
 	return StreamPlanNode{Operator: "Scan", Class: StreamPipeline, Detail: detail, PartitionParallel: partitionParallel}
 }
 

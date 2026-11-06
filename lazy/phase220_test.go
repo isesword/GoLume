@@ -6,6 +6,7 @@ import (
 
 	"gocolumn/engine"
 	"gocolumn/memory"
+	"gocolumn/source"
 	"gocolumn/source/inmemory"
 )
 
@@ -118,13 +119,19 @@ func TestUnifiedPrepareResultPreservesPrepareOptions(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer prepared.Close()
-	if prepared.frame == nil || prepared.frame.planInfo.WorkspacePool != 2 {
-		t.Fatalf("workspace pool=%d, want 2", prepared.frame.planInfo.WorkspacePool)
+	if prepared.frame == nil || prepared.frame.planInfo.MaxConcurrency != 2 {
+		t.Fatalf("max concurrency=%d, want 2", prepared.frame.planInfo.MaxConcurrency)
 	}
 	if _, err := prepared.Execute(context.Background(), engine.ExecuteOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	if feedback, ok := session.Engine().RuntimeFeedback(feedbackKey); !ok || feedback.Samples != 1 {
 		t.Fatalf("custom feedback=%+v ok=%v", feedback, ok)
+	}
+}
+
+func TestAggregateOutputDoesNotAdvertisePartitionSubsets(t *testing.T) {
+	if _, ok := any(&aggregateResultSource{}).(source.PreparedBatchStreamProvider); ok {
+		t.Fatal("global aggregate output advertises partition subsets")
 	}
 }

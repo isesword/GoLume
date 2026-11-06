@@ -60,15 +60,14 @@ func TestOpenFileReadsNativeParquetIntegerLogicalTypes(t *testing.T) {
 	if src.Schema().Fields[0].Type != memory.TypeInt8 || src.Schema().Fields[1].Type != memory.TypeUint16 {
 		t.Fatalf("schema=%+v", src.Schema().Fields)
 	}
-	r, err := src.NewReader(context.Background(), testReadOptions())
+	r, err := src.NewBatchStream(context.Background(), testReadOptions())
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer r.Close()
-	parts, _ := src.Partitions(context.Background())
 	b := memory.NewBatch()
-	if err := r.ReadPartition(context.Background(), parts[0], b); err != nil {
-		t.Fatal(err)
+	if ok, err := r.Next(context.Background(), b); !ok || err != nil {
+		t.Fatalf("first batch: ok=%v err=%v", ok, err)
 	}
 	vi, err := b.Int8("i8")
 	if err != nil {
@@ -122,13 +121,12 @@ func TestParquetRejectsValueOutsideLogicalIntegerWidth(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	r, err := src.NewReader(context.Background(), testReadOptions())
+	r, err := src.NewBatchStream(context.Background(), testReadOptions())
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer r.Close()
-	parts, _ := src.Partitions(context.Background())
-	if err := r.ReadPartition(context.Background(), parts[0], memory.NewBatch()); err == nil {
+	if _, err := r.Next(context.Background(), memory.NewBatch()); err == nil {
 		t.Fatal("expected overflow rejection instead of int8 wrapping")
 	}
 }

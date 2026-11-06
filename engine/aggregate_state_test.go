@@ -27,7 +27,7 @@ func TestAggregateStateFunctionsAndValueNulls(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, strategy := range []string{"direct-fused", "bitmap-direct"} {
+	for _, strategy := range []string{"direct-fused", "bitmap-direct", "partitioned-hash"} {
 		t.Run(strategy, func(t *testing.T) {
 			q := expr.Query{
 				Filter:  expr.GT(expr.Col("pred"), expr.I64(0)),
@@ -84,7 +84,7 @@ func assertAggRow(t *testing.T, row engine.AggregateRow, sum int64, sumValid boo
 	}
 }
 
-func TestAdvancedAggregateDisablesRadixSpecialization(t *testing.T) {
+func TestRemovedRadixHintRejected(t *testing.T) {
 	b := memory.NewBatch()
 	b.Rows = 2
 	b.Int64s["pred"] = &memory.Int64Vector{Values: []int64{1, 1}}
@@ -95,11 +95,11 @@ func TestAdvancedAggregateDisablesRadixSpecialization(t *testing.T) {
 		memory.Field{Name: "key", Type: memory.TypeInt32},
 		memory.Field{Name: "value", Type: memory.TypeInt64},
 	), b)
-	q := expr.Query{Filter: expr.GT(expr.Col("pred"), expr.I64(0)), GroupBy: []string{"key"}, Aggregates: []expr.Aggregate{expr.Sum("value", "sum"), expr.Min("value", "min")}, Hints: expr.Hints{ForceStrategy: "radix", ForceWorkerCount: 2}}
+	q := expr.Query{Filter: expr.GT(expr.Col("pred"), expr.I64(0)), GroupBy: []string{"key"}, Aggregates: []expr.Aggregate{expr.Sum("value", "sum"), expr.Min("value", "min")}, Hints: expr.Hints{ForceStrategy: "radix"}}
 	e := engine.New(engine.Options{Workers: 2})
 	defer e.Close()
 	if _, err := e.Prepare(context.Background(), src, q, engine.PrepareOptions{}); err == nil {
-		t.Fatal("expected forced radix to reject advanced aggregate layout")
+		t.Fatal("expected removed radix hint to be rejected")
 	}
 }
 
@@ -115,7 +115,7 @@ func TestCountRowsOnlyDoesNotRequireValueColumn(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, strategy := range []string{"direct-fused", "bitmap-direct"} {
+	for _, strategy := range []string{"direct-fused", "bitmap-direct", "partitioned-hash"} {
 		t.Run(strategy, func(t *testing.T) {
 			q := expr.Query{
 				Filter:     expr.GT(expr.Col("pred"), expr.I64(0)),

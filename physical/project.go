@@ -2,6 +2,7 @@ package physical
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"gocolumn/expr"
 	"gocolumn/kernel"
@@ -296,13 +297,23 @@ func (s *ProjectSource) newBatchStream(ctx context.Context, opts source.ReadOpti
 	if err := opts.Validate(); err != nil {
 		return nil, err
 	}
+	if query := memory.QueryBudgetFromContext(ctx); query != nil {
+		opts.MemoryManager = query.Operator("SourceScan", memory.MemoryWorkspace)
+	}
 	child, err := openUnaryInputStream(ctx, s.input, opts, parts, prepared)
 	if err != nil {
 		return nil, err
 	}
-	stream := &projectBatchStream{owner: s, input: memory.NewBatch(), kernels: opts.Kernels}
+	localOwner := *s
+	if query := memory.QueryBudgetFromContext(ctx); query != nil {
+		localOwner.manager = query.Operator("Project", memory.MemoryWorkspace)
+	} else if localOwner.manager == nil {
+		localOwner.manager = memory.ClassifiedManager(opts.MemoryManager, "Project", memory.MemoryWorkspace)
+	}
+	stream := &projectBatchStream{owner: &localOwner, input: memory.NewBatch(), kernels: opts.Kernels, opts: opts.Normalize()}
 	stream.state.child = child
 	stream.state.closeOwn = func() error {
+		stream.releaseInputView()
 		stream.input.ReleaseOwned()
 		return stream.workspace.Close()
 	}
@@ -333,32 +344,113 @@ func applyProjectBatch(ctx context.Context, owner *ProjectSource, input, dst *me
 }
 
 type projectBatchStream struct {
-	state     unaryStreamState
-	owner     *ProjectSource
-	input     *memory.Batch
-	workspace expr.ScalarWorkspace
-	kernels   kernel.Set
+	opts        source.ReadOptions
+	inputOffset int
+	nextRows    int
+	inputView   *memory.Batch
+	viewLease   memory.Reservation
+	state       unaryStreamState
+	owner       *ProjectSource
+	input       *memory.Batch
+	workspace   expr.ScalarWorkspace
+	kernels     kernel.Set
 }
 
-// Next evaluates the fused projection over the next child Batch.
+// Next evaluates bounded input ranges. Pure expression candidates that exceed
+// payload or allocation budgets are discarded before a smaller prefix is tried;
+// successful outputs retain their input view and workspace until the next call.
 func (s *projectBatchStream) Next(ctx context.Context, dst *memory.Batch) (bool, error) {
 	if stop, err := s.state.before(ctx, dst); stop {
 		return false, err
 	}
-	ok, err := s.state.child.Next(ctx, s.input)
+	dst.ClearColumns()
+	s.releaseInputView()
+	for s.inputOffset >= s.input.Rows {
+		ok, err := s.state.child.Next(ctx, s.input)
+		if err != nil {
+			return false, s.state.fail(err)
+		}
+		if !ok {
+			return false, s.state.finish()
+		}
+		s.inputOffset = 0
+		if s.input.Rows == 0 {
+			continue
+		}
+	}
+	rows := s.input.Rows - s.inputOffset
+	if s.nextRows > 0 && rows > s.nextRows {
+		rows = s.nextRows
+	}
+	initialRows := rows
+	for {
+		if err := ctx.Err(); err != nil {
+			return false, s.state.fail(err)
+		}
+		err := s.bindInputView(ctx, rows)
+		if err == nil {
+			err = applyProjectBatch(ctx, s.owner, s.inputView, dst, &s.workspace, s.kernels)
+		}
+		nextRows := rows / 2
+		if err == nil {
+			selected, selectErr := memory.SelectBatchRangeRows(dst, 0, dst.Rows, s.opts.BatchPayloadTargetBytes, s.opts.BatchPayloadBytes)
+			if selectErr != nil {
+				err = selectErr
+			} else if selected == rows {
+				s.inputOffset += rows
+				if s.nextRows == 0 || rows < initialRows || rows > s.nextRows {
+					s.nextRows = rows
+				}
+				return true, nil
+			} else {
+				nextRows = selected
+			}
+		}
+		// Never hide semantic errors. Only resource pressure or an oversized
+		// candidate may shrink; a single row must fit all hard limits.
+		retry := rows > 1 && (err == nil || errors.Is(err, memory.ErrBudgetExceeded))
+		dst.ClearColumns()
+		s.releaseInputView()
+		_ = s.workspace.Close()
+		if !retry {
+			return false, s.state.fail(err)
+		}
+		if nextRows < 1 {
+			nextRows = 1
+		}
+		if nextRows >= rows {
+			nextRows = rows - 1
+		}
+		rows = nextRows
+	}
+}
+
+func (s *projectBatchStream) bindInputView(ctx context.Context, rows int) error {
+	bytes, err := memory.BorrowedRangeMetadataBytes(s.input, s.inputOffset, rows)
 	if err != nil {
-		dst.ClearColumns()
-		return false, s.state.fail(err)
+		return err
 	}
-	if !ok {
-		dst.ClearColumns()
-		return false, s.state.finish()
+	if bytes > 0 && s.owner.manager != nil {
+		s.viewLease, err = s.owner.manager.Reserve(ctx, bytes)
+		if err != nil {
+			return err
+		}
 	}
-	if err := applyProjectBatch(ctx, s.owner, s.input, dst, &s.workspace, s.kernels); err != nil {
-		dst.ClearColumns()
-		return false, s.state.fail(err)
+	s.inputView, err = memory.BorrowBatchRange(s.input, s.inputOffset, rows)
+	if err != nil {
+		s.releaseInputView()
 	}
-	return true, nil
+	return err
+}
+func (s *projectBatchStream) releaseInputView() {
+	if s.inputView != nil {
+		s.inputView.ClearColumns()
+	}
+	s.inputView = nil
+	if s.viewLease != nil {
+		s.viewLease.Release()
+		s.viewLease = nil
+	}
 }
 
 // Close releases projection reservations and the child stream.

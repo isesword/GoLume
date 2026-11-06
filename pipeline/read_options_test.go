@@ -61,7 +61,7 @@ func TestPipelinePreservesStricterScanOptionsAndExplicitManager(t *testing.T) {
 		t.Fatal(err)
 	}
 	seen := recorder.options()
-	if len(seen) != 1 || seen[0] != readOpts {
+	if len(seen) != 1 || seen[0] != readOpts.Normalize() {
 		t.Fatalf("scan options=%+v want=%+v", seen, readOpts)
 	}
 }
@@ -127,11 +127,18 @@ type scanOptionsRecorder struct {
 }
 
 func (s *scanOptionsRecorder) Replayability() source.Replayability { return s.replay }
-func (s *scanOptionsRecorder) NewReader(ctx context.Context, opts source.ReadOptions) (source.Reader, error) {
+func (s *scanOptionsRecorder) NewBatchStream(ctx context.Context, opts source.ReadOptions) (source.BatchStream, error) {
+	parts, err := s.Partitions(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return s.NewBatchStreamWithPartitions(ctx, opts, parts)
+}
+func (s *scanOptionsRecorder) NewBatchStreamWithPartitions(ctx context.Context, opts source.ReadOptions, parts []source.Partition) (source.BatchStream, error) {
 	s.mu.Lock()
 	s.seen = append(s.seen, opts)
 	s.mu.Unlock()
-	return s.Source.(source.LegacyReaderSource).NewReader(ctx, opts)
+	return source.OpenBatchStreamWithPartitions(ctx, s.Source, opts, parts)
 }
 func (s *scanOptionsRecorder) options() []source.ReadOptions {
 	s.mu.Lock()

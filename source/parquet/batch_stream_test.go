@@ -21,7 +21,7 @@ import (
 	"gocolumn/source"
 )
 
-func TestParquetBatchStreamMatchesLegacyAcrossRowGroups(t *testing.T) {
+func TestParquetBatchStreamMatchesArrowAcrossRowGroups(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "batches.parquet")
 	writeBatchStreamFixture(t, path, []int{0, 1, 0, 65, 131, 0}, 257)
 	src := openBatchStreamFixture(t, path)
@@ -31,7 +31,7 @@ func TestParquetBatchStreamMatchesLegacyAcrossRowGroups(t *testing.T) {
 	if _, ok := any(src).(source.PreparedBatchStreamProvider); !ok {
 		t.Fatal("Parquet must honor the prepared partition list")
 	}
-	want := legacyBatchStreamRows(t, src)
+	want := arrowBatchStreamRows(t, src)
 	for _, rows := range []int{1, 2, 63, 64, 65, 128, 1024} {
 		t.Run(fmt.Sprintf("rows=%d", rows), func(t *testing.T) {
 			opts := testReadOptions()
@@ -45,7 +45,7 @@ func TestParquetBatchStreamMatchesLegacyAcrossRowGroups(t *testing.T) {
 				}
 				got := collectBatchStreamRows(t, stream, src.Schema(), opts)
 				if !reflect.DeepEqual(got, want) {
-					t.Fatalf("execution %d differs from legacy (%d vs %d rows)", execution, len(got), len(want))
+					t.Fatalf("execution %d differs from Arrow (%d vs %d rows)", execution, len(got), len(want))
 				}
 				if manager.Used() != 0 {
 					t.Fatalf("execution %d leaked %d managed bytes", execution, manager.Used())
@@ -71,7 +71,7 @@ func TestParquetBatchStreamPageEncodingVariants(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				got, want := collectBatchStreamRows(t, stream, src.Schema(), opts), legacyBatchStreamRows(t, src)
+				got, want := collectBatchStreamRows(t, stream, src.Schema(), opts), arrowBatchStreamRows(t, src)
 				if !reflect.DeepEqual(got, want) {
 					t.Fatal("page or dictionary transition changed rows")
 				}
@@ -127,7 +127,8 @@ func (*rejectBatchStreamManager) Limit() int64 { return 1 << 20 }
 
 func TestParquetBatchStreamPreservesTypedValues(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "typed.parquet")
-	writeTypedFixture(t, path, time.Date(2024, time.February, 29, 23, 58, 59, 123456789, time.UTC))
+	stamp := time.Date(2024, time.February, 29, 23, 58, 59, 123456789, time.UTC)
+	writeTypedFixture(t, path, stamp)
 	src := openBatchStreamFixture(t, path)
 	opts := testReadOptions()
 	opts.BatchRows, opts.BatchBytes = 1, 1024
@@ -135,7 +136,14 @@ func TestParquetBatchStreamPreservesTypedValues(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got, want := collectBatchStreamRows(t, stream, src.Schema(), opts), legacyBatchStreamRows(t, src); !reflect.DeepEqual(got, want) {
+	texts := []any{"Go语言", "", nil, "prefix-end"}
+	want := make([][]any, len(texts))
+	days := int32(stamp.Truncate(24*time.Hour).Unix() / 86400)
+	for i, text := range texts {
+		ts := stamp.Add(time.Duration(i) * time.Second)
+		want[i] = []any{text, days + int32(i), ts.UnixMilli() * int64(1e6), ts.UnixMicro() * int64(1e3), ts.UnixNano()}
+	}
+	if got := collectBatchStreamRows(t, stream, src.Schema(), opts); !reflect.DeepEqual(got, want) {
 		t.Fatalf("date/timestamp/UTF-8 values differ: got %v want %v", got, want)
 	}
 }
@@ -144,7 +152,7 @@ func TestParquetBatchStreamByteBoundIncludesEveryColumn(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "strings.parquet")
 	writeBatchStreamFixture(t, path, []int{67, 79}, 300)
 	src := openBatchStreamFixture(t, path)
-	want := legacyBatchStreamRows(t, src)
+	want := arrowBatchStreamRows(t, src)
 	for _, bytes := range []int64{1024, 2048, 4096} {
 		t.Run(fmt.Sprintf("bytes=%d", bytes), func(t *testing.T) {
 			opts := testReadOptions()
@@ -202,7 +210,7 @@ func TestParquetBatchStreamEmptyAndPreparedPartitions(t *testing.T) {
 				t.Fatal("an empty prepared partition list must not reopen every row group")
 			}
 		} else {
-			all := legacyBatchStreamRows(t, src)
+			all := arrowBatchStreamRows(t, src)
 			want := append(append([][]any(nil), all[8:15]...), all[:3]...)
 			if !reflect.DeepEqual(got, want) {
 				t.Fatalf("prepared stream ignored partition selection/order: got %v want %v", got, want)
@@ -325,7 +333,7 @@ func TestParquetBatchStreamExtremeRowLimitRespectsByteBudget(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got, want := collectBatchStreamRows(t, stream, src.Schema(), opts), legacyBatchStreamRows(t, src); !reflect.DeepEqual(got, want) {
+	if got, want := collectBatchStreamRows(t, stream, src.Schema(), opts), arrowBatchStreamRows(t, src); !reflect.DeepEqual(got, want) {
 		t.Fatal("extreme row limit overflowed or changed rows")
 	}
 	if manager.peak.Load() > 1024 || manager.Used() != 0 {
@@ -374,7 +382,7 @@ func TestParquetBatchStreamShrinksFixedBuffersForLargeAdmissibleRow(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got, want := collectBatchStreamRows(t, stream, src.Schema(), opts), legacyBatchStreamRows(t, src); !reflect.DeepEqual(got, want) {
+	if got, want := collectBatchStreamRows(t, stream, src.Schema(), opts), arrowBatchStreamRows(t, src); !reflect.DeepEqual(got, want) {
 		t.Fatal("individually admissible rows failed after fixed-buffer shrinking")
 	}
 	if manager.peak.Load() > opts.BatchBytes || manager.Used() != 0 {
@@ -479,7 +487,9 @@ func TestParquetBatchStreamManagedPeakIndependentOfRowGroupCount(t *testing.T) {
 		t.Run(fmt.Sprintf("groups=%d", groups), func(t *testing.T) {
 			counts := make([]int, groups)
 			for i := range counts {
-				counts[i] = 128
+				// Repeat the 7-row NULL and 11-row empty-string patterns
+				// identically in every group, so allocation peaks are comparable.
+				counts[i] = 154
 			}
 			path := filepath.Join(t.TempDir(), "groups.parquet")
 			writeBatchStreamFixture(t, path, counts, 32)
@@ -495,7 +505,7 @@ func TestParquetBatchStreamManagedPeakIndependentOfRowGroupCount(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if stats.Rows != int64(groups*128) || stats.Batches < int64(groups*2) {
+			if stats.Rows != int64(groups*154) || stats.Batches < int64(groups*3) {
 				t.Fatalf("groups=%d drain=%+v", groups, stats)
 			}
 			peak := manager.peak.Load()
@@ -624,7 +634,7 @@ func TestParquetBatchStreamNativeNarrowIntegerTypes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got, want := collectBatchStreamRows(t, stream, src.Schema(), opts), legacyBatchStreamRows(t, src)
+	got, want := collectBatchStreamRows(t, stream, src.Schema(), opts), arrowBatchStreamRows(t, src)
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("narrow integers differ: got %v want %v", got, want)
 	}
@@ -776,26 +786,124 @@ func collectBatchStreamRows(t *testing.T, stream source.BatchStream, schema memo
 	}
 }
 
-func legacyBatchStreamRows(t *testing.T, src *Source) [][]any {
+// arrowBatchStreamRows is a deliberately unbounded test oracle. It reads each
+// physical column directly through Arrow's full ReadBatch API, then reconstructs
+// nullable logical rows without using GoLume's stream, vector, or typed decoders.
+func arrowBatchStreamRows(t *testing.T, src *Source) [][]any {
 	t.Helper()
-	reader, err := src.NewReader(context.Background(), testReadOptions())
+	r, err := file.OpenParquetFile(src.path, false)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer reader.Close()
-	parts, err := src.Partitions(context.Background())
-	if err != nil {
-		t.Fatal(err)
-	}
-	var rows [][]any
-	batch := memory.NewBatch()
-	for _, part := range parts {
-		if err := reader.ReadPartition(context.Background(), part, batch); err != nil {
-			t.Fatal(err)
+	defer r.Close()
+	var result [][]any
+	for _, part := range src.parts {
+		rg := r.RowGroup(part.ID)
+		n := int(rg.MetaData().NumRows())
+		rows := make([][]any, n)
+		for i := range rows {
+			rows[i] = make([]any, len(src.bindings))
 		}
-		rows = append(rows, snapshotBatchStreamRows(t, batch, src.Schema())...)
+		for j, b := range src.bindings {
+			if n == 0 {
+				continue
+			}
+			chunk, err := rg.Column(b.Index)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var defs []int16
+			if b.Nullable {
+				defs = make([]int16, n)
+			}
+			var total int64
+			var count int
+			var dense []any
+			switch c := chunk.(type) {
+			case *file.Int64ColumnChunkReader:
+				values := make([]int64, n)
+				total, count, err = c.ReadBatch(int64(n), values, defs, nil)
+				for _, v := range values[:count] {
+					if b.Type == memory.TypeTimestamp {
+						v *= b.TimestampScale
+					}
+					dense = append(dense, v)
+				}
+			case *file.Int32ColumnChunkReader:
+				values := make([]int32, n)
+				total, count, err = c.ReadBatch(int64(n), values, defs, nil)
+				for _, v := range values[:count] {
+					switch b.Type {
+					case memory.TypeInt8:
+						dense = append(dense, int8(v))
+					case memory.TypeInt16:
+						dense = append(dense, int16(v))
+					case memory.TypeUint8:
+						dense = append(dense, uint8(v))
+					case memory.TypeUint16:
+						dense = append(dense, uint16(v))
+					default:
+						dense = append(dense, v)
+					}
+				}
+			case *file.Float32ColumnChunkReader:
+				values := make([]float32, n)
+				total, count, err = c.ReadBatch(int64(n), values, defs, nil)
+				for _, v := range values[:count] {
+					dense = append(dense, v)
+				}
+			case *file.Float64ColumnChunkReader:
+				values := make([]float64, n)
+				total, count, err = c.ReadBatch(int64(n), values, defs, nil)
+				for _, v := range values[:count] {
+					dense = append(dense, v)
+				}
+			case *file.BooleanColumnChunkReader:
+				values := make([]bool, n)
+				total, count, err = c.ReadBatch(int64(n), values, defs, nil)
+				for _, v := range values[:count] {
+					var bit uint32
+					if v {
+						bit = 1
+					}
+					dense = append(dense, bit)
+				}
+			case *file.ByteArrayColumnChunkReader:
+				values := make([]arrowparquet.ByteArray, n)
+				total, count, err = c.ReadBatch(int64(n), values, defs, nil)
+				for _, v := range values[:count] {
+					dense = append(dense, string(v))
+				}
+			default:
+				t.Fatalf("unsupported oracle reader %T", chunk)
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if total != int64(n) {
+				t.Fatalf("oracle column %s: rows=%d want=%d", b.Name, total, n)
+			}
+			index := 0
+			for i := range rows {
+				if defs != nil && defs[i] == 0 {
+					continue
+				}
+				if index >= len(dense) {
+					t.Fatalf("oracle column %s has too few values", b.Name)
+				}
+				rows[i][j] = dense[index]
+				index++
+			}
+			if index != count {
+				t.Fatalf("oracle column %s: values=%d consumed=%d", b.Name, count, index)
+			}
+			if err := chunk.Close(); err != nil {
+				t.Fatal(err)
+			}
+		}
+		result = append(result, rows...)
 	}
-	return rows
+	return result
 }
 
 func snapshotBatchStreamRows(t *testing.T, batch *memory.Batch, schema memory.Schema) [][]any {

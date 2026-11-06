@@ -57,7 +57,7 @@ func BenchmarkPhase30PipelineMorsels(b *testing.B) {
 				b.ReportAllocs()
 				rows := int64(0)
 				for i := 0; i < b.N; i++ {
-					stream, err := source.OpenBatchStreamWithPartitions(context.Background(), prepared.src, source.ReadOptions{Kernels: prepared.kernels}, prepared.parts)
+					stream, err := source.OpenBatchStream(context.Background(), prepared.src, source.ReadOptions{Kernels: prepared.kernels})
 					if err != nil {
 						b.Fatal(err)
 					}

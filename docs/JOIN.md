@@ -30,18 +30,12 @@ Equal dictionary domains can join directly by code. Different domains perform
 canonicalization once at dictionary cardinality, then row-level probe remains an
 integer-code operation. See `DICTIONARY_JOIN.md`.
 
-## 3. Two public execution forms
+## 3. One columnar execution path
 
-### Terminal row-reference join
-
-```text
-LazyFrame.PrepareJoin / CollectJoin
-```
-
-returns `JoinedRow {Left RowRef, Right RowRef}` for low-materialization match
-relationships.
-
-### Columnar JoinSource
+`PrepareJoin`, `CollectJoin`, `PreparedJoin`, `JoinResult`, `JoinedRow` and
+`RowRef` have been removed. Use `Join(...).Collect()` for an owned DataFrame or
+`Join(...).Prepare()` for repeated execution. Close returned frames and prepared
+plans. There is no partition-row-reference compatibility engine.
 
 `physical.JoinSource` implements `source.Source` and emits materialized joined
 columnar batches, enabling:

@@ -93,7 +93,6 @@ func compileQuery(schema memory.Schema, q expr.Query) (CompiledQuery, error) {
 	}
 
 	shape := GroupShapeInvalid
-	radixCapable := layout.IsSumCountOnly() && value != "" && !valueNullable
 	if len(groups) == 1 {
 		g := groups[0]
 		switch g.Type {
@@ -108,7 +107,6 @@ func compileQuery(schema memory.Schema, q expr.Query) (CompiledQuery, error) {
 				shape = GroupShapeDictionaryString
 			} else {
 				shape = GroupShapeStringView
-				radixCapable = false
 			}
 		default:
 			return CompiledQuery{}, fmt.Errorf("single group type %s not yet supported", g.Type)
@@ -125,7 +123,6 @@ func compileQuery(schema memory.Schema, q expr.Query) (CompiledQuery, error) {
 			}
 		}
 		shape = GroupShapePairFixed
-		// Nullable pair radix carries a validity mask alongside the physical key.
 	}
 
 	card := q.Hints.Cardinality
@@ -146,8 +143,7 @@ func compileQuery(schema memory.Schema, q expr.Query) (CompiledQuery, error) {
 		ValueColumn: value, ValueNullable: valueNullable, Aggregates: append([]expr.Aggregate(nil), q.Aggregates...), AggregateLayout: layout,
 		CardinalityHint: card, SelectivityHint: sel, AverageKeyBytes: avg,
 		ReuseSelection: q.Hints.ReuseSelection, ForceStrategy: q.Hints.ForceStrategy,
-		ForceRadixBits: q.Hints.ForceRadixBits, FusedCapable: simple != nil, ComparisonID: comparisonID, HasComparisonID: hasComparisonID,
-		RadixCapable: radixCapable, KeyWidthBytes: keyWidth,
+		FusedCapable: simple != nil, ComparisonID: comparisonID, HasComparisonID: hasComparisonID, KeyWidthBytes: keyWidth,
 	}, nil
 }
 

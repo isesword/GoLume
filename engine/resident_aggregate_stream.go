@@ -4,10 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"gocolumn/expr"
 	"gocolumn/memory"
 	"gocolumn/observer"
 	"gocolumn/pipeline"
+	"gocolumn/planner"
 	"gocolumn/source"
 	"math"
 	"time"
@@ -17,11 +17,13 @@ import (
 // NewResidentAggregateStream creates the explicit MemoryOnly/Auto resident
 // hash strategy on the same physical BatchStream graph as bounded execution.
 // Retained group state may grow with cardinality, but input and output remain
-// incremental and no engine.Result compatibility materialization is used.
+// incremental. Result and DataFrame consumers use this same physical operator.
 func (p *PreparedQuery) NewResidentAggregateStream(ctx context.Context, schema memory.Schema, outputRows int) (source.BatchStream, error) {
 	var readOpts source.ReadOptions
 	if p != nil && p.e != nil {
 		readOpts.Kernels = p.e.kernels
+		readOpts.BatchRows = p.e.opts.Pipeline.MaxMorselRows
+		readOpts.BatchBytes = p.e.opts.Pipeline.MaxMorselBytes
 	}
 	return p.NewResidentAggregateStreamWithReadOptions(ctx, schema, outputRows, readOpts)
 }
@@ -29,6 +31,11 @@ func (p *PreparedQuery) NewResidentAggregateStream(ctx context.Context, schema m
 // NewResidentAggregateStreamWithReadOptions preserves scan limits and memory ownership
 // through the aggregate child graph. Kernels must match the prepared query.
 func (p *PreparedQuery) NewResidentAggregateStreamWithReadOptions(ctx context.Context, schema memory.Schema, outputRows int, readOpts source.ReadOptions) (source.BatchStream, error) {
+	return p.newResidentAggregateStream(ctx, schema, outputRows, readOpts, true)
+}
+
+// acquirePrepared is false only when Execute already owns the plan lifecycle.
+func (p *PreparedQuery) newResidentAggregateStream(ctx context.Context, schema memory.Schema, outputRows int, readOpts source.ReadOptions, acquirePrepared bool) (source.BatchStream, error) {
 	if p == nil || p.e == nil {
 		return nil, fmt.Errorf("nil prepared aggregate query")
 	}
@@ -45,10 +52,15 @@ func (p *PreparedQuery) NewResidentAggregateStreamWithReadOptions(ctx context.Co
 	if budget == nil {
 		return nil, fmt.Errorf("resident aggregate stream requires a query memory budget")
 	}
-	if err := p.begin(); err != nil {
-		return nil, err
+	if p.executionPolicy == ExecutionBounded && budget.Limit() <= 0 {
+		return nil, ErrBoundedMemoryLimitRequired
 	}
-	active := true
+	if acquirePrepared {
+		if err := p.begin(); err != nil {
+			return nil, err
+		}
+	}
+	active := acquirePrepared
 	defer func() {
 		if active {
 			p.end()
@@ -61,60 +73,71 @@ func (p *PreparedQuery) NewResidentAggregateStreamWithReadOptions(ctx context.Co
 		outputRows = 4096
 	}
 	exchange := budget.Operator("ResidentAggregateExchange", memory.MemoryInFlightBatch)
-	input, err := pipeline.OpenBatchStream(ctx, p.src, readOpts, p.parts, exchange, p.e.opts.Pipeline, p.e.opts.Observer)
+	pipelineOpts := p.e.opts.Pipeline
+	if p.strategy.Kind == planner.StrategyPartitionedHash {
+		// All supported hash states are commutative. Relaxing scan order lets
+		// native producers decode concurrently while borrowed batches remain
+		// pinned until this operator joins every reader of the current batch.
+		pipelineOpts.Workers = p.strategy.Workers
+		pipelineOpts.Ordering = pipeline.OrderingRelaxed
+	}
+	input, err := pipeline.OpenBatchStream(ctx, p.src, readOpts, p.parts, exchange, pipelineOpts, p.e.opts.Observer)
 	if err != nil {
 		return nil, err
 	}
-	state := budget.Operator("ResidentHashAggregate", memory.MemoryRetainedState)
-	owner := &aggregateTableOwner{}
-	reserve := func(bytes int64) error {
-		lease, reserveErr := state.ReserveGrowth(ctx, bytes)
-		if reserveErr != nil {
-			return reserveErr
-		}
-		owner.reservations = append(owner.reservations, lease)
-		owner.retained += bytes
-		return nil
-	}
-	table, err := newAggregateStateTable(p.cq.GroupShape, p.cq.AggregateLayout, p.cq.CardinalityHint, p.cq.AverageKeyBytes, 0, reserve)
-	if err != nil {
-		_ = input.Close()
-		owner.close()
-		return nil, err
-	}
-	owner.table = table
 	stream := &residentAggregateStream{
-		query: p, schema: schema, budget: budget, input: input, table: owner,
+		query: p, schema: schema, budget: budget, input: input,
 		output:     budget.Operator("ResidentAggregateOutput", memory.MemoryWorkspace),
-		outputRows: outputRows, inputBatch: memory.NewBatch(), started: time.Now(), active: true,
+		outputRows: outputRows, inputBatch: memory.NewBatch(), started: time.Now(), active: acquirePrepared,
+	}
+	if p.strategy.Kind == planner.StrategyPartitionedHash {
+		stream.partitioned, err = newResidentPartitionedState(ctx, p, budget)
+	} else {
+		state := budget.Operator("ResidentHashAggregate", memory.MemoryRetainedState)
+		stream.table, err = newResidentTableOwner(ctx, p, state, p.cq.CardinalityHint)
+	}
+	if err != nil {
+		return nil, errors.Join(err, input.Close())
+	}
+	stream.physicalKind, stream.physicalWorkers = planner.StrategyBitmapDirect, 1
+	if stream.partitioned != nil {
+		stream.partitioned.prepareWave(ctx, readOpts)
+		stream.physicalKind, stream.physicalWorkers = planner.StrategyPartitionedHash, stream.partitioned.workers
+		stream.statePartitions = len(stream.partitioned.owners)
+		if wave := stream.partitioned.wave; wave != nil {
+			stream.waveRows, stream.waveBytes = wave.capacity, wave.lease.Bytes()
+		}
+	} else if p.strategy.Kind == planner.StrategyDirectFused && p.cq.SimpleComparison != nil {
+		stream.physicalKind = planner.StrategyDirectFused
 	}
 	stream.formatter = spillableAggregateStream{query: p, schema: schema}
-	stream.workspace.SetReserveHook(func(n int64) error {
-		r, err := budget.Reserve(context.Background(), n)
-		if err == nil {
-			stream.dynamicReservations = append(stream.dynamicReservations, r)
-		}
-		return err
-	})
+	stream.predicate.manager = budget.Operator("ResidentAggregatePredicate", memory.MemoryWorkspace)
+	stream.predicate.operator = "ResidentAggregatePredicate"
+
 	active = false
 	return stream, nil
 }
 
 type residentAggregateStream struct {
-	query               *PreparedQuery
-	schema              memory.Schema
-	budget              *memory.QueryBudget
-	input               source.BatchStream
-	table               *aggregateTableOwner
-	output              *memory.OperatorBudget
-	outputRows          int
-	inputBatch          *memory.Batch
-	formatter           spillableAggregateStream
-	workspace           expr.EvalWorkspace
-	dynamicReservations []memory.Reservation
-	cursor              int
-	outputLease         memory.Reservation
-	recordLease         memory.Reservation
+	physicalKind              planner.Kind
+	physicalWorkers           int
+	statePartitions, waveRows int
+	waveBytes                 int64
+	query                     *PreparedQuery
+	schema                    memory.Schema
+	budget                    *memory.QueryBudget
+	input                     source.BatchStream
+	table                     *aggregateTableOwner
+	partitioned               *residentPartitionedState
+	output                    *memory.OperatorBudget
+	outputRows                int
+	inputBatch                *memory.Batch
+	formatter                 spillableAggregateStream
+	predicate                 aggregatePredicateWorkspace
+	cursor                    int
+	outputDst                 *memory.Batch
+	outputLease               memory.Reservation
+	recordLease               memory.Reservation
 
 	selectedRows int
 	checksum     int64
@@ -123,15 +146,16 @@ type residentAggregateStream struct {
 	prepared     bool
 	active       bool
 	closed       bool
+	cleaned      bool
 	exhausted    bool
 	terminalErr  error
 	closeErr     error
 }
 
-func (s *residentAggregateStream) consume(ctx context.Context) error {
+func (s *residentAggregateStream) consume(ctx context.Context) (err error) {
 	defer func() {
 		if s.input != nil {
-			_ = s.input.Close()
+			err = errors.Join(err, s.input.Close())
 			s.input = nil
 		}
 	}()
@@ -143,36 +167,53 @@ func (s *residentAggregateStream) consume(ctx context.Context) error {
 		if !ok {
 			break
 		}
-		binding, err := s.formatter.bindBatch(s.inputBatch)
-		if err != nil {
-			return err
-		}
-		selection, err := s.query.cq.Predicate.Evaluate(s.inputBatch, &s.workspace, s.query.e.kernels)
-		if err != nil {
-			return err
-		}
-		err = forSelectedFrom(selection.Truth, s.inputBatch.Rows, 0, func(row int) error {
-			record := binding.record(s.query.cq.GroupShape, row)
-			value, valid := binding.value(row)
-			if _, addErr := s.table.table.add(record, value, valid); addErr != nil {
-				return addErr
+		if s.partitioned == nil && s.query.strategy.Kind == planner.StrategyDirectFused && s.query.cq.SimpleComparison != nil {
+			if err := s.predicate.ensureFused(ctx); err != nil {
+				return err
 			}
-			s.selectedRows++
-			if valid {
-				s.checksum += value
+		}
+		var selected int
+		var checksum int64
+		if s.partitioned != nil {
+			binding, bindErr := s.formatter.bindBatch(s.inputBatch)
+			if bindErr != nil {
+				return bindErr
 			}
-			return nil
-		})
+			selection, evaluateErr := s.predicate.evaluate(ctx, s.query.cq.Predicate, s.inputBatch, s.query.e.kernels)
+			if evaluateErr != nil {
+				return evaluateErr
+			}
+			selected, checksum, err = s.partitioned.aggregateBatch(ctx, binding, selection.Truth, s.inputBatch.Rows)
+		} else {
+			selected, _, checksum, err = s.query.aggregateResidentBatch(ctx, s.inputBatch, s.table.table, &s.predicate)
+		}
 		if err != nil {
 			return err
 		}
+
+		s.selectedRows += selected
+		s.checksum += checksum
+
 	}
-	s.groups = s.table.table.len()
+	if s.partitioned != nil {
+		checksum, err := s.partitioned.finishInput(ctx)
+		if err != nil {
+			return err
+		}
+		s.checksum += checksum
+		s.groups = s.partitioned.len()
+	} else {
+		s.groups = s.table.table.len()
+	}
 	s.prepared = true
 	return nil
 }
 
 func (s *residentAggregateStream) releaseOutput() {
+	if s.outputDst != nil {
+		s.outputDst.ClearColumns()
+		s.outputDst = nil
+	}
 	if s.outputLease != nil {
 		s.outputLease.Release()
 		s.outputLease = nil
@@ -194,8 +235,8 @@ func (s *residentAggregateStream) abort(err error) error {
 	if s.terminalErr == nil {
 		s.terminalErr = err
 	}
-	_ = s.Close()
-	return err
+	s.terminalErr = errors.Join(s.terminalErr, s.cleanup())
+	return s.terminalErr
 }
 
 // Next emits at most outputRows groups by advancing the hash-table cursor.
@@ -212,10 +253,15 @@ func (s *residentAggregateStream) Next(ctx context.Context, dst *memory.Batch) (
 		return false, s.terminalErr
 	}
 	if s.exhausted {
-		return false, nil
+		return false, s.cleanup()
 	}
 	if ctx == nil {
 		return false, s.abort(fmt.Errorf("resident aggregate context is nil"))
+	}
+	var ownershipErr error
+	ctx, ownershipErr = aggregateStreamContext(ctx, s.budget)
+	if ownershipErr != nil {
+		return false, s.abort(ownershipErr)
 	}
 	if err := ctx.Err(); err != nil {
 		return false, s.abort(err)
@@ -233,7 +279,7 @@ func (s *residentAggregateStream) Next(ctx context.Context, dst *memory.Batch) (
 	}
 	s.recordLease = recordLease
 	records := make([]aggregateRecord, 0, recordCapacity)
-	done, err := s.table.table.visitChunk(&s.cursor, s.outputRows, func(record aggregateRecord) error {
+	done, err := s.visitChunk(s.outputRows, func(record aggregateRecord) error {
 		records = append(records, record)
 		return nil
 	})
@@ -244,8 +290,7 @@ func (s *residentAggregateStream) Next(ctx context.Context, dst *memory.Batch) (
 		s.releaseOutput()
 		s.exhausted = true
 		s.recordStats()
-		s.finishActive()
-		return false, nil
+		return false, s.cleanup()
 	}
 	plainStringBytes := int64(0)
 	for _, record := range records {
@@ -266,14 +311,12 @@ func (s *residentAggregateStream) Next(ctx context.Context, dst *memory.Batch) (
 		lease.Release()
 		return false, s.abort(fmt.Errorf("aggregate output strings exceed addressable memory"))
 	}
+	s.outputLease, s.outputDst = lease, dst
 	if err := s.formatter.allocateOutputBatch(dst, len(records), int(plainStringBytes)); err != nil {
-		lease.Release()
 		return false, s.abort(err)
 	}
 	for row, record := range records {
 		if err := s.formatter.setOutputRecord(dst, row, record); err != nil {
-			dst.ClearColumns()
-			lease.Release()
 			return false, s.abort(err)
 		}
 	}
@@ -281,7 +324,6 @@ func (s *residentAggregateStream) Next(ctx context.Context, dst *memory.Batch) (
 	if done {
 		s.exhausted = true
 		s.recordStats()
-		s.finishActive()
 	}
 	return true, nil
 }
@@ -293,10 +335,15 @@ func (s *residentAggregateStream) recordStats() {
 	if s.query.feedbackKey != "" {
 		s.query.e.feedback.observe(s.query.feedbackKey, s.query.stats.Rows, s.selectedRows, s.groups)
 	}
+	_, workers := s.physicalStrategy()
 	s.query.e.opts.Observer.Observe(observer.Event{
 		Stage: "resident-stream-aggregate", Duration: time.Since(s.started), Rows: s.query.stats.Rows,
-		Attributes: s.StreamDiagnostics(),
+		Workers: workers, Attributes: s.StreamDiagnostics(),
 	})
+}
+
+func (s *residentAggregateStream) physicalStrategy() (planner.Kind, int) {
+	return s.physicalKind, s.physicalWorkers
 }
 
 // StreamDiagnostics reports resident aggregate strategy and runtime counters.
@@ -305,37 +352,56 @@ func (s *residentAggregateStream) StreamDiagnostics() map[string]string {
 	if s.budget != nil {
 		peak = s.budget.Snapshot().PeakBytes
 	}
-	return map[string]string{
-		"strategy": "resident-stream", "groups": fmt.Sprint(s.groups),
+	strategy, workers := s.physicalStrategy()
+	attributes := map[string]string{
+		"strategy": strategy.String(), "workers": fmt.Sprint(workers), "groups": fmt.Sprint(s.groups),
 		"selected_rows": fmt.Sprint(s.selectedRows), "checksum": fmt.Sprint(s.checksum), "peak_memory_bytes": fmt.Sprint(peak), "spill_runs": "0",
 		"kernel_mode": s.query.e.kernels.Capabilities().Mode().String(), "kernel_arch": s.query.e.kernels.Capabilities().Arch(),
 	}
+	if s.physicalKind == planner.StrategyPartitionedHash {
+		attributes["state_partitions"] = fmt.Sprint(s.statePartitions)
+		attributes["aggregate_wave_rows"] = fmt.Sprint(s.waveRows)
+		attributes["aggregate_wave_bytes"] = fmt.Sprint(s.waveBytes)
+	}
+	return attributes
 }
 
 // Close releases input, hash state, output reservations, and prepared-query
 // ownership exactly once.
 func (s *residentAggregateStream) Close() error {
-	if s == nil || s.closed {
+	if s == nil {
+		return nil
+	}
+	s.closed = true
+	return s.cleanup()
+}
+
+// cleanup releases ownership after either EOF/error or explicit Close without
+// changing the public terminal state. Repeated errors stay observable until Close.
+func (s *residentAggregateStream) cleanup() error {
+	if s == nil || s.cleaned {
 		if s == nil {
 			return nil
 		}
 		return s.closeErr
 	}
-	s.closed = true
-	for _, r := range s.dynamicReservations {
-		r.Release()
-	}
-	s.dynamicReservations = nil
+	s.cleaned = true
+	s.predicate.close()
+
 	var err error
+	if s.inputBatch != nil {
+		s.inputBatch.ClearColumns()
+		s.inputBatch = nil
+	}
 	if s.input != nil {
 		err = errors.Join(err, s.input.Close())
 		s.input = nil
 	}
-	if s.inputBatch != nil {
-		s.inputBatch.ReleaseOwned()
-		s.inputBatch = nil
-	}
 	s.releaseOutput()
+	if s.partitioned != nil {
+		s.partitioned.close()
+		s.partitioned = nil
+	}
 	if s.table != nil {
 		s.table.close()
 		s.table = nil
@@ -354,3 +420,21 @@ func minInt(left, right int) int {
 
 var _ source.BatchStream = (*residentAggregateStream)(nil)
 var _ source.BatchStreamDiagnostics = (*residentAggregateStream)(nil)
+
+// Stats returns execution diagnostics for the shared aggregate consumer.
+func (s *residentAggregateStream) Stats() AggregateStreamStats {
+	return AggregateStreamStats{SelectedRows: s.selectedRows, Groups: s.groups, Checksum: s.checksum, Elapsed: time.Since(s.started)}
+}
+
+func (s *residentAggregateStream) visit(fn func(aggregateRecord) error) error {
+	if s.partitioned != nil {
+		return s.partitioned.visit(fn)
+	}
+	return s.table.table.visit(fn)
+}
+func (s *residentAggregateStream) visitChunk(limit int, fn func(aggregateRecord) error) (bool, error) {
+	if s.partitioned != nil {
+		return s.partitioned.visitChunk(limit, fn)
+	}
+	return s.table.table.visitChunk(&s.cursor, limit, fn)
+}

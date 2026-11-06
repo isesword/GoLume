@@ -1,0 +1,28 @@
+goos: linux
+goarch: amd64
+pkg: gocolumn/engine
+cpu: AMD EPYC 9V74 80-Core Processor                
+                                                              │ engine-filter-correctness-checkpoint-gate.txt │ engine-filter-correctness-correctness-gate.txt │
+                                                              │                             sec/op                              │                  sec/op                    vs base               │
+Int32ComparisonKernelMode/direct-fused/select=50/mode=scalar                                                        6.314m ± 7%                                 6.304m ± 8%       ~ (p=0.739 n=10)
+Int32ComparisonKernelMode/direct-fused/select=50/mode=simd                                                          6.248m ± 4%                                 6.466m ± 4%       ~ (p=0.218 n=10)
+Int32ComparisonKernelMode/bitmap-direct/select=50/mode=scalar                                                       6.177m ± 2%                                 6.213m ± 5%       ~ (p=0.796 n=10)
+Int32ComparisonKernelMode/bitmap-direct/select=50/mode=simd                                                         6.147m ± 7%                                 6.368m ± 7%       ~ (p=0.529 n=10)
+geomean                                                                                                             6.221m                                      6.337m       +1.86%
+
+                                                              │ engine-filter-correctness-checkpoint-gate.txt │ engine-filter-correctness-correctness-gate.txt │
+                                                              │                              B/op                               │                   B/op                     vs base               │
+Int32ComparisonKernelMode/direct-fused/select=50/mode=scalar                                                       47.84Ki ± 0%                                47.71Ki ± 0%  -0.26% (p=0.000 n=10)
+Int32ComparisonKernelMode/direct-fused/select=50/mode=simd                                                         47.84Ki ± 0%                                47.71Ki ± 0%  -0.26% (p=0.000 n=10)
+Int32ComparisonKernelMode/bitmap-direct/select=50/mode=scalar                                                      62.38Ki ± 0%                                62.52Ki ± 0%  +0.23% (p=0.000 n=10)
+Int32ComparisonKernelMode/bitmap-direct/select=50/mode=simd                                                        62.38Ki ± 0%                                62.52Ki ± 0%  +0.23% (p=0.000 n=10)
+geomean                                                                                                            54.63Ki                                     54.62Ki       -0.02%
+
+                                                              │ engine-filter-correctness-checkpoint-gate.txt │ engine-filter-correctness-correctness-gate.txt │
+                                                              │                            allocs/op                            │                allocs/op                 vs base                 │
+Int32ComparisonKernelMode/direct-fused/select=50/mode=scalar                                                         220.0 ± 0%                                220.0 ± 0%       ~ (p=1.000 n=10) ¹
+Int32ComparisonKernelMode/direct-fused/select=50/mode=simd                                                           220.0 ± 0%                                220.0 ± 0%       ~ (p=1.000 n=10) ¹
+Int32ComparisonKernelMode/bitmap-direct/select=50/mode=scalar                                                        194.0 ± 0%                                197.0 ± 0%  +1.55% (p=0.000 n=10)
+Int32ComparisonKernelMode/bitmap-direct/select=50/mode=simd                                                          194.0 ± 0%                                197.0 ± 0%  +1.55% (p=0.000 n=10)
+geomean                                                                                                              206.6                                     208.2       +0.77%
+¹ all samples are equal

@@ -434,8 +434,8 @@ func TestEvalWorkspaceMemoryBytesTracksRetainedCapacity(t *testing.T) {
 func TestDictionaryPredicateReserveHookPropagatesFailure(t *testing.T) {
 	v := &memory.DictionaryStringVector{Indices: []uint32{0}, Offsets: []uint32{0, 3, 6}, Data: []byte("abcdef"), DictionaryDomain: "d"}
 	out := make(memory.Bitmap, memory.WordsFor(1))
-	cache := &dictionaryPredicateCache{reserve: func(int64) error { return fmt.Errorf("budget exceeded") }}
-	selectDictionary(v, out, Instruction{Column: "s"}, cache, func([]byte) bool { return true })
+	cache := &dictionaryPredicateCache{reserve: func(int64) (memory.Reservation, error) { return nil, fmt.Errorf("budget exceeded") }}
+	selectDictionary(v, 1, out, Instruction{Column: "s"}, cache, func([]byte) bool { return true })
 	if cache.reserveErr == nil || cache.reserveErr.Error() != "budget exceeded" {
 		t.Fatalf("reserveErr=%v", cache.reserveErr)
 	}

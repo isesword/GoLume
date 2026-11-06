@@ -339,7 +339,8 @@ func NewTopKSourceWithManager(input source.Source, k int, keys []SortKey, manage
 
 // NewTopKSourceWithKeyInput constructs a Top-K source with a narrow source for
 // the first ordering pass and a full payload source for the winning-row pass.
-// Both inputs must expose the same partitions and row positions. keyInput may
+// Both inputs must expose the same logical row sequence; native batch
+// boundaries may differ between passes. keyInput may
 // omit every column except the ordering keys, which avoids decoding payload
 // columns while the bounded heap is being built.
 func NewTopKSourceWithKeyInput(input, keyInput source.Source, k int, keys []SortKey, manager memory.Manager) (source.Source, error) {
@@ -414,8 +415,8 @@ func (s *TopKSource) NewBatchStream(ctx context.Context, opts source.ReadOptions
 	r := &topKReader{owner: s, scratch: memory.NewBatch(), readOpts: opts}
 	passInput := s.keyInput
 	if source.ReplayabilityOf(s.input) != source.ReplayStable || source.ReplayabilityOf(s.keyInput) != source.ReplayStable {
-		// The two-pass split requires identical batch boundaries and row
-		// ordinals on both passes. A non-replayable input is snapshotted once
+		// Two passes require identical logical row ordinals, not identical
+		// native batch boundaries. A non-replayable input is snapshotted once
 		// and supplies both passes, trading the O(K) first pass for one
 		// full-payload materialization.
 		passInput = s.input
@@ -427,12 +428,6 @@ func (s *TopKSource) NewBatchStream(ctx context.Context, opts source.ReadOptions
 	}
 	r.first = first
 	return r, nil
-}
-
-// NewBatchStreamWithPartitions keeps Top-K on the native stream graph. Its
-// output partition is synthetic, so the child sources resolve their own scans.
-func (s *TopKSource) NewBatchStreamWithPartitions(ctx context.Context, opts source.ReadOptions, _ []source.Partition) (source.BatchStream, error) {
-	return s.NewBatchStream(ctx, opts)
 }
 
 type topKReader struct {
@@ -494,7 +489,7 @@ func (r *topKReader) Next(ctx context.Context, dst *memory.Batch) (bool, error) 
 	heap.Init(h)
 	trackActual := r.tracksActualMemory()
 	var ordinal int64
-	for batchID := 0; ; batchID++ {
+	for {
 		ok, err := first.Next(ctx, r.scratch)
 		if err != nil {
 			return false, err
@@ -503,6 +498,9 @@ func (r *topKReader) Next(ctx context.Context, dst *memory.Batch) (bool, error) 
 			break
 		}
 		for row := 0; row < r.scratch.Rows; row++ {
+			if ordinal == math.MaxInt64 {
+				return false, fmt.Errorf("top-k input row ordinal overflows int64")
+			}
 			if h.Len() < r.owner.k {
 				var textBytes int64
 				if trackActual {
@@ -516,7 +514,7 @@ func (r *topKReader) Next(ctx context.Context, dst *memory.Batch) (bool, error) 
 					}
 				}
 				cand := rowCandidate{cells: make([]sortCell, len(r.owner.keys))}
-				if err := snapshotCandidateInto(&cand, r.scratch, r.owner.keyInput.Schema(), r.owner.keys, batchID, row, ordinal); err != nil {
+				if err := snapshotCandidateInto(&cand, r.scratch, r.owner.keyInput.Schema(), r.owner.keys, row, ordinal); err != nil {
 					return false, err
 				}
 				heap.Push(h, cand)
@@ -541,7 +539,7 @@ func (r *topKReader) Next(ctx context.Context, dst *memory.Batch) (bool, error) 
 						return false, fmt.Errorf("top-k candidate key memory: %w", err)
 					}
 				}
-				if err := snapshotCandidateInto(&h.items[0], r.scratch, r.owner.keyInput.Schema(), r.owner.keys, batchID, row, ordinal); err != nil {
+				if err := snapshotCandidateInto(&h.items[0], r.scratch, r.owner.keyInput.Schema(), r.owner.keys, row, ordinal); err != nil {
 					return false, err
 				}
 				r.candidateText = candidateText
@@ -567,17 +565,25 @@ func (r *topKReader) Next(ctx context.Context, dst *memory.Batch) (bool, error) 
 		second = replayed
 	}
 	defer second.Close()
-	type selectedPart struct {
+	type selectedRow struct {
 		batch *memory.Batch
-		index map[int]int
+		row   int
 	}
-	selected := make(map[int]*selectedPart)
-	byPart := make(map[int][]int)
-	for _, w := range winners {
-		byPart[w.partition] = append(byPart[w.partition], w.row)
+	selected := make(map[int64]selectedRow, len(winners))
+	ordinals := make([]int64, len(winners))
+	for i, w := range winners {
+		ordinals[i] = w.ordinal
 	}
-	var payloadBytes int64
-	for batchID := 0; ; batchID++ {
+	sort.Slice(ordinals, func(i, j int) bool { return ordinals[i] < ordinals[j] })
+	selectedBatches := make([]*memory.Batch, 0, len(winners))
+	defer func() {
+		for _, batch := range selectedBatches {
+			batch.ReleaseOwned()
+		}
+	}()
+	var payloadBytes, replayOrdinal int64
+	nextWinner := 0
+	for {
 		ok, err := second.Next(ctx, r.scratch)
 		if err != nil {
 			return false, err
@@ -585,15 +591,27 @@ func (r *topKReader) Next(ctx context.Context, dst *memory.Batch) (bool, error) 
 		if !ok {
 			break
 		}
-		rows, wanted := byPart[batchID]
-		if !wanted {
+		if int64(r.scratch.Rows) > math.MaxInt64-replayOrdinal {
+			return false, fmt.Errorf("top-k replay row ordinal overflows int64")
+		}
+		start, end := replayOrdinal, replayOrdinal+int64(r.scratch.Rows)
+		replayOrdinal = end
+		firstWinner := nextWinner
+		for nextWinner < len(ordinals) && ordinals[nextWinner] < end {
+			nextWinner++
+		}
+		if firstWinner == nextWinner {
 			continue
 		}
-		uniq := append([]int(nil), rows...)
-		sort.Ints(uniq)
-		uniq = uniqueInts(uniq)
+		rows := make([]int, nextWinner-firstWinner)
+		for i, winner := range ordinals[firstWinner:nextWinner] {
+			if winner < start {
+				return false, fmt.Errorf("top-k replay passed selected row ordinal %d", winner)
+			}
+			rows[i] = int(winner - start)
+		}
 		if trackActual {
-			for _, row := range uniq {
+			for _, row := range rows {
 				bytes, estimateErr := memory.EstimateBatchRangeBytes(r.scratch, row, 1)
 				if estimateErr != nil {
 					return false, estimateErr
@@ -611,27 +629,25 @@ func (r *topKReader) Next(ctx context.Context, dst *memory.Batch) (bool, error) 
 			}
 		}
 		mini := memory.NewBatch()
-		if err := takeRows(ctx, mini, r.scratch, uniq); err != nil {
+		if err := takeRows(ctx, mini, r.scratch, rows); err != nil {
+			mini.ReleaseOwned()
 			return false, err
 		}
-		idx := make(map[int]int, len(uniq))
-		for i, row := range uniq {
-			idx[row] = i
+		selectedBatches = append(selectedBatches, mini)
+		for i, winner := range ordinals[firstWinner:nextWinner] {
+			selected[winner] = selectedRow{batch: mini, row: i}
 		}
-		selected[batchID] = &selectedPart{batch: mini, index: idx}
 	}
-	if len(selected) != len(byPart) {
-		return false, fmt.Errorf("top-k replay changed batch boundaries: selected %d of %d batches", len(selected), len(byPart))
+	if replayOrdinal != ordinal {
+		return false, fmt.Errorf("top-k replay changed row count: keys=%d payload=%d", ordinal, replayOrdinal)
 	}
-	defer func() {
-		for _, p := range selected {
-			p.batch.ReleaseOwned()
-		}
-	}()
+	if len(selected) != len(winners) {
+		return false, fmt.Errorf("top-k replay selected %d of %d winner ordinals", len(selected), len(winners))
+	}
 	acc := newBatchAccumulator(r.owner.input.Schema())
-	for _, w := range winners {
-		p := selected[w.partition]
-		if err := acc.appendRow(p.batch, p.index[w.row]); err != nil {
+	for _, winner := range winners {
+		row := selected[winner.ordinal]
+		if err := acc.appendRow(row.batch, row.row); err != nil {
 			return false, err
 		}
 	}
@@ -819,20 +835,16 @@ type sortCell struct {
 }
 
 type rowCandidate struct {
-	partition int
-	row       int
-	ordinal   int64
-	cells     []sortCell
+	ordinal int64
+	cells   []sortCell
 }
 
-func snapshotCandidateInto(c *rowCandidate, batch *memory.Batch, schema memory.Schema, keys []SortKey, partition, row int, ordinal int64) error {
+func snapshotCandidateInto(c *rowCandidate, batch *memory.Batch, schema memory.Schema, keys []SortKey, row int, ordinal int64) error {
 	if cap(c.cells) < len(keys) {
 		c.cells = make([]sortCell, len(keys))
 	} else {
 		c.cells = c.cells[:len(keys)]
 	}
-	c.partition = partition
-	c.row = row
 	c.ordinal = ordinal
 	for i, k := range keys {
 		cell, err := snapshotCell(batch, schema, k.Column, row)
@@ -1083,19 +1095,6 @@ func (h *candidateHeap) Pop() any {
 	x := h.items[n-1]
 	h.items = h.items[:n-1]
 	return x
-}
-
-func uniqueInts(in []int) []int {
-	if len(in) == 0 {
-		return in
-	}
-	out := in[:1]
-	for _, v := range in[1:] {
-		if v != out[len(out)-1] {
-			out = append(out, v)
-		}
-	}
-	return out
 }
 
 // batchAccumulator owns a growing materialized batch and opaque Arrow slices.

@@ -1,0 +1,21 @@
+pair=1 mode=filter
+goos: linux
+goarch: amd64
+pkg: gocolumn/engine
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkPreparedStreamW4-4   	      69	  16029617 ns/op	56702329 B/op	   11716 allocs/op
+PASS
+pair=2 mode=filter
+goos: linux
+goarch: amd64
+pkg: gocolumn/engine
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkPreparedStreamW4-4   	      88	  16596418 ns/op	56700637 B/op	   11716 allocs/op
+PASS
+pair=3 mode=filter
+goos: linux
+goarch: amd64
+pkg: gocolumn/engine
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkPreparedStreamW4-4   	      70	  16560995 ns/op	56698590 B/op	   11714 allocs/op
+PASS

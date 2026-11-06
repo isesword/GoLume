@@ -51,12 +51,6 @@ func (s *WindowSource) NewBatchStream(ctx context.Context, opts source.ReadOptio
 	}
 }
 
-// NewBatchStreamWithPartitions keeps prepared execution on the native stream
-// graph. Window is global, so child partitions are resolved by its child.
-func (s *WindowSource) NewBatchStreamWithPartitions(ctx context.Context, opts source.ReadOptions, _ []source.Partition) (source.BatchStream, error) {
-	return s.NewBatchStream(ctx, opts)
-}
-
 type residentWindowStream struct {
 	reader *windowReader
 	done   bool
@@ -752,10 +746,10 @@ func (s *orderedWindowStream) Next(ctx context.Context, dst *memory.Batch) (bool
 		if err := s.growKeyReservation(ctx, s.baseBytes+s.keyBytes); err != nil {
 			return false, fmt.Errorf("window key state: %w", err)
 		}
-		if err := snapshotCandidateInto(&s.previousPartition, s.input, s.inputSchema, s.partitionKeys, 0, row, 0); err != nil {
+		if err := snapshotCandidateInto(&s.previousPartition, s.input, s.inputSchema, s.partitionKeys, row, 0); err != nil {
 			return false, err
 		}
-		if err := snapshotCandidateInto(&s.previousOrder, s.input, s.inputSchema, s.owner.orderBy, 0, row, 0); err != nil {
+		if err := snapshotCandidateInto(&s.previousOrder, s.input, s.inputSchema, s.owner.orderBy, row, 0); err != nil {
 			return false, err
 		}
 		s.havePrevious = true
@@ -927,5 +921,4 @@ func (s *orderedWindowStream) Close() error {
 	return s.child.Close()
 }
 
-var _ source.PreparedBatchStreamProvider = (*WindowSource)(nil)
 var _ source.BatchStreamDiagnostics = (*externalWindowStream)(nil)

@@ -10,7 +10,7 @@ import (
 )
 
 // ProfileSource is a diagnostic-only source wrapper used by ExplainAnalyze. It
-// records inclusive reader time and row counts without changing the wrapped
+// records inclusive stream time and row counts without changing the wrapped
 // source's data or partition semantics.
 type ProfileSource struct {
 	input source.Source
@@ -61,10 +61,8 @@ func (s *ProfileSource) Partitions(ctx context.Context) ([]source.Partition, err
 	return s.input.Partitions(ctx)
 }
 
-// NewBatchStream preserves native streaming operators while recording one
-// timing sample per produced batch. Without this forwarding method diagnostic
-// wrapping would accidentally force spillable operators through legacy Reader
-// compatibility paths.
+// NewBatchStream opens the wrapped stream and records one timing sample per
+// produced batch without changing execution strategy or resource ownership.
 func (s *ProfileSource) NewBatchStream(ctx context.Context, opts source.ReadOptions) (source.BatchStream, error) {
 	child, err := source.OpenBatchStream(ctx, s.input, opts)
 	if err != nil {

@@ -20,7 +20,7 @@ func TestSpecializedTablesMergeNullablePartialStates(t *testing.T) {
 	layout := aggregate.Layout{Sum: true, CountRows: true, CountValues: true, Min: true, Max: true}
 	state := mergeState()
 	t.Run("i32", func(t *testing.T) {
-		table := NewI32TableWithOptions(1, TableOptions{Aggregates: layout})
+		table := mustHashTable(NewI32TableWithOptions(1, TableOptions{Aggregates: layout}))
 		table.Reset()
 		_, _ = table.TryMergeNullable(4, true, state)
 		_, _ = table.TryMergeNullable(4, true, state)
@@ -38,7 +38,7 @@ func TestSpecializedTablesMergeNullablePartialStates(t *testing.T) {
 		}
 	})
 	t.Run("u64-null", func(t *testing.T) {
-		table := NewU64TableWithOptions(1, TableOptions{Aggregates: layout})
+		table := mustHashTable(NewU64TableWithOptions(1, TableOptions{Aggregates: layout}))
 		table.Reset()
 		_, _ = table.TryMergeNullable(0, false, state)
 		_, _ = table.TryMergeNullable(0, false, state)
@@ -53,7 +53,7 @@ func TestSpecializedTablesMergeNullablePartialStates(t *testing.T) {
 		}
 	})
 	t.Run("u32", func(t *testing.T) {
-		table := NewU32TableWithOptions(1, TableOptions{Aggregates: layout})
+		table := mustHashTable(NewU32TableWithOptions(1, TableOptions{Aggregates: layout}))
 		table.Reset()
 		_, _ = table.TryMergeNullable(4, true, state)
 		_, _ = table.TryMergeNullable(4, true, state)
@@ -62,7 +62,7 @@ func TestSpecializedTablesMergeNullablePartialStates(t *testing.T) {
 		}
 	})
 	t.Run("pair", func(t *testing.T) {
-		table := NewPairTableWithOptions(1, TableOptions{Aggregates: layout})
+		table := mustHashTable(NewPairTableWithOptions(1, TableOptions{Aggregates: layout}))
 		table.Reset()
 		key := Key128{A: 1, B: 2}
 		_, _ = table.TryMergeNullable(key, 2, state)
@@ -78,7 +78,7 @@ func TestSpecializedTablesMergeNullablePartialStates(t *testing.T) {
 		}
 	})
 	t.Run("string", func(t *testing.T) {
-		table := NewStringTableWithOptions(1, 16, TableOptions{Aggregates: layout})
+		table := mustHashTable(NewStringTableWithOptions(1, 16, TableOptions{Aggregates: layout}))
 		table.Reset()
 		_, _ = table.TryMergeNullable([]byte("中"), true, state)
 		_, _ = table.TryMergeNullable([]byte("中"), true, state)

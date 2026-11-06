@@ -32,7 +32,7 @@ func TestLazyTimestampUnitsAndTemporalArithmetic(t *testing.T) {
 			Col("ts").Sub(Lit(int64(time.Second))).Alias("previous_second"),
 		).
 		SelectExprs(Col("tomorrow").Alias("tomorrow"), Col("previous_second").Alias("previous_second")).
-		CollectFrame(context.Background())
+		Collect(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}

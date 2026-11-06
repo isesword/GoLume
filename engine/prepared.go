@@ -6,20 +6,17 @@ import (
 	"fmt"
 	"gocolumn/expr"
 	"gocolumn/memory"
-	"gocolumn/observer"
 	"gocolumn/planner"
 	"gocolumn/source"
 	"sync"
-	"time"
 )
 
 // ErrPreparedClosed is returned when executing a closed PreparedQuery.
 var ErrPreparedClosed = errors.New("prepared query closed")
 
-// PrepareOptions controls retained workspace concurrency for a prepared plan.
+// PrepareOptions controls execution concurrency for a prepared plan.
 type PrepareOptions struct {
-	// MaxConcurrency bounds simultaneous Execute calls and therefore retained
-	// workspace/memory reservations. Zero means 1.
+	// MaxConcurrency bounds simultaneous Execute calls. Zero means 1.
 	MaxConcurrency int
 	// FeedbackKey identifies a stable logical plan for runtime-statistics
 	// feedback. Empty disables feedback for this prepared query.
@@ -34,13 +31,14 @@ type PlanInfo struct {
 	KeyWidthBytes        int
 	PredicateOps         int
 	GroupColumns         int
-	WorkspacePool        int
+	MaxConcurrency       int
 	FeedbackSamples      uint64
 	EstimatedSelectivity float64
 	EstimatedCardinality int
 }
 
-// PreparedQuery is a compiled physical plan with reusable, budget-accounted workspaces.
+// PreparedQuery is an immutable compiled plan. Each execution owns its native
+// streams and query-scoped memory; no source-sized buffers survive execution.
 type PreparedQuery struct {
 	e               *Engine
 	src             source.Source
@@ -48,23 +46,28 @@ type PreparedQuery struct {
 	stats           source.Stats
 	parts           []source.Partition
 	strategy        planner.Strategy
-	pool            *workspacePool
-	partBase        []int
-	maxPartRows     int
+	executions      chan struct{}
 	dicts           map[string]source.Dictionary
 	feedbackKey     string
 	feedbackSamples uint64
 	executionPolicy ExecutionPolicy
 
-	lifeMu sync.Mutex
-	active sync.WaitGroup
-	closed bool
+	lifeMu    sync.Mutex
+	active    sync.WaitGroup
+	closed    bool
+	closeDone chan struct{}
 }
 
 // Prepare compiles q for src and creates a reusable PreparedQuery.
 func (e *Engine) Prepare(ctx context.Context, src source.Source, q expr.Query, opts PrepareOptions) (*PreparedQuery, error) {
 	if e == nil {
 		return nil, fmt.Errorf("engine is nil")
+	}
+	if ctx == nil {
+		return nil, fmt.Errorf("prepare context is nil")
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
 	}
 	policy := ExecutionPolicyFromContext(ctx, e.opts.ExecutionPolicy)
 	if err := policy.Validate(); err != nil {
@@ -91,6 +94,9 @@ func (e *Engine) Prepare(ctx context.Context, src source.Source, q expr.Query, o
 			q.Hints.Cardinality = fb.Cardinality
 		}
 	}
+	if q.Hints.ForceStrategy == "radix" {
+		return nil, fmt.Errorf("input-wide radix execution was removed; use automatic native stream planning or bitmap-direct")
+	}
 	cq, err := compileQuery(src.Schema(), q)
 	if err != nil {
 		return nil, err
@@ -103,10 +109,13 @@ func (e *Engine) Prepare(ctx context.Context, src source.Source, q expr.Query, o
 	if err != nil {
 		return nil, err
 	}
-	workers := e.opts.Workers
-	if q.Hints.ForceWorkerCount > 0 {
-		workers = q.Hints.ForceWorkerCount
+	for _, part := range parts {
+		if part.Rows < 0 {
+			return nil, fmt.Errorf("partition %d has negative row count %d", part.ID, part.Rows)
+		}
 	}
+	workers := e.opts.Workers
+
 	if workers > e.scheduler.MaxWorkers() {
 		workers = e.scheduler.MaxWorkers()
 	}
@@ -114,9 +123,9 @@ func (e *Engine) Prepare(ctx context.Context, src source.Source, q expr.Query, o
 		Rows: stats.Rows, Partitions: stats.Partitions, Workers: workers,
 		Selectivity: cq.SelectivityHint, Cardinality: cq.CardinalityHint,
 		ReuseSelection: cq.ReuseSelection, Kernel: e.kernels.Capabilities(),
-		ForceStrategy: cq.ForceStrategy, ForceRadixBits: cq.ForceRadixBits,
-		FusedCapable: cq.FusedCapable, RadixCapable: cq.RadixCapable,
-		ComparisonID: cq.ComparisonID, HasComparisonID: cq.HasComparisonID,
+		ForceStrategy: cq.ForceStrategy,
+		FusedCapable:  cq.FusedCapable,
+		ComparisonID:  cq.ComparisonID, HasComparisonID: cq.HasComparisonID,
 		SortedCapable: source.OrderedByPrefix(src, q.GroupBy),
 		KeyWidthBytes: cq.KeyWidthBytes, PredicateComplexity: cq.Predicate.Complexity,
 	})
@@ -131,25 +140,17 @@ func (e *Engine) Prepare(ctx context.Context, src source.Source, q expr.Query, o
 			Cause:    ErrBoundedSpillRequired,
 		}
 	}
+	if strategy.Kind != planner.StrategySorted && policy != ExecutionMemoryOnly && e.memory.Limit() > 0 && e.SpillConfigured() {
+		strategy = planner.Strategy{Kind: planner.StrategySpillHash, Workers: 1, Reason: "finite query budget with spill quota"}
+	}
 	if stats.Rows < 0 || stats.Rows > int64(^uint(0)>>1) {
 		return nil, fmt.Errorf("row count %d exceeds addressable workspace", stats.Rows)
-	}
-	partBase := make([]int, len(parts)+1)
-	maxPart := 0
-	for i, p := range parts {
-		if p.Rows < 0 || p.Rows > int64(^uint(0)>>1) {
-			return nil, fmt.Errorf("partition %d too large", p.ID)
-		}
-		partBase[i+1] = partBase[i] + int(p.Rows)
-		if int(p.Rows) > maxPart {
-			maxPart = int(p.Rows)
-		}
 	}
 	maxConc := opts.MaxConcurrency
 	if maxConc < 1 {
 		maxConc = 1
 	}
-	pq := &PreparedQuery{e: e, src: src, cq: cq, stats: stats, parts: parts, strategy: strategy, partBase: partBase, maxPartRows: maxPart, dicts: make(map[string]source.Dictionary), feedbackKey: opts.FeedbackKey, feedbackSamples: feedbackSamples, executionPolicy: policy}
+	pq := &PreparedQuery{e: e, src: src, cq: cq, stats: stats, parts: parts, strategy: strategy, dicts: make(map[string]source.Dictionary), feedbackKey: opts.FeedbackKey, feedbackSamples: feedbackSamples, executionPolicy: policy, executions: make(chan struct{}, maxConc)}
 	// Load source-level dictionaries once when available. Absence is allowed;
 	// materialized results will expose code+domain instead of decoded strings.
 	if dp, ok := src.(source.DictionaryProvider); ok {
@@ -166,13 +167,12 @@ func (e *Engine) Prepare(ctx context.Context, src source.Source, q expr.Query, o
 			}
 		}
 	}
-	pq.pool = newWorkspacePool(maxConc, pq.newWorkspace)
 	return pq, nil
 }
 
 // Plan returns physical-plan diagnostics selected during preparation.
 func (p *PreparedQuery) Plan() PlanInfo {
-	return PlanInfo{Strategy: p.strategy, Rows: p.stats.Rows, Partitions: p.stats.Partitions, KeyWidthBytes: p.cq.KeyWidthBytes, PredicateOps: p.cq.Predicate.Complexity, GroupColumns: len(p.cq.GroupBy), WorkspacePool: p.pool.max, FeedbackSamples: p.feedbackSamples, EstimatedSelectivity: p.cq.SelectivityHint, EstimatedCardinality: p.cq.CardinalityHint}
+	return PlanInfo{Strategy: p.strategy, Rows: p.stats.Rows, Partitions: p.stats.Partitions, KeyWidthBytes: p.cq.KeyWidthBytes, PredicateOps: p.cq.Predicate.Complexity, GroupColumns: len(p.cq.GroupBy), MaxConcurrency: cap(p.executions), FeedbackSamples: p.feedbackSamples, EstimatedSelectivity: p.cq.SelectivityHint, EstimatedCardinality: p.cq.CardinalityHint}
 }
 
 func (p *PreparedQuery) begin() error {
@@ -188,74 +188,23 @@ func (p *PreparedQuery) end() { p.active.Done() }
 
 type profileOperatorIDProvider interface{ OperatorID() string }
 
-// Execute runs the prepared physical plan using one leased workspace.
-func (p *PreparedQuery) Execute(ctx context.Context, opts ExecuteOptions) (Result, error) {
-	if p != nil && p.executionPolicy == ExecutionBounded && p.strategy.Kind != planner.StrategySorted {
-		return Result{}, &UnsupportedBoundedPlanError{
-			Operator: "CollectResult",
-			Path:     []string{"Aggregate", "CollectResult"},
-			Detail:   "CollectResult uses the resident compatibility result; use LazyFrame.Collect for spillable aggregation until the public batch sink lands",
-		}
-	}
-	if err := p.begin(); err != nil {
-		return Result{}, err
-	}
-	defer p.end()
-	start := time.Now()
-	ws, err := p.pool.acquire(ctx)
-	if err != nil {
-		return Result{}, err
-	}
-	defer p.pool.release(ws)
-	var r Result
-	switch p.strategy.Kind {
-	case planner.StrategyDirectFused:
-		r, err = p.executeDirectFused(ctx, ws, opts)
-	case planner.StrategyBitmapDirect:
-		r, err = p.executeBitmapDirect(ctx, ws, opts)
-	case planner.StrategyRadix:
-		r, err = p.executeRadix(ctx, ws, opts)
-	case planner.StrategySorted:
-		r, err = p.executeSorted(ctx, ws, opts)
-	default:
-		err = fmt.Errorf("unsupported physical strategy %v", p.strategy.Kind)
-	}
-	if err != nil {
-		return Result{}, err
-	}
-	r.Strategy = p.strategy
-	r.Elapsed = time.Since(start)
-	if p.feedbackKey != "" {
-		p.e.feedback.observe(p.feedbackKey, p.stats.Rows, r.SelectedRows, r.GroupCount)
-	}
-	p.e.opts.Observer.Observe(observer.Event{Stage: "prepared-query", Duration: r.Elapsed, Rows: p.stats.Rows, Bytes: p.stats.Bytes, Workers: p.strategy.Workers, Attributes: map[string]string{"strategy": p.strategy.Kind.String(), "reason": p.strategy.Reason}})
-	if trace := observer.TraceFromContext(ctx); trace != nil {
-		children := []string(nil)
-		if profiled, ok := p.src.(profileOperatorIDProvider); ok && profiled.OperatorID() != "" {
-			children = append(children, profiled.OperatorID())
-		}
-		label := p.strategy.Kind.String()
-		if p.cq.Predicate.Complexity > 0 {
-			label += "+predicate-fused"
-		}
-		node := trace.NewNode("aggregate", label, children...)
-		trace.Record(node.ID, observer.PhaseFromContext(ctx), p.stats.Rows, int64(r.GroupCount), r.Elapsed)
-	}
-	return r, nil
-}
-
-// Close waits for active executions and releases all retained workspaces.
+// Close prevents new executions and waits for active stream consumers.
 func (p *PreparedQuery) Close() error {
+	if p == nil {
+		return nil
+	}
 	p.lifeMu.Lock()
 	if p.closed {
+		done := p.closeDone
 		p.lifeMu.Unlock()
+		<-done
 		return nil
 	}
 	p.closed = true
+	p.closeDone = make(chan struct{})
+	done := p.closeDone
 	p.lifeMu.Unlock()
 	p.active.Wait()
-	return p.pool.close()
+	close(done)
+	return nil
 }
-
-// createdWorkspaceCount is used by allocation/reuse tests and diagnostics.
-func (p *PreparedQuery) createdWorkspaceCount() int { return int(p.pool.created.Load()) }

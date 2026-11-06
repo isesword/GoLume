@@ -12,19 +12,19 @@ func TestReadOptionsBatchDefaultsAndValidation(t *testing.T) {
 	kernels := kernel.New(kernel.ModeScalar)
 	original := source.ReadOptions{Kernels: kernels}
 	if err := original.Validate(); err != nil {
-		t.Fatalf("legacy Kernels-only options: %v", err)
+		t.Fatalf("Kernels-only options: %v", err)
 	}
 	normalized := original.Normalize()
-	if normalized.BatchRows != source.DefaultBatchRows || normalized.BatchBytes != source.DefaultBatchBytes || normalized.Kernels != kernels || normalized.MemoryManager != nil {
+	if normalized.BatchRows != source.DefaultBatchRows || normalized.BatchBytes != source.DefaultBatchBytes || normalized.Kernels != kernels || normalized.MemoryManager != nil || normalized.MaxCompressedPageBytes != source.DefaultMaxCompressedPageBytes || normalized.MaxUncompressedPageBytes != source.DefaultMaxUncompressedPageBytes {
 		t.Fatalf("normalized=%+v", normalized)
 	}
 	manager := memory.NewBudgetManager(1024)
-	explicit := source.ReadOptions{Kernels: kernels, BatchRows: 3, BatchBytes: 128, MemoryManager: manager}
+	explicit := source.ReadOptions{Kernels: kernels, BatchRows: 3, BatchBytes: 128, MemoryManager: manager, MaxCompressedPageBytes: 256, MaxUncompressedPageBytes: 1024}
 	if normalized := explicit.Normalize(); normalized != explicit {
 		t.Fatalf("normalization changed explicit options: %+v", normalized)
 	}
 	for _, invalid := range []source.ReadOptions{
-		{}, {Kernels: kernels, BatchRows: -1}, {Kernels: kernels, BatchBytes: -1},
+		{}, {Kernels: kernels, BatchRows: -1}, {Kernels: kernels, BatchBytes: -1}, {Kernels: kernels, MaxCompressedPageBytes: -1}, {Kernels: kernels, MaxUncompressedPageBytes: -1},
 	} {
 		if err := invalid.Normalize().Validate(); err == nil {
 			t.Fatalf("accepted invalid options=%+v", invalid)

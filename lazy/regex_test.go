@@ -28,7 +28,7 @@ func TestLazyRegexFilterAndProjection(t *testing.T) {
 			RegexExtract(Col("event"), pattern, Lit(1)).Alias("name"),
 			RegexExtract(Col("event"), pattern, Lit(2)).Alias("id"),
 		).
-		CollectFrame(context.Background())
+		Collect(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}

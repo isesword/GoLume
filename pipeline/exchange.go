@@ -29,7 +29,8 @@ type ExchangeStats struct {
 }
 
 // Exchange is a byte-bounded query-owned handoff. Producers acquire byte
-// capacity and engine memory before cloning, then enqueue the owned morsel.
+// capacity before publication. Fan-out owns cloned morsels; partition fan-in
+// borrows source payloads until the consumer acknowledges the whole batch.
 type Exchange struct {
 	maxBytes   int64
 	bytes      *semaphore.Weighted
@@ -46,7 +47,16 @@ type Exchange struct {
 	queueHigh    atomic.Int64
 }
 
+// borrowedBatchLease prevents source reuse until every emitted range is consumed.
+// Cancellation stops publication, but cannot revoke a published lease.
+type borrowedBatchLease struct {
+	released chan struct{}
+	once     sync.Once
+	ranges   []MorselRange
+}
+
 type exchangeItem struct {
+	borrowed    *borrowedBatchLease
 	sequence    Sequence
 	batch       *memory.Batch
 	bytes       int64
@@ -146,8 +156,8 @@ func (e *Exchange) enqueueRange(ctx context.Context, sequence Sequence, src *mem
 	}
 	var reservation memory.Reservation
 	var err error
-	if e.manager != nil {
-		reservation, err = e.manager.Reserve(ctx, r.Bytes)
+	if e.manager != nil || memory.QueryBudgetFromContext(ctx) != nil {
+		reservation, err = e.reserve(ctx, r.Bytes)
 		if err != nil {
 			return err
 		}
@@ -202,6 +212,21 @@ func (e *Exchange) enqueueEnd(ctx context.Context, group uint32, total uint64) e
 }
 
 func (e *Exchange) release(item exchangeItem) {
+	if item.borrowed != nil {
+		item.borrowed.once.Do(func() {
+			if item.reservation != nil {
+				item.reservation.Release()
+			}
+			if item.bytes > 0 {
+				e.currentBytes.Add(-item.bytes)
+				e.bytes.Release(item.bytes)
+				e.groupBytes[item.sequence.Group].Release(item.bytes)
+			}
+			close(item.borrowed.released)
+		})
+		return
+	}
+
 	if item.batch != nil {
 		item.batch.ReleaseOwned()
 	}
@@ -226,4 +251,66 @@ func updateMax(target *atomic.Int64, value int64) {
 			return
 		}
 	}
+}
+
+// enqueueBorrowed publishes a whole source-owned batch. Capacity covers all
+// retained payload plus the largest live range's allocated metadata. Source
+// payload memory is already reserved by SourceScan; only view metadata requires
+// a new engine reservation. The caller must await released after success.
+func (e *Exchange) enqueueBorrowed(ctx context.Context, sequence Sequence, batch *memory.Batch, ranges []MorselRange, payloadBytes, metadataBytes int64) (*borrowedBatchLease, error) {
+	if payloadBytes < 1 || metadataBytes < 0 || payloadBytes > e.groupMax || metadataBytes > e.groupMax-payloadBytes {
+		return nil, fmt.Errorf("borrowed batch %v requires payload=%d metadata=%d bytes, exceeding per-worker capacity %d; source must honor scan byte limits", sequence, payloadBytes, metadataBytes, e.groupMax)
+	}
+	bytes := payloadBytes + metadataBytes
+	if int(sequence.Group) >= len(e.groupBytes) {
+		return nil, fmt.Errorf("borrowed batch group %d exceeds exchange groups", sequence.Group)
+	}
+	started := time.Now()
+	group := e.groupBytes[sequence.Group]
+	if err := group.Acquire(ctx, bytes); err != nil {
+		return nil, err
+	}
+	if err := e.bytes.Acquire(ctx, bytes); err != nil {
+		group.Release(bytes)
+		return nil, err
+	}
+	e.blockedNanos.Add(int64(time.Since(started)))
+	current := e.currentBytes.Add(bytes)
+	updateMax(&e.peakBytes, current)
+	var reservation memory.Reservation
+	if metadataBytes > 0 && (e.manager != nil || memory.QueryBudgetFromContext(ctx) != nil) {
+		var err error
+		reservation, err = e.reserve(ctx, metadataBytes)
+		if err != nil {
+			e.currentBytes.Add(-bytes)
+			e.bytes.Release(bytes)
+			group.Release(bytes)
+			return nil, err
+		}
+	}
+	lease := &borrowedBatchLease{released: make(chan struct{}), ranges: ranges}
+	item := exchangeItem{sequence: sequence, batch: batch, bytes: bytes, reservation: reservation, borrowed: lease}
+	select {
+	case e.items <- item:
+		updateMax(&e.queueHigh, int64(len(e.items)))
+		return lease, nil
+	case <-ctx.Done():
+		e.release(item)
+		return nil, ctx.Err()
+	case <-e.closed:
+		e.release(item)
+		return nil, errExchangeClosed
+	}
+}
+
+// The active query is authoritative, even when a prepared plan carried a
+// manager from a different engine root. Queryless callers retain injection.
+func (e *Exchange) reserve(ctx context.Context, bytes int64) (memory.Reservation, error) {
+	if query := memory.QueryBudgetFromContext(ctx); query != nil {
+		return query.Operator("PipelineExchange", memory.MemoryInFlightBatch).Reserve(ctx, bytes)
+	}
+	if e.manager != nil {
+		return e.manager.Reserve(ctx, bytes)
+	}
+	return nil, nil
 }
