@@ -717,7 +717,7 @@ func (f LazyFrame) PrepareResult(ctx context.Context, opts engine.PrepareOptions
 	if ctx == nil {
 		return nil, fmt.Errorf("lazy prepared result context is nil")
 	}
-	if _, ok := f.plan.(*logical.Aggregate); !ok {
+	if !terminalAggregate(f.plan) {
 		return nil, fmt.Errorf("PrepareResult requires a terminal Aggregate, got %T; use Prepare for row-producing plans", f.plan)
 	}
 	if opts.MaxConcurrency < 1 {
@@ -916,6 +916,12 @@ func applyPushdown(ctx context.Context, plan logical.Plan) (logical.Plan, source
 		}
 		report := source.PushdownReport{TotalPartitions: lr.TotalPartitions + rr.TotalPartitions, SelectedPartitions: lr.SelectedPartitions + rr.SelectedPartitions, PrunedPartitions: lr.PrunedPartitions + rr.PrunedPartitions, TotalRows: lr.TotalRows + rr.TotalRows, SelectedRows: lr.SelectedRows + rr.SelectedRows, PrunedRows: lr.PrunedRows + rr.PrunedRows, TotalBytes: lr.TotalBytes + rr.TotalBytes, SelectedBytes: lr.SelectedBytes + rr.SelectedBytes}
 		return &logical.Join{Left: left, Right: right, Type: n.Type, Keys: append([]logical.JoinKey(nil), n.Keys...), Suffix: n.Suffix, RadixBits: n.RadixBits, Workers: n.Workers}, report, nil
+	case *logical.ConfiguredAggregate:
+		child, report, err := applyPushdown(ctx, n.Input)
+		if err != nil {
+			return nil, source.PushdownReport{}, err
+		}
+		return &logical.ConfiguredAggregate{Input: child, GroupBy: append([]string(nil), n.GroupBy...), Aggregates: append([]expr.AggregateSpec(nil), n.Aggregates...), Hints: n.Hints}, report, nil
 	case *logical.Aggregate:
 		child, report, err := applyPushdown(ctx, n.Input)
 		if err != nil {
@@ -988,6 +994,8 @@ func containsAdvancedPlan(plan logical.Plan) bool {
 		return containsAdvancedPlan(n.Input)
 	case *logical.Projection:
 		return containsAdvancedPlan(n.Input)
+	case *logical.ConfiguredAggregate:
+		return true
 	case *logical.Aggregate:
 		return containsAdvancedPlan(n.Input)
 	case *logical.Join:
@@ -1317,6 +1325,53 @@ func lowerSourcePipeline(ctx context.Context, plan logical.Plan, manager memory.
 			return nil, nil, closers, err
 		}
 		return profileSource(ctx, limited, "limit", fmt.Sprintf("limit n=%d", n.N), childID), nil, closers, nil
+	case *logical.ConfiguredAggregate:
+		src, pending, closers, err := lowerSourcePipeline(ctx, n.Input, manager, kernels, exec)
+		if err != nil {
+			return nil, nil, closers, err
+		}
+		eng, ok := exec.(*engine.Engine)
+		if !ok || eng == nil {
+			return nil, nil, closers, fmt.Errorf("aggregate source lowering requires *engine.Engine executor")
+		}
+		q := expr.ConfiguredQuery{Filter: pending, GroupBy: append([]string(nil), n.GroupBy...), Aggregates: append([]expr.AggregateSpec(nil), n.Aggregates...), Hints: n.Hints}
+		prepareOpts := engine.PrepareOptions{MaxConcurrency: eng.MaxWorkers(), FeedbackKey: planFeedbackKey(n)}
+		if requested, ok := aggregatePrepareOptionsFromContext(ctx); ok {
+			if requested.MaxConcurrency > 0 {
+				prepareOpts.MaxConcurrency = requested.MaxConcurrency
+			}
+			if requested.FeedbackKey != "" {
+				prepareOpts.FeedbackKey = requested.FeedbackKey
+			}
+		}
+		pq, err := eng.PrepareConfigured(ctx, src, q, prepareOpts)
+		if err != nil {
+			return nil, nil, closers, err
+		}
+		closers = append(closers, pq)
+		outSchema, err := logical.InferSchema(n)
+		if err != nil {
+			return nil, nil, closers, err
+		}
+		policy := engine.ExecutionPolicyFromContext(ctx, eng.ExecutionPolicy())
+		spillable := (policy == engine.ExecutionBounded || policy == engine.ExecutionAuto && eng.Memory().Limit() > 0 && eng.SpillConfigured())
+		descriptors, quantileOptions, err := expr.NormalizeAggregates(n.Aggregates)
+		if err != nil {
+			return nil, nil, closers, err
+		}
+		exactSort := len(quantileOptions) > 0
+		for _, a := range descriptors {
+			exactSort = exactSort || a.Kind == expr.AggNUnique
+		}
+		if !exactSort && pq.Plan().Strategy.Kind == planner.StrategySorted {
+			spillable = false
+		}
+		aggSrc, err := newAggregateResultSource(ctx, pq, src, outSchema, n.GroupBy, descriptors, spillable)
+		if err != nil {
+			return nil, nil, closers, err
+		}
+		childID := profileSourceID(src)
+		return profileSource(ctx, aggSrc, "aggregate", "native aggregate stream", childID), nil, closers, nil
 	case *logical.Aggregate:
 		src, pending, closers, err := lowerSourcePipeline(ctx, n.Input, manager, kernels, exec)
 		if err != nil {

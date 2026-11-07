@@ -1,0 +1,12 @@
+goos: linux
+goarch: amd64
+pkg: gocolumn/engine
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkQuantileAggregate/false-9         	      67	   5013332 ns/op	 1788410 B/op	     205 allocs/op
+BenchmarkQuantileAggregate/false-9         	      50	   3463290 ns/op	 1788117 B/op	     204 allocs/op
+BenchmarkQuantileAggregate/false-9         	      66	   4147581 ns/op	 1788171 B/op	     204 allocs/op
+BenchmarkQuantileAggregate/true-9          	      28	   7934020 ns/op	 2822478 B/op	    1072 allocs/op
+BenchmarkQuantileAggregate/true-9          	      28	   7622619 ns/op	 2822446 B/op	    1072 allocs/op
+BenchmarkQuantileAggregate/true-9          	      31	   7663069 ns/op	 2822594 B/op	    1073 allocs/op
+PASS
+ok  	gocolumn/engine	1.499s

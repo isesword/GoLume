@@ -144,6 +144,9 @@ func nativeAggregateBits(b *memory.Batch, name string, typ memory.DataType, layo
 
 func (p *PreparedQuery) nativeRecordValue(record aggregateRecord, index int) (memory.DataType, uint64, bool) {
 	m := p.cq.MultiAggregate
+	if p.cq.Aggregates[index].Kind == expr.AggQuantile {
+		return p.quantileRecordValue(record, index)
+	}
 	if p.cq.Aggregates[index].Kind == expr.AggNUnique {
 		return memory.TypeUint64, distinctRecordCount(record, m.Distinct.OutputLane[index]), true
 	}

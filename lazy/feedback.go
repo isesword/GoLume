@@ -51,6 +51,8 @@ func writeSourceIdentity(w byteWriter, plan logical.Plan) {
 		writeSourceIdentity(w, n.Input)
 	case *logical.Limit:
 		writeSourceIdentity(w, n.Input)
+	case *logical.ConfiguredAggregate:
+		writeSourceIdentity(w, n.Input)
 	case *logical.Aggregate:
 		writeSourceIdentity(w, n.Input)
 	case *logical.Window:

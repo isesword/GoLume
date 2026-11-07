@@ -1,0 +1,4 @@
+ok  	gocolumn/engine	1.225s
+ok  	gocolumn/lazy	1.050s
+ok  	gocolumn/logical	1.014s [no tests to run]
+ok  	gocolumn/optimizer	1.014s

@@ -58,7 +58,7 @@ func (s *aggregateResultSource) StreamPlan() source.StreamPlanNode {
 		mode = "sorted-adjacent"
 	}
 	for _, a := range s.aggs {
-		if a.Kind == expr.AggNUnique {
+		if a.Kind == expr.AggNUnique || a.Kind == expr.AggQuantile {
 			mode = "exact-global-tuple-sort"
 			class = source.StreamBlocking
 			if s.spillable {

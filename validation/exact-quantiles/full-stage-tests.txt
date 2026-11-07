@@ -1,0 +1,137 @@
++ go test ./...
+ok  	gocolumn/aggregate	1.585s
+?   	gocolumn/cmd/demo	[no test files]
+ok  	gocolumn/cmd/kernel-info	0.014s
+?   	gocolumn/cmd/lazy-demo	[no test files]
+?   	gocolumn/costmodel	[no test files]
+ok  	gocolumn/engine	3.301s
+ok  	gocolumn/expr	5.742s
+ok  	gocolumn/hashagg	5.904s
+ok  	gocolumn/internal/benchtrack	0.008s
+?   	gocolumn/internal/cmd/gensimd	[no test files]
+ok  	gocolumn/internal/fixturegen	0.209s
+?   	gocolumn/internal/hashmix	[no test files]
+ok  	gocolumn/internal/kernelgate	0.011s
+ok  	gocolumn/internal/oracle	18.341s
+?   	gocolumn/internal/platformcal	[no test files]
+ok  	gocolumn/internal/proptest	0.068s
+ok  	gocolumn/join	0.008s
+ok  	gocolumn/kernel	0.100s
+ok  	gocolumn/lazy	3.580s
+ok  	gocolumn/logical	0.005s
+ok  	gocolumn/memory	1.457s
+?   	gocolumn/observer	[no test files]
+ok  	gocolumn/optimizer	0.007s
+ok  	gocolumn/physical	1.472s
+ok  	gocolumn/pipeline	0.105s
+ok  	gocolumn/planner	0.004s
+ok  	gocolumn/radix	0.017s
+ok  	gocolumn/scheduler	0.008s
+ok  	gocolumn/source	0.019s
+ok  	gocolumn/source/arrowrecord	0.018s
+ok  	gocolumn/source/inmemory	0.015s
+?   	gocolumn/source/internal/batchview	[no test files]
+ok  	gocolumn/source/parquet	1.951s
+ok  	gocolumn/tools/benchtrack	0.023s
+?   	gocolumn/tools/checkgodoc	[no test files]
+ok  	gocolumn/tools/genfallbackfixture	0.329s
+ok  	gocolumn/tools/genfixture	0.085s
+ok  	gocolumn/tools/kernelgate	0.007s
+ok  	gocolumn/tuplesort	1.798s
++ GOEXPERIMENT=simd
++ go test ./...
+ok  	gocolumn/aggregate	1.948s
+?   	gocolumn/cmd/demo	[no test files]
+ok  	gocolumn/cmd/kernel-info	0.016s
+?   	gocolumn/cmd/lazy-demo	[no test files]
+?   	gocolumn/costmodel	[no test files]
+ok  	gocolumn/engine	2.849s
+ok  	gocolumn/expr	6.893s
+ok  	gocolumn/hashagg	7.099s
+ok  	gocolumn/internal/benchtrack	0.010s
+?   	gocolumn/internal/cmd/gensimd	[no test files]
+ok  	gocolumn/internal/fixturegen	0.178s
+?   	gocolumn/internal/hashmix	[no test files]
+ok  	gocolumn/internal/kernelgate	0.010s
+ok  	gocolumn/internal/oracle	17.057s
+?   	gocolumn/internal/platformcal	[no test files]
+ok  	gocolumn/internal/proptest	0.069s
+ok  	gocolumn/join	0.005s
+ok  	gocolumn/kernel	0.069s
+ok  	gocolumn/lazy	3.715s
+ok  	gocolumn/logical	0.004s
+ok  	gocolumn/memory	1.038s
+?   	gocolumn/observer	[no test files]
+ok  	gocolumn/optimizer	0.012s
+ok  	gocolumn/physical	0.856s
+ok  	gocolumn/pipeline	0.098s
+ok  	gocolumn/planner	0.004s
+ok  	gocolumn/radix	0.007s
+ok  	gocolumn/scheduler	0.003s
+ok  	gocolumn/source	0.006s
+ok  	gocolumn/source/arrowrecord	0.010s
+ok  	gocolumn/source/inmemory	0.006s
+?   	gocolumn/source/internal/batchview	[no test files]
+ok  	gocolumn/source/parquet	1.195s
+ok  	gocolumn/tools/benchtrack	0.004s
+?   	gocolumn/tools/checkgodoc	[no test files]
+ok  	gocolumn/tools/genfallbackfixture	0.181s
+ok  	gocolumn/tools/genfixture	0.032s
+ok  	gocolumn/tools/kernelgate	0.012s
+ok  	gocolumn/tuplesort	1.447s
++ GOEXPERIMENT=simd
++ go test -race ./aggregate ./engine ./lazy ./logical ./optimizer ./memory ./tuplesort
+ok  	gocolumn/aggregate	3.615s
+ok  	gocolumn/engine	14.266s
+ok  	gocolumn/lazy	11.413s
+ok  	gocolumn/logical	1.014s
+ok  	gocolumn/optimizer	1.016s
+ok  	gocolumn/memory	4.619s
+ok  	gocolumn/tuplesort	3.845s
++ go vet ./...
++ go run ./tools/checkgodoc
+GoDoc check: PASS (package docs and exported API comments follow naming conventions)
++ go run ./internal/cmd/gensimd -check
++ go run ./tools/kernelgate check
+kernel registry, gates file, and code are consistent
++ GOOS=linux
++ GOARCH=arm64
++ GOEXPERIMENT=simd
++ go build -buildvcs=false ./...
++ PYTHONPATH=/tmp/golume-polars-oracle
++ python scripts/quantile_polars_oracle.py --check
+2738 cases: /tmp/golume-stage-quantiles/testdata/fundamentals/quantile-polars-1.35.2.json
++ bash scripts/check_simd_structure.sh
+SIMD structure checks passed
++ GOEXPERIMENT=simd
++ GODEBUG=simd=0
++ go test ./kernel ./expr ./engine ./lazy ./aggregate
+ok  	gocolumn/kernel	0.037s
+ok  	gocolumn/expr	3.513s
+ok  	gocolumn/engine	1.690s
+ok  	gocolumn/lazy	1.775s
+ok  	gocolumn/aggregate	0.558s
++ GOEXPERIMENT=simd
++ GODEBUG=simd=+128
++ go test ./kernel ./expr ./engine ./radix ./aggregate
+ok  	gocolumn/kernel	0.033s
+ok  	gocolumn/expr	2.866s
+ok  	gocolumn/engine	1.520s
+ok  	gocolumn/radix	0.003s
+ok  	gocolumn/aggregate	0.441s
++ GOEXPERIMENT=simd
++ GODEBUG=simd=+256
++ go test ./kernel ./expr ./engine ./radix ./aggregate
+ok  	gocolumn/kernel	0.034s
+ok  	gocolumn/expr	2.670s
+ok  	gocolumn/engine	1.446s
+ok  	gocolumn/radix	0.004s
+ok  	gocolumn/aggregate	0.435s
++ GOEXPERIMENT=simd
++ GODEBUG=simd=+512
++ go test ./kernel ./expr ./engine ./radix ./aggregate
+ok  	gocolumn/kernel	0.037s
+ok  	gocolumn/expr	2.671s
+ok  	gocolumn/engine	1.473s
+ok  	gocolumn/radix	0.003s
+ok  	gocolumn/aggregate	0.471s

@@ -143,7 +143,11 @@ func (p *PreparedQuery) resultSchema() memory.Schema {
 		case expr.AggAvg:
 			typ = memory.TypeFloat64
 		}
-		if agg.Kind == expr.AggNUnique {
+		if agg.Kind == expr.AggQuantile {
+			q := p.quantiles()
+			o := q.Outputs[q.OutputSlot[index]]
+			typ, _ = aggregate.QuantileOutputType(q.Fields[o.Lane].Type)
+		} else if agg.Kind == expr.AggNUnique {
 			typ, nullable = memory.TypeUint64, false
 		} else if expr.IsStatistics(agg.Kind) {
 			s := p.statistics()

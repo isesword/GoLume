@@ -21,6 +21,7 @@ type CompiledMultiAggregate struct {
 	OutputLane []int
 	Statistics *CompiledStatistics
 	Distinct   *CompiledDistinct
+	Quantiles  *CompiledQuantiles
 }
 
 func compileMultiAggregate(schema memory.Schema, aggs []expr.Aggregate, force ...bool) (*CompiledMultiAggregate, error) {

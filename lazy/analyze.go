@@ -157,7 +157,7 @@ func (f LazyFrame) Analyze(ctx context.Context) (report AnalyzeReport, resultErr
 			_ = reader.Close()
 			report.Error = reader.err
 			report.CleanupError = errors.Join(report.CleanupError, reader.closeErr)
-			if _, terminalAggregate := f.plan.(*logical.Aggregate); terminalAggregate {
+			if terminalAggregate(f.plan) {
 				report.GroupCount = int(report.OutputRows)
 				report.Strategy = reader.diagnostics["strategy"]
 				if report.Strategy == "" {

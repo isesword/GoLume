@@ -98,6 +98,20 @@ func writePlan(b *strings.Builder, plan Plan, depth int) {
 	case *Limit:
 		fmt.Fprintf(b, "%sLIMIT %d\n", indent, n.N)
 		writePlan(b, n.Input, depth+1)
+	case *ConfiguredAggregate:
+		aggs := make([]string, 0, len(n.Aggregates))
+		for _, spec := range n.Aggregates {
+			switch a := spec.(type) {
+			case expr.Aggregate:
+				aggs = append(aggs, aggregateString(a))
+			case expr.QuantileSpec:
+				aggs = append(aggs, fmt.Sprintf("QUANTILE(%s,q=%g,mode=%d) AS %s", a.Column, a.Probability, a.Mode, a.Alias))
+			default:
+				aggs = append(aggs, fmt.Sprintf("INVALID(%T)", spec))
+			}
+		}
+		fmt.Fprintf(b, "%sCONFIGURED AGGREGATE keys=[%s] aggs=[%s]\n", indent, strings.Join(n.GroupBy, ", "), strings.Join(aggs, ", "))
+		writePlan(b, n.Input, depth+1)
 	case *Aggregate:
 		aggs := make([]string, 0, len(n.Aggregates))
 		for _, a := range n.Aggregates {

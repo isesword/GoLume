@@ -251,6 +251,11 @@ func (c *typedResultCollector) append(ctx context.Context, record aggregateRecor
 			continue
 		}
 
+		if a.Kind == expr.AggQuantile {
+			typ, bits, valid := c.query.quantileRecordValue(record, i)
+			row.Aggregates[i] = TypedAggregateValue{Alias: a.Alias, Kind: a.Kind, Value: TypedValue{Type: typ, Bits: bits, Valid: valid}}
+			continue
+		}
 		if a.Kind == expr.AggNUnique {
 			row.Aggregates[i] = TypedAggregateValue{Alias: a.Alias, Kind: a.Kind, Value: TypedValue{Type: memory.TypeUint64, Valid: true, Bits: distinctRecordCount(record, c.query.distinct().OutputLane[i])}}
 			continue

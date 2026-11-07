@@ -63,6 +63,10 @@ type PreparedQuery struct {
 
 // Prepare compiles q for src and creates a reusable PreparedQuery.
 func (e *Engine) Prepare(ctx context.Context, src source.Source, q expr.Query, opts PrepareOptions) (*PreparedQuery, error) {
+	return e.prepare(ctx, src, q, opts, nil)
+}
+
+func (e *Engine) prepare(ctx context.Context, src source.Source, q expr.Query, opts PrepareOptions, quantiles []expr.QuantileOption) (*PreparedQuery, error) {
 	if e == nil {
 		return nil, fmt.Errorf("engine is nil")
 	}
@@ -106,9 +110,12 @@ func (e *Engine) Prepare(ctx context.Context, src source.Source, q expr.Query, o
 	if q.Hints.ForceStrategy == "radix" {
 		return nil, fmt.Errorf("input-wide radix execution was removed; use automatic native stream planning or bitmap-direct")
 	}
-	cq, err := compileQuery(src.Schema(), q)
+	cq, err := compileConfiguredQuery(src.Schema(), q, quantiles)
 	if err != nil {
 		return nil, err
+	}
+	if policy == ExecutionBounded && cq.MultiAggregate != nil && cq.MultiAggregate.Quantiles != nil && !e.SpillConfigured() {
+		return nil, &UnsupportedBoundedPlanError{Operator: "Quantile", Path: []string{"Aggregate", "Quantile"}, Detail: "exact quantiles require spill in bounded mode; group ordering does not bound a group's values", Cause: ErrBoundedSpillRequired}
 	}
 	stats, err := src.Stats(ctx)
 	if err != nil {
@@ -162,7 +169,7 @@ func (e *Engine) Prepare(ctx context.Context, src source.Source, q expr.Query, o
 		strategy = planner.Strategy{Kind: planner.StrategySpillHash, Workers: 1, Reason: "finite query budget with spill quota"}
 	}
 	if cq.MultiAggregate != nil && cq.MultiAggregate.Distinct != nil {
-		strategy.Reason = "exact-global-tuple-sort fallback (group ordering alone does not bound distinct state); planned policy: " + strategy.Kind.String()
+		strategy.Reason = "exact-global-tuple-sort fallback (group ordering alone does not bound exact distinct/quantile state); planned policy: " + strategy.Kind.String()
 		strategy.Workers = 1
 	}
 	if stats.Rows < 0 || stats.Rows > int64(^uint(0)>>1) {

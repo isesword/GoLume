@@ -31,6 +31,8 @@ type distinctAggregateStream struct {
 	numeric                             *aggregate.NumericBundle
 	statistics                          *aggregate.StatisticsBundle
 	counts                              []byte
+	quantileOutputs                     []quantileOutputState
+	quantileLanes                       []quantileLaneState
 	metadata                            memory.Reservation
 	scratch, key                        []byte
 	scratchLease, keyLease              memory.Reservation
@@ -68,7 +70,11 @@ func (p *PreparedQuery) newDistinctAggregateStream(ctx context.Context, schema m
 	}
 	s := &distinctAggregateStream{p: p, budget: q, readOpts: readOpts, schema: schema, active: acquire, started: time.Now()}
 	fail := func(err error) (source.BatchStream, error) { return nil, errors.Join(err, s.Close()) }
-	s.manager = q.Operator("ExactDistinct", memory.MemoryRetainedState)
+	operator := "ExactDistinct"
+	if p.quantiles() != nil {
+		operator = "ExactQuantile"
+	}
+	s.manager = q.Operator(operator, memory.MemoryRetainedState)
 	s.helper = spillableAggregateStream{query: p, schema: schema}
 	var store memory.SpillManager
 	var err error
@@ -87,11 +93,27 @@ func (p *PreparedQuery) newDistinctAggregateStream(ctx context.Context, schema m
 		return fail(err)
 	}
 	m := p.cq.MultiAggregate
-	s.metadata, err = s.manager.Reserve(ctx, int64(len(m.Distinct.Fields))*8+1024)
+	extra, err := quantileStreamBytes(m.Quantiles)
 	if err != nil {
 		return fail(err)
 	}
-	s.counts = make([]byte, 8*len(m.Distinct.Fields))
+	if len(m.Distinct.Fields) > math.MaxInt/8 || int64(len(m.Distinct.Fields)) > (math.MaxInt64-extra-1024)/8 {
+		return fail(fmt.Errorf("aggregate metadata overflow"))
+	}
+	s.metadata, err = s.manager.Reserve(ctx, int64(len(m.Distinct.Fields))*8+1024+extra)
+	if err != nil {
+		return fail(err)
+	}
+	countBytes := 8 * len(m.Distinct.Fields)
+	if q := m.Quantiles; q != nil {
+		if len(q.Outputs) > (math.MaxInt-countBytes)/9 {
+			return fail(fmt.Errorf("quantile output size overflow"))
+		}
+		countBytes += 9 * len(q.Outputs)
+		s.quantileOutputs = make([]quantileOutputState, len(q.Outputs))
+		s.quantileLanes = make([]quantileLaneState, len(q.Fields))
+	}
+	s.counts = make([]byte, countBytes)
 	reserve := func(n int64) (memory.Reservation, error) { return s.manager.Reserve(ctx, n) }
 	if len(m.Columns) > 0 {
 		s.numeric, err = aggregate.NewNumericBundle(m.Types, m.Layouts, reserve)
@@ -175,6 +197,13 @@ func (s *distinctAggregateStream) ingest(ctx context.Context) (err error) {
 		if e != nil {
 			return e
 		}
+		if q := s.p.quantiles(); q != nil {
+			for _, field := range q.Fields {
+				if e = validateDistinctInput(batch, field.Name, field.Type, true); e != nil {
+					return e
+				}
+			}
+		}
 		// Validate every input vector before indexing or accepting spill records.
 		for i := range m.Distinct.Fields {
 			if _, e = bindCanonicalGroupKeys(m.Distinct.Fields[i:i+1], batch); e != nil {
@@ -203,7 +232,7 @@ func (s *distinctAggregateStream) ingest(ctx context.Context) (err error) {
 			if err != nil {
 				return err
 			}
-			if keySize > math.MaxUint32 || keySize > math.MaxInt-32 {
+			if keySize > math.MaxUint32 || keySize > math.MaxInt-41 {
 				return fmt.Errorf("distinct group key too large")
 			}
 			prefix := 4 + keySize
@@ -314,6 +343,9 @@ func (s *distinctAggregateStream) ingest(ctx context.Context) (err error) {
 					return err
 				}
 			}
+			if err = s.addQuantileTuples(ctx, batch, row, prefix, ordinal); err != nil {
+				return err
+			}
 			s.stats.SelectedRows++
 			if s.p.cq.ValueColumn != "" {
 				v := batch.Int64s[s.p.cq.ValueColumn]
@@ -397,6 +429,8 @@ func (s *distinctAggregateStream) nextRecord(ctx context.Context) (aggregateReco
 		return aggregateRecord{}, false, errors.Join(memory.ErrSpillCorrupt, err)
 	}
 	clear(s.counts)
+	clear(s.quantileOutputs)
+	clear(s.quantileLanes)
 	if s.numeric != nil {
 		if err = s.numeric.ClearGroup(0); err != nil {
 			return aggregateRecord{}, false, err
@@ -429,6 +463,9 @@ func (s *distinctAggregateStream) nextRecord(ctx context.Context) (aggregateReco
 			break
 		}
 	}
+	if err = s.finishQuantiles(); err != nil {
+		return aggregateRecord{}, false, err
+	}
 	s.stats.Groups++
 	return s.record(), true, nil
 }
@@ -442,12 +479,15 @@ func (s *distinctAggregateStream) apply(body []byte) error {
 		return bad()
 	}
 	m := s.p.cq.MultiAggregate
+	if body[0] == 3 {
+		return s.applyQuantile(body)
+	}
 	if body[0] == 1 {
 		if len(body) < 5 {
 			return bad()
 		}
 		lane := uint64(binary.BigEndian.Uint32(body[1:5]))
-		if lane >= uint64(len(s.counts)/8) {
+		if lane >= uint64(len(m.Distinct.Fields)) {
 			return bad()
 		}
 		if err := visitCanonicalGroupKey(body[5:], m.Distinct.Fields[lane:lane+1], func(int, memory.DataType, bool, uint64, []byte) error { return nil }); err != nil {
@@ -483,6 +523,9 @@ func (s *distinctAggregateStream) apply(body []byte) error {
 	for lane := range m.Columns {
 		if body[pos] > 1 {
 			return bad()
+		}
+		if err := s.countQuantileValue(lane, body[pos] == 1); err != nil {
+			return err
 		}
 		s.numeric.AddBits(0, lane, binary.LittleEndian.Uint64(body[pos+1:pos+9]), body[pos] == 1)
 		pos += 9
@@ -590,7 +633,12 @@ func (s *distinctAggregateStream) Stats() AggregateStreamStats {
 
 // StreamDiagnostics describes the effective exact distinct fallback.
 func (s *distinctAggregateStream) StreamDiagnostics() map[string]string {
-	return map[string]string{"distinct_algorithm": "exact-global-tuple-sort", "distinct_policy": "shared bounded fallback; no parallel aggregate states"}
+	diagnostics := map[string]string{"distinct_algorithm": "exact-global-tuple-sort", "distinct_policy": "shared bounded fallback; no parallel aggregate states"}
+	if s.p.quantiles() != nil {
+		diagnostics["quantile_algorithm"] = "exact-global-tuple-sort"
+		diagnostics["quantile_policy"] = "single-pass native ordering; bounded group rank state; shared serial fallback"
+	}
+	return diagnostics
 }
 func (s *distinctAggregateStream) fail(err error) error {
 	s.terminal = errors.Join(err, s.Close())
@@ -632,6 +680,8 @@ func (s *distinctAggregateStream) Close() error {
 	s.scratch = nil
 	s.key = nil
 	s.counts = nil
+	s.quantileOutputs = nil
+	s.quantileLanes = nil
 	s.pending = nil
 	if s.active {
 		s.p.end()

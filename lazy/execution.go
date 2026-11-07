@@ -116,6 +116,8 @@ func firstLogicalBlocking(plan logical.Plan, path []string, aggregateSpillable b
 		name, children, blocking = "Sort", []logical.Plan{node.Input}, !aggregateSpillable
 	case *logical.Window:
 		name, children, blocking = "Window", []logical.Plan{node.Input}, !logicalWindowBoundedCapable(node.Exprs)
+	case *logical.ConfiguredAggregate:
+		name, children = "Aggregate", []logical.Plan{node.Input}
 	case *logical.Aggregate:
 		// Aggregate capability depends on proven physical ordering or configured
 		// spill and is decided by engine.Prepare after lowering. Still inspect its
@@ -170,6 +172,9 @@ func streamPlanForLogical(plan logical.Plan, aggregateClass source.StreamClass) 
 		} else {
 			node.Class = source.StreamBlocking
 		}
+	case *logical.ConfiguredAggregate:
+		node.Operator, children = "Aggregate", []logical.Plan{value.Input}
+		node.Class = aggregateClass
 	case *logical.Aggregate:
 		node.Operator, children = "Aggregate", []logical.Plan{value.Input}
 		node.Class = aggregateClass

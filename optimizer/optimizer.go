@@ -63,6 +63,8 @@ func mergeFilters(plan logical.Plan, rules *[]string) logical.Plan {
 		return &logical.TopK{Input: mergeFilters(n.Input, rules), K: n.K, By: cloneSortKeys(n.By)}
 	case *logical.Limit:
 		return &logical.Limit{Input: mergeFilters(n.Input, rules), N: n.N}
+	case *logical.ConfiguredAggregate:
+		return cloneConfiguredAggregate(n, mergeFilters(n.Input, rules))
 	case *logical.Aggregate:
 		return &logical.Aggregate{Input: mergeFilters(n.Input, rules), GroupBy: append([]string(nil), n.GroupBy...), Aggregates: append([]expr.Aggregate(nil), n.Aggregates...), Hints: n.Hints}
 	case *logical.Window:
@@ -95,6 +97,8 @@ func mergeProjections(plan logical.Plan, rules *[]string) logical.Plan {
 		return &logical.TopK{Input: mergeProjections(n.Input, rules), K: n.K, By: cloneSortKeys(n.By)}
 	case *logical.Limit:
 		return &logical.Limit{Input: mergeProjections(n.Input, rules), N: n.N}
+	case *logical.ConfiguredAggregate:
+		return cloneConfiguredAggregate(n, mergeProjections(n.Input, rules))
 	case *logical.Aggregate:
 		return &logical.Aggregate{Input: mergeProjections(n.Input, rules), GroupBy: append([]string(nil), n.GroupBy...), Aggregates: append([]expr.Aggregate(nil), n.Aggregates...), Hints: n.Hints}
 	case *logical.Window:
@@ -139,6 +143,8 @@ func mergeLimits(plan logical.Plan, rules *[]string) logical.Plan {
 		return &logical.TopK{Input: mergeLimits(n.Input, rules), K: n.K, By: cloneSortKeys(n.By)}
 	case *logical.Join:
 		return &logical.Join{Left: mergeLimits(n.Left, rules), Right: mergeLimits(n.Right, rules), Type: n.Type, Keys: append([]logical.JoinKey(nil), n.Keys...), Suffix: n.Suffix, RadixBits: n.RadixBits, Workers: n.Workers}
+	case *logical.ConfiguredAggregate:
+		return cloneConfiguredAggregate(n, mergeLimits(n.Input, rules))
 	case *logical.Aggregate:
 		return &logical.Aggregate{Input: mergeLimits(n.Input, rules), GroupBy: append([]string(nil), n.GroupBy...), Aggregates: append([]expr.Aggregate(nil), n.Aggregates...), Hints: n.Hints}
 	case *logical.Window:
@@ -192,6 +198,8 @@ func pushPredicates(plan logical.Plan, inherited expr.Expr, rules *[]string) log
 		// already inside each side independently and retain inherited predicates
 		// above the join as residual filters.
 		return &logical.Join{Left: pushPredicates(n.Left, nil, rules), Right: pushPredicates(n.Right, nil, rules), Type: n.Type, Keys: append([]logical.JoinKey(nil), n.Keys...), Suffix: n.Suffix, RadixBits: n.RadixBits, Workers: n.Workers}
+	case *logical.ConfiguredAggregate:
+		return cloneConfiguredAggregate(n, pushPredicates(n.Input, nil, rules))
 	case *logical.Aggregate:
 		// Predicates above an aggregate are HAVING predicates and may not be
 		// pushed through the aggregation boundary. Predicates already inside the
@@ -301,6 +309,25 @@ func pushProjection(plan logical.Plan, required map[string]struct{}, rules *[]st
 		// in place; restore the original position when pruning removed the
 		// overwritten column from the child.
 		return restoreReplacementOrder(cloneWindowExprs(n, child, kept), inSchema, "window-reorder", rules)
+	case *logical.ConfiguredAggregate:
+		aggs, _, err := expr.NormalizeAggregates(n.Aggregates)
+		if err != nil {
+			return nil, err
+		}
+		childRequired := make(map[string]struct{})
+		for _, name := range n.GroupBy {
+			childRequired[name] = struct{}{}
+		}
+		for _, a := range aggs {
+			if a.Column != "" {
+				childRequired[a.Column] = struct{}{}
+			}
+		}
+		child, err := pushProjection(n.Input, childRequired, rules)
+		if err != nil {
+			return nil, err
+		}
+		return cloneConfiguredAggregate(n, child), nil
 	case *logical.Aggregate:
 		childRequired := make(map[string]struct{})
 		for _, name := range n.GroupBy {
@@ -639,6 +666,8 @@ func removeNoopProjections(plan logical.Plan, rules *[]string) logical.Plan {
 		return &logical.Limit{Input: removeNoopProjections(n.Input, rules), N: n.N}
 	case *logical.Join:
 		return &logical.Join{Left: removeNoopProjections(n.Left, rules), Right: removeNoopProjections(n.Right, rules), Type: n.Type, Keys: append([]logical.JoinKey(nil), n.Keys...), Suffix: n.Suffix, RadixBits: n.RadixBits, Workers: n.Workers}
+	case *logical.ConfiguredAggregate:
+		return cloneConfiguredAggregate(n, removeNoopProjections(n.Input, rules))
 	case *logical.Aggregate:
 		return &logical.Aggregate{Input: removeNoopProjections(n.Input, rules), GroupBy: append([]string(nil), n.GroupBy...), Aggregates: append([]expr.Aggregate(nil), n.Aggregates...), Hints: n.Hints}
 	case *logical.Window:
@@ -750,4 +779,8 @@ func uniqueStrings(in []string) []string {
 		out = append(out, s)
 	}
 	return out
+}
+
+func cloneConfiguredAggregate(n *logical.ConfiguredAggregate, input logical.Plan) *logical.ConfiguredAggregate {
+	return &logical.ConfiguredAggregate{Input: input, GroupBy: append([]string(nil), n.GroupBy...), Aggregates: append([]expr.AggregateSpec(nil), n.Aggregates...), Hints: n.Hints}
 }

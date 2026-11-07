@@ -215,6 +215,9 @@ func InferSchema(plan Plan) (memory.Schema, error) {
 		}
 		return InferSchema(n.Input)
 
+	case *ConfiguredAggregate:
+		return inferConfiguredAggregate(n)
+
 	case *Aggregate:
 		if n == nil || n.Input == nil {
 			return memory.Schema{}, fmt.Errorf("logical aggregate requires input")
