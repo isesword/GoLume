@@ -18,7 +18,7 @@ func releaseRegisterExport(r *scalarRegister) {
 // and payloads remain untouched. Duplicate output roots reuse the same view.
 func (w *evaluationState) exportBorrowedValue(index, rows int) (ScalarValue, error) {
 	r := &w.regs[index]
-	owned := &w.owned[index]
+	owned := w.ownedRegister(index)
 	if owned.exportBatch == nil {
 		source := memory.NewBatch()
 		switch {

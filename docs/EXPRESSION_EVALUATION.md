@@ -108,3 +108,31 @@ branches that will never be selected for particular input rows.
 - `lazy/unified_expression_dsl_test.go` validates the six fluent constructors,
   `.Alias`, nullable membership negation, and filtering projected aliases in
   scalar and SIMD modes.
+
+## Intermediate storage lifetimes
+
+Compilation separates logical DAG values from physical fixed-width storage.
+Each instruction's last consumer determines its live interval; scalar roots
+and every named output remain live through export. A slot is reusable only
+*after* its final consumer finishes, so no kernel needs in-place semantics.
+Slots are matched by exact logical type and retain both value and validity
+buffers (truth and validity bitmaps for BOOL). Shared expressions therefore
+keep their value until every consumer has executed, including when that value
+is also an output. Duplicate outputs continue to share one result view.
+
+Guarded regions have independent plans and independent workspace ownership.
+Their roots stay live while the parent selects branch values. Borrowed column
+storage, conditional-instruction state, variable-width/nested values, and
+instruction-specific dictionary/extraction caches retain dedicated owners.
+The initial implementation intentionally does not reinterpret differently
+sized native slices or pool variable-width payloads.
+
+`WorkspaceBytes` charges logical-register metadata plus each distinct physical
+owner's fixed backing once. `MemoryBytes` visits those owners once as well.
+A growing or changed program still reserves its entire replacement before
+allocation and before releasing the previous workspace; failed admission keeps
+the old owner intact for retry. Dynamic outputs and active-row metadata use the
+existing reservation path. Cancellation and close release the same unique
+owners, not aliases of logical registers. Logical metadata still scales with
+instruction count; only fixed-width payload storage scales with simultaneous
+liveness instead of total expression depth.

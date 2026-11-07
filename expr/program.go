@@ -28,6 +28,7 @@ const (
 // Instruction is one typed vector operation. Specialized comparison opcodes are
 // kernel selections in the same program, not a separate predicate language.
 type instruction struct {
+	storageOwner        int // One-based physical owner; zero denotes an unplanned register.
 	Kind                uint8
 	Regions             []Program
 	Code                opcode
@@ -61,8 +62,9 @@ type Program struct {
 	result       memory.Field
 }
 
-// WorkspaceBytes returns fixed register storage for a fresh execution. Dynamic
-// string, JSON, list and dictionary payloads are admitted separately.
+// WorkspaceBytes returns logical register metadata and distinct physical-slot
+// storage for a fresh execution. Dynamic string, JSON, list and dictionary
+// payloads are admitted separately.
 func (p Program) WorkspaceBytes(rows int) (int64, error) {
 	return instructionWorkspaceBytes(p.instructions, rows)
 }

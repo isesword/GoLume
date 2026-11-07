@@ -1,0 +1,22 @@
+Baseline: correctness regressions (excluding the new memory-bound assertion)
+ok  	gocolumn/expr	0.023s
+
+Baseline: memory-bound regression must fail
+--- FAIL: TestLivenessChainPayloadBoundedByLiveValues (0.00s)
+    --- FAIL: TestLivenessChainPayloadBoundedByLiveValues/bool=false (0.00s)
+        liveness_test.go:373: chain payload grows with dead values: depth8=4792320 depth64=34611200
+    --- FAIL: TestLivenessChainPayloadBoundedByLiveValues/bool=true (0.00s)
+        liveness_test.go:373: chain payload grows with dead values: depth8=147456 depth64=1064960
+FAIL
+FAIL	gocolumn/expr	0.006s
+FAIL
+Expected baseline failure observed.
+
+Changed implementation: full expr package
+ok  	gocolumn/expr	0.984s
+
+Changed implementation: SIMD liveness regressions
+ok  	gocolumn/expr	0.309s
+
+Changed implementation: race liveness regressions
+ok  	gocolumn/expr	3.124s

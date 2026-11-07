@@ -54,7 +54,10 @@ func instructionWorkspaceBytes(instructions []instruction, rows int) (int64, err
 	if err != nil {
 		return 0, err
 	}
-	for _, in := range instructions {
+	for i, in := range instructions {
+		if storageIndex(instructions, i) != i {
+			continue
+		}
 		size, err := fixedRegisterBytes(in, rows)
 		if err != nil {
 			return 0, err
@@ -101,6 +104,9 @@ func (w *evaluationState) prepareProgram(instructions []instruction, rows int) e
 	// no-op tokens until a later dynamically charged replacement is needed.
 	if err = next.ensureRegisters(len(instructions)); err == nil {
 		for i, in := range instructions {
+			if storageIndex(instructions, i) != i {
+				continue
+			}
 			r := &next.owned[i]
 			r.typ = instructionResultType(in)
 			r.acquire = next.acquire

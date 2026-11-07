@@ -43,7 +43,9 @@ func (c *scalarCompiler) compileConditional(bound *BoundExpr) (instruction, erro
 		if err != nil {
 			return in, err
 		}
-		in.Regions = append(in.Regions, Program{instructions: compiler.instructions, root: root, typ: info.Type, nullable: info.Nullable, complexity: len(compiler.instructions)})
+		region := Program{instructions: compiler.instructions, root: root, typ: info.Type, nullable: info.Nullable, complexity: len(compiler.instructions)}
+		region.planStorage()
+		in.Regions = append(in.Regions, region)
 	}
 	return in, nil
 }
@@ -52,7 +54,7 @@ func (w *evaluationState) applyActive(index int, r *scalarRegister, rows int) er
 	if w.activeRows == nil {
 		return nil
 	}
-	owned := &w.owned[index]
+	owned := w.ownedRegister(index)
 	if err := scalarResize(&owned.ownedValidity, memory.WordsFor(rows), &owned.buffers[0], w.acquire); err != nil {
 		return err
 	}

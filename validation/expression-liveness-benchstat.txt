@@ -1,0 +1,103 @@
+goos: linux
+goarch: amd64
+pkg: gocolumn/expr
+cpu: AMD EPYC 9V74 80-Core Processor                
+                                        │ validation/expression-liveness-before.txt │ validation/expression-liveness-after.txt │
+                                        │                  sec/op                   │      sec/op        vs base               │
+ExpressionLiveness/int64/depth=8/warm                                  705.8µ ±  6%        719.7µ ±  8%        ~ (p=0.485 n=6)
+ExpressionLiveness/int64/depth=8/cold                                 1048.5µ ±  8%        875.5µ ±  6%  -16.50% (p=0.002 n=6)
+ExpressionLiveness/int64/depth=32/warm                                 2.866m ±  6%        2.821m ±  6%        ~ (p=0.485 n=6)
+ExpressionLiveness/int64/depth=32/cold                                 4.443m ± 20%        2.814m ± 11%  -36.67% (p=0.002 n=6)
+ExpressionLiveness/int64/depth=128/warm                                12.07m ± 14%        10.67m ±  8%        ~ (p=0.132 n=6)
+ExpressionLiveness/int64/depth=128/cold                                17.27m ± 13%        10.77m ±  3%  -37.63% (p=0.002 n=6)
+ExpressionLiveness/bool/depth=8/warm                                   115.0µ ±  8%        110.5µ ±  4%        ~ (p=0.394 n=6)
+ExpressionLiveness/bool/depth=8/cold                                   137.6µ ± 22%        126.1µ ±  5%   -8.36% (p=0.004 n=6)
+ExpressionLiveness/bool/depth=32/warm                                  134.2µ ± 29%        140.2µ ±  6%        ~ (p=0.589 n=6)
+ExpressionLiveness/bool/depth=32/cold                                  235.8µ ±  4%        161.2µ ± 10%  -31.63% (p=0.002 n=6)
+ExpressionLiveness/bool/depth=128/warm                                 243.9µ ± 10%        238.3µ ±  6%        ~ (p=0.180 n=6)
+ExpressionLiveness/bool/depth=128/cold                                 664.4µ ±  6%        331.8µ ±  9%  -50.05% (p=0.002 n=6)
+geomean                                                                858.1µ              702.0µ        -18.19%
+
+                                        │ validation/expression-liveness-before.txt │ validation/expression-liveness-after.txt │
+                                        │              peak-managed-B               │  peak-managed-B    vs base               │
+ExpressionLiveness/int64/depth=8/warm                                  4.595Mi ± 0%        1.549Mi ± 0%  -66.30% (p=0.002 n=6)
+ExpressionLiveness/int64/depth=8/cold                                  4.595Mi ± 0%        1.549Mi ± 0%  -66.30% (p=0.002 n=6)
+ExpressionLiveness/int64/depth=32/warm                                16.842Mi ± 0%        1.609Mi ± 0%  -90.45% (p=0.002 n=6)
+ExpressionLiveness/int64/depth=32/cold                                16.842Mi ± 0%        1.609Mi ± 0%  -90.45% (p=0.002 n=6)
+ExpressionLiveness/int64/depth=128/warm                               65.831Mi ± 0%        1.849Mi ± 0%  -97.19% (p=0.002 n=6)
+ExpressionLiveness/int64/depth=128/cold                               65.831Mi ± 0%        1.849Mi ± 0%  -97.19% (p=0.002 n=6)
+ExpressionLiveness/bool/depth=8/warm                                  166.92Ki ± 0%        71.06Ki ± 0%  -57.43% (p=0.002 n=6)
+ExpressionLiveness/bool/depth=8/cold                                  166.92Ki ± 0%        71.06Ki ± 0%  -57.43% (p=0.002 n=6)
+ExpressionLiveness/bool/depth=32/warm                                  612.0Ki ± 0%        132.6Ki ± 0%  -78.34% (p=0.002 n=6)
+ExpressionLiveness/bool/depth=32/cold                                  612.0Ki ± 0%        132.6Ki ± 0%  -78.34% (p=0.002 n=6)
+ExpressionLiveness/bool/depth=128/warm                                2392.5Ki ± 0%        378.6Ki ± 0%  -84.18% (p=0.002 n=6)
+ExpressionLiveness/bool/depth=128/cold                                2392.5Ki ± 0%        378.6Ki ± 0%  -84.18% (p=0.002 n=6)
+geomean                                                                3.241Mi             510.2Ki       -84.63%
+
+                                        │ validation/expression-liveness-before.txt │ validation/expression-liveness-after.txt │
+                                        │                retained-B                 │    retained-B      vs base               │
+ExpressionLiveness/int64/depth=8/warm                                  4.595Mi ± 0%        1.549Mi ± 0%  -66.30% (p=0.002 n=6)
+ExpressionLiveness/int64/depth=8/cold                                  4.595Mi ± 0%        1.549Mi ± 0%  -66.30% (p=0.002 n=6)
+ExpressionLiveness/int64/depth=32/warm                                16.842Mi ± 0%        1.609Mi ± 0%  -90.45% (p=0.002 n=6)
+ExpressionLiveness/int64/depth=32/cold                                16.842Mi ± 0%        1.609Mi ± 0%  -90.45% (p=0.002 n=6)
+ExpressionLiveness/int64/depth=128/warm                               65.831Mi ± 0%        1.849Mi ± 0%  -97.19% (p=0.002 n=6)
+ExpressionLiveness/int64/depth=128/cold                               65.831Mi ± 0%        1.849Mi ± 0%  -97.19% (p=0.002 n=6)
+ExpressionLiveness/bool/depth=8/warm                                  166.92Ki ± 0%        71.06Ki ± 0%  -57.43% (p=0.002 n=6)
+ExpressionLiveness/bool/depth=8/cold                                  166.92Ki ± 0%        71.06Ki ± 0%  -57.43% (p=0.002 n=6)
+ExpressionLiveness/bool/depth=32/warm                                  612.0Ki ± 0%        132.6Ki ± 0%  -78.34% (p=0.002 n=6)
+ExpressionLiveness/bool/depth=32/cold                                  612.0Ki ± 0%        132.6Ki ± 0%  -78.34% (p=0.002 n=6)
+ExpressionLiveness/bool/depth=128/warm                                2392.5Ki ± 0%        378.6Ki ± 0%  -84.18% (p=0.002 n=6)
+ExpressionLiveness/bool/depth=128/cold                                2392.5Ki ± 0%        378.6Ki ± 0%  -84.18% (p=0.002 n=6)
+geomean                                                                3.241Mi             510.2Ki       -84.63%
+
+                                        │ validation/expression-liveness-before.txt │ validation/expression-liveness-after.txt │
+                                        │                  rows/s                   │      rows/s       vs base                │
+ExpressionLiveness/int64/depth=8/warm                                  92.86M ±  6%       91.07M ±  7%         ~ (p=0.485 n=6)
+ExpressionLiveness/int64/depth=8/cold                                  62.51M ±  9%       74.92M ±  7%   +19.85% (p=0.002 n=6)
+ExpressionLiveness/int64/depth=32/warm                                 22.88M ±  5%       23.23M ±  7%         ~ (p=0.485 n=6)
+ExpressionLiveness/int64/depth=32/cold                                 14.76M ± 23%       23.29M ± 10%   +57.81% (p=0.002 n=6)
+ExpressionLiveness/int64/depth=128/warm                                5.434M ± 17%       6.144M ±  8%         ~ (p=0.132 n=6)
+ExpressionLiveness/int64/depth=128/cold                                3.795M ± 13%       6.085M ±  3%   +60.33% (p=0.002 n=6)
+ExpressionLiveness/bool/depth=8/warm                                   571.0M ±  8%       593.0M ±  4%         ~ (p=0.394 n=6)
+ExpressionLiveness/bool/depth=8/cold                                   476.3M ± 18%       519.8M ±  5%    +9.13% (p=0.004 n=6)
+ExpressionLiveness/bool/depth=32/warm                                  488.3M ± 22%       467.6M ±  6%         ~ (p=0.589 n=6)
+ExpressionLiveness/bool/depth=32/cold                                  278.0M ±  4%       406.5M ±  9%   +46.21% (p=0.002 n=6)
+ExpressionLiveness/bool/depth=128/warm                                 268.7M ±  9%       275.0M ±  6%         ~ (p=0.180 n=6)
+ExpressionLiveness/bool/depth=128/cold                                 98.66M ±  6%      197.49M ±  9%  +100.18% (p=0.002 n=6)
+geomean                                                                76.40M             93.37M         +22.21%
+
+                                        │ validation/expression-liveness-before.txt │ validation/expression-liveness-after.txt │
+                                        │                   B/op                    │      B/op        vs base                 │
+ExpressionLiveness/int64/depth=8/warm                                  64.00 ± 0%          64.00 ± 0%        ~ (p=1.000 n=6) ¹
+ExpressionLiveness/int64/depth=8/cold                                4.598Mi ± 0%        1.551Mi ± 0%  -66.27% (p=0.002 n=6)
+ExpressionLiveness/int64/depth=32/warm                                 64.00 ± 0%          64.00 ± 0%        ~ (p=1.000 n=6) ¹
+ExpressionLiveness/int64/depth=32/cold                              16.856Mi ± 0%        1.620Mi ± 0%  -90.39% (p=0.002 n=6)
+ExpressionLiveness/int64/depth=128/warm                                64.00 ± 0%          64.00 ± 0%        ~ (p=1.000 n=6) ¹
+ExpressionLiveness/int64/depth=128/cold                             65.851Mi ± 0%        1.861Mi ± 0%  -97.17% (p=0.002 n=6)
+ExpressionLiveness/bool/depth=8/warm                                   0.000 ± 0%          0.000 ± 0%        ~ (p=1.000 n=6) ¹
+ExpressionLiveness/bool/depth=8/cold                                169.76Ki ± 0%        73.48Ki ± 0%  -56.72% (p=0.002 n=6)
+ExpressionLiveness/bool/depth=32/warm                                  0.000 ± 0%          0.000 ± 0%        ~ (p=1.000 n=6) ¹
+ExpressionLiveness/bool/depth=32/cold                                628.4Ki ± 0%        147.0Ki ± 0%  -76.61% (p=0.002 n=6)
+ExpressionLiveness/bool/depth=128/warm                                 0.000 ± 0%          0.000 ± 0%        ~ (p=1.000 n=6) ¹
+ExpressionLiveness/bool/depth=128/cold                              2414.9Ki ± 0%        393.0Ki ± 0%  -83.73% (p=0.002 n=6)
+geomean                                                                           ²                    -60.35%               ²
+¹ all samples are equal
+² summaries must be >0 to compute geomean
+
+                                        │ validation/expression-liveness-before.txt │ validation/expression-liveness-after.txt │
+                                        │                 allocs/op                 │    allocs/op     vs base                 │
+ExpressionLiveness/int64/depth=8/warm                                  1.000 ± 0%          1.000 ± 0%        ~ (p=1.000 n=6) ¹
+ExpressionLiveness/int64/depth=8/cold                                  98.00 ± 0%          68.00 ± 0%  -30.61% (p=0.002 n=6)
+ExpressionLiveness/int64/depth=32/warm                                 1.000 ± 0%          1.000 ± 0%        ~ (p=1.000 n=6) ¹
+ExpressionLiveness/int64/depth=32/cold                                 314.0 ± 0%          164.0 ± 0%  -47.77% (p=0.002 n=6)
+ExpressionLiveness/int64/depth=128/warm                                1.000 ± 0%          1.000 ± 0%        ~ (p=1.000 n=6) ¹
+ExpressionLiveness/int64/depth=128/cold                               1178.0 ± 0%          548.0 ± 0%  -53.48% (p=0.002 n=6)
+ExpressionLiveness/bool/depth=8/warm                                   0.000 ± 0%          0.000 ± 0%        ~ (p=1.000 n=6) ¹
+ExpressionLiveness/bool/depth=8/cold                                   86.00 ± 0%          56.00 ± 0%  -34.88% (p=0.002 n=6)
+ExpressionLiveness/bool/depth=32/warm                                  0.000 ± 0%          0.000 ± 0%        ~ (p=1.000 n=6) ¹
+ExpressionLiveness/bool/depth=32/cold                                  302.0 ± 0%          152.0 ± 0%  -49.67% (p=0.002 n=6)
+ExpressionLiveness/bool/depth=128/warm                                 0.000 ± 0%          0.000 ± 0%        ~ (p=1.000 n=6) ¹
+ExpressionLiveness/bool/depth=128/cold                                1166.0 ± 0%          536.0 ± 0%  -54.03% (p=0.002 n=6)
+geomean                                                                           ²                    -26.37%               ²
+¹ all samples are equal
+² summaries must be >0 to compute geomean

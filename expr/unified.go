@@ -20,7 +20,9 @@ func Compile(schema memory.Schema, e Expr) (Program, error) {
 	if err != nil {
 		return Program{}, err
 	}
-	return Program{instructions: compiler.instructions, root: root, typ: info.Type, nullable: info.Nullable, complexity: len(compiler.instructions), result: bound.OutputField("")}, nil
+	program := Program{instructions: compiler.instructions, root: root, typ: info.Type, nullable: info.Nullable, complexity: len(compiler.instructions), result: bound.OutputField("")}
+	program.planStorage()
+	return program, nil
 }
 
 // Workspace is an execution-local, query-owned instance of one immutable

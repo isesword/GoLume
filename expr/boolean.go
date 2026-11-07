@@ -298,7 +298,7 @@ func (w *evaluationState) outputValue(index, rows int) (ScalarValue, error) {
 		return w.exportBorrowedValue(index, rows)
 	}
 	if r.typ == memory.TypeBool && w.program[index].Code != scalarColumn {
-		owned := &w.owned[index]
+		owned := w.ownedRegister(index)
 		if err := scalarResize(&owned.u32, rows, &owned.buffers[8], w.acquire); err != nil {
 			return ScalarValue{}, err
 		}

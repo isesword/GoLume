@@ -90,8 +90,9 @@ type scalarRegister struct {
 	listValidity    memory.Bitmap
 }
 
-// evaluationState retains typed scalar registers across source reads. Column
-// registers borrow input slices; computed registers retain their own buffers.
+// evaluationState retains logical register views and physical storage owners
+// across source reads. Column views borrow input slices. Dead fixed-width DAG
+// values may share one physical owner; only owners hold buffer reservations.
 type evaluationState struct {
 	activeRows        memory.Bitmap
 	program           []instruction
@@ -198,6 +199,7 @@ func CompileExpressions(schema memory.Schema, named []NamedExpr) (Program, error
 	out.instructions = c.instructions
 	out.complexity = len(c.instructions)
 	out.root = -1
+	out.planStorage()
 	return out, nil
 }
 
@@ -578,7 +580,7 @@ func evaluateInstructionsActive(instructions []instruction, batch *memory.Batch,
 		}
 		r := &w.regs[i]
 		if in.Code != scalarColumn {
-			r = &w.owned[i]
+			r = w.ownedRegister(i)
 		}
 		if r.acquire == nil && in.Code != scalarColumn {
 			r.acquire, r.reserve, r.checkContext = w.acquire, w.reserve, w.checkContext
@@ -598,7 +600,7 @@ func evaluateInstructionsActive(instructions []instruction, batch *memory.Batch,
 				return err
 			}
 			if in.Type == memory.TypeBool {
-				owned := &w.owned[i]
+				owned := w.ownedRegister(i)
 				owned.Truth = owned.Truth[:memory.WordsFor(batch.Rows)]
 				owned.ownedValidity = owned.ownedValidity[:memory.WordsFor(batch.Rows)]
 				fillValidity(owned.ownedValidity, r.validity, batch.Rows)

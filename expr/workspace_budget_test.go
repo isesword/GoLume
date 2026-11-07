@@ -47,7 +47,10 @@ func TestProgramWorkspaceBytesExactFreshCapacities(t *testing.T) {
 				t.Fatal(err)
 			}
 			want := int64(len(p.instructions)) * metadata
-			for _, in := range p.instructions {
+			for i, in := range p.instructions {
+				if storageIndex(p.instructions, i) != i {
+					continue
+				}
 				if in.Code != scalarColumn {
 					want += 16 * int64((rows+63)/64)
 				}
