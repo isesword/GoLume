@@ -138,12 +138,14 @@ func (p *PreparedQuery) resultSchema() memory.Schema {
 		}
 		typ, nullable := memory.TypeInt64, true
 		switch agg.Kind {
-		case expr.AggCountRows, expr.AggCountValues:
+		case expr.AggCountRows, expr.AggCountValues, expr.AggNUnique:
 			typ, nullable = memory.TypeUint64, false
 		case expr.AggAvg:
 			typ = memory.TypeFloat64
 		}
-		if expr.IsStatistics(agg.Kind) {
+		if agg.Kind == expr.AggNUnique {
+			typ, nullable = memory.TypeUint64, false
+		} else if expr.IsStatistics(agg.Kind) {
 			s := p.statistics()
 			typ, _ = expr.StatisticsType(s.Types[s.OutputLane[index]], agg.Kind)
 		} else if p.nativeAggregate() {

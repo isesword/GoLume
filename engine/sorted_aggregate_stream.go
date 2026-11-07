@@ -38,6 +38,9 @@ func (p *PreparedQuery) NewSortedAggregateStreamWithReadOptions(ctx context.Cont
 
 // acquirePrepared is false only when Execute already owns the plan lifecycle.
 func (p *PreparedQuery) newSortedAggregateStream(ctx context.Context, schema memory.Schema, outputRows int, readOpts source.ReadOptions, acquirePrepared bool) (source.BatchStream, error) {
+	if p != nil && p.distinct() != nil {
+		return p.newDistinctAggregateStream(ctx, schema, outputRows, readOpts, acquirePrepared)
+	}
 	if p == nil || p.e == nil || !p.IsSortedAggregate() {
 		return nil, fmt.Errorf("sorted aggregate stream requires a prepared sorted strategy")
 	}

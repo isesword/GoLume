@@ -161,6 +161,10 @@ func (e *Engine) Prepare(ctx context.Context, src source.Source, q expr.Query, o
 	if strategy.Kind != planner.StrategySorted && policy != ExecutionMemoryOnly && e.memory.Limit() > 0 && e.SpillConfigured() {
 		strategy = planner.Strategy{Kind: planner.StrategySpillHash, Workers: 1, Reason: "finite query budget with spill quota"}
 	}
+	if cq.MultiAggregate != nil && cq.MultiAggregate.Distinct != nil {
+		strategy.Reason = "exact-global-tuple-sort fallback (group ordering alone does not bound distinct state); planned policy: " + strategy.Kind.String()
+		strategy.Workers = 1
+	}
 	if stats.Rows < 0 || stats.Rows > int64(^uint(0)>>1) {
 		return nil, fmt.Errorf("row count %d exceeds addressable workspace", stats.Rows)
 	}

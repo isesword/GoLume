@@ -24,6 +24,8 @@ const (
 	AggStdPopulation
 	AggFirst
 	AggLast
+	// AggNUnique counts exact distinct values, including NULL.
+	AggNUnique
 )
 
 // Aggregate describes one logical aggregate expression.

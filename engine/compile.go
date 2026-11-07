@@ -60,7 +60,7 @@ func compileQuery(schema memory.Schema, q expr.Query) (CompiledQuery, error) {
 			layout.Max = true
 		case expr.AggAvg:
 			layout.Avg = true
-		case expr.AggVar, expr.AggStd, expr.AggVarPopulation, expr.AggStdPopulation, expr.AggFirst, expr.AggLast:
+		case expr.AggNUnique, expr.AggVar, expr.AggStd, expr.AggVarPopulation, expr.AggStdPopulation, expr.AggFirst, expr.AggLast:
 			if a.Column == "" {
 				return CompiledQuery{}, fmt.Errorf("aggregate %q requires an input column", a.Alias)
 			}
@@ -93,7 +93,7 @@ func compileQuery(schema memory.Schema, q expr.Query) (CompiledQuery, error) {
 	groups := make([]CompiledGroupColumn, 0, len(q.GroupBy))
 	fields := make([]memory.Field, 0, len(q.GroupBy))
 	keyWidth := 0
-	generic := len(q.GroupBy) > 2
+	generic := len(q.GroupBy) > 2 || (multi != nil && multi.Distinct != nil && len(q.GroupBy) > 0)
 	for _, name := range q.GroupBy {
 		f, ok := schema.Field(name)
 		if !ok {

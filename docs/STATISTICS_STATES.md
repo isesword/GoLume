@@ -77,7 +77,8 @@ Variance and standard deviation preserve Float32 output for Float32 input, as
 in Polars1.35.2, and produce Float64 for integer and Float64 input. Float32
 conversion occurs only at finalization; intermediate moment state is Float64.
 First/Last preserve numeric, bool or fixed-width temporal dtype. String/binary
-endpoints and exact N_UNIQUE are not yet query APIs.
+endpoints are not yet query APIs. Exact N_UNIQUE is documented separately in
+[EXACT_DISTINCT.md](EXACT_DISTINCT.md).
 
 The public three-field Aggregate and six-field legacy Layout are unchanged.
 Independent StatisticsLayout lanes contain real moment/endpoint state, including

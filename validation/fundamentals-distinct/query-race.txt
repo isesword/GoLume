@@ -1,0 +1,2 @@
+ok  	gocolumn/engine	1.160s
+ok  	gocolumn/lazy	1.022s

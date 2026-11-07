@@ -245,6 +245,11 @@ func InferSchema(plan Plan) (memory.Schema, error) {
 				genericKeys = true
 			}
 		}
+		for _, a := range n.Aggregates {
+			if a.Kind == expr.AggNUnique {
+				genericKeys = true
+			}
+		}
 		if genericKeys {
 			for i := range fields {
 				if fields[i].Type == memory.TypeString || fields[i].Type == memory.TypeBinary {
@@ -263,6 +268,16 @@ func InferSchema(plan Plan) (memory.Schema, error) {
 			}
 			field := memory.Field{Name: name, Encoding: memory.EncodingPlain}
 			switch agg.Kind {
+			case expr.AggNUnique:
+				input, ok := in.Field(agg.Column)
+				if !ok {
+					return memory.Schema{}, fmt.Errorf("aggregate column %q not found", agg.Column)
+				}
+				typ, err := expr.DistinctType(input.Type)
+				if err != nil {
+					return memory.Schema{}, err
+				}
+				field.Type = typ
 			case expr.AggCountRows:
 				field.Type = memory.TypeUint64
 			case expr.AggSum, expr.AggCountValues, expr.AggMin, expr.AggMax, expr.AggAvg:

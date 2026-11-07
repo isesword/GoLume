@@ -36,6 +36,9 @@ func (p *PreparedQuery) NewResidentAggregateStreamWithReadOptions(ctx context.Co
 
 // acquirePrepared is false only when Execute already owns the plan lifecycle.
 func (p *PreparedQuery) newResidentAggregateStream(ctx context.Context, schema memory.Schema, outputRows int, readOpts source.ReadOptions, acquirePrepared, reuse bool) (source.BatchStream, error) {
+	if p != nil && p.distinct() != nil {
+		return p.newDistinctAggregateStream(ctx, schema, outputRows, readOpts, acquirePrepared)
+	}
 	if p == nil || p.e == nil {
 		return nil, fmt.Errorf("nil prepared aggregate query")
 	}

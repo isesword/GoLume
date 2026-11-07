@@ -57,6 +57,16 @@ func (s *aggregateResultSource) StreamPlan() source.StreamPlanNode {
 		class = source.StreamBounded
 		mode = "sorted-adjacent"
 	}
+	for _, a := range s.aggs {
+		if a.Kind == expr.AggNUnique {
+			mode = "exact-global-tuple-sort"
+			class = source.StreamBlocking
+			if s.spillable {
+				class = source.StreamSpillable
+			}
+			break
+		}
+	}
 	return source.StreamPlanNode{
 		Operator: "Aggregate", Class: class,
 		Detail: fmt.Sprintf("groups=%d aggregates=%d mode=%s strategy=%s workers=%d", len(s.groupBy), len(s.aggs), mode, s.query.Plan().Strategy.Kind, s.query.Plan().Strategy.Workers),

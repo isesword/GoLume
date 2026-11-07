@@ -1,0 +1,34 @@
++ bash ./scripts/check_simd_structure.sh
+SIMD structure checks passed
++ GOEXPERIMENT=simd
++ GODEBUG=simd=0
++ go test ./kernel ./expr ./physical ./engine ./lazy ./optimizer ./memory ./source/arrowrecord
+ok  	gocolumn/kernel	0.064s
+ok  	gocolumn/expr	4.359s
+ok  	gocolumn/physical	0.229s
+ok  	gocolumn/engine	2.359s
+ok  	gocolumn/lazy	2.704s
+ok  	gocolumn/optimizer	0.004s
+ok  	gocolumn/memory	0.697s
+ok  	gocolumn/source/arrowrecord	0.005s
++ GOEXPERIMENT=simd
++ GODEBUG=simd=+128
++ go test ./kernel ./expr ./engine ./radix
+ok  	gocolumn/kernel	0.041s
+ok  	gocolumn/expr	2.764s
+ok  	gocolumn/engine	1.351s
+ok  	gocolumn/radix	0.004s
++ GOEXPERIMENT=simd
++ GODEBUG=simd=+256
++ go test ./kernel ./expr ./engine ./radix
+ok  	gocolumn/kernel	0.031s
+ok  	gocolumn/expr	2.690s
+ok  	gocolumn/engine	1.257s
+ok  	gocolumn/radix	0.003s
++ GOEXPERIMENT=simd
++ GODEBUG=simd=+512
++ go test ./kernel ./expr ./engine ./radix
+ok  	gocolumn/kernel	0.040s
+ok  	gocolumn/expr	2.749s
+ok  	gocolumn/engine	1.273s
+ok  	gocolumn/radix	0.003s

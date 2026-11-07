@@ -1,0 +1,41 @@
+{
+  "polars_version": "1.35.2",
+  "golume_output_dtype": "UInt64",
+  "cases": [
+    {
+      "name": "empty",
+      "count": 0,
+      "polars_dtype": "UInt32"
+    },
+    {
+      "name": "all_null",
+      "count": 1,
+      "polars_dtype": "UInt32"
+    },
+    {
+      "name": "signed_zero",
+      "count": 1,
+      "polars_dtype": "UInt32"
+    },
+    {
+      "name": "nan",
+      "count": 1,
+      "polars_dtype": "UInt32"
+    },
+    {
+      "name": "mixed",
+      "count": 4,
+      "polars_dtype": "UInt32"
+    },
+    {
+      "name": "uint64_extrema",
+      "count": 3,
+      "polars_dtype": "UInt32"
+    },
+    {
+      "name": "binary",
+      "count": 4,
+      "polars_dtype": "UInt32"
+    }
+  ]
+}

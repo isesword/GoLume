@@ -100,6 +100,14 @@ type SpillManager interface {
 	Close() error
 }
 
+// MetadataSpillManager additionally admits all retained store metadata before
+// allocation. The store owns these reservations until Delete/Close. Map storage
+// stays charged at its high-water capacity until the store has no live handles.
+// Wrappers must explicitly forward this capability to preserve its guarantee.
+type MetadataSpillManager interface {
+	SpillWithMetadata(context.Context, SpillObject, Manager) (SpillHandle, error)
+}
+
 // NoSpill rejects every spill operation without touching the filesystem.
 type NoSpill struct{}
 
@@ -214,10 +222,13 @@ type QuerySpillStore struct {
 	nextID   atomic.Uint64
 	closed   atomic.Bool
 
-	mu       sync.Mutex
-	handles  map[string]*spillHandle
-	closeErr error
-	ops      spillFileOps
+	mu             sync.Mutex
+	handles        map[string]*spillHandle
+	handleCapacity int
+	mapReservation Reservation
+	mapManager     Manager
+	closeErr       error
+	ops            spillFileOps
 }
 
 // NewQuerySpillStore creates a mode-0700 query directory. No directory should
@@ -285,6 +296,7 @@ type spillHandle struct {
 	partition int32
 	schema    [32]byte
 	deleted   atomic.Bool
+	metadata  Reservation
 }
 
 // ID returns the query-local opaque object identifier.
@@ -314,6 +326,18 @@ func (h *spillHandle) Kind() SpillKind {
 // Spill commits an immutable file using write-sync-close-rename. Disk quota is
 // reserved before the temporary file is created and rolled back exactly once.
 func (s *QuerySpillStore) Spill(ctx context.Context, object SpillObject) (SpillHandle, error) {
+	return s.spill(ctx, object, nil)
+}
+
+// SpillWithMetadata admits handle, path, ID, and map storage to manager before
+// allocating it. Payload admission remains the caller's responsibility.
+func (s *QuerySpillStore) SpillWithMetadata(ctx context.Context, object SpillObject, manager Manager) (SpillHandle, error) {
+	if manager == nil {
+		return nil, fmt.Errorf("spill metadata requires a memory manager")
+	}
+	return s.spill(ctx, object, manager)
+}
+func (s *QuerySpillStore) spill(ctx context.Context, object SpillObject, manager Manager) (SpillHandle, error) {
 	if s == nil {
 		return nil, ErrSpillUnsupported
 	}
@@ -332,6 +356,42 @@ func (s *QuerySpillStore) Spill(ctx context.Context, object SpillObject) (SpillH
 	if object.Codec == "" || len(object.Codec) > math.MaxUint16 {
 		return nil, fmt.Errorf("spill codec length must be between 1 and %d", math.MaxUint16)
 	}
+	var metadata Reservation
+	if manager != nil {
+		// Includes the handle, reservation, ID, immutable path, temporary path,
+		// header, and conservative fixed write-time bookkeeping. The directory is
+		// caller-controlled, so its byte length must never be hidden in a constant.
+		if int64(len(s.dir)) > (math.MaxInt64-512-2*int64(len(object.Codec)))/2 {
+			return nil, ErrBudgetExceeded
+		}
+		var err error
+		metadata, err = manager.Reserve(ctx, 512+2*int64(len(s.dir))+2*int64(len(object.Codec)))
+		if err != nil {
+			return nil, err
+		}
+		defer func() {
+			if metadata != nil {
+				metadata.Release()
+			}
+		}()
+	}
+	// Admission precedes creating or committing a file. Serialize the handle
+	// capacity claim through insertion so concurrent writers cannot consume it.
+	// This also lets Close wait for an in-flight commit and own its cleanup.
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.closed.Load() {
+		return nil, ErrSpillClosed
+	}
+	if err := s.admitHandleMap(ctx, manager); err != nil {
+		return nil, err
+	}
+	inserted := false
+	defer func() {
+		if !inserted {
+			s.releaseEmptyMap()
+		}
+	}()
 	total, ok := checkedSpillSize(len(object.Codec), len(object.Payload))
 	if !ok {
 		return nil, fmt.Errorf("spill object size overflows int64")
@@ -377,22 +437,113 @@ func (s *QuerySpillStore) Spill(ctx context.Context, object SpillObject) (SpillH
 	if err := s.ops.rename(tempPath, finalPath); err != nil {
 		return nil, fmt.Errorf("commit spill object: %w", err)
 	}
-	if err := s.ops.syncDir(s.dir); err != nil {
-		_ = s.ops.remove(finalPath)
-		return nil, fmt.Errorf("sync spill directory: %w", err)
-	}
 	committed = true
-	handle := &spillHandle{owner: s, id: id, path: finalPath, bytes: total, kind: object.Kind, codec: object.Codec, partition: object.Partition, schema: object.SchemaFingerprint}
-	s.mu.Lock()
-	if s.closed.Load() {
-		s.mu.Unlock()
-		_ = s.ops.remove(finalPath)
-		return nil, ErrSpillClosed
-	}
+	handle := &spillHandle{owner: s, id: id, path: finalPath, bytes: total, kind: object.Kind, codec: object.Codec, partition: object.Partition, schema: object.SchemaFingerprint, metadata: metadata}
 	s.handles[id] = handle
-	s.mu.Unlock()
+	inserted = true
+	metadata = nil
 	reserved = false
+	// Once rename succeeds the store owns the file and quota, even when a
+	// durability failure is followed by a failed unlink. Retain that handle
+	// for Close retry rather than falsely releasing quota or losing the path.
+	if syncErr := s.ops.syncDir(s.dir); syncErr != nil {
+		removeErr := s.ops.remove(finalPath)
+		if removeErr == nil || errors.Is(removeErr, os.ErrNotExist) {
+			delete(s.handles, id)
+			s.used.Add(-total)
+			if handle.metadata != nil {
+				handle.metadata.Release()
+				handle.metadata = nil
+			}
+			s.releaseEmptyMap()
+		}
+		return nil, fmt.Errorf("sync spill directory: %w", errors.Join(syncErr, removeErr))
+	}
 	return handle, nil
+}
+
+// admitHandleMap enters and returns with mu held. Reservation callbacks run
+// without mu: an OperatorBudget may synchronously reclaim through this store.
+// Capacity is checked again after each unlocked call; the caller retains mu
+// from final admission through insertion, before creating any spill file.
+func (s *QuerySpillStore) admitHandleMap(ctx context.Context, requested Manager) error {
+	for {
+		if s.closed.Load() {
+			return ErrSpillClosed
+		}
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		manager := requested
+		if manager == nil {
+			manager = s.mapManager
+		}
+		if manager == nil {
+			if s.handles == nil {
+				s.handles = make(map[string]*spillHandle)
+			}
+			return nil // Legacy Spill callers retain their old contract.
+		}
+		if s.mapReservation != nil && len(s.handles) < s.handleCapacity {
+			return nil
+		}
+		capacity := 8
+		for capacity <= len(s.handles) {
+			if capacity > math.MaxInt/2 {
+				return ErrBudgetExceeded
+			}
+			capacity *= 2
+		}
+		if int64(capacity) > (math.MaxInt64-128)/128 {
+			return ErrBudgetExceeded
+		}
+		// Includes load-factor slack, buckets and internal rehash overlap. The
+		// complete replacement is charged while the original map remains live.
+		s.mu.Unlock()
+		reservation, err := manager.Reserve(ctx, 128+int64(capacity)*128)
+		s.mu.Lock()
+		if err != nil {
+			return err
+		}
+		if s.closed.Load() || ctx.Err() != nil || len(s.handles) >= capacity || (s.mapReservation != nil && len(s.handles) < s.handleCapacity) {
+			// The callback or another writer changed the needed capacity. No file has
+			// been created. Release this unused claim outside mu and recompute.
+			s.mu.Unlock()
+			reservation.Release()
+			s.mu.Lock()
+			continue
+		}
+		replacement := make(map[string]*spillHandle, capacity)
+		for id, h := range s.handles {
+			replacement[id] = h
+		}
+		old := s.mapReservation
+		s.handles = replacement
+		s.handleCapacity = capacity
+		s.mapReservation = reservation
+		s.mapManager = manager
+		if old == nil {
+			return nil
+		}
+		// Release is external too. Recheck after reacquiring mu because another
+		// operation can fill, clear, or replace the newly installed map meanwhile.
+		s.mu.Unlock()
+		old.Release()
+		s.mu.Lock()
+	}
+}
+
+func (s *QuerySpillStore) releaseEmptyMap() {
+	if len(s.handles) != 0 {
+		return
+	}
+	s.handles = nil
+	s.handleCapacity = 0
+	if s.mapReservation != nil {
+		s.mapReservation.Release()
+		s.mapReservation = nil
+	}
+	s.mapManager = nil
 }
 
 func checkedSpillSize(codec, payload int) (int64, bool) {
@@ -619,6 +770,11 @@ func (s *QuerySpillStore) Delete(ctx context.Context, handle SpillHandle) error 
 	}
 	delete(s.handles, h.id)
 	h.deleted.Store(true)
+	if h.metadata != nil {
+		h.metadata.Release()
+		h.metadata = nil
+	}
+	s.releaseEmptyMap()
 	s.used.Add(-h.bytes)
 	return nil
 }
@@ -640,8 +796,13 @@ func (s *QuerySpillStore) Close() error {
 	}
 	for _, h := range s.handles {
 		h.deleted.Store(true)
+		if h.metadata != nil {
+			h.metadata.Release()
+			h.metadata = nil
+		}
 	}
 	s.handles = nil
+	s.releaseEmptyMap()
 	s.used.Store(0)
 	return nil
 }

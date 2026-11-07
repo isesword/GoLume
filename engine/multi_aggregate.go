@@ -20,6 +20,7 @@ type CompiledMultiAggregate struct {
 	Layouts    []aggregate.Layout
 	OutputLane []int
 	Statistics *CompiledStatistics
+	Distinct   *CompiledDistinct
 }
 
 func compileMultiAggregate(schema memory.Schema, aggs []expr.Aggregate, force ...bool) (*CompiledMultiAggregate, error) {
@@ -28,11 +29,16 @@ func compileMultiAggregate(schema memory.Schema, aggs []expr.Aggregate, force ..
 	if err != nil {
 		return nil, err
 	}
+	d, err := compileDistinct(schema, aggs)
+	if err != nil {
+		return nil, err
+	}
+	m.Distinct = d
 	m.Statistics = stats
-	m.Native = stats != nil
+	m.Native = stats != nil || d != nil
 	rows := false
 	for i, a := range aggs {
-		if expr.IsStatistics(a.Kind) {
+		if expr.IsStatistics(a.Kind) || a.Kind == expr.AggNUnique {
 			continue
 		}
 		if a.Kind == expr.AggCountRows {
@@ -78,12 +84,12 @@ func compileMultiAggregate(schema memory.Schema, aggs []expr.Aggregate, force ..
 		}
 	}
 	forced := len(force) > 0 && force[0]
-	if len(m.Columns) == 0 && (rows || (forced && stats == nil)) {
+	if len(m.Columns) == 0 && (rows || (forced && stats == nil && d == nil)) {
 		m.Columns = []string{""}
 		m.Types = []memory.DataType{memory.TypeInt64}
 		m.Layouts = []aggregate.Layout{{CountRows: true}}
 	}
-	if !forced && stats == nil && (len(m.Columns) == 0 || (len(m.Columns) == 1 && !m.Native)) {
+	if !forced && stats == nil && d == nil && (len(m.Columns) == 0 || (len(m.Columns) == 1 && !m.Native)) {
 		return nil, nil
 	}
 	if len(m.Layouts) > 0 {

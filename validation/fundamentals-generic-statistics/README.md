@@ -30,3 +30,8 @@ semantics document. The legacy specialized hot-loop instructions and allocation
 counts are unchanged. Timing noise prevents a universal regression-bound or
 speedup claim. Auto SIMD gates are unchanged; canonical framing and stable moment
 recurrences remain scalar. No remote CI pass is inferred from these local gates.
+
+Additional post-publication checks passed on the same frozen source: SIMD
+structure check and targeted suites with SIMD disabled and forced 128/256/512-bit
+widths. See simd-width-tests.txt. These correctness checks do not enable new
+performance gates or establish performance on other hardware.
