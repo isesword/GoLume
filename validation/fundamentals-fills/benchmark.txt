@@ -1,0 +1,18 @@
+goos: linux
+goarch: amd64
+pkg: gocolumn/physical
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkDirectionalFillLongNullRun/11/4096         	     328	    973974 ns/op	  33.64 MB/s	   57712 B/op	     256 allocs/op
+BenchmarkDirectionalFillLongNullRun/11/4096         	     354	    988547 ns/op	  33.15 MB/s	   57712 B/op	     256 allocs/op
+BenchmarkDirectionalFillLongNullRun/11/4096         	     379	   1019018 ns/op	  32.16 MB/s	   57712 B/op	     256 allocs/op
+BenchmarkDirectionalFillLongNullRun/12/4096         	     213	   1580210 ns/op	  20.74 MB/s	  202969 B/op	    1186 allocs/op
+BenchmarkDirectionalFillLongNullRun/12/4096         	     216	   1941466 ns/op	  16.88 MB/s	  202970 B/op	    1186 allocs/op
+BenchmarkDirectionalFillLongNullRun/12/4096         	     226	   1679018 ns/op	  19.52 MB/s	  202970 B/op	    1186 allocs/op
+BenchmarkDirectionalFillLongNullRun/11/65536        	      27	  13392680 ns/op	  39.15 MB/s	  660592 B/op	    3136 allocs/op
+BenchmarkDirectionalFillLongNullRun/11/65536        	      28	  13386879 ns/op	  39.16 MB/s	  660592 B/op	    3136 allocs/op
+BenchmarkDirectionalFillLongNullRun/11/65536        	      28	  14651292 ns/op	  35.78 MB/s	  660592 B/op	    3136 allocs/op
+BenchmarkDirectionalFillLongNullRun/12/65536        	      13	  28128190 ns/op	  18.64 MB/s	 2941038 B/op	   17508 allocs/op
+BenchmarkDirectionalFillLongNullRun/12/65536        	      12	  35345926 ns/op	  14.83 MB/s	 2941074 B/op	   17508 allocs/op
+BenchmarkDirectionalFillLongNullRun/12/65536        	      13	  31401364 ns/op	  16.70 MB/s	 2941059 B/op	   17508 allocs/op
+PASS
+ok  	gocolumn/physical	5.808s

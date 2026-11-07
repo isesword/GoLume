@@ -36,6 +36,10 @@ const (
 	WindowShift
 	// WindowDiff subtracts a partition-relative value from the current value.
 	WindowDiff
+	// WindowForwardFill replaces NULL with the preceding non-NULL value.
+	WindowForwardFill
+	// WindowBackwardFill replaces NULL with the following non-NULL value.
+	WindowBackwardFill
 )
 
 // WindowBoundKind identifies one side of an inclusive ROWS frame.
@@ -150,6 +154,14 @@ func NewWindowSourceWithOptions(input source.Source, partitionBy []string, order
 	}
 	inputSchema := input.Schema()
 	for index, expression := range expressions {
+		if isFillWindow(expression.Function) {
+			if err := validateFillWindow(inputSchema, expression, outputFields[index]); err != nil {
+				return nil, err
+			}
+			if expression.Function == WindowBackwardFill && options.Mode != WindowExecutionResident && (manager == nil || manager.Limit() <= 0) {
+				return nil, fmt.Errorf("ordered backward fill requires a positive memory budget")
+			}
+		}
 		if expression.Function == WindowShift || expression.Function == WindowDiff {
 			if err := validateOffsetWindow(inputSchema, expression, outputFields[index]); err != nil {
 				return nil, err
@@ -364,6 +376,8 @@ func sameRowsByKeys(batch *memory.Batch, schema memory.Schema, keys []SortKey, l
 
 func evaluateWindowExpression(ctx context.Context, input *memory.Batch, schema memory.Schema, output *memory.Batch, rows []int, order []SortKey, window WindowExpression) error {
 	switch window.Function {
+	case WindowForwardFill, WindowBackwardFill:
+		return evaluateFillWindow(ctx, input, schema, output, rows, window)
 	case WindowShift, WindowDiff:
 		return evaluateOffsetWindow(ctx, input, schema, output, rows, window)
 	case WindowRowNumber, WindowRank, WindowDenseRank:

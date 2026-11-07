@@ -25,3 +25,16 @@ func offsetWindow(kind logical.WindowFunction, column string, periods int64, ali
 	} // MinInt64 remains negative and fails schema validation.
 	return logical.WindowExpr{Function: kind, Column: column, Frame: logical.RowsFrame{Start: bound, End: bound}, Alias: alias}
 }
+
+// ForwardFill replaces NULL with the nearest preceding non-NULL value in each
+// ordered partition. Leading NULLs remain NULL; NaN is a non-NULL value.
+func ForwardFill(column, alias string) WindowExpr {
+	return offsetWindow(logical.WindowForwardFill, column, 0, alias)
+}
+
+// BackwardFill replaces NULL with the nearest following non-NULL value in each
+// ordered partition. Trailing NULLs remain NULL; NaN is a non-NULL value. Ordered
+// execution requires a positive memory budget and fails when lookahead exceeds it.
+func BackwardFill(column, alias string) WindowExpr {
+	return offsetWindow(logical.WindowBackwardFill, column, 0, alias)
+}

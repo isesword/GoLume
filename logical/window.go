@@ -34,6 +34,10 @@ const (
 	WindowShift
 	// WindowDiff subtracts a partition-relative value from the current value.
 	WindowDiff
+	// WindowForwardFill replaces NULL with the preceding non-NULL value.
+	WindowForwardFill
+	// WindowBackwardFill replaces NULL with the following non-NULL value.
+	WindowBackwardFill
 )
 
 // RowBoundKind identifies one side of a ROWS frame.

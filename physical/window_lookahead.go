@@ -37,7 +37,14 @@ func (s *futureWindowSource) Partitions(ctx context.Context) ([]source.Partition
 
 // StreamPlan reports bounded owned lookahead.
 func (s *futureWindowSource) StreamPlan() source.StreamPlanNode {
-	return source.StreamPlanNode{Operator: "WindowLookahead", Class: source.StreamBounded, Detail: fmt.Sprintf("max-future-offset=%d", s.maxLead), Children: []source.StreamPlanNode{source.StreamPlanOf(s.input)}}
+	detail := fmt.Sprintf("max-future-offset=%d", s.maxLead)
+	for _, e := range s.expressions {
+		if e.Function == WindowBackwardFill {
+			detail += "; backward-fill-retention-limited-by-memory-budget"
+			break
+		}
+	}
+	return source.StreamPlanNode{Operator: "WindowLookahead", Class: source.StreamBounded, Detail: detail, Children: []source.StreamPlanNode{source.StreamPlanOf(s.input)}}
 }
 
 // NewBatchStream opens one input stream and its admitted lookahead state.
@@ -56,6 +63,7 @@ func (s *futureWindowSource) NewBatchStream(ctx context.Context, opts source.Rea
 		}
 	}
 	st.cursors = make([]*futureWindowBatch, len(s.expressions))
+	st.fillPositions = make([]int64, len(s.expressions))
 	return st, nil
 }
 
@@ -71,6 +79,7 @@ type futureWindowStream struct {
 	scratch             *memory.Batch
 	head, tail, current *futureWindowBatch
 	cursors             []*futureWindowBatch
+	fillPositions       []int64
 	base, output        memory.Reservation
 	end                 int64
 	done, closed        bool
@@ -212,6 +221,12 @@ func (s *futureWindowStream) Next(ctx context.Context, dst *memory.Batch) (ok bo
 		name := s.owner.names[i]
 		typ := s.owner.fields[i].Type
 		initializeOffsetOutput(node.batch, name, typ, node.batch.Rows)
+		if e.Function == WindowBackwardFill {
+			if err = s.fillBackwardBatch(ctx, node, i); err != nil {
+				return false, err
+			}
+			continue
+		}
 		inputType, _ := fieldType(s.owner.input.Schema(), e.Column)
 		for row := 0; row < node.batch.Rows; row++ {
 			if row&1023 == 0 {
@@ -273,6 +288,7 @@ func (s *futureWindowStream) Close() error {
 	}
 	s.head, s.tail = nil, nil
 	s.cursors = nil
+	s.fillPositions = nil
 	s.scratch.ReleaseOwned()
 	if s.base != nil {
 		s.base.Release()
@@ -288,7 +304,7 @@ func (s *futureWindowStream) Close() error {
 func prepareFutureWindow(owner *WindowSource, input source.Source) (*WindowSource, source.Source, []string) {
 	hasFuture := false
 	for _, expression := range owner.expressions {
-		if (expression.Function == WindowShift || expression.Function == WindowDiff) && expression.Frame.Start.Kind == WindowFollowing {
+		if needsFutureWindow(expression) {
 			hasFuture = true
 			break
 		}
@@ -308,7 +324,7 @@ func prepareFutureWindow(owner *WindowSource, input source.Source) (*WindowSourc
 		names[f.Name] = true
 	}
 	for index, e := range owner.expressions {
-		if (e.Function != WindowShift && e.Function != WindowDiff) || e.Frame.Start.Kind != WindowFollowing {
+		if !needsFutureWindow(e) {
 			continue
 		}
 		name := fmt.Sprintf("__golume_window_future_%d", index)

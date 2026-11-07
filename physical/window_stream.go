@@ -19,7 +19,7 @@ const windowStateCellBytes = int64(64)
 func validateBoundedWindowExpressions(expressions []WindowExpression) error {
 	for _, expression := range expressions {
 		switch expression.Function {
-		case WindowRowNumber, WindowRank, WindowDenseRank:
+		case WindowRowNumber, WindowRank, WindowDenseRank, WindowForwardFill, WindowBackwardFill:
 			continue
 		case WindowShift, WindowDiff:
 			if expression.Frame.Start != expression.Frame.End || (expression.Frame.Start.Kind != WindowCurrentRow && expression.Frame.Start.Kind != WindowPreceding && expression.Frame.Start.Kind != WindowFollowing) || expression.Frame.Start.Offset < 0 {
@@ -362,7 +362,7 @@ type rollingWindowState struct {
 func newRollingWindowState(expression WindowExpression, input, output memory.DataType) (*rollingWindowState, error) {
 	state := &rollingWindowState{expression: expression, inputType: input, outputType: output}
 	switch expression.Function {
-	case WindowRowNumber, WindowRank, WindowDenseRank:
+	case WindowRowNumber, WindowRank, WindowDenseRank, WindowForwardFill:
 		return state, nil
 	}
 	switch expression.Frame.Start.Kind {
@@ -404,6 +404,12 @@ func (s *rollingWindowState) reset() {
 }
 
 func (s *rollingWindowState) advance(cell windowNumericCell) error {
+	if s.expression.Function == WindowForwardFill {
+		if cell.valid {
+			s.best = cell
+		}
+		return nil
+	}
 	cell.seq = s.position
 	s.position++
 	if s.expression.Function == WindowShift || s.expression.Function == WindowDiff {
@@ -813,7 +819,7 @@ func estimateWindowOutputBytes(_ memory.Schema, fields []memory.Field, rows int)
 
 func initializeWindowOutputs(batch *memory.Batch, fields []memory.Field, rows int, expressions []WindowExpression) {
 	for index, field := range fields {
-		if expressions[index].Function == WindowShift || expressions[index].Function == WindowDiff {
+		if expressions[index].Function == WindowShift || expressions[index].Function == WindowDiff || isFillWindow(expressions[index].Function) {
 			clearWindowOutput(batch, field.Name)
 			initializeOffsetOutput(batch, field.Name, field.Type, rows)
 			continue
@@ -869,6 +875,10 @@ func setWindowInt64(batch *memory.Batch, name string, row int, value int64, vali
 
 func (s *rollingWindowState) write(batch *memory.Batch, row int) error {
 	expression := s.expression
+	if expression.Function == WindowForwardFill {
+		setOffsetOutput(batch, expression.Alias, s.outputType, row, s.best)
+		return nil
+	}
 	if expression.Function == WindowShift || expression.Function == WindowDiff {
 		if s.queue.len < s.width {
 			return nil

@@ -1,0 +1,4 @@
+ok  	gocolumn/physical	0.527s
+ok  	gocolumn/lazy	(cached)
+ok  	gocolumn/logical	0.003s
+ok  	gocolumn/expr	(cached)

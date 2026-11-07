@@ -1,0 +1,6 @@
+ok  	gocolumn/physical	0.290s
+?   	gocolumn/logical	[no test files]
+ok  	gocolumn/expr	5.703s
+ok  	gocolumn/physical	0.023s
+ok  	gocolumn/physical	1.055s
+GoDoc check: PASS (package docs and exported API comments follow naming conventions)

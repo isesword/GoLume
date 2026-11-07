@@ -1,0 +1,717 @@
+{
+  "version": "1.35.2",
+  "cases": [
+    {
+      "dtype": "Int8",
+      "name": "mixed",
+      "input": [
+        null,
+        7,
+        null,
+        null,
+        9,
+        null
+      ],
+      "forward": [
+        null,
+        7,
+        7,
+        7,
+        9,
+        9
+      ],
+      "backward": [
+        7,
+        7,
+        9,
+        9,
+        9,
+        null
+      ]
+    },
+    {
+      "dtype": "Int8",
+      "name": "empty",
+      "input": [],
+      "forward": [],
+      "backward": []
+    },
+    {
+      "dtype": "Int8",
+      "name": "nulls",
+      "input": [
+        null,
+        null
+      ],
+      "forward": [
+        null,
+        null
+      ],
+      "backward": [
+        null,
+        null
+      ]
+    },
+    {
+      "dtype": "Int8",
+      "name": "boundary",
+      "input": [
+        null,
+        127,
+        null
+      ],
+      "forward": [
+        null,
+        127,
+        127
+      ],
+      "backward": [
+        127,
+        127,
+        null
+      ]
+    },
+    {
+      "dtype": "Int16",
+      "name": "mixed",
+      "input": [
+        null,
+        7,
+        null,
+        null,
+        9,
+        null
+      ],
+      "forward": [
+        null,
+        7,
+        7,
+        7,
+        9,
+        9
+      ],
+      "backward": [
+        7,
+        7,
+        9,
+        9,
+        9,
+        null
+      ]
+    },
+    {
+      "dtype": "Int16",
+      "name": "empty",
+      "input": [],
+      "forward": [],
+      "backward": []
+    },
+    {
+      "dtype": "Int16",
+      "name": "nulls",
+      "input": [
+        null,
+        null
+      ],
+      "forward": [
+        null,
+        null
+      ],
+      "backward": [
+        null,
+        null
+      ]
+    },
+    {
+      "dtype": "Int16",
+      "name": "boundary",
+      "input": [
+        null,
+        127,
+        null
+      ],
+      "forward": [
+        null,
+        127,
+        127
+      ],
+      "backward": [
+        127,
+        127,
+        null
+      ]
+    },
+    {
+      "dtype": "Int32",
+      "name": "mixed",
+      "input": [
+        null,
+        7,
+        null,
+        null,
+        9,
+        null
+      ],
+      "forward": [
+        null,
+        7,
+        7,
+        7,
+        9,
+        9
+      ],
+      "backward": [
+        7,
+        7,
+        9,
+        9,
+        9,
+        null
+      ]
+    },
+    {
+      "dtype": "Int32",
+      "name": "empty",
+      "input": [],
+      "forward": [],
+      "backward": []
+    },
+    {
+      "dtype": "Int32",
+      "name": "nulls",
+      "input": [
+        null,
+        null
+      ],
+      "forward": [
+        null,
+        null
+      ],
+      "backward": [
+        null,
+        null
+      ]
+    },
+    {
+      "dtype": "Int32",
+      "name": "boundary",
+      "input": [
+        null,
+        127,
+        null
+      ],
+      "forward": [
+        null,
+        127,
+        127
+      ],
+      "backward": [
+        127,
+        127,
+        null
+      ]
+    },
+    {
+      "dtype": "Int64",
+      "name": "mixed",
+      "input": [
+        null,
+        7,
+        null,
+        null,
+        9,
+        null
+      ],
+      "forward": [
+        null,
+        7,
+        7,
+        7,
+        9,
+        9
+      ],
+      "backward": [
+        7,
+        7,
+        9,
+        9,
+        9,
+        null
+      ]
+    },
+    {
+      "dtype": "Int64",
+      "name": "empty",
+      "input": [],
+      "forward": [],
+      "backward": []
+    },
+    {
+      "dtype": "Int64",
+      "name": "nulls",
+      "input": [
+        null,
+        null
+      ],
+      "forward": [
+        null,
+        null
+      ],
+      "backward": [
+        null,
+        null
+      ]
+    },
+    {
+      "dtype": "Int64",
+      "name": "boundary",
+      "input": [
+        null,
+        127,
+        null
+      ],
+      "forward": [
+        null,
+        127,
+        127
+      ],
+      "backward": [
+        127,
+        127,
+        null
+      ]
+    },
+    {
+      "dtype": "UInt8",
+      "name": "mixed",
+      "input": [
+        null,
+        7,
+        null,
+        null,
+        9,
+        null
+      ],
+      "forward": [
+        null,
+        7,
+        7,
+        7,
+        9,
+        9
+      ],
+      "backward": [
+        7,
+        7,
+        9,
+        9,
+        9,
+        null
+      ]
+    },
+    {
+      "dtype": "UInt8",
+      "name": "empty",
+      "input": [],
+      "forward": [],
+      "backward": []
+    },
+    {
+      "dtype": "UInt8",
+      "name": "nulls",
+      "input": [
+        null,
+        null
+      ],
+      "forward": [
+        null,
+        null
+      ],
+      "backward": [
+        null,
+        null
+      ]
+    },
+    {
+      "dtype": "UInt8",
+      "name": "boundary",
+      "input": [
+        null,
+        127,
+        null
+      ],
+      "forward": [
+        null,
+        127,
+        127
+      ],
+      "backward": [
+        127,
+        127,
+        null
+      ]
+    },
+    {
+      "dtype": "UInt16",
+      "name": "mixed",
+      "input": [
+        null,
+        7,
+        null,
+        null,
+        9,
+        null
+      ],
+      "forward": [
+        null,
+        7,
+        7,
+        7,
+        9,
+        9
+      ],
+      "backward": [
+        7,
+        7,
+        9,
+        9,
+        9,
+        null
+      ]
+    },
+    {
+      "dtype": "UInt16",
+      "name": "empty",
+      "input": [],
+      "forward": [],
+      "backward": []
+    },
+    {
+      "dtype": "UInt16",
+      "name": "nulls",
+      "input": [
+        null,
+        null
+      ],
+      "forward": [
+        null,
+        null
+      ],
+      "backward": [
+        null,
+        null
+      ]
+    },
+    {
+      "dtype": "UInt16",
+      "name": "boundary",
+      "input": [
+        null,
+        127,
+        null
+      ],
+      "forward": [
+        null,
+        127,
+        127
+      ],
+      "backward": [
+        127,
+        127,
+        null
+      ]
+    },
+    {
+      "dtype": "UInt32",
+      "name": "mixed",
+      "input": [
+        null,
+        7,
+        null,
+        null,
+        9,
+        null
+      ],
+      "forward": [
+        null,
+        7,
+        7,
+        7,
+        9,
+        9
+      ],
+      "backward": [
+        7,
+        7,
+        9,
+        9,
+        9,
+        null
+      ]
+    },
+    {
+      "dtype": "UInt32",
+      "name": "empty",
+      "input": [],
+      "forward": [],
+      "backward": []
+    },
+    {
+      "dtype": "UInt32",
+      "name": "nulls",
+      "input": [
+        null,
+        null
+      ],
+      "forward": [
+        null,
+        null
+      ],
+      "backward": [
+        null,
+        null
+      ]
+    },
+    {
+      "dtype": "UInt32",
+      "name": "boundary",
+      "input": [
+        null,
+        127,
+        null
+      ],
+      "forward": [
+        null,
+        127,
+        127
+      ],
+      "backward": [
+        127,
+        127,
+        null
+      ]
+    },
+    {
+      "dtype": "UInt64",
+      "name": "mixed",
+      "input": [
+        null,
+        7,
+        null,
+        null,
+        9,
+        null
+      ],
+      "forward": [
+        null,
+        7,
+        7,
+        7,
+        9,
+        9
+      ],
+      "backward": [
+        7,
+        7,
+        9,
+        9,
+        9,
+        null
+      ]
+    },
+    {
+      "dtype": "UInt64",
+      "name": "empty",
+      "input": [],
+      "forward": [],
+      "backward": []
+    },
+    {
+      "dtype": "UInt64",
+      "name": "nulls",
+      "input": [
+        null,
+        null
+      ],
+      "forward": [
+        null,
+        null
+      ],
+      "backward": [
+        null,
+        null
+      ]
+    },
+    {
+      "dtype": "UInt64",
+      "name": "boundary",
+      "input": [
+        null,
+        127,
+        null
+      ],
+      "forward": [
+        null,
+        127,
+        127
+      ],
+      "backward": [
+        127,
+        127,
+        null
+      ]
+    },
+    {
+      "dtype": "Float32",
+      "name": "mixed",
+      "input": [
+        null,
+        7,
+        null,
+        null,
+        9,
+        null
+      ],
+      "forward": [
+        null,
+        7.0,
+        7.0,
+        7.0,
+        9.0,
+        9.0
+      ],
+      "backward": [
+        7.0,
+        7.0,
+        9.0,
+        9.0,
+        9.0,
+        null
+      ]
+    },
+    {
+      "dtype": "Float32",
+      "name": "empty",
+      "input": [],
+      "forward": [],
+      "backward": []
+    },
+    {
+      "dtype": "Float32",
+      "name": "nulls",
+      "input": [
+        null,
+        null
+      ],
+      "forward": [
+        null,
+        null
+      ],
+      "backward": [
+        null,
+        null
+      ]
+    },
+    {
+      "dtype": "Float32",
+      "name": "nan",
+      "input": [
+        null,
+        "NaN",
+        null,
+        4,
+        null
+      ],
+      "forward": [
+        null,
+        "NaN",
+        "NaN",
+        4.0,
+        4.0
+      ],
+      "backward": [
+        "NaN",
+        "NaN",
+        4.0,
+        4.0,
+        null
+      ]
+    },
+    {
+      "dtype": "Float64",
+      "name": "mixed",
+      "input": [
+        null,
+        7,
+        null,
+        null,
+        9,
+        null
+      ],
+      "forward": [
+        null,
+        7.0,
+        7.0,
+        7.0,
+        9.0,
+        9.0
+      ],
+      "backward": [
+        7.0,
+        7.0,
+        9.0,
+        9.0,
+        9.0,
+        null
+      ]
+    },
+    {
+      "dtype": "Float64",
+      "name": "empty",
+      "input": [],
+      "forward": [],
+      "backward": []
+    },
+    {
+      "dtype": "Float64",
+      "name": "nulls",
+      "input": [
+        null,
+        null
+      ],
+      "forward": [
+        null,
+        null
+      ],
+      "backward": [
+        null,
+        null
+      ]
+    },
+    {
+      "dtype": "Float64",
+      "name": "nan",
+      "input": [
+        null,
+        "NaN",
+        null,
+        4,
+        null
+      ],
+      "forward": [
+        null,
+        "NaN",
+        "NaN",
+        4.0,
+        4.0
+      ],
+      "backward": [
+        "NaN",
+        "NaN",
+        4.0,
+        4.0,
+        null
+      ]
+    }
+  ]
+}

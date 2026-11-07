@@ -1,0 +1,102 @@
++ go test ./...
+ok  	gocolumn/aggregate	0.228s
+?   	gocolumn/cmd/demo	[no test files]
+ok  	gocolumn/cmd/kernel-info	0.007s
+?   	gocolumn/cmd/lazy-demo	[no test files]
+?   	gocolumn/costmodel	[no test files]
+ok  	gocolumn/engine	2.471s
+ok  	gocolumn/expr	5.854s
+ok  	gocolumn/hashagg	5.740s
+ok  	gocolumn/internal/benchtrack	0.006s
+?   	gocolumn/internal/cmd/gensimd	[no test files]
+ok  	gocolumn/internal/fixturegen	0.280s
+?   	gocolumn/internal/hashmix	[no test files]
+ok  	gocolumn/internal/kernelgate	0.028s
+ok  	gocolumn/internal/oracle	25.730s
+?   	gocolumn/internal/platformcal	[no test files]
+ok  	gocolumn/internal/proptest	0.136s
+ok  	gocolumn/join	0.011s
+ok  	gocolumn/kernel	0.125s
+ok  	gocolumn/lazy	2.849s
+ok  	gocolumn/logical	(cached)
+ok  	gocolumn/memory	0.915s
+?   	gocolumn/observer	[no test files]
+ok  	gocolumn/optimizer	0.006s
+ok  	gocolumn/physical	0.844s
+ok  	gocolumn/pipeline	0.087s
+ok  	gocolumn/planner	0.004s
+ok  	gocolumn/radix	0.004s
+ok  	gocolumn/scheduler	0.004s
+ok  	gocolumn/source	0.006s
+ok  	gocolumn/source/arrowrecord	0.010s
+ok  	gocolumn/source/inmemory	0.006s
+?   	gocolumn/source/internal/batchview	[no test files]
+ok  	gocolumn/source/parquet	1.114s
+ok  	gocolumn/tools/benchtrack	0.009s
+?   	gocolumn/tools/checkgodoc	[no test files]
+ok  	gocolumn/tools/genfallbackfixture	0.170s
+ok  	gocolumn/tools/genfixture	0.029s
+ok  	gocolumn/tools/kernelgate	0.004s
+ok  	gocolumn/tuplesort	1.078s
++ GOEXPERIMENT=simd
++ go test ./...
+ok  	gocolumn/aggregate	0.236s
+?   	gocolumn/cmd/demo	[no test files]
+ok  	gocolumn/cmd/kernel-info	0.011s
+?   	gocolumn/cmd/lazy-demo	[no test files]
+?   	gocolumn/costmodel	[no test files]
+ok  	gocolumn/engine	3.151s
+ok  	gocolumn/expr	7.804s
+ok  	gocolumn/hashagg	7.978s
+ok  	gocolumn/internal/benchtrack	0.011s
+?   	gocolumn/internal/cmd/gensimd	[no test files]
+ok  	gocolumn/internal/fixturegen	0.464s
+?   	gocolumn/internal/hashmix	[no test files]
+ok  	gocolumn/internal/kernelgate	0.032s
+ok  	gocolumn/internal/oracle	24.735s
+?   	gocolumn/internal/platformcal	[no test files]
+ok  	gocolumn/internal/proptest	0.279s
+ok  	gocolumn/join	0.014s
+ok  	gocolumn/kernel	0.211s
+ok  	gocolumn/lazy	3.873s
+ok  	gocolumn/logical	0.008s
+ok  	gocolumn/memory	1.016s
+?   	gocolumn/observer	[no test files]
+ok  	gocolumn/optimizer	0.007s
+ok  	gocolumn/physical	0.984s
+ok  	gocolumn/pipeline	0.093s
+ok  	gocolumn/planner	0.010s
+ok  	gocolumn/radix	0.009s
+ok  	gocolumn/scheduler	0.007s
+ok  	gocolumn/source	0.011s
+ok  	gocolumn/source/arrowrecord	0.009s
+ok  	gocolumn/source/inmemory	0.003s
+?   	gocolumn/source/internal/batchview	[no test files]
+ok  	gocolumn/source/parquet	1.329s
+ok  	gocolumn/tools/benchtrack	0.005s
+?   	gocolumn/tools/checkgodoc	[no test files]
+ok  	gocolumn/tools/genfallbackfixture	0.213s
+ok  	gocolumn/tools/genfixture	0.038s
+ok  	gocolumn/tools/kernelgate	0.004s
+ok  	gocolumn/tuplesort	1.589s
++ GOEXPERIMENT=simd
++ go test -race ./physical ./lazy ./logical ./expr ./engine ./memory
+ok  	gocolumn/physical	3.422s
+ok  	gocolumn/lazy	13.889s
+ok  	gocolumn/logical	1.022s
+ok  	gocolumn/expr	20.631s
+ok  	gocolumn/engine	15.646s
+ok  	gocolumn/memory	5.954s
++ go vet ./...
++ go run ./tools/checkgodoc
+GoDoc check: PASS (package docs and exported API comments follow naming conventions)
++ go run ./internal/cmd/gensimd -check
++ go run ./tools/kernelgate check
+kernel registry, gates file, and code are consistent
++ GOOS=linux
++ GOARCH=arm64
++ GOEXPERIMENT=simd
++ go build -buildvcs=false ./...
++ PYTHONPATH=/tmp/golume-polars-oracle
++ python scripts/fills_polars_oracle.py --check
+Verified 40 fill cases against Polars 1.35.2

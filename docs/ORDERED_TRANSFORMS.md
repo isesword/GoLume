@@ -64,3 +64,47 @@ agreement for supported offsets, UInt64 endpoint checks, huge-offset budget
 failure and cleanup, and NULL/NaN fill separation. Additional future-path tests cover hidden-name collisions, alias replacement,
 mixed past/future windows, EOF tails, small batches, cancellation, input failure,
 admission failure and retained-state cleanup.
+
+## Directional NULL fills
+
+`lazy.ForwardFill(column, alias)` and `lazy.BackwardFill(column, alias)` are
+explicit `WithWindows` expressions over its partition/order specification.
+They preserve all ten native numeric dtypes. Forward fill uses the nearest
+preceding non-NULL value; backward fill uses the nearest following non-NULL
+value. Leading/trailing positions without such a value remain NULL. NaN is a
+valid value, so it is preserved and can fill a NULL. There is no fill-count
+limit. String/binary/list/struct inputs currently return an explicit numeric
+input validation error; they are not coerced. These functions do not change
+`expr.FillNull(value, replacement)` or `expr.FillNaN` promotion semantics.
+
+The public window structs retain their existing fields. These two functions
+use canonical CURRENT ROW bounds; direction comes from the function enum and
+noncanonical frames are rejected. Equal ordering keys retain stable input
+order. Resident and external-sort execution restore original row positions;
+already-ordered execution emits that original ordered stream. Aliases cannot
+change another expression's input, including when replacing the input column.
+
+Forward fill stores one fixed-size typed cell per expression and resets it at
+each partition boundary. Backward fill reuses the admitted owned lookahead
+queue without replay. Each expression maintains a monotone search ordinal;
+a discovered next-valid row or partition boundary serves successive pending
+batches, avoiding quadratic rescans of long NULL runs. Each output batch is
+then traversed backwards to propagate values within that batch. No borrowed
+child batch is retained as state.
+
+Backward fill can retain an arbitrarily long NULL run. Ordered and external
+execution therefore require a positive memory-manager limit and reject
+nil/unlimited managers with `ordered backward fill requires a positive memory
+budget`. Every retained input clone, recursive metadata, temporary capacity,
+private output vector, and execution descriptor is admitted before allocation.
+If the budget cannot cover the run, execution returns `memory.ErrBudgetExceeded`
+and closes the lookahead child; callers still close the outer stream to release
+its remaining state. This is an explicit budget-failure strategy, not spilling
+pending fill rows. External sorting may spill its sort independently. Resident
+execution retains its existing materializing/budget contract.
+
+The fill kernels are scalar native typed operations. Their cross-row dependency
+has no validated SIMD implementation or speedup claim. Pinned Polars 1.35.2
+fixtures cover every numeric width, NULL boundaries, empty/all-NULL arrays and
+NaN. Tests cover partitions, ties, batch boundaries, mixed shifts/fills, alias
+collisions, unsigned extremes, cancellation, budget failure and child cleanup.

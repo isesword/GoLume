@@ -1,0 +1,4 @@
+ok  	gocolumn/physical	2.290s
+ok  	gocolumn/lazy	1.070s
+ok  	gocolumn/logical	1.019s
+ok  	gocolumn/expr	1.035s

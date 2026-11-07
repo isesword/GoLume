@@ -142,11 +142,13 @@ func futureArrowCloneMetadata(data arrow.ArrayData, depth int) (int64, error) {
 
 // futurePreparationAdmissionBytes reserves copied schemas/descriptors, the
 // hidden-name map and generated names before prepareFutureWindow allocates them.
-// Existing past-only windows return without allocation or extra admission.
+// Directional fills also use this lease for their rolling-state descriptors
+// and native output vector/map metadata. Existing offset-only past windows
+// return without allocation or extra admission.
 func futurePreparationAdmissionBytes(owner *WindowSource, input source.Source) (int64, error) {
 	hasFuture := false
 	for _, e := range owner.expressions {
-		if (e.Function == WindowShift || e.Function == WindowDiff) && e.Frame.Start.Kind == WindowFollowing {
+		if needsFutureWindow(e) || isFillWindow(e.Function) {
 			hasFuture = true
 			break
 		}

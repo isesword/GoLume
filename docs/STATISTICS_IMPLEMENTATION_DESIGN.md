@@ -16,11 +16,10 @@ are implemented. Current implementation details and validation limits live in:
   [MULTI_COLUMN_AGGREGATION.md](MULTI_COLUMN_AGGREGATION.md): independent typed
   lanes, global aggregation, native outputs and existing compatibility limits.
   The old statement that all aggregates share one Int64 column is obsolete.
-- [ORDERED_TRANSFORMS.md](ORDERED_TRANSFORMS.md): numeric shift/diff, including
-  budgeted future lookahead and cross-batch/partition state, plus FillNull and
-  FillNaN convenience constructors. Forward/backward fill and nonnumeric
-  shifting remain outside this stage. Numeric shift/diff and value filling are
-  implemented; see the linked document for their supported execution paths.
+- [ORDERED_TRANSFORMS.md](ORDERED_TRANSFORMS.md): numeric shift/diff and
+  forward/backward filling, with admitted future lookahead and cross-batch state,
+  plus FillNull/FillNaN value helpers. Nonnumeric shifting and directional filling
+  remain outside the current typed window implementation.
 - Exact `n_unique` is implemented in this stage and documented in
   [EXACT_DISTINCT.md](EXACT_DISTINCT.md), including its tuple-sort fallback and
   budget limits. Median/quantile use the design below; they must preserve

@@ -1,0 +1,4 @@
+ok  	gocolumn/logical	0.002s
+ok  	gocolumn/physical	0.012s
+ok  	gocolumn/lazy	0.009s
+Verified 40 fill cases against Polars 1.35.2

@@ -393,6 +393,8 @@ func InferSchema(plan Plan) (memory.Schema, error) {
 func inferWindowField(schema memory.Schema, window WindowExpr) (memory.Field, error) {
 	field := memory.Field{Name: window.Alias, Encoding: memory.EncodingPlain}
 	switch window.Function {
+	case WindowForwardFill, WindowBackwardFill:
+		return inferFillWindowField(schema, window)
 	case WindowShift, WindowDiff:
 		return inferOffsetWindowField(schema, window)
 	case WindowRowNumber, WindowRank, WindowDenseRank, WindowCountRows:
