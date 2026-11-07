@@ -65,3 +65,13 @@ This increment supports existing group key shapes: int32, int64, uint32, plain
 or dictionary strings, and supported fixed two-column combinations. Native
 non-int64 value types, broader key types/composites, and nonnumeric COUNT(column)
 are subsequent increments, not implied by this implementation.
+
+## Compiled metadata compatibility
+
+The exported engine.CompiledQuery metadata struct gained MultiAggregate, and
+CompiledMultiAggregate is new metadata for the extended path. External code
+using unkeyed/positional CompiledQuery literals must migrate to keyed literals.
+This is a narrow source-compatibility caveat even though the user-facing
+Aggregate, AggregateValue and KeyPart layouts remain unchanged. Compiled plan
+metadata is an engine-internal contract and may gain additional fields; use
+keyed literals if constructing it outside the engine.

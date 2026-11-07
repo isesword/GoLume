@@ -104,7 +104,19 @@ func (p *PreparedQuery) newSortedAggregateStream(ctx context.Context, schema mem
 		stateLease: stateLease, outputRows: outputRows, inputBatch: memory.NewBatch(),
 		started: time.Now(), active: acquirePrepared,
 	}
-	if p.cq.MultiAggregate != nil {
+	if p.nativeAggregate() {
+		stream.numeric, err = aggregate.NewNumericBundle(p.cq.MultiAggregate.Types, p.multiLayouts(), func(bytes int64) (memory.Reservation, error) { return stateBudget.ReserveGrowth(ctx, bytes) })
+		if err == nil {
+			err = stream.numeric.EnsureGroups(1)
+		}
+		if err != nil {
+			if stream.numeric != nil {
+				stream.numeric.Close()
+			}
+			stateLease.Release()
+			return nil, errors.Join(err, input.Close())
+		}
+	} else if p.cq.MultiAggregate != nil {
 		stream.bundle, err = aggregate.NewInt64Bundle(p.multiLayouts(), func(bytes int64) (memory.Reservation, error) { return stateBudget.ReserveGrowth(ctx, bytes) })
 		if err == nil {
 			err = stream.bundle.EnsureGroups(1)
@@ -153,6 +165,7 @@ type sortedAggregateStream struct {
 	predicate  aggregatePredicateWorkspace
 	state      aggregate.Int64Vector
 	bundle     *aggregate.Int64Bundle
+	numeric    *aggregate.NumericBundle
 	current    aggregateRecord
 	haveGroup  bool
 	inputDone  bool
@@ -201,7 +214,12 @@ func (s *sortedAggregateStream) startGroup(ctx context.Context, key aggregateKey
 		s.keyLease = lease
 		s.current.stringKey = append([]byte(nil), key.stringKey...)
 	}
-	if s.bundle != nil {
+	if s.numeric != nil {
+		if err := s.numeric.ClearGroup(0); err != nil {
+			return err
+		}
+		s.addBundleRow()
+	} else if s.bundle != nil {
 		s.bundle.ClearGroup(0)
 		s.addBundleRow()
 	} else {
@@ -249,7 +267,10 @@ func (s *sortedAggregateStream) flushGroup(ctx context.Context, dst *memory.Batc
 	if !s.haveGroup {
 		return nil
 	}
-	if s.bundle != nil {
+	if s.numeric != nil {
+		s.current.numericBundle = s.numeric
+		s.current.groupID = 0
+	} else if s.bundle != nil {
 		s.current.state = s.bundle.Result(0, 0)
 		s.current.bundle = s.bundle
 		s.current.groupID = 0
@@ -331,6 +352,16 @@ func (s *sortedAggregateStream) nextSelected(ctx context.Context) (aggregateKey,
 func shrinkAggregateOutput(dst *memory.Batch, schema memory.Schema, rows int) {
 	for _, field := range schema.Fields {
 		switch field.Type {
+		case memory.TypeInt8:
+			dst.Int8s[field.Name].Values = dst.Int8s[field.Name].Values[:rows]
+		case memory.TypeInt16:
+			dst.Int16s[field.Name].Values = dst.Int16s[field.Name].Values[:rows]
+		case memory.TypeUint8:
+			dst.Uint8s[field.Name].Values = dst.Uint8s[field.Name].Values[:rows]
+		case memory.TypeUint16:
+			dst.Uint16s[field.Name].Values = dst.Uint16s[field.Name].Values[:rows]
+		case memory.TypeFloat32:
+			dst.Float32s[field.Name].Values = dst.Float32s[field.Name].Values[:rows]
 		case memory.TypeInt32:
 			dst.Int32s[field.Name].Values = dst.Int32s[field.Name].Values[:rows]
 		case memory.TypeInt64:
@@ -455,7 +486,7 @@ func (s *sortedAggregateStream) next(ctx context.Context, dst *memory.Batch) (bo
 				return false, s.fail(err)
 			}
 		} else if aggregateKeyMatches(s.query.cq.GroupShape, &s.current, key) {
-			if s.bundle != nil {
+			if s.bundle != nil || s.numeric != nil {
 				s.addBundleRow()
 			} else {
 				s.state.AddValue(0, value, valid)
@@ -506,6 +537,10 @@ func (s *sortedAggregateStream) cleanup() error {
 	s.predicate.close()
 	s.current = aggregateRecord{}
 	s.state = aggregate.Int64Vector{}
+	if s.numeric != nil {
+		s.numeric.Close()
+		s.numeric = nil
+	}
 	if s.bundle != nil {
 		s.bundle.Close()
 		s.bundle = nil

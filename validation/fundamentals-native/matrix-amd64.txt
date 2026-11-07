@@ -1,0 +1,24 @@
+goos: linux
+goarch: amd64
+pkg: gocolumn/engine
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkNativeAggregate/groups=0/lanes=2         	      20	   2289732 ns/op	   22007 B/op	     128 allocs/op
+BenchmarkNativeAggregate/groups=0/lanes=2         	      20	   2317442 ns/op	   22002 B/op	     128 allocs/op
+BenchmarkNativeAggregate/groups=0/lanes=2         	      20	   2320282 ns/op	   22002 B/op	     128 allocs/op
+BenchmarkNativeAggregate/groups=0/lanes=4         	      20	   3394064 ns/op	   23946 B/op	     136 allocs/op
+BenchmarkNativeAggregate/groups=0/lanes=4         	      20	   3397371 ns/op	   23948 B/op	     136 allocs/op
+BenchmarkNativeAggregate/groups=0/lanes=4         	      20	   3270934 ns/op	   23946 B/op	     136 allocs/op
+BenchmarkNativeAggregate/groups=64/lanes=2        	      20	   3839484 ns/op	   35506 B/op	     201 allocs/op
+BenchmarkNativeAggregate/groups=64/lanes=2        	      20	   3692030 ns/op	   35506 B/op	     201 allocs/op
+BenchmarkNativeAggregate/groups=64/lanes=2        	      20	   3716154 ns/op	   35506 B/op	     201 allocs/op
+BenchmarkNativeAggregate/groups=64/lanes=4        	      20	   4964049 ns/op	   42130 B/op	     221 allocs/op
+BenchmarkNativeAggregate/groups=64/lanes=4        	      20	   5203559 ns/op	   42130 B/op	     221 allocs/op
+BenchmarkNativeAggregate/groups=64/lanes=4        	      20	   4977754 ns/op	   42130 B/op	     221 allocs/op
+BenchmarkNativeAggregate/groups=4096/lanes=2      	      20	   4477435 ns/op	  898464 B/op	     329 allocs/op
+BenchmarkNativeAggregate/groups=4096/lanes=2      	      20	   4500958 ns/op	  898460 B/op	     328 allocs/op
+BenchmarkNativeAggregate/groups=4096/lanes=2      	      20	   4577479 ns/op	  898464 B/op	     329 allocs/op
+BenchmarkNativeAggregate/groups=4096/lanes=4      	      20	   5769344 ns/op	 1055608 B/op	     373 allocs/op
+BenchmarkNativeAggregate/groups=4096/lanes=4      	      20	   5774345 ns/op	 1055608 B/op	     373 allocs/op
+BenchmarkNativeAggregate/groups=4096/lanes=4      	      20	   6753269 ns/op	 1055608 B/op	     373 allocs/op
+PASS
+ok  	gocolumn/engine	1.611s

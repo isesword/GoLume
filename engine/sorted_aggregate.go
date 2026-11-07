@@ -25,7 +25,7 @@ func (p *PreparedQuery) bindSortedBatch(batch *memory.Batch) (aggregateBatchBind
 		return binding, err
 	}
 	var err error
-	if p.cq.ValueColumn != "" {
+	if p.cq.ValueColumn != "" && (!p.nativeAggregate() || p.cq.MultiAggregate.Types[0] == memory.TypeInt64) {
 		binding.values, err = batch.Int64(p.cq.ValueColumn)
 		if err != nil {
 			return binding, err

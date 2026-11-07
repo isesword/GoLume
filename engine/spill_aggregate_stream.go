@@ -265,7 +265,11 @@ func aggregateOutputBytes(schema memory.Schema, rows int, plainStringBytes int64
 	for _, field := range schema.Fields {
 		width := int64(0)
 		switch field.Type {
-		case memory.TypeInt32, memory.TypeUint32:
+		case memory.TypeInt8, memory.TypeUint8:
+			width = 1
+		case memory.TypeInt16, memory.TypeUint16:
+			width = 2
+		case memory.TypeInt32, memory.TypeUint32, memory.TypeFloat32:
 			width = 4
 		case memory.TypeInt64, memory.TypeUint64, memory.TypeFloat64:
 			width = 8
@@ -341,6 +345,20 @@ func (s *spillableAggregateStream) allocateOutputBatch(dst *memory.Batch, rows i
 			validity = memory.EnsureBitmap(nil, rows)
 		}
 		switch field.Type {
+		case memory.TypeInt8:
+			dst.Int8s[name] = &memory.Int8Vector{Values: make([]int8, rows), Validity: validity, Encoding: memory.EncodingPlain}
+		case memory.TypeInt16:
+			dst.Int16s[name] = &memory.Int16Vector{Values: make([]int16, rows), Validity: validity, Encoding: memory.EncodingPlain}
+		case memory.TypeInt32:
+			dst.Int32s[name] = &memory.Int32Vector{Values: make([]int32, rows), Validity: validity, Encoding: memory.EncodingPlain}
+		case memory.TypeUint8:
+			dst.Uint8s[name] = &memory.Uint8Vector{Values: make([]uint8, rows), Validity: validity, Encoding: memory.EncodingPlain}
+		case memory.TypeUint16:
+			dst.Uint16s[name] = &memory.Uint16Vector{Values: make([]uint16, rows), Validity: validity, Encoding: memory.EncodingPlain}
+		case memory.TypeUint32:
+			dst.Uint32s[name] = &memory.Uint32Vector{Values: make([]uint32, rows), Validity: validity, Encoding: memory.EncodingPlain}
+		case memory.TypeFloat32:
+			dst.Float32s[name] = &memory.Float32Vector{Values: make([]float32, rows), Validity: validity, Encoding: memory.EncodingPlain}
 		case memory.TypeInt64:
 			dst.Int64s[name] = &memory.Int64Vector{Values: make([]int64, rows), Validity: validity, Encoding: memory.EncodingPlain}
 		case memory.TypeUint64:
@@ -452,6 +470,17 @@ func (s *spillableAggregateStream) setOutputRecord(dst *memory.Batch, row int, r
 		name := agg.Alias
 		if name == "" {
 			name = fmt.Sprintf("agg_%d", index)
+		}
+		if s.query.nativeAggregate() {
+			typ, bits, valid := s.query.nativeRecordValue(record, index)
+			field, _ := s.schema.Field(name)
+			if typ != field.Type || (!valid && !field.Nullable) {
+				return fmt.Errorf("aggregate typed output mismatch for %q", name)
+			}
+			if err := setNativeAggregateOutput(dst, name, row, typ, bits, valid); err != nil {
+				return err
+			}
+			continue
 		}
 		lane := 0
 		if s.query.cq.MultiAggregate != nil {

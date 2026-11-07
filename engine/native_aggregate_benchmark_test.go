@@ -1,0 +1,72 @@
+package engine
+
+import (
+	"context"
+	"fmt"
+	"gocolumn/expr"
+	"gocolumn/memory"
+	"gocolumn/source/inmemory"
+	"testing"
+)
+
+func BenchmarkNativeAggregate(b *testing.B) {
+	const rows = 32768
+	for _, groups := range []int{0, 64, 4096} {
+		for _, lanes := range []int{2, 4} {
+			b.Run(fmt.Sprintf("groups=%d/lanes=%d", groups, lanes), func(b *testing.B) {
+				batch := memory.NewBatch()
+				batch.Rows = rows
+				keys := make([]int32, rows)
+				u := make([]uint64, rows)
+				f := make([]float64, rows)
+				i32 := make([]int32, rows)
+				f32 := make([]float32, rows)
+				for i := range keys {
+					if groups > 0 {
+						keys[i] = int32(i % groups)
+					}
+					u[i] = 1<<63 + uint64(i%97)
+					f[i] = float64(i%37) / 2
+					i32[i] = int32(i%91 - 45)
+					f32[i] = float32(i%31) / 4
+				}
+				batch.Int32s["key"] = &memory.Int32Vector{Values: keys}
+				batch.Uint64s["u"] = &memory.Uint64Vector{Values: u}
+				batch.Float64s["f"] = &memory.Float64Vector{Values: f}
+				fields := []memory.Field{{Name: "key", Type: memory.TypeInt32}, {Name: "u", Type: memory.TypeUint64}, {Name: "f", Type: memory.TypeFloat64}}
+				q := expr.Query{Aggregates: []expr.Aggregate{expr.Sum("u", "u_sum"), expr.Sum("f", "f_sum"), expr.Count("rows")}, Hints: expr.Hints{Cardinality: max(1, groups)}}
+				if lanes == 4 {
+					batch.Int32s["i"] = &memory.Int32Vector{Values: i32}
+					batch.Float32s["g"] = &memory.Float32Vector{Values: f32}
+					fields = append(fields, memory.Field{Name: "i", Type: memory.TypeInt32}, memory.Field{Name: "g", Type: memory.TypeFloat32})
+					q.Aggregates = append(q.Aggregates, expr.Sum("i", "i_sum"), expr.Sum("g", "g_sum"))
+				}
+				if groups > 0 {
+					q.GroupBy = []string{"key"}
+					q.Hints.ForceStrategy = "bitmap-direct"
+				}
+				src, err := inmemory.New(memory.NewSchema(fields...), batch)
+				if err != nil {
+					b.Fatal(err)
+				}
+				opts := DefaultOptions()
+				opts.Workers = 1
+				opts.PreparedCacheBytes = 0
+				e := New(opts)
+				defer e.Close()
+				p, err := e.Prepare(context.Background(), src, q, PrepareOptions{})
+				if err != nil {
+					b.Fatal(err)
+				}
+				defer p.Close()
+				b.ReportAllocs()
+				b.ResetTimer()
+				for i := 0; i < b.N; i++ {
+					if _, err := p.ExecuteTyped(context.Background(), ExecuteOptions{}); err != nil {
+						b.Fatal(err)
+					}
+				}
+			})
+		}
+	}
+}

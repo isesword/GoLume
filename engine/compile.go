@@ -61,8 +61,10 @@ func compileQuery(schema memory.Schema, q expr.Query) (CompiledQuery, error) {
 	}
 	valueNullable := false
 	if value != "" {
-		if err := schema.Require(value, memory.TypeInt64); err != nil {
-			return CompiledQuery{}, err
+		if multi == nil || !multi.Native {
+			if err := schema.Require(value, memory.TypeInt64); err != nil {
+				return CompiledQuery{}, err
+			}
 		}
 		valueField, _ := schema.Field(value)
 		valueNullable = valueField.Nullable

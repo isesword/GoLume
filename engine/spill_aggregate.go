@@ -30,14 +30,16 @@ var aggregateRunMagic = [8]byte{'G', 'L', 'A', 'G', 'G', '0', '0', '1'}
 var errAggregateStateTarget = errors.New("aggregate retained-state target reached")
 
 type aggregateRecord struct {
-	a, b      uint64
-	validMask uint8
-	stringKey []byte
-	state     aggregate.Int64Result
-	states    []aggregate.Int64Result
-	rawStates []byte
-	bundle    *aggregate.Int64Bundle
-	groupID   int
+	a, b          uint64
+	validMask     uint8
+	stringKey     []byte
+	state         aggregate.Int64Result
+	states        []aggregate.Int64Result
+	rawStates     []byte
+	bundle        *aggregate.Int64Bundle
+	groupID       int
+	numericBundle *aggregate.NumericBundle
+	numericRaw    []byte
 }
 
 type aggregateRunRef struct {
@@ -478,13 +480,14 @@ func encodeAggregateRecord(w *aggregateRunWriter, shape GroupShape, record aggre
 }
 
 type aggregateRunReader struct {
-	multi  *multiAggregateRunReader
-	buf    []byte
-	pos    int
-	err    error
-	shape  GroupShape
-	layout aggregate.Layout
-	groups int
+	multi   *multiAggregateRunReader
+	numeric *numericAggregateRunReader
+	buf     []byte
+	pos     int
+	err     error
+	shape   GroupShape
+	layout  aggregate.Layout
+	groups  int
 }
 
 func newAggregateRunReader(payload []byte, shape GroupShape, layout aggregate.Layout) (*aggregateRunReader, error) {
@@ -547,6 +550,9 @@ func (r *aggregateRunReader) u64() uint64 {
 }
 
 func (r *aggregateRunReader) next() (aggregateRecord, bool, error) {
+	if r.numeric != nil {
+		return r.numeric.next()
+	}
 	if r.multi != nil {
 		return r.multi.next()
 	}
@@ -1037,7 +1043,7 @@ func (s *spillableAggregateStream) bindBatch(batch *memory.Batch) (aggregateBatc
 		return binding, err
 	}
 	var err error
-	if s.query.cq.ValueColumn != "" {
+	if s.query.cq.ValueColumn != "" && (!s.query.nativeAggregate() || s.query.cq.MultiAggregate.Types[0] == memory.TypeInt64) {
 		binding.values, err = batch.Int64(s.query.cq.ValueColumn)
 		if err != nil {
 			return binding, err

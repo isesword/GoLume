@@ -2,6 +2,7 @@ package logical
 
 import (
 	"fmt"
+	"gocolumn/aggregate"
 	"gocolumn/expr"
 	"gocolumn/join"
 	"gocolumn/memory"
@@ -250,19 +251,13 @@ func InferSchema(plan Plan) (memory.Schema, error) {
 				if !ok {
 					return memory.Schema{}, fmt.Errorf("aggregate column %q not found", agg.Column)
 				}
-				if input.Type != memory.TypeInt64 {
-					return memory.Schema{}, fmt.Errorf("aggregate column %q must be int64, got %s", agg.Column, input.Type)
+				typ, err := aggregate.NumericAggregateType(input.Type, aggregate.Kind(agg.Kind))
+				if err != nil {
+					return memory.Schema{}, err
 				}
-				switch agg.Kind {
-				case expr.AggCountValues:
-					field.Type = memory.TypeUint64
-				case expr.AggAvg:
-					field.Type = memory.TypeFloat64
-					field.Nullable = true
-				default:
-					field.Type = memory.TypeInt64
-					field.Nullable = true
-				}
+				field.Type = typ
+				field.Nullable = agg.Kind != expr.AggCountValues
+
 			default:
 				return memory.Schema{}, fmt.Errorf("unsupported aggregate kind %d", agg.Kind)
 			}

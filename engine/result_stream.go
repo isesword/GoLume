@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"gocolumn/aggregate"
 	"gocolumn/expr"
 	"gocolumn/memory"
 	"gocolumn/observer"
@@ -20,9 +21,15 @@ import (
 func (p *PreparedQuery) Execute(ctx context.Context, opts ExecuteOptions) (Result, error) {
 	return p.execute(ctx, opts, true)
 }
-func (p *PreparedQuery) execute(ctx context.Context, opts ExecuteOptions, allowReuse bool) (result Result, err error) {
+func (p *PreparedQuery) execute(ctx context.Context, opts ExecuteOptions, allowReuse bool) (Result, error) {
+	return p.executeTyped(ctx, opts, allowReuse, nil)
+}
+func (p *PreparedQuery) executeTyped(ctx context.Context, opts ExecuteOptions, allowReuse bool, typed *TypedResult) (result Result, err error) {
 	if p == nil || ctx == nil {
 		return Result{}, fmt.Errorf("prepared execution requires a query and context")
+	}
+	if typed == nil && opts.Materialize && p.nativeAggregate() {
+		return Result{}, fmt.Errorf("native aggregate materialization requires ExecuteTyped or a lazy DataFrame")
 	}
 	if err := ctx.Err(); err != nil {
 		return Result{}, err
@@ -58,6 +65,11 @@ func (p *PreparedQuery) execute(ctx context.Context, opts ExecuteOptions, allowR
 	}
 	collector := resultCollector{query: p, result: &result, budget: budget.Operator("CollectResult", memory.MemoryRetainedState)}
 	defer collector.close()
+	var typedCollector *typedResultCollector
+	if typed != nil {
+		typedCollector = &typedResultCollector{query: p, result: typed, account: resultCollector{budget: budget.Operator("CollectTypedResult", memory.MemoryRetainedState)}}
+		defer typedCollector.account.close()
+	}
 	schema := p.resultSchema()
 	var stream source.BatchStream
 	readOpts := source.ReadOptions{Kernels: p.e.kernels, BatchRows: p.e.opts.Pipeline.MaxMorselRows, BatchBytes: p.e.opts.Pipeline.MaxMorselBytes}
@@ -80,7 +92,11 @@ func (p *PreparedQuery) execute(ctx context.Context, opts ExecuteOptions, allowR
 	}()
 	var sink func(aggregateRecord) error
 	if opts.Materialize {
-		sink = func(record aggregateRecord) error { return collector.append(ctx, record) }
+		if typed != nil {
+			sink = func(record aggregateRecord) error { return typedCollector.append(ctx, record) }
+		} else {
+			sink = func(record aggregateRecord) error { return collector.append(ctx, record) }
+		}
 	}
 	stats, err := stream.(aggregateRecordConsumer).consumeRecords(ctx, sink)
 	if err != nil {
@@ -116,6 +132,10 @@ func (p *PreparedQuery) resultSchema() memory.Schema {
 			typ, nullable = memory.TypeUint64, false
 		case expr.AggAvg:
 			typ = memory.TypeFloat64
+		}
+		if p.nativeAggregate() {
+			lane := p.cq.MultiAggregate.OutputLane[index]
+			typ, _ = aggregate.NumericAggregateType(p.cq.MultiAggregate.Types[lane], aggregateStateKind(agg.Kind))
 		}
 		fields = append(fields, memory.Field{Name: name, Type: typ, Nullable: nullable})
 	}
