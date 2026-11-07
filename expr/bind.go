@@ -105,6 +105,16 @@ func bindExpression(schema memory.Schema, e Expr) (*BoundExpr, error) {
 		bound.Field = computedField(n.Target, input.Nullable)
 		bound.MayError = castMayError(input.Type, n.Target)
 		bound.Expr = Cast{Value: bound.Children[0].Expr, Target: n.Target}
+	case TryCastExpr:
+		if err := bindChildren(n.Value); err != nil {
+			return nil, err
+		}
+		input := bound.Children[0].Field
+		if !IsNumeric(n.Target) || !(IsNumeric(input.Type) || input.Type == memory.TypeString) {
+			return nil, fmt.Errorf("TRY_CAST requires numeric or string input and numeric target, got %s to %s", input.Type, n.Target)
+		}
+		bound.Field = computedField(n.Target, true)
+		bound.Expr = TryCastExpr{Value: bound.Children[0].Expr, Target: n.Target}
 	case JSONDecodeExpr:
 		if err := bindChildren(n.Value); err != nil {
 			return nil, err
@@ -496,6 +506,9 @@ func cloneBoundField(field memory.Field) memory.Field {
 }
 
 func castMayError(from, to memory.DataType) bool {
+	if from == memory.TypeString && from != to {
+		return true
+	}
 	if from == to || to == memory.TypeString || to == memory.TypeFloat64 {
 		return false
 	}

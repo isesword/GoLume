@@ -978,3 +978,39 @@ func (v CoalesceExpr) Alias(name string) NamedExpr { return Named(v, name) }
 
 // Alias gives this expression a stable projection output name.
 func (v InExpr) Alias(name string) NamedExpr { return Named(v, name) }
+
+// TryCastExpr converts numeric or string input to a numeric target. Invalid
+// syntax and out-of-range values become NULL. Child expression errors are not
+// suppressed; unsupported source/target types fail during binding.
+type TryCastExpr struct {
+	Value  Expr
+	Target memory.DataType
+}
+
+func (TryCastExpr) exprNode() {}
+
+// String returns the SQL-like TRY_CAST spelling.
+func (c TryCastExpr) String() string { return fmt.Sprintf("TRY_CAST(%s AS %s)", c.Value, c.Target) }
+
+// TryCastTo converts v to a numeric target, replacing conversion failures with NULL.
+func TryCastTo(v Expr, target memory.DataType) TryCastExpr {
+	return TryCastExpr{Value: v, Target: target}
+}
+
+// TryCast converts the column to a numeric target with invalid values becoming NULL.
+func (c Column) TryCast(target memory.DataType) TryCastExpr { return TryCastTo(c, target) }
+
+// TryCast converts the string to a numeric target with invalid values becoming NULL.
+func (v StringLiteral) TryCast(target memory.DataType) TryCastExpr { return TryCastTo(v, target) }
+
+// TryCast converts the cast result to a numeric target with invalid values becoming NULL.
+func (c Cast) TryCast(target memory.DataType) TryCastExpr { return TryCastTo(c, target) }
+
+// Cast strictly converts the result to another target type.
+func (c TryCastExpr) Cast(target memory.DataType) Cast { return CastTo(c, target) }
+
+// TryCast converts the result to another numeric target with invalid values becoming NULL.
+func (c TryCastExpr) TryCast(target memory.DataType) TryCastExpr { return TryCastTo(c, target) }
+
+// Alias names the result of a tolerant conversion.
+func (c TryCastExpr) Alias(name string) NamedExpr { return Named(c, name) }

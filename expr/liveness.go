@@ -63,7 +63,7 @@ func instructionInputs(in instruction) []int {
 	switch in.Code {
 	case scalarBinary, scalarCompare, scalarStringMatch, codeAnd, codeOr:
 		return []int{in.A, in.B}
-	case scalarCast, scalarUnary, scalarJSONDecode, codeNot:
+	case scalarCast, scalarTryCast, scalarUnary, scalarJSONDecode, codeNot:
 		return []int{in.A}
 	case scalarBoolean:
 		if in.Op == OpAnd || in.Op == OpOr {

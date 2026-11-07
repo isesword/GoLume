@@ -32,6 +32,7 @@ const (
 	scalarBoolean
 	scalarStringMatch
 	scalarConditional
+	scalarTryCast
 )
 
 // ProjectionOutput maps one compiled root register to a named output column.
@@ -303,6 +304,9 @@ func (c *scalarCompiler) compileBound(bound *BoundExpr) (int, TypeInfo, error) {
 			in.I64, _ = n.Nanoseconds()
 		case Cast:
 			in.Code = scalarCast
+			in.SourceType = bound.Children[0].Field.Type
+		case TryCastExpr:
+			in.Code = scalarTryCast
 			in.SourceType = bound.Children[0].Field.Type
 		case Unary:
 			in.Code = scalarUnary
@@ -595,6 +599,10 @@ func evaluateInstructionsActive(instructions []instruction, batch *memory.Batch,
 			}
 		case scalarCast:
 			if err := evalCast(r, &w.regs[in.A], in.SourceType, in.Type, batch.Rows); err != nil {
+				return err
+			}
+		case scalarTryCast:
+			if err := evalNumericCast(r, &w.regs[in.A], in.SourceType, in.Type, batch.Rows, true); err != nil {
 				return err
 			}
 		case scalarBinary:
@@ -1807,6 +1815,9 @@ func evalCast(out, in *scalarRegister, from, to memory.DataType, rows int) error
 		return fmt.Errorf("cannot cast %s to %s", from, to)
 	}
 	copyRegisterValidity(out, in, rows)
+	if from == memory.TypeString && IsNumeric(to) {
+		return evalNumericCast(out, in, from, to, rows, false)
+	}
 	if from == memory.TypeString && (to == memory.TypeTimestamp || to == memory.TypeDuration) {
 		return evalStringTemporalCast(out, in, to, rows)
 	}

@@ -1,0 +1,30 @@
+goos: linux
+goarch: amd64
+pkg: gocolumn/expr
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkTryCastStringValidity/int64/valid/dictionary=false-9         	       3	     67682 ns/op	      64 B/op	       1 allocs/op
+BenchmarkTryCastStringValidity/float64/valid/dictionary=false-9       	       3	    253629 ns/op	      64 B/op	       1 allocs/op
+BenchmarkTryCastStringValidity/int64/invalid/dictionary=false-9       	       3	     42611 ns/op	      64 B/op	       1 allocs/op
+BenchmarkTryCastStringValidity/float64/invalid/dictionary=false-9     	       3	     51537 ns/op	      64 B/op	       1 allocs/op
+BenchmarkTryCastStringValidity/int64/long-invalid/dictionary=false-9  	       3	     96492 ns/op	      64 B/op	       1 allocs/op
+BenchmarkTryCastStringValidity/float64/long-invalid/dictionary=false-9         	       3	   7317575 ns/op	      64 B/op	       1 allocs/op
+BenchmarkTryCastStringValidity/int64/long-valid/dictionary=false-9             	       3	  15467814 ns/op	      64 B/op	       1 allocs/op
+BenchmarkTryCastStringValidity/float64/long-valid/dictionary=false-9           	       3	  58766624 ns/op	      64 B/op	       1 allocs/op
+BenchmarkTryCastStringValidity/int64/overflow/dictionary=false-9               	       3	     84257 ns/op	      64 B/op	       1 allocs/op
+BenchmarkTryCastStringValidity/float64/overflow/dictionary=false-9             	       3	     97387 ns/op	      64 B/op	       1 allocs/op
+BenchmarkTryCastStringValidity/int64/long-overflow/dictionary=false-9          	       3	    131551 ns/op	      64 B/op	       1 allocs/op
+BenchmarkTryCastStringValidity/float64/long-overflow/dictionary=false-9        	       3	  29147517 ns/op	      64 B/op	       1 allocs/op
+BenchmarkTryCastStringValidity/int64/valid/dictionary=true-9                   	       3	    170610 ns/op	      64 B/op	       1 allocs/op
+BenchmarkTryCastStringValidity/float64/valid/dictionary=true-9                 	       3	   1306887 ns/op	      64 B/op	       1 allocs/op
+BenchmarkTryCastStringValidity/int64/invalid/dictionary=true-9                 	       3	     52519 ns/op	      64 B/op	       1 allocs/op
+BenchmarkTryCastStringValidity/float64/invalid/dictionary=true-9               	       3	    162004 ns/op	      64 B/op	       1 allocs/op
+BenchmarkTryCastStringValidity/int64/long-invalid/dictionary=true-9            	       3	    189355 ns/op	      64 B/op	       1 allocs/op
+BenchmarkTryCastStringValidity/float64/long-invalid/dictionary=true-9          	       3	   7883630 ns/op	      64 B/op	       1 allocs/op
+BenchmarkTryCastStringValidity/int64/long-valid/dictionary=true-9              	       3	  15151874 ns/op	      64 B/op	       1 allocs/op
+BenchmarkTryCastStringValidity/float64/long-valid/dictionary=true-9            	       3	  63108070 ns/op	      64 B/op	       1 allocs/op
+BenchmarkTryCastStringValidity/int64/overflow/dictionary=true-9                	       3	     56879 ns/op	      64 B/op	       1 allocs/op
+BenchmarkTryCastStringValidity/float64/overflow/dictionary=true-9              	       3	     96372 ns/op	      64 B/op	       1 allocs/op
+BenchmarkTryCastStringValidity/int64/long-overflow/dictionary=true-9           	       3	    123296 ns/op	      64 B/op	       1 allocs/op
+BenchmarkTryCastStringValidity/float64/long-overflow/dictionary=true-9         	       3	  29942407 ns/op	      64 B/op	       1 allocs/op
+PASS
+ok  	gocolumn/expr	1.919s

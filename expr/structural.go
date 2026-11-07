@@ -89,6 +89,8 @@ func (s *structuralInterner) expression(bound *BoundExpr) int {
 		parts = []string{"timestamp-unit", strconv.FormatUint(uint64(n.Unit), 10), strconv.FormatInt(n.Value, 10)}
 	case Cast:
 		parts = []string{"cast", strconv.Itoa(int(n.Target))}
+	case TryCastExpr:
+		parts = []string{"try-cast", strconv.Itoa(int(n.Target))}
 	case Binary:
 		parts = []string{"binary", strconv.Itoa(int(n.Op))}
 	case Unary:

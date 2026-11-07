@@ -20,6 +20,8 @@ func Columns(e Expr) []string {
 			visit(x.Value)
 		case Cast:
 			visit(x.Value)
+		case TryCastExpr:
+			visit(x.Value)
 		case Ternary:
 			visit(x.Value)
 			visit(x.First)

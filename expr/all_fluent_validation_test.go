@@ -18,9 +18,9 @@ func TestAllFluentConstructorsMatchFreeFunctions(t *testing.T) {
 		"RegexMatch": RegexMatch, "RegexExtract": RegexExtract, "RegexExtractAll": RegexExtractAll, "Split": Split,
 		"Year": Year, "Month": Month, "Day": Day, "Hour": Hour, "Minute": Minute, "Second": Second,
 		"Gt": GT, "Ge": GE, "Lt": LT, "Le": LE, "Eq": EQ, "IsNull": IsNull, "IsNotNull": IsNotNull,
-		"Cast": CastTo, "Alias": Named, "JSONDecode": JSONDecode,
+		"Cast": CastTo, "TryCast": TryCastTo, "Alias": Named, "JSONDecode": JSONDecode,
 	}
-	receivers := []Expr{Col("x"), I64(1), F64(2), Str("s"), Date32(1), Timestamp(1), Duration(1), Bool(true), Null(memory.TypeInt64), Add(Col("x"), I64(1)), Length(Str("a")), Replace(Str("a"), Str("a"), Str("b")), CastTo(I64(1), memory.TypeInt8), If(Bool(true), I64(1), I64(2)), Case([]WhenThen{{When: Bool(true), Then: I64(1)}}, I64(2)), Coalesce(I64(1), I64(2)), In(I64(1), I64(2)), JSONDecode(Str("{}"), memory.NewSchema())}
+	receivers := []Expr{Col("x"), I64(1), F64(2), Str("s"), Date32(1), Timestamp(1), Duration(1), Bool(true), Null(memory.TypeInt64), Add(Col("x"), I64(1)), Length(Str("a")), Replace(Str("a"), Str("a"), Str("b")), CastTo(I64(1), memory.TypeInt8), TryCastTo(Str("1"), memory.TypeInt8), If(Bool(true), I64(1), I64(2)), Case([]WhenThen{{When: Bool(true), Then: I64(1)}}, I64(2)), Coalesce(I64(1), I64(2)), In(I64(1), I64(2)), JSONDecode(Str("{}"), memory.NewSchema())}
 	count := 0
 	for _, receiver := range receivers {
 		rv := reflect.ValueOf(receiver)

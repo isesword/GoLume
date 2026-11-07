@@ -124,7 +124,7 @@ func CanCast(from, to memory.DataType) bool {
 	if from == memory.TypeInt64 && (to == memory.TypeTimestamp || to == memory.TypeDate32 || to == memory.TypeDuration) {
 		return true
 	}
-	if from == memory.TypeString && (to == memory.TypeTimestamp || to == memory.TypeDuration) {
+	if from == memory.TypeString && (IsNumeric(to) || to == memory.TypeTimestamp || to == memory.TypeDuration) {
 		return true
 	}
 	if to == memory.TypeString && (IsNumeric(from) || from == memory.TypeDate32 || from == memory.TypeTimestamp) {
