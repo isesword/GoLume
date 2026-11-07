@@ -109,6 +109,25 @@ branches that will never be selected for particular input rows.
   `.Alias`, nullable membership negation, and filtering projected aliases in
   scalar and SIMD modes.
 
+## Structural identity and CSE
+
+After binding, compilation interns bottom-up structural descriptors. A descriptor
+contains the node kind, exact local parameters, and ordered child IDs rather than
+serialized copies of entire child subtrees. Length-framed keys and full string
+comparison make identities collision-safe; floating-point literal identity uses
+all IEEE bits, including signed zero and NaN payloads. Nested schema field IDs
+include names, types, nullability, encoding, dictionary domain, Arrow type, and
+ordered children.
+
+One compile-local identity table spans outputs and guarded regions. Register
+memos do not: each guarded region has its own CSE scope, so knowing that two
+expressions are structurally equal never hoists an error-producing operation out
+of its demand domain. The bound-node cache visits each bound node once for
+identity generation. The public binder still expands repeated source subtrees,
+so shared-source diamonds are not yet compiled in time proportional to their
+unique source DAG nodes. Logical register and instruction metadata also remain
+proportional to the compiled program.
+
 ## Intermediate storage lifetimes
 
 Compilation separates logical DAG values from physical fixed-width storage.
@@ -127,12 +146,13 @@ instruction-specific dictionary/extraction caches retain dedicated owners.
 The initial implementation intentionally does not reinterpret differently
 sized native slices or pool variable-width payloads.
 
-`WorkspaceBytes` charges logical-register metadata plus each distinct physical
-owner's fixed backing once. `MemoryBytes` visits those owners once as well.
+`WorkspaceBytes` charges one logical-register view per instruction, one owner
+record per dense physical slot, and each slot's fixed backing once. `MemoryBytes` visits those owners once as well.
 A growing or changed program still reserves its entire replacement before
 allocation and before releasing the previous workspace; failed admission keeps
 the old owner intact for retry. Dynamic outputs and active-row metadata use the
 existing reservation path. Cancellation and close release the same unique
 owners, not aliases of logical registers. Logical metadata still scales with
-instruction count; only fixed-width payload storage scales with simultaneous
-liveness instead of total expression depth.
+instruction count; reusable fixed-width owner records and payload storage scale
+with simultaneous liveness instead of total expression depth. Dedicated state
+retains one physical slot per owning instruction.

@@ -166,7 +166,8 @@ func (w *evaluationState) Ensure(_ int, regs int) {
 type scalarCompiler struct {
 	schema       memory.Schema
 	instructions []instruction
-	memo         map[string]int
+	memo         map[int]int
+	structures   *structuralInterner
 }
 
 // CompileExpressions compiles named outputs into one shared typed program.
@@ -204,7 +205,7 @@ func CompileExpressions(schema memory.Schema, named []NamedExpr) (Program, error
 }
 
 func newScalarCompiler(schema memory.Schema) *scalarCompiler {
-	return &scalarCompiler{schema: schema, memo: make(map[string]int)}
+	return &scalarCompiler{schema: schema, memo: make(map[int]int), structures: newStructuralInterner()}
 }
 
 func (c *scalarCompiler) compile(e Expr) (int, TypeInfo, error) {
@@ -217,7 +218,7 @@ func (c *scalarCompiler) compile(e Expr) (int, TypeInfo, error) {
 func (c *scalarCompiler) compileBound(bound *BoundExpr) (int, TypeInfo, error) {
 	e := bound.Expr
 	info := TypeInfo{Type: bound.Field.Type, Nullable: bound.Field.Nullable}
-	key := scalarExprKey(e)
+	key := c.structures.expression(bound)
 	if reg, ok := c.memo[key]; ok {
 		return reg, info, nil
 	}
@@ -345,94 +346,6 @@ func (c *scalarCompiler) compileBound(bound *BoundExpr) (int, TypeInfo, error) {
 	reg := len(c.instructions) - 1
 	c.memo[key] = reg
 	return reg, info, nil
-}
-
-// scalarKey frames every component so arbitrary names and nested expressions
-// cannot be mistaken for delimiters or neighboring nodes.
-func scalarKey(parts ...string) string {
-	var b strings.Builder
-	for _, part := range parts {
-		b.WriteString(strconv.Itoa(len(part)))
-		b.WriteByte(':')
-		b.WriteString(part)
-	}
-	return b.String()
-}
-
-func scalarFieldKey(field memory.Field) string {
-	parts := []string{
-		field.Name, strconv.Itoa(int(field.Type)), strconv.FormatBool(field.Nullable),
-		strconv.Itoa(int(field.Encoding)), field.DictionaryDomain, field.ArrowType,
-	}
-	for _, child := range field.Children {
-		parts = append(parts, scalarFieldKey(child))
-	}
-	return scalarKey(parts...)
-}
-
-func scalarExprKey(e Expr) string {
-	switch n := e.(type) {
-	case BoolLiteral:
-		return scalarKey("bool", strconv.FormatBool(n.Value))
-	case NullLiteral:
-		return scalarKey("null", strconv.Itoa(int(n.Type)))
-	case IfExpr:
-		return scalarKey("if", scalarExprKey(n.Condition), scalarExprKey(n.Then), scalarExprKey(n.Else))
-	case CaseExpr:
-		parts := []string{"case"}
-		for _, arm := range n.Whens {
-			parts = append(parts, scalarExprKey(arm.When), scalarExprKey(arm.Then))
-		}
-		if n.Else != nil {
-			parts = append(parts, scalarExprKey(n.Else))
-		}
-		return scalarKey(parts...)
-	case CoalesceExpr:
-		parts := []string{"coalesce"}
-		for _, v := range n.Values {
-			parts = append(parts, scalarExprKey(v))
-		}
-		return scalarKey(parts...)
-	case InExpr:
-		parts := []string{"in", scalarExprKey(n.Value)}
-		for _, v := range n.Values {
-			parts = append(parts, scalarExprKey(v))
-		}
-		return scalarKey(parts...)
-	case Column:
-		return scalarKey("column", n.Name)
-	case Int64Literal:
-		return scalarKey("int64", strconv.FormatInt(n.Value, 10))
-	case Float64Literal:
-		// Preserve signed zero and distinct NaN payloads in literal outputs.
-		return scalarKey("float64", strconv.FormatUint(math.Float64bits(n.Value), 16))
-	case StringLiteral:
-		return scalarKey("string", n.Value)
-	case Date32Literal:
-		return scalarKey("date32", strconv.FormatInt(int64(n.Days), 10))
-	case TimestampLiteral:
-		return scalarKey("timestamp", strconv.FormatInt(n.Value, 10))
-	case DurationLiteral:
-		return scalarKey("duration", strconv.FormatInt(int64(n.Value), 10))
-	case TimestampUnitLiteral:
-		return scalarKey("timestamp-unit", strconv.FormatUint(uint64(n.Unit), 10), strconv.FormatInt(n.Value, 10))
-	case Cast:
-		return scalarKey("cast", strconv.Itoa(int(n.Target)), scalarExprKey(n.Value))
-	case Binary:
-		return scalarKey("binary", strconv.Itoa(int(n.Op)), scalarExprKey(n.Left), scalarExprKey(n.Right))
-	case Unary:
-		return scalarKey("unary", strconv.Itoa(int(n.Op)), scalarExprKey(n.Value))
-	case Ternary:
-		return scalarKey("ternary", strconv.Itoa(int(n.Op)), scalarExprKey(n.Value), scalarExprKey(n.First), scalarExprKey(n.Second))
-	case JSONDecodeExpr:
-		parts := []string{"json", scalarExprKey(n.Value)}
-		for _, field := range n.Schema.Fields {
-			parts = append(parts, scalarFieldKey(field))
-		}
-		return scalarKey(parts...)
-	default:
-		return scalarKey(fmt.Sprintf("%T", e), e.String())
-	}
 }
 
 // ScalarValue is one typed vector view produced by a scalar program. Exactly

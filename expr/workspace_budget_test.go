@@ -39,18 +39,21 @@ func workspaceTestBatch(rows int) *memory.Batch {
 
 func TestProgramWorkspaceBytesExactFreshCapacities(t *testing.T) {
 	p := workspaceTestProgram(t)
-	metadata := int64(2 * unsafe.Sizeof(scalarRegister{}))
+	metadata := int64(unsafe.Sizeof(scalarRegister{}))
 	for _, rows := range []int{0, 1, 63, 64, 65} {
 		t.Run(fmt.Sprint(rows), func(t *testing.T) {
 			n, err := p.WorkspaceBytes(rows)
 			if err != nil {
 				t.Fatal(err)
 			}
-			want := int64(len(p.instructions)) * metadata
+			want := int64(len(p.instructions)+storageOwnerCount(p.instructions)) * metadata
+			nextOwner := 0
 			for i, in := range p.instructions {
-				if storageIndex(p.instructions, i) != i {
+				owner := storageIndex(p.instructions, i)
+				if owner < nextOwner {
 					continue
 				}
+				nextOwner = owner + 1
 				if in.Code != scalarColumn {
 					want += 16 * int64((rows+63)/64)
 				}

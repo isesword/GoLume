@@ -50,14 +50,24 @@ func instructionWorkspaceBytes(instructions []instruction, rows int) (int64, err
 	if err := validWorkspaceRows(rows); err != nil {
 		return 0, err
 	}
-	n, err := scalarBytes(len(instructions), 2*unsafe.Sizeof(scalarRegister{}))
+	n, err := scalarBytes(len(instructions), unsafe.Sizeof(scalarRegister{}))
 	if err != nil {
 		return 0, err
 	}
+	metadata, err := scalarBytes(storageOwnerCount(instructions), unsafe.Sizeof(scalarRegister{}))
+	if err != nil || metadata > math.MaxInt64-n {
+		return 0, fmt.Errorf("expression workspace metadata size overflow")
+	}
+	n += metadata
+	// First introductions are monotonic for planned and unplanned programs.
+	// Reused owners already have their fixed buffers accounted for.
+	nextOwner := 0
 	for i, in := range instructions {
-		if storageIndex(instructions, i) != i {
+		owner := storageIndex(instructions, i)
+		if owner < nextOwner {
 			continue
 		}
+		nextOwner = owner + 1
 		size, err := fixedRegisterBytes(in, rows)
 		if err != nil {
 			return 0, err
@@ -102,12 +112,15 @@ func (w *evaluationState) prepareProgram(instructions []instruction, rows int) e
 	next := evaluationState{}
 	// Admission already owns these exact fixed capacities; individual slots use
 	// no-op tokens until a later dynamically charged replacement is needed.
-	if err = next.ensureRegisters(len(instructions)); err == nil {
+	if err = next.ensureRegisterCounts(len(instructions), storageOwnerCount(instructions)); err == nil {
+		nextOwner := 0
 		for i, in := range instructions {
-			if storageIndex(instructions, i) != i {
+			owner := storageIndex(instructions, i)
+			if owner < nextOwner {
 				continue
 			}
-			r := &next.owned[i]
+			nextOwner = owner + 1
+			r := &next.owned[owner]
 			r.typ = instructionResultType(in)
 			r.acquire = next.acquire
 			r.reserve = next.reserve

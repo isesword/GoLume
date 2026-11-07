@@ -38,7 +38,7 @@ func (c *scalarCompiler) compileConditional(bound *BoundExpr) (instruction, erro
 	for _, child := range children {
 		// Each guarded region has its own CSE scope. Partial values are never
 		// hoisted to a domain on which their source expression was not demanded.
-		compiler := newScalarCompiler(c.schema)
+		compiler := &scalarCompiler{schema: c.schema, memo: make(map[int]int), structures: c.structures}
 		root, info, err := compiler.compileBound(child)
 		if err != nil {
 			return in, err

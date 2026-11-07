@@ -92,7 +92,17 @@ func TestScalarCSEFramesJSONFields(t *testing.T) {
 		memory.Field{Name: "a", Type: memory.TypeInt64},
 		memory.Field{Name: "b", Type: memory.TypeInt64},
 	))
-	if scalarExprKey(one) == scalarExprKey(two) {
+	schema := memory.NewSchema(memory.Field{Name: "json", Type: memory.TypeString})
+	a, err := Bind(schema, one)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := Bind(schema, two)
+	if err != nil {
+		t.Fatal(err)
+	}
+	identities := newStructuralInterner()
+	if identities.expression(a) == identities.expression(b) {
 		t.Fatal("JSON schemas with different field boundaries have the same key")
 	}
 }

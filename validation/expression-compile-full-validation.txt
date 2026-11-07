@@ -1,0 +1,550 @@
+GoDoc check: PASS (package docs and exported API comments follow naming conventions)
+kernel registry, gates file, and code are consistent
+SIMD structure checks passed
+ok  	gocolumn/aggregate	(cached)
+?   	gocolumn/cmd/demo	[no test files]
+ok  	gocolumn/cmd/kernel-info	(cached)
+?   	gocolumn/cmd/lazy-demo	[no test files]
+?   	gocolumn/costmodel	[no test files]
+ok  	gocolumn/engine	1.551s
+ok  	gocolumn/expr	3.142s
+ok  	gocolumn/hashagg	(cached)
+ok  	gocolumn/internal/benchtrack	(cached)
+?   	gocolumn/internal/cmd/gensimd	[no test files]
+ok  	gocolumn/internal/fixturegen	(cached)
+?   	gocolumn/internal/hashmix	[no test files]
+ok  	gocolumn/internal/kernelgate	(cached)
+ok  	gocolumn/internal/oracle	13.848s
+?   	gocolumn/internal/platformcal	[no test files]
+ok  	gocolumn/internal/proptest	0.078s
+ok  	gocolumn/join	(cached)
+ok  	gocolumn/kernel	(cached)
+ok  	gocolumn/lazy	2.075s
+?   	gocolumn/logical	[no test files]
+ok  	gocolumn/memory	(cached)
+?   	gocolumn/observer	[no test files]
+ok  	gocolumn/optimizer	(cached)
+ok  	gocolumn/physical	0.253s
+ok  	gocolumn/pipeline	0.081s
+ok  	gocolumn/planner	(cached)
+ok  	gocolumn/radix	(cached)
+ok  	gocolumn/scheduler	(cached)
+ok  	gocolumn/source	(cached)
+ok  	gocolumn/source/arrowrecord	(cached)
+ok  	gocolumn/source/inmemory	(cached)
+?   	gocolumn/source/internal/batchview	[no test files]
+ok  	gocolumn/source/parquet	0.753s
+ok  	gocolumn/tools/benchtrack	(cached)
+?   	gocolumn/tools/checkgodoc	[no test files]
+ok  	gocolumn/tools/genfallbackfixture	(cached)
+ok  	gocolumn/tools/genfixture	(cached)
+ok  	gocolumn/tools/kernelgate	(cached)
+arch=amd64 mode=scalar
+compare-int8-gt                backend=scalar                       vector=  0 hardware=false emulated=false
+compare-int8-ge                backend=scalar                       vector=  0 hardware=false emulated=false
+compare-int8-lt                backend=scalar                       vector=  0 hardware=false emulated=false
+compare-int8-le                backend=scalar                       vector=  0 hardware=false emulated=false
+compare-int8-eq                backend=scalar                       vector=  0 hardware=false emulated=false
+compare-int16-gt               backend=scalar                       vector=  0 hardware=false emulated=false
+compare-int16-ge               backend=scalar                       vector=  0 hardware=false emulated=false
+compare-int16-lt               backend=scalar                       vector=  0 hardware=false emulated=false
+compare-int16-le               backend=scalar                       vector=  0 hardware=false emulated=false
+compare-int16-eq               backend=scalar                       vector=  0 hardware=false emulated=false
+compare-int32-gt               backend=scalar                       vector=  0 hardware=false emulated=false
+compare-int32-ge               backend=scalar                       vector=  0 hardware=false emulated=false
+compare-int32-lt               backend=scalar                       vector=  0 hardware=false emulated=false
+compare-int32-le               backend=scalar                       vector=  0 hardware=false emulated=false
+compare-int32-eq               backend=scalar                       vector=  0 hardware=false emulated=false
+compare-int64-gt               backend=scalar                       vector=  0 hardware=false emulated=false
+compare-int64-ge               backend=scalar                       vector=  0 hardware=false emulated=false
+compare-int64-lt               backend=scalar                       vector=  0 hardware=false emulated=false
+compare-int64-le               backend=scalar                       vector=  0 hardware=false emulated=false
+compare-int64-eq               backend=scalar                       vector=  0 hardware=false emulated=false
+compare-uint8-gt               backend=scalar                       vector=  0 hardware=false emulated=false
+compare-uint8-ge               backend=scalar                       vector=  0 hardware=false emulated=false
+compare-uint8-lt               backend=scalar                       vector=  0 hardware=false emulated=false
+compare-uint8-le               backend=scalar                       vector=  0 hardware=false emulated=false
+compare-uint8-eq               backend=scalar                       vector=  0 hardware=false emulated=false
+compare-uint16-gt              backend=scalar                       vector=  0 hardware=false emulated=false
+compare-uint16-ge              backend=scalar                       vector=  0 hardware=false emulated=false
+compare-uint16-lt              backend=scalar                       vector=  0 hardware=false emulated=false
+compare-uint16-le              backend=scalar                       vector=  0 hardware=false emulated=false
+compare-uint16-eq              backend=scalar                       vector=  0 hardware=false emulated=false
+compare-uint32-gt              backend=scalar                       vector=  0 hardware=false emulated=false
+compare-uint32-ge              backend=scalar                       vector=  0 hardware=false emulated=false
+compare-uint32-lt              backend=scalar                       vector=  0 hardware=false emulated=false
+compare-uint32-le              backend=scalar                       vector=  0 hardware=false emulated=false
+compare-uint32-eq              backend=scalar                       vector=  0 hardware=false emulated=false
+compare-uint64-gt              backend=scalar                       vector=  0 hardware=false emulated=false
+compare-uint64-ge              backend=scalar                       vector=  0 hardware=false emulated=false
+compare-uint64-lt              backend=scalar                       vector=  0 hardware=false emulated=false
+compare-uint64-le              backend=scalar                       vector=  0 hardware=false emulated=false
+compare-uint64-eq              backend=scalar                       vector=  0 hardware=false emulated=false
+compare-float32-gt             backend=scalar                       vector=  0 hardware=false emulated=false
+compare-float32-ge             backend=scalar                       vector=  0 hardware=false emulated=false
+compare-float32-lt             backend=scalar                       vector=  0 hardware=false emulated=false
+compare-float32-le             backend=scalar                       vector=  0 hardware=false emulated=false
+compare-float32-eq             backend=scalar                       vector=  0 hardware=false emulated=false
+compare-float64-gt             backend=scalar                       vector=  0 hardware=false emulated=false
+compare-float64-ge             backend=scalar                       vector=  0 hardware=false emulated=false
+compare-float64-lt             backend=scalar                       vector=  0 hardware=false emulated=false
+compare-float64-le             backend=scalar                       vector=  0 hardware=false emulated=false
+compare-float64-eq             backend=scalar                       vector=  0 hardware=false emulated=false
+arithmetic-int32-add           backend=scalar                       vector=  0 hardware=false emulated=false
+arithmetic-int32-sub           backend=scalar                       vector=  0 hardware=false emulated=false
+arithmetic-int32-mul           backend=scalar                       vector=  0 hardware=false emulated=false
+arithmetic-int64-add           backend=scalar                       vector=  0 hardware=false emulated=false
+arithmetic-int64-sub           backend=scalar                       vector=  0 hardware=false emulated=false
+arithmetic-int64-mul           backend=scalar                       vector=  0 hardware=false emulated=false
+arithmetic-uint32-add          backend=scalar                       vector=  0 hardware=false emulated=false
+arithmetic-uint32-sub          backend=scalar                       vector=  0 hardware=false emulated=false
+arithmetic-uint32-mul          backend=scalar                       vector=  0 hardware=false emulated=false
+arithmetic-uint64-add          backend=scalar                       vector=  0 hardware=false emulated=false
+arithmetic-uint64-sub          backend=scalar                       vector=  0 hardware=false emulated=false
+arithmetic-uint64-mul          backend=scalar                       vector=  0 hardware=false emulated=false
+arithmetic-float32-add         backend=scalar                       vector=  0 hardware=false emulated=false
+arithmetic-float32-sub         backend=scalar                       vector=  0 hardware=false emulated=false
+arithmetic-float32-mul         backend=scalar                       vector=  0 hardware=false emulated=false
+arithmetic-float32-div         backend=scalar                       vector=  0 hardware=false emulated=false
+arithmetic-float64-add         backend=scalar                       vector=  0 hardware=false emulated=false
+arithmetic-float64-sub         backend=scalar                       vector=  0 hardware=false emulated=false
+arithmetic-float64-mul         backend=scalar                       vector=  0 hardware=false emulated=false
+arithmetic-float64-div         backend=scalar                       vector=  0 hardware=false emulated=false
+boolean-and                    backend=scalar                       vector=  0 hardware=false emulated=false
+boolean-or                     backend=scalar                       vector=  0 hardware=false emulated=false
+boolean-not                    backend=scalar                       vector=  0 hardware=false emulated=false
+hash64-batch                   backend=scalar                       vector=  0 hardware=false emulated=false
+hash128-batch                  backend=scalar                       vector=  0 hardware=false emulated=false
+int64-scale                    backend=scalar                       vector=  0 hardware=false emulated=false
+string-byte-length             backend=scalar                       vector=  0 hardware=false emulated=false
+string-utf8-length             backend=scalar                       vector=  0 hardware=false emulated=false
+string-match-equal             backend=scalar                       vector=  0 hardware=false emulated=false
+string-match-prefix            backend=scalar                       vector=  0 hardware=false emulated=false
+string-match-suffix            backend=scalar                       vector=  0 hardware=false emulated=false
+string-match-contains          backend=scalar                       vector=  0 hardware=false emulated=false
+compact-int8                   backend=scalar                       vector=  0 hardware=false emulated=false
+compact-int16                  backend=scalar                       vector=  0 hardware=false emulated=false
+compact-int32                  backend=scalar                       vector=  0 hardware=false emulated=false
+compact-int64                  backend=scalar                       vector=  0 hardware=false emulated=false
+compact-uint8                  backend=scalar                       vector=  0 hardware=false emulated=false
+compact-uint16                 backend=scalar                       vector=  0 hardware=false emulated=false
+compact-uint32                 backend=scalar                       vector=  0 hardware=false emulated=false
+compact-uint64                 backend=scalar                       vector=  0 hardware=false emulated=false
+compact-float32                backend=scalar                       vector=  0 hardware=false emulated=false
+compact-float64                backend=scalar                       vector=  0 hardware=false emulated=false
+ok  	gocolumn/aggregate	(cached)
+?   	gocolumn/cmd/demo	[no test files]
+ok  	gocolumn/cmd/kernel-info	(cached)
+?   	gocolumn/cmd/lazy-demo	[no test files]
+?   	gocolumn/costmodel	[no test files]
+ok  	gocolumn/engine	1.942s
+ok  	gocolumn/expr	3.210s
+ok  	gocolumn/hashagg	(cached)
+ok  	gocolumn/internal/benchtrack	(cached)
+?   	gocolumn/internal/cmd/gensimd	[no test files]
+ok  	gocolumn/internal/fixturegen	(cached)
+?   	gocolumn/internal/hashmix	[no test files]
+ok  	gocolumn/internal/kernelgate	(cached)
+ok  	gocolumn/internal/oracle	13.551s
+?   	gocolumn/internal/platformcal	[no test files]
+ok  	gocolumn/internal/proptest	0.073s
+ok  	gocolumn/join	(cached)
+ok  	gocolumn/kernel	(cached)
+ok  	gocolumn/lazy	1.827s
+?   	gocolumn/logical	[no test files]
+ok  	gocolumn/memory	(cached)
+?   	gocolumn/observer	[no test files]
+ok  	gocolumn/optimizer	(cached)
+ok  	gocolumn/physical	0.226s
+ok  	gocolumn/pipeline	0.097s
+ok  	gocolumn/planner	(cached)
+ok  	gocolumn/radix	(cached)
+ok  	gocolumn/scheduler	(cached)
+ok  	gocolumn/source	(cached)
+ok  	gocolumn/source/arrowrecord	(cached)
+ok  	gocolumn/source/inmemory	(cached)
+?   	gocolumn/source/internal/batchview	[no test files]
+ok  	gocolumn/source/parquet	0.614s
+ok  	gocolumn/tools/benchtrack	(cached)
+?   	gocolumn/tools/checkgodoc	[no test files]
+ok  	gocolumn/tools/genfallbackfixture	(cached)
+ok  	gocolumn/tools/genfixture	(cached)
+ok  	gocolumn/tools/kernelgate	(cached)
+arch=amd64 mode=auto
+compare-int8-gt                backend=scalar                       vector=  0 hardware=false emulated=false
+compare-int8-ge                backend=scalar                       vector=  0 hardware=false emulated=false
+compare-int8-lt                backend=scalar                       vector=  0 hardware=false emulated=false
+compare-int8-le                backend=scalar                       vector=  0 hardware=false emulated=false
+compare-int8-eq                backend=scalar                       vector=  0 hardware=false emulated=false
+compare-int16-gt               backend=scalar                       vector=  0 hardware=false emulated=false
+compare-int16-ge               backend=scalar                       vector=  0 hardware=false emulated=false
+compare-int16-lt               backend=scalar                       vector=  0 hardware=false emulated=false
+compare-int16-le               backend=scalar                       vector=  0 hardware=false emulated=false
+compare-int16-eq               backend=scalar                       vector=  0 hardware=false emulated=false
+compare-int32-gt               backend=scalar                       vector=  0 hardware=false emulated=false
+compare-int32-ge               backend=scalar                       vector=  0 hardware=false emulated=false
+compare-int32-lt               backend=scalar                       vector=  0 hardware=false emulated=false
+compare-int32-le               backend=scalar                       vector=  0 hardware=false emulated=false
+compare-int32-eq               backend=scalar                       vector=  0 hardware=false emulated=false
+compare-int64-gt               backend=scalar                       vector=  0 hardware=false emulated=false
+compare-int64-ge               backend=scalar                       vector=  0 hardware=false emulated=false
+compare-int64-lt               backend=scalar                       vector=  0 hardware=false emulated=false
+compare-int64-le               backend=scalar                       vector=  0 hardware=false emulated=false
+compare-int64-eq               backend=scalar                       vector=  0 hardware=false emulated=false
+compare-uint8-gt               backend=scalar                       vector=  0 hardware=false emulated=false
+compare-uint8-ge               backend=scalar                       vector=  0 hardware=false emulated=false
+compare-uint8-lt               backend=scalar                       vector=  0 hardware=false emulated=false
+compare-uint8-le               backend=scalar                       vector=  0 hardware=false emulated=false
+compare-uint8-eq               backend=scalar                       vector=  0 hardware=false emulated=false
+compare-uint16-gt              backend=scalar                       vector=  0 hardware=false emulated=false
+compare-uint16-ge              backend=scalar                       vector=  0 hardware=false emulated=false
+compare-uint16-lt              backend=scalar                       vector=  0 hardware=false emulated=false
+compare-uint16-le              backend=scalar                       vector=  0 hardware=false emulated=false
+compare-uint16-eq              backend=scalar                       vector=  0 hardware=false emulated=false
+compare-uint32-gt              backend=scalar                       vector=  0 hardware=false emulated=false
+compare-uint32-ge              backend=scalar                       vector=  0 hardware=false emulated=false
+compare-uint32-lt              backend=scalar                       vector=  0 hardware=false emulated=false
+compare-uint32-le              backend=scalar                       vector=  0 hardware=false emulated=false
+compare-uint32-eq              backend=scalar                       vector=  0 hardware=false emulated=false
+compare-uint64-gt              backend=scalar                       vector=  0 hardware=false emulated=false
+compare-uint64-ge              backend=scalar                       vector=  0 hardware=false emulated=false
+compare-uint64-lt              backend=scalar                       vector=  0 hardware=false emulated=false
+compare-uint64-le              backend=scalar                       vector=  0 hardware=false emulated=false
+compare-uint64-eq              backend=scalar                       vector=  0 hardware=false emulated=false
+compare-float32-gt             backend=scalar                       vector=  0 hardware=false emulated=false
+compare-float32-ge             backend=scalar                       vector=  0 hardware=false emulated=false
+compare-float32-lt             backend=scalar                       vector=  0 hardware=false emulated=false
+compare-float32-le             backend=scalar                       vector=  0 hardware=false emulated=false
+compare-float32-eq             backend=scalar                       vector=  0 hardware=false emulated=false
+compare-float64-gt             backend=scalar                       vector=  0 hardware=false emulated=false
+compare-float64-ge             backend=scalar                       vector=  0 hardware=false emulated=false
+compare-float64-lt             backend=scalar                       vector=  0 hardware=false emulated=false
+compare-float64-le             backend=scalar                       vector=  0 hardware=false emulated=false
+compare-float64-eq             backend=scalar                       vector=  0 hardware=false emulated=false
+arithmetic-int32-add           backend=scalar                       vector=  0 hardware=false emulated=false
+arithmetic-int32-sub           backend=scalar                       vector=  0 hardware=false emulated=false
+arithmetic-int32-mul           backend=scalar                       vector=  0 hardware=false emulated=false
+arithmetic-int64-add           backend=scalar                       vector=  0 hardware=false emulated=false
+arithmetic-int64-sub           backend=scalar                       vector=  0 hardware=false emulated=false
+arithmetic-int64-mul           backend=scalar                       vector=  0 hardware=false emulated=false
+arithmetic-uint32-add          backend=scalar                       vector=  0 hardware=false emulated=false
+arithmetic-uint32-sub          backend=scalar                       vector=  0 hardware=false emulated=false
+arithmetic-uint32-mul          backend=scalar                       vector=  0 hardware=false emulated=false
+arithmetic-uint64-add          backend=scalar                       vector=  0 hardware=false emulated=false
+arithmetic-uint64-sub          backend=scalar                       vector=  0 hardware=false emulated=false
+arithmetic-uint64-mul          backend=scalar                       vector=  0 hardware=false emulated=false
+arithmetic-float32-add         backend=scalar                       vector=  0 hardware=false emulated=false
+arithmetic-float32-sub         backend=scalar                       vector=  0 hardware=false emulated=false
+arithmetic-float32-mul         backend=scalar                       vector=  0 hardware=false emulated=false
+arithmetic-float32-div         backend=scalar                       vector=  0 hardware=false emulated=false
+arithmetic-float64-add         backend=scalar                       vector=  0 hardware=false emulated=false
+arithmetic-float64-sub         backend=scalar                       vector=  0 hardware=false emulated=false
+arithmetic-float64-mul         backend=scalar                       vector=  0 hardware=false emulated=false
+arithmetic-float64-div         backend=scalar                       vector=  0 hardware=false emulated=false
+boolean-and                    backend=scalar                       vector=  0 hardware=false emulated=false
+boolean-or                     backend=scalar                       vector=  0 hardware=false emulated=false
+boolean-not                    backend=scalar                       vector=  0 hardware=false emulated=false
+hash64-batch                   backend=scalar                       vector=  0 hardware=false emulated=false
+hash128-batch                  backend=scalar                       vector=  0 hardware=false emulated=false
+int64-scale                    backend=scalar                       vector=  0 hardware=false emulated=false
+string-byte-length             backend=scalar                       vector=  0 hardware=false emulated=false
+string-utf8-length             backend=scalar                       vector=  0 hardware=false emulated=false
+string-match-equal             backend=scalar                       vector=  0 hardware=false emulated=false
+string-match-prefix            backend=scalar                       vector=  0 hardware=false emulated=false
+string-match-suffix            backend=scalar                       vector=  0 hardware=false emulated=false
+string-match-contains          backend=scalar                       vector=  0 hardware=false emulated=false
+compact-int8                   backend=scalar                       vector=  0 hardware=false emulated=false
+compact-int16                  backend=scalar                       vector=  0 hardware=false emulated=false
+compact-int32                  backend=scalar                       vector=  0 hardware=false emulated=false
+compact-int64                  backend=scalar                       vector=  0 hardware=false emulated=false
+compact-uint8                  backend=scalar                       vector=  0 hardware=false emulated=false
+compact-uint16                 backend=scalar                       vector=  0 hardware=false emulated=false
+compact-uint32                 backend=scalar                       vector=  0 hardware=false emulated=false
+compact-uint64                 backend=scalar                       vector=  0 hardware=false emulated=false
+compact-float32                backend=scalar                       vector=  0 hardware=false emulated=false
+compact-float64                backend=scalar                       vector=  0 hardware=false emulated=false
+arch=amd64 mode=forced-simd
+compare-int8-gt                backend=scalar                       vector=  0 hardware=false emulated=false
+compare-int8-ge                backend=scalar                       vector=  0 hardware=false emulated=false
+compare-int8-lt                backend=scalar                       vector=  0 hardware=false emulated=false
+compare-int8-le                backend=scalar                       vector=  0 hardware=false emulated=false
+compare-int8-eq                backend=scalar                       vector=  0 hardware=false emulated=false
+compare-int16-gt               backend=scalar                       vector=  0 hardware=false emulated=false
+compare-int16-ge               backend=scalar                       vector=  0 hardware=false emulated=false
+compare-int16-lt               backend=scalar                       vector=  0 hardware=false emulated=false
+compare-int16-le               backend=scalar                       vector=  0 hardware=false emulated=false
+compare-int16-eq               backend=scalar                       vector=  0 hardware=false emulated=false
+compare-int32-gt               backend=scalar                       vector=  0 hardware=false emulated=false
+compare-int32-ge               backend=scalar                       vector=  0 hardware=false emulated=false
+compare-int32-lt               backend=scalar                       vector=  0 hardware=false emulated=false
+compare-int32-le               backend=scalar                       vector=  0 hardware=false emulated=false
+compare-int32-eq               backend=scalar                       vector=  0 hardware=false emulated=false
+compare-int64-gt               backend=scalar                       vector=  0 hardware=false emulated=false
+compare-int64-ge               backend=scalar                       vector=  0 hardware=false emulated=false
+compare-int64-lt               backend=scalar                       vector=  0 hardware=false emulated=false
+compare-int64-le               backend=scalar                       vector=  0 hardware=false emulated=false
+compare-int64-eq               backend=scalar                       vector=  0 hardware=false emulated=false
+compare-uint8-gt               backend=scalar                       vector=  0 hardware=false emulated=false
+compare-uint8-ge               backend=scalar                       vector=  0 hardware=false emulated=false
+compare-uint8-lt               backend=scalar                       vector=  0 hardware=false emulated=false
+compare-uint8-le               backend=scalar                       vector=  0 hardware=false emulated=false
+compare-uint8-eq               backend=scalar                       vector=  0 hardware=false emulated=false
+compare-uint16-gt              backend=scalar                       vector=  0 hardware=false emulated=false
+compare-uint16-ge              backend=scalar                       vector=  0 hardware=false emulated=false
+compare-uint16-lt              backend=scalar                       vector=  0 hardware=false emulated=false
+compare-uint16-le              backend=scalar                       vector=  0 hardware=false emulated=false
+compare-uint16-eq              backend=scalar                       vector=  0 hardware=false emulated=false
+compare-uint32-gt              backend=scalar                       vector=  0 hardware=false emulated=false
+compare-uint32-ge              backend=scalar                       vector=  0 hardware=false emulated=false
+compare-uint32-lt              backend=scalar                       vector=  0 hardware=false emulated=false
+compare-uint32-le              backend=scalar                       vector=  0 hardware=false emulated=false
+compare-uint32-eq              backend=scalar                       vector=  0 hardware=false emulated=false
+compare-uint64-gt              backend=scalar                       vector=  0 hardware=false emulated=false
+compare-uint64-ge              backend=scalar                       vector=  0 hardware=false emulated=false
+compare-uint64-lt              backend=scalar                       vector=  0 hardware=false emulated=false
+compare-uint64-le              backend=scalar                       vector=  0 hardware=false emulated=false
+compare-uint64-eq              backend=scalar                       vector=  0 hardware=false emulated=false
+compare-float32-gt             backend=portable-simd                vector=512 hardware=true  emulated=false
+compare-float32-ge             backend=portable-simd                vector=512 hardware=true  emulated=false
+compare-float32-lt             backend=portable-simd                vector=512 hardware=true  emulated=false
+compare-float32-le             backend=portable-simd                vector=512 hardware=true  emulated=false
+compare-float32-eq             backend=portable-simd                vector=512 hardware=true  emulated=false
+compare-float64-gt             backend=scalar                       vector=  0 hardware=false emulated=false
+compare-float64-ge             backend=scalar                       vector=  0 hardware=false emulated=false
+compare-float64-lt             backend=scalar                       vector=  0 hardware=false emulated=false
+compare-float64-le             backend=scalar                       vector=  0 hardware=false emulated=false
+compare-float64-eq             backend=scalar                       vector=  0 hardware=false emulated=false
+arithmetic-int32-add           backend=scalar                       vector=  0 hardware=false emulated=false
+arithmetic-int32-sub           backend=scalar                       vector=  0 hardware=false emulated=false
+arithmetic-int32-mul           backend=scalar                       vector=  0 hardware=false emulated=false
+arithmetic-int64-add           backend=scalar                       vector=  0 hardware=false emulated=false
+arithmetic-int64-sub           backend=scalar                       vector=  0 hardware=false emulated=false
+arithmetic-int64-mul           backend=scalar                       vector=  0 hardware=false emulated=false
+arithmetic-uint32-add          backend=scalar                       vector=  0 hardware=false emulated=false
+arithmetic-uint32-sub          backend=scalar                       vector=  0 hardware=false emulated=false
+arithmetic-uint32-mul          backend=scalar                       vector=  0 hardware=false emulated=false
+arithmetic-uint64-add          backend=scalar                       vector=  0 hardware=false emulated=false
+arithmetic-uint64-sub          backend=scalar                       vector=  0 hardware=false emulated=false
+arithmetic-uint64-mul          backend=scalar                       vector=  0 hardware=false emulated=false
+arithmetic-float32-add         backend=scalar                       vector=  0 hardware=false emulated=false
+arithmetic-float32-sub         backend=scalar                       vector=  0 hardware=false emulated=false
+arithmetic-float32-mul         backend=scalar                       vector=  0 hardware=false emulated=false
+arithmetic-float32-div         backend=scalar                       vector=  0 hardware=false emulated=false
+arithmetic-float64-add         backend=scalar                       vector=  0 hardware=false emulated=false
+arithmetic-float64-sub         backend=portable-simd                vector=512 hardware=true  emulated=false
+arithmetic-float64-mul         backend=portable-simd                vector=512 hardware=true  emulated=false
+arithmetic-float64-div         backend=portable-simd                vector=512 hardware=true  emulated=false
+boolean-and                    backend=scalar                       vector=  0 hardware=false emulated=false
+boolean-or                     backend=scalar                       vector=  0 hardware=false emulated=false
+boolean-not                    backend=scalar                       vector=  0 hardware=false emulated=false
+hash64-batch                   backend=archsimd-avx512-hash         vector=512 hardware=true  emulated=false
+hash128-batch                  backend=scalar                       vector=  0 hardware=false emulated=false
+int64-scale                    backend=scalar                       vector=  0 hardware=false emulated=false
+string-byte-length             backend=scalar                       vector=  0 hardware=false emulated=false
+string-utf8-length             backend=scalar                       vector=  0 hardware=false emulated=false
+string-match-equal             backend=scalar                       vector=  0 hardware=false emulated=false
+string-match-prefix            backend=scalar                       vector=  0 hardware=false emulated=false
+string-match-suffix            backend=scalar                       vector=  0 hardware=false emulated=false
+string-match-contains          backend=scalar                       vector=  0 hardware=false emulated=false
+compact-int8                   backend=scalar                       vector=  0 hardware=false emulated=false
+compact-int16                  backend=scalar                       vector=  0 hardware=false emulated=false
+compact-int32                  backend=archsimd-avx512-compress     vector=512 hardware=true  emulated=false
+compact-int64                  backend=archsimd-avx512-compress     vector=512 hardware=true  emulated=false
+compact-uint8                  backend=scalar                       vector=  0 hardware=false emulated=false
+compact-uint16                 backend=scalar                       vector=  0 hardware=false emulated=false
+compact-uint32                 backend=archsimd-avx512-compress     vector=512 hardware=true  emulated=false
+compact-uint64                 backend=archsimd-avx512-compress     vector=512 hardware=true  emulated=false
+compact-float32                backend=scalar                       vector=  0 hardware=false emulated=false
+compact-float64                backend=archsimd-avx512-compress     vector=512 hardware=true  emulated=false
+ok  	gocolumn/kernel	(cached)
+ok  	gocolumn/expr	1.878s
+ok  	gocolumn/physical	0.143s
+ok  	gocolumn/engine	1.122s
+ok  	gocolumn/lazy	1.628s
+ok  	gocolumn/optimizer	(cached)
+ok  	gocolumn/memory	(cached)
+ok  	gocolumn/source/arrowrecord	(cached)
+arch=amd64 mode=auto
+compare-int8-gt                backend=scalar                       vector=  0 hardware=false emulated=false
+compare-int8-ge                backend=scalar                       vector=  0 hardware=false emulated=false
+compare-int8-lt                backend=scalar                       vector=  0 hardware=false emulated=false
+compare-int8-le                backend=scalar                       vector=  0 hardware=false emulated=false
+compare-int8-eq                backend=scalar                       vector=  0 hardware=false emulated=false
+compare-int16-gt               backend=scalar                       vector=  0 hardware=false emulated=false
+compare-int16-ge               backend=scalar                       vector=  0 hardware=false emulated=false
+compare-int16-lt               backend=scalar                       vector=  0 hardware=false emulated=false
+compare-int16-le               backend=scalar                       vector=  0 hardware=false emulated=false
+compare-int16-eq               backend=scalar                       vector=  0 hardware=false emulated=false
+compare-int32-gt               backend=scalar                       vector=  0 hardware=false emulated=false
+compare-int32-ge               backend=scalar                       vector=  0 hardware=false emulated=false
+compare-int32-lt               backend=scalar                       vector=  0 hardware=false emulated=false
+compare-int32-le               backend=scalar                       vector=  0 hardware=false emulated=false
+compare-int32-eq               backend=scalar                       vector=  0 hardware=false emulated=false
+compare-int64-gt               backend=scalar                       vector=  0 hardware=false emulated=false
+compare-int64-ge               backend=scalar                       vector=  0 hardware=false emulated=false
+compare-int64-lt               backend=scalar                       vector=  0 hardware=false emulated=false
+compare-int64-le               backend=scalar                       vector=  0 hardware=false emulated=false
+compare-int64-eq               backend=scalar                       vector=  0 hardware=false emulated=false
+compare-uint8-gt               backend=scalar                       vector=  0 hardware=false emulated=false
+compare-uint8-ge               backend=scalar                       vector=  0 hardware=false emulated=false
+compare-uint8-lt               backend=scalar                       vector=  0 hardware=false emulated=false
+compare-uint8-le               backend=scalar                       vector=  0 hardware=false emulated=false
+compare-uint8-eq               backend=scalar                       vector=  0 hardware=false emulated=false
+compare-uint16-gt              backend=scalar                       vector=  0 hardware=false emulated=false
+compare-uint16-ge              backend=scalar                       vector=  0 hardware=false emulated=false
+compare-uint16-lt              backend=scalar                       vector=  0 hardware=false emulated=false
+compare-uint16-le              backend=scalar                       vector=  0 hardware=false emulated=false
+compare-uint16-eq              backend=scalar                       vector=  0 hardware=false emulated=false
+compare-uint32-gt              backend=scalar                       vector=  0 hardware=false emulated=false
+compare-uint32-ge              backend=scalar                       vector=  0 hardware=false emulated=false
+compare-uint32-lt              backend=scalar                       vector=  0 hardware=false emulated=false
+compare-uint32-le              backend=scalar                       vector=  0 hardware=false emulated=false
+compare-uint32-eq              backend=scalar                       vector=  0 hardware=false emulated=false
+compare-uint64-gt              backend=scalar                       vector=  0 hardware=false emulated=false
+compare-uint64-ge              backend=scalar                       vector=  0 hardware=false emulated=false
+compare-uint64-lt              backend=scalar                       vector=  0 hardware=false emulated=false
+compare-uint64-le              backend=scalar                       vector=  0 hardware=false emulated=false
+compare-uint64-eq              backend=scalar                       vector=  0 hardware=false emulated=false
+compare-float32-gt             backend=scalar                       vector=  0 hardware=false emulated=false
+compare-float32-ge             backend=scalar                       vector=  0 hardware=false emulated=false
+compare-float32-lt             backend=scalar                       vector=  0 hardware=false emulated=false
+compare-float32-le             backend=scalar                       vector=  0 hardware=false emulated=false
+compare-float32-eq             backend=scalar                       vector=  0 hardware=false emulated=false
+compare-float64-gt             backend=scalar                       vector=  0 hardware=false emulated=false
+compare-float64-ge             backend=scalar                       vector=  0 hardware=false emulated=false
+compare-float64-lt             backend=scalar                       vector=  0 hardware=false emulated=false
+compare-float64-le             backend=scalar                       vector=  0 hardware=false emulated=false
+compare-float64-eq             backend=scalar                       vector=  0 hardware=false emulated=false
+arithmetic-int32-add           backend=scalar                       vector=  0 hardware=false emulated=false
+arithmetic-int32-sub           backend=scalar                       vector=  0 hardware=false emulated=false
+arithmetic-int32-mul           backend=scalar                       vector=  0 hardware=false emulated=false
+arithmetic-int64-add           backend=scalar                       vector=  0 hardware=false emulated=false
+arithmetic-int64-sub           backend=scalar                       vector=  0 hardware=false emulated=false
+arithmetic-int64-mul           backend=scalar                       vector=  0 hardware=false emulated=false
+arithmetic-uint32-add          backend=scalar                       vector=  0 hardware=false emulated=false
+arithmetic-uint32-sub          backend=scalar                       vector=  0 hardware=false emulated=false
+arithmetic-uint32-mul          backend=scalar                       vector=  0 hardware=false emulated=false
+arithmetic-uint64-add          backend=scalar                       vector=  0 hardware=false emulated=false
+arithmetic-uint64-sub          backend=scalar                       vector=  0 hardware=false emulated=false
+arithmetic-uint64-mul          backend=scalar                       vector=  0 hardware=false emulated=false
+arithmetic-float32-add         backend=scalar                       vector=  0 hardware=false emulated=false
+arithmetic-float32-sub         backend=scalar                       vector=  0 hardware=false emulated=false
+arithmetic-float32-mul         backend=scalar                       vector=  0 hardware=false emulated=false
+arithmetic-float32-div         backend=scalar                       vector=  0 hardware=false emulated=false
+arithmetic-float64-add         backend=scalar                       vector=  0 hardware=false emulated=false
+arithmetic-float64-sub         backend=scalar                       vector=  0 hardware=false emulated=false
+arithmetic-float64-mul         backend=scalar                       vector=  0 hardware=false emulated=false
+arithmetic-float64-div         backend=scalar                       vector=  0 hardware=false emulated=false
+boolean-and                    backend=scalar                       vector=  0 hardware=false emulated=false
+boolean-or                     backend=scalar                       vector=  0 hardware=false emulated=false
+boolean-not                    backend=scalar                       vector=  0 hardware=false emulated=false
+hash64-batch                   backend=scalar                       vector=  0 hardware=false emulated=false
+hash128-batch                  backend=scalar                       vector=  0 hardware=false emulated=false
+int64-scale                    backend=scalar                       vector=  0 hardware=false emulated=false
+string-byte-length             backend=scalar                       vector=  0 hardware=false emulated=false
+string-utf8-length             backend=scalar                       vector=  0 hardware=false emulated=false
+string-match-equal             backend=scalar                       vector=  0 hardware=false emulated=false
+string-match-prefix            backend=scalar                       vector=  0 hardware=false emulated=false
+string-match-suffix            backend=scalar                       vector=  0 hardware=false emulated=false
+string-match-contains          backend=scalar                       vector=  0 hardware=false emulated=false
+compact-int8                   backend=scalar                       vector=  0 hardware=false emulated=false
+compact-int16                  backend=scalar                       vector=  0 hardware=false emulated=false
+compact-int32                  backend=scalar                       vector=  0 hardware=false emulated=false
+compact-int64                  backend=scalar                       vector=  0 hardware=false emulated=false
+compact-uint8                  backend=scalar                       vector=  0 hardware=false emulated=false
+compact-uint16                 backend=scalar                       vector=  0 hardware=false emulated=false
+compact-uint32                 backend=scalar                       vector=  0 hardware=false emulated=false
+compact-uint64                 backend=scalar                       vector=  0 hardware=false emulated=false
+compact-float32                backend=scalar                       vector=  0 hardware=false emulated=false
+compact-float64                backend=scalar                       vector=  0 hardware=false emulated=false
+ok  	gocolumn/kernel	(cached)
+ok  	gocolumn/expr	(cached)
+ok  	gocolumn/engine	(cached)
+ok  	gocolumn/radix	(cached)
+ok  	gocolumn/engine	11.478s
+ok  	gocolumn/hashagg	(cached)
+ok  	gocolumn/join	(cached)
+ok  	gocolumn/radix	(cached)
+ok  	gocolumn/scheduler	(cached)
+ok  	gocolumn/lazy	10.909s
+ok  	gocolumn/physical	1.674s
+ok  	gocolumn/optimizer	1.016s
+ok  	gocolumn/memory	(cached)
+ok  	gocolumn/source/parquet	3.830s
+ok  	gocolumn/source/arrowrecord	1.016s
+--- logical ---
+AGGREGATE keys=[key] aggs=[sum(value) AS sum, count(*) AS count]
+  PROJECTION [key, value]
+    FILTER (pred > 32767)
+      SCAN source=parquet(./testdata/bench-1m.parquet) columns=ALL
+--- optimized ---
+rules=[predicate-pushdown]
+AGGREGATE keys=[key] aggs=[sum(value) AS sum, count(*) AS count]
+  PROJECTION [key, value]
+    FILTER (pred > 32767)
+      SCAN source=parquet(./testdata/bench-1m.parquet) columns=[pred, key, value] pushed_predicate=(pred > 32767)
+--- explain analyze ---
+LOGICAL
+AGGREGATE keys=[key] aggs=[sum(value) AS sum, count(*) AS count]
+  PROJECTION [key, value]
+    FILTER (pred > 32767)
+      SCAN source=parquet(./testdata/bench-1m.parquet) columns=ALL
+OPTIMIZED
+rules=[predicate-pushdown]
+AGGREGATE keys=[key] aggs=[sum(value) AS sum, count(*) AS count]
+  PROJECTION [key, value]
+    FILTER (pred > 32767)
+      SCAN source=parquet(./testdata/bench-1m.parquet) columns=[pred, key, value] pushed_predicate=(pred > 32767)
+PHYSICAL
+AGGREGATE keys=[key] aggs=[sum(value) AS sum, count(*) AS count]
+  PROJECTION [key, value]
+    FILTER (pred > 32767)
+      SCAN source=parquet(./testdata/bench-1m.parquet) columns=[pred, key, value] pushed_predicate=(pred > 32767) partitions=17/17 rows=1048576/1048576
+PUSHDOWN columns=[pred, key, value] partitions=17/17 row_groups=17/17 pruned=0 rows=1048576/1048576 source_bytes=3561811/3561811
+PHYSICAL row-pipeline partitions=1 columns=[key, sum, count]
+STREAM PIPELINE Analyze
+  STREAM BLOCKING Aggregate groups=1 aggregates=2 mode=resident-stream strategy=partitioned-hash workers=4
+ESTIMATE rows=65536
+ANALYZE prepare=296.266µs execute=77.62571ms prepare_alloc=134088B execute_alloc=92420832B output_rows=219196 output_batches=4 first_batch=51.796507ms termination=completed groups=219196 selected_rows=472475 strategy=partitioned-hash
+EXECUTE OPERATORS
+id    kind        calls   input_rows   output_rows   output_bytes   inclusive      self           label
+op01  scan          133            0       1048576       20971520   24.678432ms   24.678432ms   parquet(./testdata/bench-1m.parquet) parquet_batches=32 parquet_max_compressed_page_bytes=8388608 parquet_max_uncompressed_page_bytes=8388608 parquet_memory_scope=decoded vector capacities, typed scratch and borrowed-view headers; excludes Arrow pages, dictionaries, codecs, stream metadata and Go object overhead parquet_peak_managed_bytes=163840 parquet_rows=262084 parquet_string_page_reads=0 parquet_string_replays=0
+op02  filter        133            0        472475        9449500   33.571081ms    8.892649ms   residual filter
+op03  projection    177            0        472475        5669700   35.437006ms    1.865925ms   column projection
+op04  aggregate       5            0        219196        4411320   77.457817ms   42.020811ms   native aggregate stream aggregate_wave_bytes=405504 aggregate_wave_rows=32768 checksum=236716301 groups=219196 kernel_arch=amd64 kernel_mode=auto peak_memory_bytes=24017576 peak_memory_scope=query selected_rows=472475 spill_runs=0 state_partitions=256 strategy=partitioned-hash workers=4
+
+--- physical ---
+AGGREGATE keys=[key] aggs=[sum(value) AS sum, count(*) AS count]
+  PROJECTION [key, value]
+    FILTER (pred > 32767)
+      SCAN source=parquet(./testdata/bench-1m.parquet) columns=[pred, key, value] pushed_predicate=(pred > 32767) partitions=17/17 rows=1048576/1048576
+EXECUTION policy=auto memory_limit=unbounded spill_limit=disabled workers=4 pipeline_workers=4 target_morsel_bytes=1048576 max_in_flight_bytes=67108864 ordering=stable
+PHYSICAL strategy=partitioned-hash workers=4 key_width=4 predicate_ops=1 feedback_samples=0 est_selectivity=0.5000 est_cardinality=65536
+PUSHDOWN columns=[pred, key, value] partitions=17/17 row_groups=17/17 pruned=0 rows=1048576/1048576 source_bytes=3561811/3561811
+STREAM MEMORY_SINK Collect
+  STREAM BLOCKING Aggregate
+    STREAM PIPELINE Project
+      STREAM PIPELINE Filter
+        STREAM PIPELINE Scan
+run=1 groups=219196 selected=472475 checksum=236716301 strategy=partitioned-hash workers=4 elapsed=21.09831ms
+run=2 groups=219196 selected=472475 checksum=236716301 strategy=partitioned-hash workers=4 elapsed=19.862867ms
+run=3 groups=219196 selected=472475 checksum=236716301 strategy=partitioned-hash workers=4 elapsed=17.398588ms
+
+Additional full SIMD expr race:
+ok  	gocolumn/expr	7.976s
+Additional forced SIMD width runs:
+====simd=+128
+ok  	gocolumn/kernel	(cached)
+ok  	gocolumn/expr	(cached)
+ok  	gocolumn/engine	(cached)
+ok  	gocolumn/radix	(cached)
+====simd=+256
+ok  	gocolumn/kernel	0.018s
+ok  	gocolumn/expr	1.644s
+ok  	gocolumn/engine	1.066s
+ok  	gocolumn/radix	0.003s
+====simd=+512
+ok  	gocolumn/kernel	0.013s
+ok  	gocolumn/expr	1.509s
+ok  	gocolumn/engine	1.008s
+ok  	gocolumn/radix	0.003s

@@ -1,0 +1,30 @@
+goos: linux
+goarch: amd64
+pkg: gocolumn/expr
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkExpressionLiveness/int64/depth=8/warm-9         	     232	    748846 ns/op	   1623808 peak-managed-B	   1623808 retained-B	  87515935 rows/s	      64 B/op	       1 allocs/op
+BenchmarkExpressionLiveness/int64/depth=8/warm-9         	     249	    890721 ns/op	   1623808 peak-managed-B	   1623808 retained-B	  73576340 rows/s	      64 B/op	       1 allocs/op
+BenchmarkExpressionLiveness/int64/depth=8/warm-9         	     256	    812310 ns/op	   1623808 peak-managed-B	   1623808 retained-B	  80678599 rows/s	      64 B/op	       1 allocs/op
+BenchmarkExpressionLiveness/int64/depth=8/cold-9         	     144	   1357668 ns/op	   1623808 peak-managed-B	   1623808 retained-B	  48271004 rows/s	 1626572 B/op	      68 allocs/op
+BenchmarkExpressionLiveness/int64/depth=8/cold-9         	     135	   1155350 ns/op	   1623808 peak-managed-B	   1623808 retained-B	  56723924 rows/s	 1626494 B/op	      68 allocs/op
+BenchmarkExpressionLiveness/int64/depth=8/cold-9         	     157	   1494500 ns/op	   1623808 peak-managed-B	   1623808 retained-B	  43851447 rows/s	 1626498 B/op	      68 allocs/op
+BenchmarkExpressionLiveness/int64/depth=128/warm-9       	      13	  13224027 ns/op	   1938688 peak-managed-B	   1938688 retained-B	   4955828 rows/s	      64 B/op	       1 allocs/op
+BenchmarkExpressionLiveness/int64/depth=128/warm-9       	      14	  12989429 ns/op	   1938688 peak-managed-B	   1938688 retained-B	   5045333 rows/s	      64 B/op	       1 allocs/op
+BenchmarkExpressionLiveness/int64/depth=128/warm-9       	      16	  12718228 ns/op	   1938688 peak-managed-B	   1938688 retained-B	   5152919 rows/s	      64 B/op	       1 allocs/op
+BenchmarkExpressionLiveness/int64/depth=128/cold-9       	      13	  14470057 ns/op	   1938688 peak-managed-B	   1938688 retained-B	   4529077 rows/s	 1951105 B/op	     548 allocs/op
+BenchmarkExpressionLiveness/int64/depth=128/cold-9       	      14	  15603987 ns/op	   1938688 peak-managed-B	   1938688 retained-B	   4199952 rows/s	 1951120 B/op	     548 allocs/op
+BenchmarkExpressionLiveness/int64/depth=128/cold-9       	      10	  15942441 ns/op	   1938688 peak-managed-B	   1938688 retained-B	   4110788 rows/s	 1951088 B/op	     548 allocs/op
+BenchmarkExpressionLiveness/bool/depth=8/warm-9          	    1069	    150482 ns/op	     72768 peak-managed-B	     72768 retained-B	 435507635 rows/s	       0 B/op	       0 allocs/op
+BenchmarkExpressionLiveness/bool/depth=8/warm-9          	     942	    166684 ns/op	     72768 peak-managed-B	     72768 retained-B	 393175728 rows/s	       0 B/op	       0 allocs/op
+BenchmarkExpressionLiveness/bool/depth=8/warm-9          	    1022	    151883 ns/op	     72768 peak-managed-B	     72768 retained-B	 431489976 rows/s	       0 B/op	       0 allocs/op
+BenchmarkExpressionLiveness/bool/depth=8/cold-9          	     990	    176260 ns/op	     72768 peak-managed-B	     72768 retained-B	 371813907 rows/s	   75240 B/op	      56 allocs/op
+BenchmarkExpressionLiveness/bool/depth=8/cold-9          	     960	    212032 ns/op	     72768 peak-managed-B	     72768 retained-B	 309085392 rows/s	   75240 B/op	      56 allocs/op
+BenchmarkExpressionLiveness/bool/depth=8/cold-9          	    1184	    180147 ns/op	     72768 peak-managed-B	     72768 retained-B	 363791090 rows/s	   75241 B/op	      56 allocs/op
+BenchmarkExpressionLiveness/bool/depth=128/warm-9        	     579	    284386 ns/op	    387648 peak-managed-B	    387648 retained-B	 230447450 rows/s	       0 B/op	       0 allocs/op
+BenchmarkExpressionLiveness/bool/depth=128/warm-9        	     682	    294992 ns/op	    387648 peak-managed-B	    387648 retained-B	 222162241 rows/s	       0 B/op	       0 allocs/op
+BenchmarkExpressionLiveness/bool/depth=128/warm-9        	     626	    339249 ns/op	    387648 peak-managed-B	    387648 retained-B	 193179518 rows/s	       0 B/op	       0 allocs/op
+BenchmarkExpressionLiveness/bool/depth=128/cold-9        	     374	    474360 ns/op	    387648 peak-managed-B	    387648 retained-B	 138156529 rows/s	  402413 B/op	     536 allocs/op
+BenchmarkExpressionLiveness/bool/depth=128/cold-9        	     487	    356647 ns/op	    387648 peak-managed-B	    387648 retained-B	 183755978 rows/s	  402410 B/op	     536 allocs/op
+BenchmarkExpressionLiveness/bool/depth=128/cold-9        	     488	    452031 ns/op	    387648 peak-managed-B	    387648 retained-B	 144981128 rows/s	  402412 B/op	     536 allocs/op
+PASS
+ok  	gocolumn/expr	5.845s

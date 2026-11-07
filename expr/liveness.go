@@ -6,6 +6,8 @@ import "gocolumn/memory"
 // Inputs remain live throughout their consuming instruction: kernels are never
 // asked to execute in place. Every exported root is live through evaluation.
 // Each guarded region is compiled separately and owns an independent plan.
+// Physical owners are dense, with first introductions in increasing order,
+// so workspace metadata never needs holes for dead logical registers.
 func (p *Program) planStorage() {
 	n := len(p.instructions)
 	last := make([]int, n)
@@ -30,9 +32,10 @@ func (p *Program) planStorage() {
 	// unsafe reinterpretation or aliasing of borrowed columns is involved.
 	release := make([][]int, n)
 	free := make(map[memory.DataType][]int)
+	owners := 0
 	for i := range p.instructions {
 		in := &p.instructions[i]
-		in.storageOwner = i + 1
+		in.storageOwner = 0
 		if reusableInstruction(*in) {
 			typ := instructionResultType(*in)
 			available := free[typ]
@@ -43,6 +46,10 @@ func (p *Program) planStorage() {
 			if last[i] < n {
 				release[last[i]] = append(release[last[i]], i)
 			}
+		}
+		if in.storageOwner == 0 {
+			owners++
+			in.storageOwner = owners
 		}
 		// Only subsequent instructions may overwrite values consumed here.
 		for _, dead := range release[i] {
@@ -102,4 +109,15 @@ func storageIndex(instructions []instruction, index int) int {
 
 func (w *evaluationState) ownedRegister(index int) *scalarRegister {
 	return &w.owned[storageIndex(w.program, index)]
+}
+
+// storageOwnerCount is independent of logical register count. Planned owners
+// are dense and introduced in increasing order; unplanned private programs use
+// their logical instruction indices as dedicated owners.
+func storageOwnerCount(instructions []instruction) int {
+	owners := 0
+	for i := range instructions {
+		owners = max(owners, storageIndex(instructions, i)+1)
+	}
+	return owners
 }

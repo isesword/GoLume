@@ -116,10 +116,14 @@ func scalarResize[S ~[]T, T any](dst *S, n int, slot *memory.Reservation, acquir
 	return nil
 }
 func (w *evaluationState) ensureRegisters(n int) error {
+	return w.ensureRegisterCounts(n, n)
+}
+
+func (w *evaluationState) ensureRegisterCounts(n, owners int) error {
 	if err := scalarResize(&w.regs, n, &w.storage[0], w.acquire); err != nil {
 		return err
 	}
-	if err := scalarResize(&w.owned, n, &w.storage[1], w.acquire); err != nil {
+	if err := scalarResize(&w.owned, owners, &w.storage[1], w.acquire); err != nil {
 		return err
 	}
 	return nil
