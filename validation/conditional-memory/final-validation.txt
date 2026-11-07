@@ -1,0 +1,127 @@
+++ gofmt -l expr/regions.go expr/scalar.go expr/workspace.go expr/conditional_memory_test.go expr/conditional_review_test.go
++ test -z ''
++ go test ./...
+ok  	gocolumn/aggregate	(cached)
+?   	gocolumn/cmd/demo	[no test files]
+ok  	gocolumn/cmd/kernel-info	(cached)
+?   	gocolumn/cmd/lazy-demo	[no test files]
+?   	gocolumn/costmodel	[no test files]
+ok  	gocolumn/engine	1.834s
+ok  	gocolumn/expr	3.852s
+ok  	gocolumn/hashagg	(cached)
+ok  	gocolumn/internal/benchtrack	(cached)
+?   	gocolumn/internal/cmd/gensimd	[no test files]
+ok  	gocolumn/internal/fixturegen	(cached)
+?   	gocolumn/internal/hashmix	[no test files]
+ok  	gocolumn/internal/kernelgate	(cached)
+ok  	gocolumn/internal/oracle	14.646s
+?   	gocolumn/internal/platformcal	[no test files]
+ok  	gocolumn/internal/proptest	0.062s
+ok  	gocolumn/join	(cached)
+ok  	gocolumn/kernel	(cached)
+ok  	gocolumn/lazy	2.277s
+ok  	gocolumn/logical	(cached)
+ok  	gocolumn/memory	(cached)
+?   	gocolumn/observer	[no test files]
+ok  	gocolumn/optimizer	(cached)
+ok  	gocolumn/physical	0.541s
+ok  	gocolumn/pipeline	0.093s
+ok  	gocolumn/planner	(cached)
+ok  	gocolumn/radix	(cached)
+ok  	gocolumn/scheduler	(cached)
+ok  	gocolumn/source	(cached)
+ok  	gocolumn/source/arrowrecord	(cached)
+ok  	gocolumn/source/inmemory	(cached)
+?   	gocolumn/source/internal/batchview	[no test files]
+ok  	gocolumn/source/parquet	0.730s
+ok  	gocolumn/tools/benchtrack	(cached)
+?   	gocolumn/tools/checkgodoc	[no test files]
+ok  	gocolumn/tools/genfallbackfixture	(cached)
+ok  	gocolumn/tools/genfixture	(cached)
+ok  	gocolumn/tools/kernelgate	(cached)
+ok  	gocolumn/tuplesort	(cached)
++ GOEXPERIMENT=simd
++ go test ./...
+ok  	gocolumn/aggregate	(cached)
+?   	gocolumn/cmd/demo	[no test files]
+ok  	gocolumn/cmd/kernel-info	(cached)
+?   	gocolumn/cmd/lazy-demo	[no test files]
+?   	gocolumn/costmodel	[no test files]
+ok  	gocolumn/engine	1.827s
+ok  	gocolumn/expr	3.804s
+ok  	gocolumn/hashagg	(cached)
+ok  	gocolumn/internal/benchtrack	(cached)
+?   	gocolumn/internal/cmd/gensimd	[no test files]
+ok  	gocolumn/internal/fixturegen	(cached)
+?   	gocolumn/internal/hashmix	[no test files]
+ok  	gocolumn/internal/kernelgate	(cached)
+ok  	gocolumn/internal/oracle	13.167s
+?   	gocolumn/internal/platformcal	[no test files]
+ok  	gocolumn/internal/proptest	0.047s
+ok  	gocolumn/join	(cached)
+ok  	gocolumn/kernel	(cached)
+ok  	gocolumn/lazy	2.112s
+ok  	gocolumn/logical	(cached)
+ok  	gocolumn/memory	(cached)
+?   	gocolumn/observer	[no test files]
+ok  	gocolumn/optimizer	(cached)
+ok  	gocolumn/physical	0.532s
+ok  	gocolumn/pipeline	0.086s
+ok  	gocolumn/planner	(cached)
+ok  	gocolumn/radix	(cached)
+ok  	gocolumn/scheduler	(cached)
+ok  	gocolumn/source	(cached)
+ok  	gocolumn/source/arrowrecord	(cached)
+ok  	gocolumn/source/inmemory	(cached)
+?   	gocolumn/source/internal/batchview	[no test files]
+ok  	gocolumn/source/parquet	0.669s
+ok  	gocolumn/tools/benchtrack	(cached)
+?   	gocolumn/tools/checkgodoc	[no test files]
+ok  	gocolumn/tools/genfallbackfixture	(cached)
+ok  	gocolumn/tools/genfixture	(cached)
+ok  	gocolumn/tools/kernelgate	(cached)
+ok  	gocolumn/tuplesort	(cached)
++ GOEXPERIMENT=simd
++ go test -race ./expr ./lazy ./physical ./engine
+ok  	gocolumn/expr	16.488s
+ok  	gocolumn/lazy	(cached)
+ok  	gocolumn/physical	(cached)
+ok  	gocolumn/engine	(cached)
++ go vet ./...
++ go run ./tools/checkgodoc
+GoDoc check: PASS (package docs and exported API comments follow naming conventions)
++ GOOS=linux
++ GOARCH=arm64
++ GOEXPERIMENT=simd
++ go build -buildvcs=false ./...
++ for w in 0 +128 +256 +512
++ GOEXPERIMENT=simd
++ GODEBUG=simd=0
++ go test ./expr ./physical
+ok  	gocolumn/expr	2.394s
+ok  	gocolumn/physical	(cached)
++ for w in 0 +128 +256 +512
++ GOEXPERIMENT=simd
++ GODEBUG=simd=+128
++ go test ./expr ./physical
+ok  	gocolumn/expr	2.414s
+ok  	gocolumn/physical	(cached)
++ for w in 0 +128 +256 +512
++ GOEXPERIMENT=simd
++ GODEBUG=simd=+256
++ go test ./expr ./physical
+ok  	gocolumn/expr	2.457s
+ok  	gocolumn/physical	(cached)
++ for w in 0 +128 +256 +512
++ GOEXPERIMENT=simd
++ GODEBUG=simd=+512
++ go test ./expr ./physical
+ok  	gocolumn/expr	2.711s
+ok  	gocolumn/physical	(cached)
++ GOEXPERIMENT=simd
++ go run ./internal/cmd/gensimd -check
++ GOEXPERIMENT=simd
++ go run ./tools/kernelgate check
+kernel registry, gates file, and code are consistent
++ bash scripts/check_simd_structure.sh
+SIMD structure checks passed

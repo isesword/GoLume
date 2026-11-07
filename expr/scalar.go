@@ -95,6 +95,7 @@ type scalarRegister struct {
 // across source reads. Column views borrow input slices. Dead fixed-width DAG
 // values may share one physical owner; only owners hold buffer reservations.
 type evaluationState struct {
+	regionScratch     bool
 	activeRows        memory.Bitmap
 	program           []instruction
 	fixedRows         int

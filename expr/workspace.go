@@ -83,6 +83,9 @@ func instructionWorkspaceBytes(instructions []instruction, rows int) (int64, err
 // prepareProgram admits a complete replacement before allocating any of it.
 // Dynamic payloads retain their own reservations and are not guessed here.
 func (w *evaluationState) prepareProgram(instructions []instruction, rows int) error {
+	if w.regionScratch {
+		return w.prepareRegionScratch(instructions, rows)
+	}
 	if err := validWorkspaceRows(rows); err != nil {
 		return err
 	}
@@ -216,4 +219,40 @@ func fieldCapacityBytes(fields []memory.Field) int64 {
 		n += fieldCapacityBytes(field.Children)
 	}
 	return n
+}
+
+// prepareRegionScratch is private to cache-free fixed-width guarded arms. Unlike
+// the exported workspace replacement contract, no prior arm result survives the
+// next arm: the parent has already consumed its mask or copied its demanded rows.
+// Typed capacities are retained separately, never reinterpreted or borrowed.
+// Every growth is admitted before allocation, and partial budget failures leave
+// owned capacities charged and reusable on retry.
+func (w *evaluationState) prepareRegionScratch(instructions []instruction, rows int) error {
+	if err := validWorkspaceRows(rows); err != nil {
+		return err
+	}
+	if len(instructions) == 0 {
+		return fmt.Errorf("empty expression program")
+	}
+	if err := w.ensureRegisterCounts(len(instructions), storageOwnerCount(instructions)); err != nil {
+		return err
+	}
+	w.program = instructions
+	for i := range w.owned {
+		r := &w.owned[i]
+		if r.acquire == nil {
+			r.acquire, r.reserve, r.checkContext = w.acquire, w.reserve, w.checkContext
+		}
+	}
+	// Boolean borrowed columns need an owned bitmap before bindScalarColumn.
+	for i, in := range instructions {
+		if in.Code == scalarColumn && in.Type == memory.TypeBool {
+			r := w.ownedRegister(i)
+			r.typ = memory.TypeBool
+			if err := prepareScalarBuffers(r, rows); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }

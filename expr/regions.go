@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"gocolumn/kernel"
 	"gocolumn/memory"
+	"math/bits"
 	"unsafe"
 )
 
@@ -80,7 +81,11 @@ func (w *evaluationState) evalRegion(out *scalarRegister, index int, program Pro
 	if memory.CountBitmap(out.active) == 0 {
 		return nil, nil
 	}
-	child := out.regions[index]
+	slot := index
+	if len(out.regions) == 1 {
+		slot = 0
+	}
+	child := out.regions[slot]
 	child.ctx = w.ctx
 	child.manager = w.manager
 	child.reserveHook = w.reserveHook
@@ -92,10 +97,15 @@ func (w *evaluationState) evalRegion(out *scalarRegister, index int, program Pro
 
 func (w *evaluationState) evaluateConditional(out *scalarRegister, in instruction, batch *memory.Batch, kernels kernel.Set) error {
 	rows := batch.Rows
-	if len(out.regions) != len(in.Regions) {
+	stream := streamingConditional(in)
+	regionCount := len(in.Regions)
+	if stream {
+		regionCount = 1
+	}
+	if len(out.regions) != regionCount {
 		// Metadata is owned by the parent; each region separately admits its typed
 		// register capacities only when a non-empty demand reaches it.
-		size, err := scalarBytes(len(in.Regions), unsafe.Sizeof((*evaluationState)(nil))+unsafe.Sizeof(evaluationState{}))
+		size, err := scalarBytes(regionCount, unsafe.Sizeof((*evaluationState)(nil))+unsafe.Sizeof(evaluationState{}))
 		if err != nil {
 			return err
 		}
@@ -103,9 +113,9 @@ func (w *evaluationState) evaluateConditional(out *scalarRegister, in instructio
 		if err != nil {
 			return err
 		}
-		next := make([]*evaluationState, len(in.Regions))
+		next := make([]*evaluationState, regionCount)
 		for i := range next {
-			next[i] = &evaluationState{}
+			next[i] = &evaluationState{regionScratch: stream}
 		}
 		for _, old := range out.regions {
 			_ = old.Close()
@@ -124,6 +134,38 @@ func (w *evaluationState) evaluateConditional(out *scalarRegister, in instructio
 	}
 	for row := range out.choices {
 		out.choices[row] = -1
+	}
+	if stream {
+		out.validity = out.ownedValidity
+		clear(out.validity)
+		if out.typ == memory.TypeBool {
+			clear(out.Truth)
+		}
+	}
+	merge := func(value *scalarRegister) error {
+		if !stream || value == nil {
+			return nil
+		}
+		for word, pending := range out.active {
+			for pending != 0 {
+				row := word*64 + bits.TrailingZeros64(pending)
+				pending &= pending - 1
+				if isValidRegister(value, row) {
+					if err := copyConditionalRow(out, value, row); err != nil {
+						return err
+					}
+					memory.Set(out.validity, row)
+				}
+			}
+		}
+		return nil
+	}
+	evalValue := func(branch int) error {
+		value, err := w.evalRegion(out, branch, in.Regions[branch], batch, kernels)
+		if err != nil {
+			return err
+		}
+		return merge(value)
 	}
 	setRemaining := func() {
 		clear(out.active)
@@ -148,7 +190,7 @@ func (w *evaluationState) evaluateConditional(out *scalarRegister, in instructio
 					out.choices[row] = branch
 				}
 			}
-			if _, err := w.evalRegion(out, branch, in.Regions[branch], batch, kernels); err != nil {
+			if err := evalValue(branch); err != nil {
 				return err
 			}
 		}
@@ -169,7 +211,7 @@ func (w *evaluationState) evaluateConditional(out *scalarRegister, in instructio
 					out.active[row>>6] &^= uint64(1) << uint(row&63)
 				}
 			}
-			if _, err := w.evalRegion(out, branch+1, in.Regions[branch+1], batch, kernels); err != nil {
+			if err := evalValue(branch + 1); err != nil {
 				return err
 			}
 		}
@@ -180,7 +222,7 @@ func (w *evaluationState) evaluateConditional(out *scalarRegister, in instructio
 				out.choices[row] = last
 			}
 		}
-		if _, err := w.evalRegion(out, last, in.Regions[last], batch, kernels); err != nil {
+		if err := evalValue(last); err != nil {
 			return err
 		}
 	case regionCoalesce:
@@ -196,6 +238,12 @@ func (w *evaluationState) evaluateConditional(out *scalarRegister, in instructio
 			for row := 0; row < rows; row++ {
 				if memory.IsSet(out.active, row) && isValidRegister(value, row) {
 					out.choices[row] = branch
+					if stream {
+						if err := copyConditionalRow(out, value, row); err != nil {
+							return err
+						}
+						memory.Set(out.validity, row)
+					}
 				}
 			}
 		}
@@ -240,6 +288,9 @@ func (w *evaluationState) evaluateConditional(out *scalarRegister, in instructio
 		return nil
 	default:
 		return fmt.Errorf("invalid expression region kind %d", in.Kind)
+	}
+	if stream {
+		return nil
 	}
 	out.validity = out.ownedValidity
 	clear(out.validity)
@@ -326,4 +377,34 @@ func copyConditionalRow(out, value *scalarRegister, row int) error {
 	default:
 		return fmt.Errorf("conditional result type %s has no merge kernel", out.typ)
 	}
+}
+
+// streamingConditional allows a single execution-owned scratch state only when
+// every arm has fixed-width, cache-free instructions. Nested regions and variable
+// payloads retain their dedicated workspaces and ordered gather contract.
+func streamingConditional(in instruction) bool {
+	if in.Kind != regionIf && in.Kind != regionCase && in.Kind != regionCoalesce {
+		return false
+	}
+	if !fixedConditionalType(in.Type) {
+		return false
+	}
+	for _, p := range in.Regions {
+		for _, child := range p.instructions {
+			if !fixedConditionalType(instructionResultType(child)) || (child.Code != scalarColumn && !reusableInstruction(child)) {
+				return false
+			}
+		}
+	}
+	return true
+}
+func fixedConditionalType(typ memory.DataType) bool {
+	switch typ {
+	case memory.TypeBool, memory.TypeInt8, memory.TypeInt16, memory.TypeInt32, memory.TypeInt64,
+		memory.TypeUint8, memory.TypeUint16, memory.TypeUint32, memory.TypeUint64,
+		memory.TypeFloat32, memory.TypeFloat64, memory.TypeDate32, memory.TypeDate64,
+		memory.TypeTimestamp, memory.TypeTime32, memory.TypeTime64, memory.TypeDuration:
+		return true
+	}
+	return false
 }
