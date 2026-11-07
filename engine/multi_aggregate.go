@@ -106,14 +106,15 @@ func (p *PreparedQuery) multiLayouts() []aggregate.Layout {
 }
 
 type multiAggregateState struct {
-	index        *hashagg.GroupIndex
-	bundle       *aggregate.Int64Bundle
-	numeric      *aggregate.NumericBundle
-	statistics   *aggregate.StatisticsBundle
-	compiled     *CompiledMultiAggregate
-	scratch      []byte
-	scratchLease memory.Reservation
-	table        *aggregateStateTable
+	byteWorkspace byteStatisticsWorkspace
+	index         *hashagg.GroupIndex
+	bundle        *aggregate.Int64Bundle
+	numeric       *aggregate.NumericBundle
+	statistics    *aggregate.StatisticsBundle
+	compiled      *CompiledMultiAggregate
+	scratch       []byte
+	scratchLease  memory.Reservation
+	table         *aggregateStateTable
 }
 
 func newMultiAggregateState(t *aggregateStateTable, compiled *CompiledMultiAggregate, hint int) (*multiAggregateState, error) {
@@ -139,6 +140,10 @@ func newMultiAggregateState(t *aggregateStateTable, compiled *CompiledMultiAggre
 			m.close()
 			return nil, err
 		}
+	}
+	if err = m.byteWorkspace.init(compiled.Statistics, t.reserveGrowth); err != nil {
+		m.close()
+		return nil, err
 	}
 	return m, nil
 }
@@ -212,6 +217,12 @@ func (m *multiAggregateState) add(record aggregateRecord, batch *memory.Batch, r
 	if err != nil {
 		return false, err
 	}
+	if m.compiled.Statistics != nil {
+		if err := m.byteWorkspace.prepare(m.statistics, m.compiled.Statistics, id, batch, row, record.ordinal); err != nil {
+			return false, err
+		}
+		defer m.byteWorkspace.abort()
+	}
 	for lane, name := range m.compiled.Columns {
 		if name == "" {
 			if m.numeric != nil {
@@ -231,12 +242,16 @@ func (m *multiAggregateState) add(record aggregateRecord, batch *memory.Batch, r
 	}
 	if m.statistics != nil {
 		for lane, name := range m.compiled.Statistics.Columns {
+			if byteStatisticsType(m.compiled.Statistics.Types[lane]) {
+				continue
+			}
 			bits, valid := statisticsInputBits(batch, name, m.compiled.Statistics.Types[lane], row)
 			if err := m.statistics.AddBits(id, lane, bits, valid, record.ordinal); err != nil {
 				return false, err
 			}
 		}
 	}
+	m.byteWorkspace.commit()
 	return created, nil
 }
 
@@ -244,6 +259,12 @@ func (m *multiAggregateState) merge(record aggregateRecord) (bool, error) {
 	id, created, err := m.group(record)
 	if err != nil {
 		return false, err
+	}
+	if m.compiled.Statistics != nil {
+		if err := m.byteWorkspace.prepareMerge(m.statistics, m.compiled.Statistics, id, record); err != nil {
+			return false, err
+		}
+		defer m.byteWorkspace.abort()
 	}
 	for lane := range m.compiled.Columns {
 		if m.numeric != nil {
@@ -257,11 +278,15 @@ func (m *multiAggregateState) merge(record aggregateRecord) (bool, error) {
 	if m.statistics != nil {
 		s := m.compiled.Statistics
 		for lane := range s.Columns {
+			if byteStatisticsType(s.Types[lane]) {
+				continue
+			}
 			if err := m.statistics.Merge(id, lane, statisticsAggregateRecordState(record, lane, s.Types[lane], s.Layouts[lane])); err != nil {
 				return false, err
 			}
 		}
 	}
+	m.byteWorkspace.commit()
 	return created, nil
 }
 
@@ -298,6 +323,7 @@ func (m *multiAggregateState) visitChunk(cursor *int, limit int, fn func(aggrega
 }
 
 func (m *multiAggregateState) close() {
+	m.byteWorkspace.close()
 	m.index.Close()
 	if m.statistics != nil {
 		m.statistics.Close()
@@ -382,6 +408,9 @@ func (p *PreparedQuery) aggregateMultiResidentBatch(ctx context.Context, batch *
 }
 
 func (p *PreparedQuery) aggregateRunCodec() string {
+	if p.hasByteStatistics() {
+		return bytesStatisticsAggregateRunCodec
+	}
 	if p.statistics() != nil {
 		return "aggregate-statistics-state-v4"
 	}
@@ -396,6 +425,9 @@ func (p *PreparedQuery) aggregateRunCodec() string {
 
 func (p *PreparedQuery) encodeAggregateRun(ctx context.Context, visit aggregateRecordVisitor, filter aggregateRecordFilter, workspace memory.Manager) (*encodedAggregateRun, error) {
 	if s := p.statistics(); s != nil {
+		if p.hasByteStatistics() {
+			return encodeBytesStatisticsAggregateRun(ctx, p.cq.GroupShape, p.cq.MultiAggregate.Types, p.multiLayouts(), s.Types, s.Layouts, visit, filter, workspace)
+		}
 		return encodeStatisticsAggregateRun(ctx, p.cq.GroupShape, p.cq.MultiAggregate.Types, p.multiLayouts(), s.Types, s.Layouts, visit, filter, workspace)
 	}
 	if p.nativeAggregate() {
@@ -409,6 +441,13 @@ func (p *PreparedQuery) encodeAggregateRun(ctx context.Context, visit aggregateR
 
 func (p *PreparedQuery) newAggregateRunReader(payload []byte) (*aggregateRunReader, error) {
 	if s := p.statistics(); s != nil {
+		if p.hasByteStatistics() {
+			reader, err := newBytesStatisticsAggregateRunReader(payload, p.cq.GroupShape, p.cq.MultiAggregate.Types, p.multiLayouts(), s.Types, s.Layouts)
+			if err != nil {
+				return nil, err
+			}
+			return &aggregateRunReader{bytesStatistics: reader, groups: reader.groups}, nil
+		}
 		reader, err := newStatisticsAggregateRunReader(payload, p.cq.GroupShape, p.cq.MultiAggregate.Types, p.multiLayouts(), s.Types, s.Layouts)
 		if err != nil {
 			return nil, err
@@ -434,6 +473,12 @@ func (p *PreparedQuery) newAggregateRunReader(payload []byte) (*aggregateRunRead
 
 func (s *sortedAggregateStream) addBundleRow() error {
 	row := s.nextRow - 1
+	if st := s.query.statistics(); st != nil {
+		if err := s.byteWorkspace.prepare(s.statistics, st, 0, s.binding.batch, row, aggregate.SourceOrdinal{Row: s.binding.ordinalBase + uint64(row)}); err != nil {
+			return err
+		}
+		defer s.byteWorkspace.abort()
+	}
 	for lane, name := range s.query.cq.MultiAggregate.Columns {
 		if name == "" {
 			if s.numeric != nil {
@@ -454,11 +499,15 @@ func (s *sortedAggregateStream) addBundleRow() error {
 	if s.statistics != nil {
 		st := s.query.statistics()
 		for lane, name := range st.Columns {
+			if byteStatisticsType(st.Types[lane]) {
+				continue
+			}
 			bits, valid := statisticsInputBits(s.binding.batch, name, st.Types[lane], row)
 			if err := s.statistics.AddBits(0, lane, bits, valid, aggregate.SourceOrdinal{Row: s.binding.ordinalBase + uint64(row)}); err != nil {
 				return err
 			}
 		}
 	}
+	s.byteWorkspace.commit()
 	return nil
 }

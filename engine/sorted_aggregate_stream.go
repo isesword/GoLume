@@ -11,6 +11,7 @@ import (
 	"gocolumn/planner"
 	"gocolumn/source"
 	"time"
+	"unsafe"
 )
 
 // IsSortedAggregate reports whether preparation selected adjacent-key state.
@@ -94,6 +95,9 @@ func (p *PreparedQuery) newSortedAggregateStream(ctx context.Context, schema mem
 	}
 	stateBudget := budget.Operator("SortedAggregateState", memory.MemoryRetainedState)
 	stateBytes := int64(128)
+	if p.hasByteStatistics() {
+		stateBytes += int64(len(p.cq.Aggregates)) * int64(unsafe.Sizeof(memory.Reservation(nil)))
+	}
 	if p.cq.MultiAggregate == nil {
 		stateBytes += aggregate.Int64VectorBytesForSlots(1, p.cq.AggregateLayout)
 	}
@@ -150,6 +154,19 @@ func (p *PreparedQuery) newSortedAggregateStream(ctx context.Context, schema mem
 			return nil, errors.Join(err, input.Close())
 		}
 	}
+	if p.hasByteStatistics() {
+		stream.endpointOutputLeases = make([]memory.Reservation, len(p.cq.Aggregates))
+	}
+	if err = stream.byteWorkspace.init(p.statistics(), func(n int64) (memory.Reservation, error) { return stateBudget.ReserveGrowth(ctx, n) }); err != nil {
+		if stream.statistics != nil {
+			stream.statistics.Close()
+		}
+		if stream.numeric != nil {
+			stream.numeric.Close()
+		}
+		stateLease.Release()
+		return nil, errors.Join(err, input.Close())
+	}
 	// Seed the empty global group without adding a row: COUNT(*) must remain
 	// zero and SUM/MIN/MAX/AVG retain their SQL NULL identity.
 	stream.haveGroup = p.cq.GroupShape == GroupShapeGlobal
@@ -161,8 +178,10 @@ func (p *PreparedQuery) newSortedAggregateStream(ctx context.Context, schema mem
 }
 
 type sortedAggregateStream struct {
-	canonicalScratch []byte
-	canonicalLease   memory.Reservation
+	byteWorkspace        byteStatisticsWorkspace
+	endpointOutputLeases []memory.Reservation
+	canonicalScratch     []byte
+	canonicalLease       memory.Reservation
 
 	outputDst         *memory.Batch
 	cleaned           bool
@@ -205,6 +224,12 @@ type sortedAggregateStream struct {
 }
 
 func (s *sortedAggregateStream) releaseOutput() {
+	for i, lease := range s.endpointOutputLeases {
+		if lease != nil {
+			lease.Release()
+			s.endpointOutputLeases[i] = nil
+		}
+	}
 	if s.outputDst != nil {
 		s.outputDst.ClearColumns()
 		s.outputDst = nil
@@ -320,6 +345,9 @@ func (s *sortedAggregateStream) flushGroup(ctx context.Context, dst *memory.Batc
 			}
 		}
 	} else {
+		if err := s.ensureEndpointOutput(ctx, dst, s.current); err != nil {
+			return err
+		}
 		if err := s.ensureOutputString(ctx, dst, s.current); err != nil {
 			return err
 		}
@@ -595,6 +623,7 @@ func (s *sortedAggregateStream) cleanup() error {
 	s.predicate.close()
 	s.current = aggregateRecord{}
 	s.state = aggregate.Int64Vector{}
+	s.byteWorkspace.close()
 	if s.statistics != nil {
 		s.statistics.Close()
 		s.statistics = nil

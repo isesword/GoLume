@@ -312,7 +312,12 @@ func statisticsAggregateRecordState(record aggregateRecord, lane int, typ memory
 	if record.statisticsBundle != nil {
 		return record.statisticsBundle.Result(record.groupID, lane)
 	}
-	d := record.statisticsRaw[lane*statisticsAggregateStateBytes : (lane+1)*statisticsAggregateStateBytes]
+	var d []byte
+	if record.bytesStatisticsRaw != nil {
+		d = bytesStatisticsFrame(record.bytesStatisticsRaw, lane, record.bytesStatisticsTypes)
+	} else {
+		d = record.statisticsRaw[lane*statisticsAggregateStateBytes : (lane+1)*statisticsAggregateStateBytes]
+	}
 	u := func(i int) uint64 { return binary.LittleEndian.Uint64(d[i : i+8]) }
 	m := aggregate.MomentsResult{Count: u(0), AnchorBits: u(8), Mean: math.Float64frombits(u(16)), Scale: math.Float64frombits(u(24)), ScaledM2: math.Float64frombits(u(32)), Uncentered: d[40]&1 != 0, NonFinite: d[40]&2 != 0}
 	e := aggregate.EndpointResult{Seen: d[41] == 1, FirstOrdinal: aggregate.SourceOrdinal{Partition: u(42), Row: u(50)}, LastOrdinal: aggregate.SourceOrdinal{Partition: u(58), Row: u(66)}, FirstBits: u(74), LastBits: u(82), FirstValid: d[90] == 1, LastValid: d[91] == 1}
@@ -349,6 +354,14 @@ func encodeStatisticsAggregateState(w *aggregateRunWriter, s aggregate.Statistic
 	w.u8(statisticsBool(e.LastValid))
 }
 func validateStatisticsAggregateDescriptors(nt []memory.DataType, nl []aggregate.Layout, st []memory.DataType, sl []aggregate.StatisticsLayout) error {
+	for _, t := range st {
+		if byteStatisticsType(t) {
+			return fmt.Errorf("V4 statistics requires fixed-width lanes")
+		}
+	}
+	return validateBytesStatisticsAggregateDescriptors(nt, nl, st, sl)
+}
+func validateBytesStatisticsAggregateDescriptors(nt []memory.DataType, nl []aggregate.Layout, st []memory.DataType, sl []aggregate.StatisticsLayout) error {
 	if len(nt) != len(nl) {
 		return fmt.Errorf("statistics-aggregate numeric descriptors mismatch")
 	}

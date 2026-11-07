@@ -7,7 +7,7 @@ import (
 	"unsafe"
 )
 
-// StatisticsLayout selects independent fixed-size statistics for one input.
+// StatisticsLayout selects independent statistics for one input.
 // Moments can serve both variance/std and different ddof finalizations. Either
 // endpoint flag retains the endpoint pair, without changing the legacy Layout.
 type StatisticsLayout struct{ Moments, First, Last bool }
@@ -24,9 +24,10 @@ type StatisticsResult struct {
 type statisticsLane struct {
 	moments   []MomentsState
 	endpoints []EndpointState
+	bytes     []BytesEndpointState
 }
 
-// StatisticsBundle owns fixed-size statistic lanes indexed by stable group ID.
+// StatisticsBundle owns statistic lanes indexed by stable group ID.
 // It is separate from NumericBundle so a variance-only query needs no fake SUM
 // state and existing Layout/V1/V2/V3 wire contracts remain unchanged.
 type StatisticsBundle struct {
@@ -51,8 +52,8 @@ func validateStatisticsDescriptors(types []memory.DataType, layouts []Statistics
 		if l.Moments && !isAggregateNumeric(t) {
 			return fmt.Errorf("aggregate: moments lane %d is not numeric", i)
 		}
-		if (l.First || l.Last) && !endpointType(t) {
-			return fmt.Errorf("aggregate: endpoint lane %d is not fixed-width", i)
+		if (l.First || l.Last) && !endpointType(t) && !bytesEndpointType(t) {
+			return fmt.Errorf("aggregate: endpoint lane %d has unsupported type", i)
 		}
 	}
 	return nil
@@ -98,13 +99,17 @@ func StatisticsBundleBytes(capacity int, types []memory.DataType, layouts []Stat
 		return 0, fmt.Errorf("aggregate: statistics headers overflow")
 	}
 	bytes := uint64(len(types)) * header
-	for _, l := range layouts {
+	for i, l := range layouts {
 		per := uint64(0)
 		if l.Moments {
 			per += uint64(unsafe.Sizeof(MomentsState{}))
 		}
 		if l.First || l.Last {
-			per += uint64(unsafe.Sizeof(EndpointState{}))
+			if bytesEndpointType(types[i]) {
+				per += uint64(unsafe.Sizeof(BytesEndpointState{}))
+			} else {
+				per += uint64(unsafe.Sizeof(EndpointState{}))
+			}
 		}
 		if uint64(capacity) > (limit-bytes)/per {
 			return 0, fmt.Errorf("aggregate: statistics backing size overflow")
@@ -154,7 +159,16 @@ func (b *StatisticsBundle) EnsureGroups(groups int) error {
 				copy(lanes[i].moments, b.lanes[i].moments)
 			}
 		}
-		if l.First || l.Last {
+		if (l.First || l.Last) && bytesEndpointType(t) {
+			lanes[i].bytes = make([]BytesEndpointState, capacity)
+			for g := range lanes[i].bytes {
+				lanes[i].bytes[g] = BytesEndpointState{result: BytesEndpointResult{Type: t}, reserve: b.reserve}
+			}
+			if b.capacity > 0 {
+				copy(lanes[i].bytes, b.lanes[i].bytes)
+			}
+			// Ownership transfers with the copied states. Never close old copies.
+		} else if l.First || l.Last {
 			lanes[i].endpoints = make([]EndpointState, capacity)
 			for g := range lanes[i].endpoints {
 				lanes[i].endpoints[g].result.Type = t
@@ -189,6 +203,9 @@ func (b *StatisticsBundle) AddBits(group, column int, bits uint64, valid bool, o
 		return err
 	}
 	lane := &b.lanes[column]
+	if lane.bytes != nil {
+		return fmt.Errorf("aggregate: byte lane requires byte update API")
+	}
 	var m MomentsState
 	var e EndpointState
 	if lane.moments != nil {
@@ -235,6 +252,9 @@ func (b *StatisticsBundle) Merge(group, column int, r StatisticsResult) error {
 		return fmt.Errorf("aggregate: incompatible statistics descriptor")
 	}
 	lane := &b.lanes[column]
+	if lane.bytes != nil {
+		return fmt.Errorf("aggregate: byte lane requires byte update API")
+	}
 	var m MomentsState
 	var e EndpointState
 	if lane.moments != nil {
@@ -282,6 +302,9 @@ func (b *StatisticsBundle) ClearGroup(group int) error {
 		return err
 	}
 	for i := range b.lanes {
+		if b.lanes[i].bytes != nil {
+			b.lanes[i].bytes[group].Reset()
+		}
 		if b.lanes[i].moments != nil {
 			b.lanes[i].moments[group].Reset()
 		}
@@ -320,6 +343,11 @@ func (b *StatisticsBundle) RetainedBytes() int64 {
 	if b.lease != nil {
 		n += b.lease.Bytes()
 	}
+	for i := range b.lanes {
+		for g := range b.lanes[i].bytes {
+			n += b.lanes[i].bytes[g].RetainedBytes()
+		}
+	}
 	return n
 }
 
@@ -329,6 +357,11 @@ func (b *StatisticsBundle) Close() {
 		return
 	}
 	b.closed = true
+	for i := range b.lanes {
+		for g := range b.lanes[i].bytes {
+			b.lanes[i].bytes[g].Close()
+		}
+	}
 	if b.lease != nil {
 		b.lease.Release()
 	}
@@ -338,4 +371,57 @@ func (b *StatisticsBundle) Close() {
 	b.types, b.layouts, b.lanes = nil, nil, nil
 	b.metadata, b.lease = nil, nil
 	b.capacity = 0
+}
+
+func bytesEndpointType(t memory.DataType) bool {
+	return t == memory.TypeString || t == memory.TypeBinary
+}
+
+// BytesResult borrows byte endpoint payloads until mutation, reset or close.
+// Invalid indices or a non-byte lane panic, matching Result's read contract.
+func (b *StatisticsBundle) BytesResult(group, column int) BytesEndpointResult {
+	return b.lanes[column].bytes[group].Snapshot()
+}
+
+// PrepareBytes prepares a byte lane without mutation. Resolve all pending updates
+// before growing/resetting/closing this bundle or mutating the same lane/group.
+func (b *StatisticsBundle) PrepareBytes(group, column int, payload []byte, valid bool, ordinal SourceOrdinal) (BytesEndpointMutation, error) {
+	if err := b.check(group, column); err != nil {
+		return BytesEndpointMutation{}, err
+	}
+	if b.lanes[column].bytes == nil {
+		return BytesEndpointMutation{}, fmt.Errorf("aggregate: lane is not byte endpoints")
+	}
+	return b.lanes[column].bytes[group].PrepareBytes(payload, valid, ordinal)
+}
+
+// PrepareMergeBytes prepares a validated raw byte endpoint merge without mutation.
+func (b *StatisticsBundle) PrepareMergeBytes(group, column int, r BytesEndpointResult) (BytesEndpointMutation, error) {
+	if err := b.check(group, column); err != nil {
+		return BytesEndpointMutation{}, err
+	}
+	if b.lanes[column].bytes == nil {
+		return BytesEndpointMutation{}, fmt.Errorf("aggregate: lane is not byte endpoints")
+	}
+	return b.lanes[column].bytes[group].PrepareMergeBytes(r)
+}
+
+// AddBytes atomically updates one byte lane.
+func (b *StatisticsBundle) AddBytes(group, column int, payload []byte, valid bool, ordinal SourceOrdinal) error {
+	p, err := b.PrepareBytes(group, column, payload, valid, ordinal)
+	if err != nil {
+		return err
+	}
+	p.Commit()
+	return nil
+}
+
+// MergeBytes atomically merges one byte lane's raw state.
+func (b *StatisticsBundle) MergeBytes(group, column int, r BytesEndpointResult) error {
+	p, err := b.PrepareMergeBytes(group, column, r)
+	if err != nil {
+		return err
+	}
+	p.Commit()
+	return nil
 }

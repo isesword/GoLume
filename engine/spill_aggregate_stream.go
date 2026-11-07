@@ -362,6 +362,8 @@ func (s *spillableAggregateStream) allocateOutputBatch(dst *memory.Batch, rows i
 			validity = memory.EnsureBitmap(nil, rows)
 		}
 		switch field.Type {
+		case memory.TypeString, memory.TypeBinary:
+			dst.Strings[name] = &memory.StringViewVector{Offsets: make([]uint32, rows+1), Data: make([]byte, 0, plainStringBytes), Validity: validity, Encoding: memory.EncodingView}
 		case memory.TypeInt8:
 			dst.Int8s[name] = &memory.Int8Vector{Values: make([]int8, rows), Validity: validity, Encoding: memory.EncodingPlain}
 		case memory.TypeInt16:
@@ -492,6 +494,24 @@ func (s *spillableAggregateStream) setOutputRecord(dst *memory.Batch, row int, r
 		if name == "" {
 			name = fmt.Sprintf("agg_%d", index)
 		}
+		if s.query.byteStatisticsOutput(index) {
+			data, valid := s.query.byteStatisticsValue(record, index)
+			v := dst.Strings[name]
+			if v == nil {
+				return fmt.Errorf("endpoint output %q missing", name)
+			}
+			if len(data) > math.MaxUint32-len(v.Data) || len(data) > cap(v.Data)-len(v.Data) {
+				return fmt.Errorf("endpoint output %q payload exceeds admitted capacity", name)
+			}
+			if valid {
+				v.Data = append(v.Data, data...)
+				if v.Validity != nil {
+					memory.Set(v.Validity, row)
+				}
+			}
+			v.Offsets[row+1] = uint32(len(v.Data))
+			continue
+		}
 		if s.query.nativeAggregate() {
 			typ, bits, valid := s.query.nativeRecordValue(record, index)
 			field, _ := s.schema.Field(name)
@@ -555,8 +575,17 @@ func (s *spillableAggregateStream) materializeOutputRun(ctx context.Context, ref
 		return nil, fmt.Errorf("%w: aggregate output groups=%d want=%d max=%d", memory.ErrSpillCorrupt, preflight.groups, ref.groups, s.outputRows)
 	}
 	plainStringBytes := int64(0)
-	if s.query.cq.GroupShape == GroupShapeStringView || s.query.cq.GroupShape == GroupShapeGeneric {
+	endpointBytes := int64(0)
+	if s.query.hasByteStatistics() || s.query.cq.GroupShape == GroupShapeStringView || s.query.cq.GroupShape == GroupShapeGeneric {
 		err = preflight.visit(func(record aggregateRecord) error {
+			n, e := s.query.byteStatisticsPayloadSize(record)
+			if e != nil {
+				return e
+			}
+			if n > math.MaxInt64-endpointBytes {
+				return fmt.Errorf("endpoint payload overflow")
+			}
+			endpointBytes += n
 			if s.query.cq.GroupShape == GroupShapeGeneric {
 				return visitCanonicalGroupKey(record.stringKey, s.query.cq.GenericFields, func(_ int, typ memory.DataType, valid bool, _ uint64, data []byte) error {
 					if valid && (typ == memory.TypeString || typ == memory.TypeBinary) {
@@ -578,9 +607,12 @@ func (s *spillableAggregateStream) materializeOutputRun(ctx context.Context, ref
 			return nil, err
 		}
 	}
-	stringCapacity := plainStringBytes
+	if endpointBytes > math.MaxInt64-plainStringBytes {
+		return nil, fmt.Errorf("endpoint payload overflow")
+	}
+	stringCapacity := plainStringBytes + endpointBytes
 	if s.query.cq.GroupShape == GroupShapeGeneric {
-		stringCapacity = 0
+		stringCapacity = endpointBytes
 	}
 	bytes, err := aggregateOutputBytes(s.schema, ref.groups, stringCapacity)
 	if err == nil && s.query.cq.GroupShape == GroupShapeGeneric {
@@ -596,7 +628,7 @@ func (s *spillableAggregateStream) materializeOutputRun(ctx context.Context, ref
 	if err != nil {
 		return nil, fmt.Errorf("reserve aggregate output batch: %w", err)
 	}
-	if plainStringBytes > int64(math.MaxInt) {
+	if stringCapacity > int64(math.MaxInt) {
 		lease.Release()
 		return nil, fmt.Errorf("aggregate output strings exceed addressable memory")
 	}

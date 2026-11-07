@@ -248,7 +248,10 @@ func (s *distinctAggregateStream) ingest(ctx context.Context) (err error) {
 			}
 			if st := m.Statistics; st != nil {
 				for lane, name := range st.Columns {
-					bits, valid := statisticsInputBits(batch, name, st.Types[lane], row)
+					bits, valid := uint64(0), false
+					if !byteStatisticsType(st.Types[lane]) {
+						bits, valid = statisticsInputBits(batch, name, st.Types[lane], row)
+					}
 					write(bits, valid)
 				}
 			}
@@ -256,6 +259,38 @@ func (s *distinctAggregateStream) ingest(ctx context.Context) (err error) {
 			// selected-row diagnostics and empty-group presence remain exact.
 			if err = s.sorter.Add(ctx, s.scratch[:size]); err != nil {
 				return err
+			}
+			if st := m.Statistics; st != nil {
+				for lane, name := range st.Columns {
+					if !byteStatisticsType(st.Types[lane]) {
+						continue
+					}
+					data, valid, e := statisticsInputBytes(batch, name, row)
+					if e != nil {
+						return e
+					}
+					if len(data) > math.MaxUint32 || len(data) > math.MaxInt-prefix-26 {
+						return fmt.Errorf("endpoint tuple too large")
+					}
+					n := prefix + 26 + len(data)
+					if e = s.grow(ctx, &s.scratch, &s.scratchLease, n); e != nil {
+						return e
+					}
+					body := s.scratch[prefix:n]
+					body[0] = 2
+					binary.BigEndian.PutUint32(body[1:5], uint32(lane))
+					binary.BigEndian.PutUint64(body[5:13], ordinal.Partition)
+					binary.BigEndian.PutUint64(body[13:21], ordinal.Row)
+					body[21] = 0
+					if valid {
+						body[21] = 1
+					}
+					binary.BigEndian.PutUint32(body[22:26], uint32(len(data)))
+					copy(body[26:], data)
+					if e = s.sorter.Add(ctx, s.scratch[:n]); e != nil {
+						return e
+					}
+				}
 			}
 			for lane := range m.Distinct.Fields {
 				values := canonicalGroupBinding{fields: m.Distinct.Fields[lane : lane+1], batch: batch}
@@ -425,6 +460,17 @@ func (s *distinctAggregateStream) apply(body []byte) error {
 		binary.LittleEndian.PutUint64(s.counts[lane*8:lane*8+8], count+1)
 		return nil
 	}
+	if body[0] == 2 {
+		if len(body) < 26 || m.Statistics == nil {
+			return bad()
+		}
+		lane := uint64(binary.BigEndian.Uint32(body[1:5]))
+		if lane >= uint64(len(m.Statistics.Types)) || !byteStatisticsType(m.Statistics.Types[lane]) || body[21] > 1 || uint64(binary.BigEndian.Uint32(body[22:26])) != uint64(len(body)-26) || body[21] == 0 && len(body) != 26 {
+			return bad()
+		}
+		ordinal := aggregate.SourceOrdinal{Partition: binary.BigEndian.Uint64(body[5:13]), Row: binary.BigEndian.Uint64(body[13:21])}
+		return s.statistics.AddBytes(0, int(lane), body[26:], body[21] == 1, ordinal)
+	}
 	lanes := len(m.Columns)
 	if m.Statistics != nil {
 		lanes += len(m.Statistics.Columns)
@@ -445,6 +491,13 @@ func (s *distinctAggregateStream) apply(body []byte) error {
 		for lane := range m.Statistics.Columns {
 			if body[pos] > 1 {
 				return bad()
+			}
+			if byteStatisticsType(m.Statistics.Types[lane]) {
+				if body[pos] != 0 || binary.LittleEndian.Uint64(body[pos+1:pos+9]) != 0 {
+					return bad()
+				}
+				pos += 9
+				continue
 			}
 			if err := s.statistics.AddBits(0, lane, binary.LittleEndian.Uint64(body[pos+1:pos+9]), body[pos] == 1, ordinal); err != nil {
 				return err
@@ -478,7 +531,15 @@ func (s *distinctAggregateStream) Next(ctx context.Context, dst *memory.Batch) (
 		return false, s.Close()
 	}
 	// Conservative per-string capacity: every string column gets total key bytes.
-	size, err := aggregateOutputBytes(s.schema, 1, int64(len(s.key)))
+	endpointBytes, err := s.p.byteStatisticsPayloadSize(record)
+	if err != nil {
+		return false, s.fail(err)
+	}
+	if endpointBytes > int64(math.MaxInt-len(s.key)) {
+		return false, s.fail(fmt.Errorf("endpoint output size overflow"))
+	}
+	stringCapacity := len(s.key) + int(endpointBytes)
+	size, err := aggregateOutputBytes(s.schema, 1, int64(stringCapacity))
 	if err != nil {
 		return false, s.fail(err)
 	}
@@ -487,7 +548,7 @@ func (s *distinctAggregateStream) Next(ctx context.Context, dst *memory.Batch) (
 		return false, s.fail(err)
 	}
 	s.output = dst
-	if err = s.helper.allocateOutputBatch(dst, 1, len(s.key)); err != nil {
+	if err = s.helper.allocateOutputBatch(dst, 1, stringCapacity); err != nil {
 		return false, s.fail(err)
 	}
 	if err = s.helper.setOutputRecord(dst, 0, record); err != nil {
@@ -514,6 +575,7 @@ func (s *distinctAggregateStream) consumeRecords(ctx context.Context, sink func(
 	stats := s.Stats()
 	return stats, s.Close()
 }
+
 // Stats returns cumulative exact aggregation and spill diagnostics.
 func (s *distinctAggregateStream) Stats() AggregateStreamStats {
 	r := s.stats
@@ -525,6 +587,7 @@ func (s *distinctAggregateStream) Stats() AggregateStreamStats {
 	r.Elapsed = time.Since(s.started)
 	return r
 }
+
 // StreamDiagnostics describes the effective exact distinct fallback.
 func (s *distinctAggregateStream) StreamDiagnostics() map[string]string {
 	return map[string]string{"distinct_algorithm": "exact-global-tuple-sort", "distinct_policy": "shared bounded fallback; no parallel aggregate states"}
@@ -533,6 +596,7 @@ func (s *distinctAggregateStream) fail(err error) error {
 	s.terminal = errors.Join(err, s.Close())
 	return s.terminal
 }
+
 // Close releases owned buffers and retries any failed spill deletions.
 func (s *distinctAggregateStream) Close() error {
 	if s.closed {

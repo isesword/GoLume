@@ -39,6 +39,9 @@ func StatisticsType(input memory.DataType, kind AggregateKind) (memory.DataType,
 		}
 		return memory.TypeFloat64, nil
 	case AggFirst, AggLast:
+		if input == memory.TypeString || input == memory.TypeBinary {
+			return input, nil
+		}
 		if _, err := aggregate.NewEndpointState(input); err != nil {
 			return 0, err
 		}

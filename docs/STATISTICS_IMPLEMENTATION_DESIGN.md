@@ -7,11 +7,11 @@ median/quantile milestone. It does not add query APIs or promise those operation
 are implemented. Current implementation details and validation limits live in:
 
 - [STATISTICS_STATES.md](STATISTICS_STATES.md): typed sample/population variance
-  and standard deviation, fixed-width first/last, resident/partitioned/sorted
-  execution and V4 spill. Moment states use exact integer anchors and scaled
+  and standard deviation, fixed-width and owned string/binary first/last,
+  resident/partitioned/sorted execution and V4/V5 spill. Moment states use exact integer anchors and scaled
   deviations, rather than the simple raw-M2 prototype originally proposed here.
-  Endpoints carry stable source ordinals. Arbitrary query-level ddof and
-  variable-length string/binary endpoints remain unsupported.
+  Endpoints carry stable source ordinals. String/binary payloads are owned and
+  budgeted separately. Arbitrary query-level ddof remains unsupported.
 - [NATIVE_AGGREGATION.md](NATIVE_AGGREGATION.md) and
   [MULTI_COLUMN_AGGREGATION.md](MULTI_COLUMN_AGGREGATION.md): independent typed
   lanes, global aggregation, native outputs and existing compatibility limits.

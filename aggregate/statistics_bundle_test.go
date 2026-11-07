@@ -106,7 +106,7 @@ func TestStatisticsBundleInvalidDescriptorsAndOverflow(t *testing.T) {
 		types   []memory.DataType
 		layouts []StatisticsLayout
 	}{
-		{nil, nil}, {[]memory.DataType{memory.TypeInt64}, nil}, {[]memory.DataType{memory.TypeInt64}, []StatisticsLayout{{}}}, {[]memory.DataType{memory.TypeString}, []StatisticsLayout{{Moments: true}}}, {[]memory.DataType{memory.TypeString}, []StatisticsLayout{{First: true}}},
+		{nil, nil}, {[]memory.DataType{memory.TypeInt64}, nil}, {[]memory.DataType{memory.TypeInt64}, []StatisticsLayout{{}}}, {[]memory.DataType{memory.TypeString}, []StatisticsLayout{{Moments: true}}}, {[]memory.DataType{memory.TypeInvalid}, []StatisticsLayout{{First: true}}},
 	} {
 		if _, err := StatisticsBundleBytes(8, tc.types, tc.layouts); err == nil {
 			t.Fatal("accepted invalid descriptor")

@@ -64,9 +64,7 @@ and preserve ordinals through sorting and spilling; a batch-local row index or
 group ID is insufficient.
 
 The state preserves raw numeric, bool and fixed temporal bits. Variable-length
-string/binary endpoints remain unsupported by this foundation and need separately
-owned, budgeted payloads. Exact N_UNIQUE similarly needs variable-state and spill
-contracts; an unaccounted per-group map is not an acceptable implementation.
+string/binary endpoints use separately owned, budgeted BytesEndpointState payloads. Exact N_UNIQUE uses bounded tuple-sort/dedup rather than an unaccounted per-group map.
 
 ## Query integration
 
@@ -76,9 +74,9 @@ Arbitrary ddof is supported by the state primitive but is not yet a query option
 Variance and standard deviation preserve Float32 output for Float32 input, as
 in Polars1.35.2, and produce Float64 for integer and Float64 input. Float32
 conversion occurs only at finalization; intermediate moment state is Float64.
-First/Last preserve numeric, bool or fixed-width temporal dtype. String/binary
-endpoints are not yet query APIs. Exact N_UNIQUE is documented separately in
-[EXACT_DISTINCT.md](EXACT_DISTINCT.md).
+First/Last preserve numeric, bool, fixed-width temporal, String or Binary dtype. String/binary endpoints use owned variable-width payload state and V5 spill
+(see VARIABLE_ENDPOINTS_DESIGN.md). Exact N_UNIQUE has its separate bounded
+tuple-sort reducer and UInt64 result semantics.
 
 The public three-field Aggregate and six-field legacy Layout are unchanged.
 Independent StatisticsLayout lanes contain real moment/endpoint state, including

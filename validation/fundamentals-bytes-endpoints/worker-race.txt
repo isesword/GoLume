@@ -1,0 +1,3 @@
+ok  	gocolumn/aggregate	1.016s
+ok  	gocolumn/engine	1.519s
+ok  	gocolumn/lazy	1.036s

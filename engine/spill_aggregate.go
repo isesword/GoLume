@@ -33,18 +33,20 @@ type aggregateRecord struct {
 	ordinal   aggregate.SourceOrdinal
 	canonical *canonicalGroupBinding
 
-	a, b             uint64
-	validMask        uint8
-	stringKey        []byte
-	state            aggregate.Int64Result
-	states           []aggregate.Int64Result
-	rawStates        []byte
-	bundle           *aggregate.Int64Bundle
-	groupID          int
-	numericBundle    *aggregate.NumericBundle
-	numericRaw       []byte
-	statisticsRaw    []byte
-	statisticsBundle *aggregate.StatisticsBundle
+	a, b                 uint64
+	validMask            uint8
+	stringKey            []byte
+	state                aggregate.Int64Result
+	states               []aggregate.Int64Result
+	rawStates            []byte
+	bundle               *aggregate.Int64Bundle
+	groupID              int
+	numericBundle        *aggregate.NumericBundle
+	numericRaw           []byte
+	statisticsRaw        []byte
+	bytesStatisticsRaw   []byte
+	bytesStatisticsTypes []memory.DataType
+	statisticsBundle     *aggregate.StatisticsBundle
 }
 
 type aggregateRunRef struct {
@@ -492,15 +494,16 @@ func encodeAggregateRecord(w *aggregateRunWriter, shape GroupShape, record aggre
 }
 
 type aggregateRunReader struct {
-	multi      *multiAggregateRunReader
-	numeric    *numericAggregateRunReader
-	statistics *statisticsAggregateRunReader
-	buf        []byte
-	pos        int
-	err        error
-	shape      GroupShape
-	layout     aggregate.Layout
-	groups     int
+	multi           *multiAggregateRunReader
+	numeric         *numericAggregateRunReader
+	statistics      *statisticsAggregateRunReader
+	bytesStatistics *bytesStatisticsAggregateRunReader
+	buf             []byte
+	pos             int
+	err             error
+	shape           GroupShape
+	layout          aggregate.Layout
+	groups          int
 }
 
 func newAggregateRunReader(payload []byte, shape GroupShape, layout aggregate.Layout) (*aggregateRunReader, error) {
@@ -563,6 +566,9 @@ func (r *aggregateRunReader) u64() uint64 {
 }
 
 func (r *aggregateRunReader) next() (aggregateRecord, bool, error) {
+	if r.bytesStatistics != nil {
+		return r.bytesStatistics.next()
+	}
 	if r.statistics != nil {
 		return r.statistics.next()
 	}

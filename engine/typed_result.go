@@ -188,6 +188,14 @@ func (c *typedResultCollector) append(ctx context.Context, record aggregateRecor
 	} else if c.query.cq.GroupShape == GroupShapeStringView {
 		bytes += int64(len(record.stringKey))
 	}
+	endpointBytes, err := c.query.byteStatisticsPayloadSize(record)
+	if err != nil {
+		return err
+	}
+	if endpointBytes > math.MaxInt64-bytes {
+		return fmt.Errorf("typed endpoint output size overflow")
+	}
+	bytes += endpointBytes
 	for i, g := range c.query.cq.GroupBy {
 		if c.query.cq.GroupShape != GroupShapeGeneric && g.Type == memory.TypeString && g.Encoding == memory.EncodingDictionary && record.validMask&(1<<i) != 0 {
 			bits := record.a
@@ -236,6 +244,13 @@ func (c *typedResultCollector) append(ctx context.Context, record aggregateRecor
 		}
 	}
 	for i, a := range c.query.cq.Aggregates {
+		if c.query.byteStatisticsOutput(i) {
+			data, valid := c.query.byteStatisticsValue(record, i)
+			st := c.query.statistics()
+			row.Aggregates[i] = TypedAggregateValue{Alias: a.Alias, Kind: a.Kind, Value: TypedValue{Type: st.Types[st.OutputLane[i]], Valid: valid, Text: string(data)}}
+			continue
+		}
+
 		if a.Kind == expr.AggNUnique {
 			row.Aggregates[i] = TypedAggregateValue{Alias: a.Alias, Kind: a.Kind, Value: TypedValue{Type: memory.TypeUint64, Valid: true, Bits: distinctRecordCount(record, c.query.distinct().OutputLane[i])}}
 			continue
