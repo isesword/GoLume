@@ -1,0 +1,10335 @@
+{
+  "oracle": "polars",
+  "version": "1.35.2",
+  "cases": [
+    {
+      "id": "aggregate/Int8/empty",
+      "input": [],
+      "input_dtype": "Int8",
+      "results": {
+        "sum": {
+          "dtype": "Int64",
+          "values": [
+            0
+          ]
+        },
+        "count": {
+          "dtype": "UInt32",
+          "values": [
+            0
+          ]
+        },
+        "len": {
+          "dtype": "UInt32",
+          "values": [
+            0
+          ]
+        },
+        "min": {
+          "dtype": "Int8",
+          "values": [
+            null
+          ]
+        },
+        "max": {
+          "dtype": "Int8",
+          "values": [
+            null
+          ]
+        },
+        "avg": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "var_ddof1": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "std_ddof1": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "first": {
+          "dtype": "Int8",
+          "values": [
+            null
+          ]
+        },
+        "last": {
+          "dtype": "Int8",
+          "values": [
+            null
+          ]
+        },
+        "n_unique": {
+          "dtype": "UInt32",
+          "values": [
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": "aggregate/Int8/null",
+      "input": [
+        null,
+        null
+      ],
+      "input_dtype": "Int8",
+      "results": {
+        "sum": {
+          "dtype": "Int64",
+          "values": [
+            0
+          ]
+        },
+        "count": {
+          "dtype": "UInt32",
+          "values": [
+            0
+          ]
+        },
+        "len": {
+          "dtype": "UInt32",
+          "values": [
+            2
+          ]
+        },
+        "min": {
+          "dtype": "Int8",
+          "values": [
+            null
+          ]
+        },
+        "max": {
+          "dtype": "Int8",
+          "values": [
+            null
+          ]
+        },
+        "avg": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "var_ddof1": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "std_ddof1": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "first": {
+          "dtype": "Int8",
+          "values": [
+            null
+          ]
+        },
+        "last": {
+          "dtype": "Int8",
+          "values": [
+            null
+          ]
+        },
+        "n_unique": {
+          "dtype": "UInt32",
+          "values": [
+            1
+          ]
+        }
+      }
+    },
+    {
+      "id": "aggregate/Int8/mixed",
+      "input": [
+        1,
+        null,
+        3
+      ],
+      "input_dtype": "Int8",
+      "results": {
+        "sum": {
+          "dtype": "Int64",
+          "values": [
+            4
+          ]
+        },
+        "count": {
+          "dtype": "UInt32",
+          "values": [
+            2
+          ]
+        },
+        "len": {
+          "dtype": "UInt32",
+          "values": [
+            3
+          ]
+        },
+        "min": {
+          "dtype": "Int8",
+          "values": [
+            1
+          ]
+        },
+        "max": {
+          "dtype": "Int8",
+          "values": [
+            3
+          ]
+        },
+        "avg": {
+          "dtype": "Float64",
+          "values": [
+            2.0
+          ]
+        },
+        "var_ddof1": {
+          "dtype": "Float64",
+          "values": [
+            2.0
+          ]
+        },
+        "std_ddof1": {
+          "dtype": "Float64",
+          "values": [
+            1.4142135623730951
+          ]
+        },
+        "first": {
+          "dtype": "Int8",
+          "values": [
+            1
+          ]
+        },
+        "last": {
+          "dtype": "Int8",
+          "values": [
+            3
+          ]
+        },
+        "n_unique": {
+          "dtype": "UInt32",
+          "values": [
+            3
+          ]
+        }
+      }
+    },
+    {
+      "id": "aggregate/Int16/empty",
+      "input": [],
+      "input_dtype": "Int16",
+      "results": {
+        "sum": {
+          "dtype": "Int64",
+          "values": [
+            0
+          ]
+        },
+        "count": {
+          "dtype": "UInt32",
+          "values": [
+            0
+          ]
+        },
+        "len": {
+          "dtype": "UInt32",
+          "values": [
+            0
+          ]
+        },
+        "min": {
+          "dtype": "Int16",
+          "values": [
+            null
+          ]
+        },
+        "max": {
+          "dtype": "Int16",
+          "values": [
+            null
+          ]
+        },
+        "avg": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "var_ddof1": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "std_ddof1": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "first": {
+          "dtype": "Int16",
+          "values": [
+            null
+          ]
+        },
+        "last": {
+          "dtype": "Int16",
+          "values": [
+            null
+          ]
+        },
+        "n_unique": {
+          "dtype": "UInt32",
+          "values": [
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": "aggregate/Int16/null",
+      "input": [
+        null,
+        null
+      ],
+      "input_dtype": "Int16",
+      "results": {
+        "sum": {
+          "dtype": "Int64",
+          "values": [
+            0
+          ]
+        },
+        "count": {
+          "dtype": "UInt32",
+          "values": [
+            0
+          ]
+        },
+        "len": {
+          "dtype": "UInt32",
+          "values": [
+            2
+          ]
+        },
+        "min": {
+          "dtype": "Int16",
+          "values": [
+            null
+          ]
+        },
+        "max": {
+          "dtype": "Int16",
+          "values": [
+            null
+          ]
+        },
+        "avg": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "var_ddof1": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "std_ddof1": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "first": {
+          "dtype": "Int16",
+          "values": [
+            null
+          ]
+        },
+        "last": {
+          "dtype": "Int16",
+          "values": [
+            null
+          ]
+        },
+        "n_unique": {
+          "dtype": "UInt32",
+          "values": [
+            1
+          ]
+        }
+      }
+    },
+    {
+      "id": "aggregate/Int16/mixed",
+      "input": [
+        1,
+        null,
+        3
+      ],
+      "input_dtype": "Int16",
+      "results": {
+        "sum": {
+          "dtype": "Int64",
+          "values": [
+            4
+          ]
+        },
+        "count": {
+          "dtype": "UInt32",
+          "values": [
+            2
+          ]
+        },
+        "len": {
+          "dtype": "UInt32",
+          "values": [
+            3
+          ]
+        },
+        "min": {
+          "dtype": "Int16",
+          "values": [
+            1
+          ]
+        },
+        "max": {
+          "dtype": "Int16",
+          "values": [
+            3
+          ]
+        },
+        "avg": {
+          "dtype": "Float64",
+          "values": [
+            2.0
+          ]
+        },
+        "var_ddof1": {
+          "dtype": "Float64",
+          "values": [
+            2.0
+          ]
+        },
+        "std_ddof1": {
+          "dtype": "Float64",
+          "values": [
+            1.4142135623730951
+          ]
+        },
+        "first": {
+          "dtype": "Int16",
+          "values": [
+            1
+          ]
+        },
+        "last": {
+          "dtype": "Int16",
+          "values": [
+            3
+          ]
+        },
+        "n_unique": {
+          "dtype": "UInt32",
+          "values": [
+            3
+          ]
+        }
+      }
+    },
+    {
+      "id": "aggregate/Int32/empty",
+      "input": [],
+      "input_dtype": "Int32",
+      "results": {
+        "sum": {
+          "dtype": "Int32",
+          "values": [
+            0
+          ]
+        },
+        "count": {
+          "dtype": "UInt32",
+          "values": [
+            0
+          ]
+        },
+        "len": {
+          "dtype": "UInt32",
+          "values": [
+            0
+          ]
+        },
+        "min": {
+          "dtype": "Int32",
+          "values": [
+            null
+          ]
+        },
+        "max": {
+          "dtype": "Int32",
+          "values": [
+            null
+          ]
+        },
+        "avg": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "var_ddof1": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "std_ddof1": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "first": {
+          "dtype": "Int32",
+          "values": [
+            null
+          ]
+        },
+        "last": {
+          "dtype": "Int32",
+          "values": [
+            null
+          ]
+        },
+        "n_unique": {
+          "dtype": "UInt32",
+          "values": [
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": "aggregate/Int32/null",
+      "input": [
+        null,
+        null
+      ],
+      "input_dtype": "Int32",
+      "results": {
+        "sum": {
+          "dtype": "Int32",
+          "values": [
+            0
+          ]
+        },
+        "count": {
+          "dtype": "UInt32",
+          "values": [
+            0
+          ]
+        },
+        "len": {
+          "dtype": "UInt32",
+          "values": [
+            2
+          ]
+        },
+        "min": {
+          "dtype": "Int32",
+          "values": [
+            null
+          ]
+        },
+        "max": {
+          "dtype": "Int32",
+          "values": [
+            null
+          ]
+        },
+        "avg": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "var_ddof1": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "std_ddof1": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "first": {
+          "dtype": "Int32",
+          "values": [
+            null
+          ]
+        },
+        "last": {
+          "dtype": "Int32",
+          "values": [
+            null
+          ]
+        },
+        "n_unique": {
+          "dtype": "UInt32",
+          "values": [
+            1
+          ]
+        }
+      }
+    },
+    {
+      "id": "aggregate/Int32/mixed",
+      "input": [
+        1,
+        null,
+        3
+      ],
+      "input_dtype": "Int32",
+      "results": {
+        "sum": {
+          "dtype": "Int32",
+          "values": [
+            4
+          ]
+        },
+        "count": {
+          "dtype": "UInt32",
+          "values": [
+            2
+          ]
+        },
+        "len": {
+          "dtype": "UInt32",
+          "values": [
+            3
+          ]
+        },
+        "min": {
+          "dtype": "Int32",
+          "values": [
+            1
+          ]
+        },
+        "max": {
+          "dtype": "Int32",
+          "values": [
+            3
+          ]
+        },
+        "avg": {
+          "dtype": "Float64",
+          "values": [
+            2.0
+          ]
+        },
+        "var_ddof1": {
+          "dtype": "Float64",
+          "values": [
+            2.0
+          ]
+        },
+        "std_ddof1": {
+          "dtype": "Float64",
+          "values": [
+            1.4142135623730951
+          ]
+        },
+        "first": {
+          "dtype": "Int32",
+          "values": [
+            1
+          ]
+        },
+        "last": {
+          "dtype": "Int32",
+          "values": [
+            3
+          ]
+        },
+        "n_unique": {
+          "dtype": "UInt32",
+          "values": [
+            3
+          ]
+        }
+      }
+    },
+    {
+      "id": "aggregate/Int64/empty",
+      "input": [],
+      "input_dtype": "Int64",
+      "results": {
+        "sum": {
+          "dtype": "Int64",
+          "values": [
+            0
+          ]
+        },
+        "count": {
+          "dtype": "UInt32",
+          "values": [
+            0
+          ]
+        },
+        "len": {
+          "dtype": "UInt32",
+          "values": [
+            0
+          ]
+        },
+        "min": {
+          "dtype": "Int64",
+          "values": [
+            null
+          ]
+        },
+        "max": {
+          "dtype": "Int64",
+          "values": [
+            null
+          ]
+        },
+        "avg": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "var_ddof1": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "std_ddof1": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "first": {
+          "dtype": "Int64",
+          "values": [
+            null
+          ]
+        },
+        "last": {
+          "dtype": "Int64",
+          "values": [
+            null
+          ]
+        },
+        "n_unique": {
+          "dtype": "UInt32",
+          "values": [
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": "aggregate/Int64/null",
+      "input": [
+        null,
+        null
+      ],
+      "input_dtype": "Int64",
+      "results": {
+        "sum": {
+          "dtype": "Int64",
+          "values": [
+            0
+          ]
+        },
+        "count": {
+          "dtype": "UInt32",
+          "values": [
+            0
+          ]
+        },
+        "len": {
+          "dtype": "UInt32",
+          "values": [
+            2
+          ]
+        },
+        "min": {
+          "dtype": "Int64",
+          "values": [
+            null
+          ]
+        },
+        "max": {
+          "dtype": "Int64",
+          "values": [
+            null
+          ]
+        },
+        "avg": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "var_ddof1": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "std_ddof1": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "first": {
+          "dtype": "Int64",
+          "values": [
+            null
+          ]
+        },
+        "last": {
+          "dtype": "Int64",
+          "values": [
+            null
+          ]
+        },
+        "n_unique": {
+          "dtype": "UInt32",
+          "values": [
+            1
+          ]
+        }
+      }
+    },
+    {
+      "id": "aggregate/Int64/mixed",
+      "input": [
+        1,
+        null,
+        3
+      ],
+      "input_dtype": "Int64",
+      "results": {
+        "sum": {
+          "dtype": "Int64",
+          "values": [
+            4
+          ]
+        },
+        "count": {
+          "dtype": "UInt32",
+          "values": [
+            2
+          ]
+        },
+        "len": {
+          "dtype": "UInt32",
+          "values": [
+            3
+          ]
+        },
+        "min": {
+          "dtype": "Int64",
+          "values": [
+            1
+          ]
+        },
+        "max": {
+          "dtype": "Int64",
+          "values": [
+            3
+          ]
+        },
+        "avg": {
+          "dtype": "Float64",
+          "values": [
+            2.0
+          ]
+        },
+        "var_ddof1": {
+          "dtype": "Float64",
+          "values": [
+            2.0
+          ]
+        },
+        "std_ddof1": {
+          "dtype": "Float64",
+          "values": [
+            1.4142135623730951
+          ]
+        },
+        "first": {
+          "dtype": "Int64",
+          "values": [
+            1
+          ]
+        },
+        "last": {
+          "dtype": "Int64",
+          "values": [
+            3
+          ]
+        },
+        "n_unique": {
+          "dtype": "UInt32",
+          "values": [
+            3
+          ]
+        }
+      }
+    },
+    {
+      "id": "aggregate/UInt8/empty",
+      "input": [],
+      "input_dtype": "UInt8",
+      "results": {
+        "sum": {
+          "dtype": "Int64",
+          "values": [
+            0
+          ]
+        },
+        "count": {
+          "dtype": "UInt32",
+          "values": [
+            0
+          ]
+        },
+        "len": {
+          "dtype": "UInt32",
+          "values": [
+            0
+          ]
+        },
+        "min": {
+          "dtype": "UInt8",
+          "values": [
+            null
+          ]
+        },
+        "max": {
+          "dtype": "UInt8",
+          "values": [
+            null
+          ]
+        },
+        "avg": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "var_ddof1": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "std_ddof1": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "first": {
+          "dtype": "UInt8",
+          "values": [
+            null
+          ]
+        },
+        "last": {
+          "dtype": "UInt8",
+          "values": [
+            null
+          ]
+        },
+        "n_unique": {
+          "dtype": "UInt32",
+          "values": [
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": "aggregate/UInt8/null",
+      "input": [
+        null,
+        null
+      ],
+      "input_dtype": "UInt8",
+      "results": {
+        "sum": {
+          "dtype": "Int64",
+          "values": [
+            0
+          ]
+        },
+        "count": {
+          "dtype": "UInt32",
+          "values": [
+            0
+          ]
+        },
+        "len": {
+          "dtype": "UInt32",
+          "values": [
+            2
+          ]
+        },
+        "min": {
+          "dtype": "UInt8",
+          "values": [
+            null
+          ]
+        },
+        "max": {
+          "dtype": "UInt8",
+          "values": [
+            null
+          ]
+        },
+        "avg": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "var_ddof1": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "std_ddof1": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "first": {
+          "dtype": "UInt8",
+          "values": [
+            null
+          ]
+        },
+        "last": {
+          "dtype": "UInt8",
+          "values": [
+            null
+          ]
+        },
+        "n_unique": {
+          "dtype": "UInt32",
+          "values": [
+            1
+          ]
+        }
+      }
+    },
+    {
+      "id": "aggregate/UInt8/mixed",
+      "input": [
+        1,
+        null,
+        3
+      ],
+      "input_dtype": "UInt8",
+      "results": {
+        "sum": {
+          "dtype": "Int64",
+          "values": [
+            4
+          ]
+        },
+        "count": {
+          "dtype": "UInt32",
+          "values": [
+            2
+          ]
+        },
+        "len": {
+          "dtype": "UInt32",
+          "values": [
+            3
+          ]
+        },
+        "min": {
+          "dtype": "UInt8",
+          "values": [
+            1
+          ]
+        },
+        "max": {
+          "dtype": "UInt8",
+          "values": [
+            3
+          ]
+        },
+        "avg": {
+          "dtype": "Float64",
+          "values": [
+            2.0
+          ]
+        },
+        "var_ddof1": {
+          "dtype": "Float64",
+          "values": [
+            2.0
+          ]
+        },
+        "std_ddof1": {
+          "dtype": "Float64",
+          "values": [
+            1.4142135623730951
+          ]
+        },
+        "first": {
+          "dtype": "UInt8",
+          "values": [
+            1
+          ]
+        },
+        "last": {
+          "dtype": "UInt8",
+          "values": [
+            3
+          ]
+        },
+        "n_unique": {
+          "dtype": "UInt32",
+          "values": [
+            3
+          ]
+        }
+      }
+    },
+    {
+      "id": "aggregate/UInt16/empty",
+      "input": [],
+      "input_dtype": "UInt16",
+      "results": {
+        "sum": {
+          "dtype": "Int64",
+          "values": [
+            0
+          ]
+        },
+        "count": {
+          "dtype": "UInt32",
+          "values": [
+            0
+          ]
+        },
+        "len": {
+          "dtype": "UInt32",
+          "values": [
+            0
+          ]
+        },
+        "min": {
+          "dtype": "UInt16",
+          "values": [
+            null
+          ]
+        },
+        "max": {
+          "dtype": "UInt16",
+          "values": [
+            null
+          ]
+        },
+        "avg": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "var_ddof1": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "std_ddof1": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "first": {
+          "dtype": "UInt16",
+          "values": [
+            null
+          ]
+        },
+        "last": {
+          "dtype": "UInt16",
+          "values": [
+            null
+          ]
+        },
+        "n_unique": {
+          "dtype": "UInt32",
+          "values": [
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": "aggregate/UInt16/null",
+      "input": [
+        null,
+        null
+      ],
+      "input_dtype": "UInt16",
+      "results": {
+        "sum": {
+          "dtype": "Int64",
+          "values": [
+            0
+          ]
+        },
+        "count": {
+          "dtype": "UInt32",
+          "values": [
+            0
+          ]
+        },
+        "len": {
+          "dtype": "UInt32",
+          "values": [
+            2
+          ]
+        },
+        "min": {
+          "dtype": "UInt16",
+          "values": [
+            null
+          ]
+        },
+        "max": {
+          "dtype": "UInt16",
+          "values": [
+            null
+          ]
+        },
+        "avg": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "var_ddof1": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "std_ddof1": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "first": {
+          "dtype": "UInt16",
+          "values": [
+            null
+          ]
+        },
+        "last": {
+          "dtype": "UInt16",
+          "values": [
+            null
+          ]
+        },
+        "n_unique": {
+          "dtype": "UInt32",
+          "values": [
+            1
+          ]
+        }
+      }
+    },
+    {
+      "id": "aggregate/UInt16/mixed",
+      "input": [
+        1,
+        null,
+        3
+      ],
+      "input_dtype": "UInt16",
+      "results": {
+        "sum": {
+          "dtype": "Int64",
+          "values": [
+            4
+          ]
+        },
+        "count": {
+          "dtype": "UInt32",
+          "values": [
+            2
+          ]
+        },
+        "len": {
+          "dtype": "UInt32",
+          "values": [
+            3
+          ]
+        },
+        "min": {
+          "dtype": "UInt16",
+          "values": [
+            1
+          ]
+        },
+        "max": {
+          "dtype": "UInt16",
+          "values": [
+            3
+          ]
+        },
+        "avg": {
+          "dtype": "Float64",
+          "values": [
+            2.0
+          ]
+        },
+        "var_ddof1": {
+          "dtype": "Float64",
+          "values": [
+            2.0
+          ]
+        },
+        "std_ddof1": {
+          "dtype": "Float64",
+          "values": [
+            1.4142135623730951
+          ]
+        },
+        "first": {
+          "dtype": "UInt16",
+          "values": [
+            1
+          ]
+        },
+        "last": {
+          "dtype": "UInt16",
+          "values": [
+            3
+          ]
+        },
+        "n_unique": {
+          "dtype": "UInt32",
+          "values": [
+            3
+          ]
+        }
+      }
+    },
+    {
+      "id": "aggregate/UInt32/empty",
+      "input": [],
+      "input_dtype": "UInt32",
+      "results": {
+        "sum": {
+          "dtype": "UInt32",
+          "values": [
+            0
+          ]
+        },
+        "count": {
+          "dtype": "UInt32",
+          "values": [
+            0
+          ]
+        },
+        "len": {
+          "dtype": "UInt32",
+          "values": [
+            0
+          ]
+        },
+        "min": {
+          "dtype": "UInt32",
+          "values": [
+            null
+          ]
+        },
+        "max": {
+          "dtype": "UInt32",
+          "values": [
+            null
+          ]
+        },
+        "avg": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "var_ddof1": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "std_ddof1": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "first": {
+          "dtype": "UInt32",
+          "values": [
+            null
+          ]
+        },
+        "last": {
+          "dtype": "UInt32",
+          "values": [
+            null
+          ]
+        },
+        "n_unique": {
+          "dtype": "UInt32",
+          "values": [
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": "aggregate/UInt32/null",
+      "input": [
+        null,
+        null
+      ],
+      "input_dtype": "UInt32",
+      "results": {
+        "sum": {
+          "dtype": "UInt32",
+          "values": [
+            0
+          ]
+        },
+        "count": {
+          "dtype": "UInt32",
+          "values": [
+            0
+          ]
+        },
+        "len": {
+          "dtype": "UInt32",
+          "values": [
+            2
+          ]
+        },
+        "min": {
+          "dtype": "UInt32",
+          "values": [
+            null
+          ]
+        },
+        "max": {
+          "dtype": "UInt32",
+          "values": [
+            null
+          ]
+        },
+        "avg": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "var_ddof1": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "std_ddof1": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "first": {
+          "dtype": "UInt32",
+          "values": [
+            null
+          ]
+        },
+        "last": {
+          "dtype": "UInt32",
+          "values": [
+            null
+          ]
+        },
+        "n_unique": {
+          "dtype": "UInt32",
+          "values": [
+            1
+          ]
+        }
+      }
+    },
+    {
+      "id": "aggregate/UInt32/mixed",
+      "input": [
+        1,
+        null,
+        3
+      ],
+      "input_dtype": "UInt32",
+      "results": {
+        "sum": {
+          "dtype": "UInt32",
+          "values": [
+            4
+          ]
+        },
+        "count": {
+          "dtype": "UInt32",
+          "values": [
+            2
+          ]
+        },
+        "len": {
+          "dtype": "UInt32",
+          "values": [
+            3
+          ]
+        },
+        "min": {
+          "dtype": "UInt32",
+          "values": [
+            1
+          ]
+        },
+        "max": {
+          "dtype": "UInt32",
+          "values": [
+            3
+          ]
+        },
+        "avg": {
+          "dtype": "Float64",
+          "values": [
+            2.0
+          ]
+        },
+        "var_ddof1": {
+          "dtype": "Float64",
+          "values": [
+            2.0
+          ]
+        },
+        "std_ddof1": {
+          "dtype": "Float64",
+          "values": [
+            1.4142135623730951
+          ]
+        },
+        "first": {
+          "dtype": "UInt32",
+          "values": [
+            1
+          ]
+        },
+        "last": {
+          "dtype": "UInt32",
+          "values": [
+            3
+          ]
+        },
+        "n_unique": {
+          "dtype": "UInt32",
+          "values": [
+            3
+          ]
+        }
+      }
+    },
+    {
+      "id": "aggregate/UInt64/empty",
+      "input": [],
+      "input_dtype": "UInt64",
+      "results": {
+        "sum": {
+          "dtype": "UInt64",
+          "values": [
+            0
+          ]
+        },
+        "count": {
+          "dtype": "UInt32",
+          "values": [
+            0
+          ]
+        },
+        "len": {
+          "dtype": "UInt32",
+          "values": [
+            0
+          ]
+        },
+        "min": {
+          "dtype": "UInt64",
+          "values": [
+            null
+          ]
+        },
+        "max": {
+          "dtype": "UInt64",
+          "values": [
+            null
+          ]
+        },
+        "avg": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "var_ddof1": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "std_ddof1": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "first": {
+          "dtype": "UInt64",
+          "values": [
+            null
+          ]
+        },
+        "last": {
+          "dtype": "UInt64",
+          "values": [
+            null
+          ]
+        },
+        "n_unique": {
+          "dtype": "UInt32",
+          "values": [
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": "aggregate/UInt64/null",
+      "input": [
+        null,
+        null
+      ],
+      "input_dtype": "UInt64",
+      "results": {
+        "sum": {
+          "dtype": "UInt64",
+          "values": [
+            0
+          ]
+        },
+        "count": {
+          "dtype": "UInt32",
+          "values": [
+            0
+          ]
+        },
+        "len": {
+          "dtype": "UInt32",
+          "values": [
+            2
+          ]
+        },
+        "min": {
+          "dtype": "UInt64",
+          "values": [
+            null
+          ]
+        },
+        "max": {
+          "dtype": "UInt64",
+          "values": [
+            null
+          ]
+        },
+        "avg": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "var_ddof1": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "std_ddof1": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "first": {
+          "dtype": "UInt64",
+          "values": [
+            null
+          ]
+        },
+        "last": {
+          "dtype": "UInt64",
+          "values": [
+            null
+          ]
+        },
+        "n_unique": {
+          "dtype": "UInt32",
+          "values": [
+            1
+          ]
+        }
+      }
+    },
+    {
+      "id": "aggregate/UInt64/mixed",
+      "input": [
+        1,
+        null,
+        3
+      ],
+      "input_dtype": "UInt64",
+      "results": {
+        "sum": {
+          "dtype": "UInt64",
+          "values": [
+            4
+          ]
+        },
+        "count": {
+          "dtype": "UInt32",
+          "values": [
+            2
+          ]
+        },
+        "len": {
+          "dtype": "UInt32",
+          "values": [
+            3
+          ]
+        },
+        "min": {
+          "dtype": "UInt64",
+          "values": [
+            1
+          ]
+        },
+        "max": {
+          "dtype": "UInt64",
+          "values": [
+            3
+          ]
+        },
+        "avg": {
+          "dtype": "Float64",
+          "values": [
+            2.0
+          ]
+        },
+        "var_ddof1": {
+          "dtype": "Float64",
+          "values": [
+            2.0
+          ]
+        },
+        "std_ddof1": {
+          "dtype": "Float64",
+          "values": [
+            1.4142135623730951
+          ]
+        },
+        "first": {
+          "dtype": "UInt64",
+          "values": [
+            1
+          ]
+        },
+        "last": {
+          "dtype": "UInt64",
+          "values": [
+            3
+          ]
+        },
+        "n_unique": {
+          "dtype": "UInt32",
+          "values": [
+            3
+          ]
+        }
+      }
+    },
+    {
+      "id": "aggregate/Float32/empty",
+      "input": [],
+      "input_dtype": "Float32",
+      "results": {
+        "sum": {
+          "dtype": "Float32",
+          "values": [
+            0.0
+          ]
+        },
+        "count": {
+          "dtype": "UInt32",
+          "values": [
+            0
+          ]
+        },
+        "len": {
+          "dtype": "UInt32",
+          "values": [
+            0
+          ]
+        },
+        "min": {
+          "dtype": "Float32",
+          "values": [
+            null
+          ]
+        },
+        "max": {
+          "dtype": "Float32",
+          "values": [
+            null
+          ]
+        },
+        "avg": {
+          "dtype": "Float32",
+          "values": [
+            null
+          ]
+        },
+        "var_ddof1": {
+          "dtype": "Float32",
+          "values": [
+            null
+          ]
+        },
+        "std_ddof1": {
+          "dtype": "Float32",
+          "values": [
+            null
+          ]
+        },
+        "first": {
+          "dtype": "Float32",
+          "values": [
+            null
+          ]
+        },
+        "last": {
+          "dtype": "Float32",
+          "values": [
+            null
+          ]
+        },
+        "n_unique": {
+          "dtype": "UInt32",
+          "values": [
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": "aggregate/Float32/null",
+      "input": [
+        null,
+        null
+      ],
+      "input_dtype": "Float32",
+      "results": {
+        "sum": {
+          "dtype": "Float32",
+          "values": [
+            0.0
+          ]
+        },
+        "count": {
+          "dtype": "UInt32",
+          "values": [
+            0
+          ]
+        },
+        "len": {
+          "dtype": "UInt32",
+          "values": [
+            2
+          ]
+        },
+        "min": {
+          "dtype": "Float32",
+          "values": [
+            null
+          ]
+        },
+        "max": {
+          "dtype": "Float32",
+          "values": [
+            null
+          ]
+        },
+        "avg": {
+          "dtype": "Float32",
+          "values": [
+            null
+          ]
+        },
+        "var_ddof1": {
+          "dtype": "Float32",
+          "values": [
+            null
+          ]
+        },
+        "std_ddof1": {
+          "dtype": "Float32",
+          "values": [
+            null
+          ]
+        },
+        "first": {
+          "dtype": "Float32",
+          "values": [
+            null
+          ]
+        },
+        "last": {
+          "dtype": "Float32",
+          "values": [
+            null
+          ]
+        },
+        "n_unique": {
+          "dtype": "UInt32",
+          "values": [
+            1
+          ]
+        }
+      }
+    },
+    {
+      "id": "aggregate/Float32/mixed",
+      "input": [
+        1,
+        null,
+        3
+      ],
+      "input_dtype": "Float32",
+      "results": {
+        "sum": {
+          "dtype": "Float32",
+          "values": [
+            4.0
+          ]
+        },
+        "count": {
+          "dtype": "UInt32",
+          "values": [
+            2
+          ]
+        },
+        "len": {
+          "dtype": "UInt32",
+          "values": [
+            3
+          ]
+        },
+        "min": {
+          "dtype": "Float32",
+          "values": [
+            1.0
+          ]
+        },
+        "max": {
+          "dtype": "Float32",
+          "values": [
+            3.0
+          ]
+        },
+        "avg": {
+          "dtype": "Float32",
+          "values": [
+            2.0
+          ]
+        },
+        "var_ddof1": {
+          "dtype": "Float32",
+          "values": [
+            2.0
+          ]
+        },
+        "std_ddof1": {
+          "dtype": "Float32",
+          "values": [
+            1.4142135381698608
+          ]
+        },
+        "first": {
+          "dtype": "Float32",
+          "values": [
+            1.0
+          ]
+        },
+        "last": {
+          "dtype": "Float32",
+          "values": [
+            3.0
+          ]
+        },
+        "n_unique": {
+          "dtype": "UInt32",
+          "values": [
+            3
+          ]
+        }
+      }
+    },
+    {
+      "id": "aggregate/Float64/empty",
+      "input": [],
+      "input_dtype": "Float64",
+      "results": {
+        "sum": {
+          "dtype": "Float64",
+          "values": [
+            0.0
+          ]
+        },
+        "count": {
+          "dtype": "UInt32",
+          "values": [
+            0
+          ]
+        },
+        "len": {
+          "dtype": "UInt32",
+          "values": [
+            0
+          ]
+        },
+        "min": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "max": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "avg": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "var_ddof1": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "std_ddof1": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "first": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "last": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "n_unique": {
+          "dtype": "UInt32",
+          "values": [
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": "aggregate/Float64/null",
+      "input": [
+        null,
+        null
+      ],
+      "input_dtype": "Float64",
+      "results": {
+        "sum": {
+          "dtype": "Float64",
+          "values": [
+            0.0
+          ]
+        },
+        "count": {
+          "dtype": "UInt32",
+          "values": [
+            0
+          ]
+        },
+        "len": {
+          "dtype": "UInt32",
+          "values": [
+            2
+          ]
+        },
+        "min": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "max": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "avg": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "var_ddof1": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "std_ddof1": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "first": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "last": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "n_unique": {
+          "dtype": "UInt32",
+          "values": [
+            1
+          ]
+        }
+      }
+    },
+    {
+      "id": "aggregate/Float64/mixed",
+      "input": [
+        1,
+        null,
+        3
+      ],
+      "input_dtype": "Float64",
+      "results": {
+        "sum": {
+          "dtype": "Float64",
+          "values": [
+            4.0
+          ]
+        },
+        "count": {
+          "dtype": "UInt32",
+          "values": [
+            2
+          ]
+        },
+        "len": {
+          "dtype": "UInt32",
+          "values": [
+            3
+          ]
+        },
+        "min": {
+          "dtype": "Float64",
+          "values": [
+            1.0
+          ]
+        },
+        "max": {
+          "dtype": "Float64",
+          "values": [
+            3.0
+          ]
+        },
+        "avg": {
+          "dtype": "Float64",
+          "values": [
+            2.0
+          ]
+        },
+        "var_ddof1": {
+          "dtype": "Float64",
+          "values": [
+            2.0
+          ]
+        },
+        "std_ddof1": {
+          "dtype": "Float64",
+          "values": [
+            1.4142135623730951
+          ]
+        },
+        "first": {
+          "dtype": "Float64",
+          "values": [
+            1.0
+          ]
+        },
+        "last": {
+          "dtype": "Float64",
+          "values": [
+            3.0
+          ]
+        },
+        "n_unique": {
+          "dtype": "UInt32",
+          "values": [
+            3
+          ]
+        }
+      }
+    },
+    {
+      "id": "edge/nan",
+      "input": [
+        "NaN",
+        1.0,
+        null
+      ],
+      "input_dtype": "Float64",
+      "results": {
+        "sum": {
+          "dtype": "Float64",
+          "values": [
+            "NaN"
+          ]
+        },
+        "avg": {
+          "dtype": "Float64",
+          "values": [
+            "NaN"
+          ]
+        },
+        "min": {
+          "dtype": "Float64",
+          "values": [
+            1.0
+          ]
+        },
+        "max": {
+          "dtype": "Float64",
+          "values": [
+            1.0
+          ]
+        },
+        "count": {
+          "dtype": "UInt32",
+          "values": [
+            2
+          ]
+        }
+      }
+    },
+    {
+      "id": "edge/infinities",
+      "input": [
+        "+Inf",
+        "-Inf"
+      ],
+      "input_dtype": "Float64",
+      "results": {
+        "sum": {
+          "dtype": "Float64",
+          "values": [
+            "NaN"
+          ]
+        },
+        "avg": {
+          "dtype": "Float64",
+          "values": [
+            "NaN"
+          ]
+        },
+        "min": {
+          "dtype": "Float64",
+          "values": [
+            "-Inf"
+          ]
+        },
+        "max": {
+          "dtype": "Float64",
+          "values": [
+            "+Inf"
+          ]
+        },
+        "count": {
+          "dtype": "UInt32",
+          "values": [
+            2
+          ]
+        }
+      }
+    },
+    {
+      "id": "edge/int64_overflow",
+      "input": [
+        9223372036854775807,
+        1
+      ],
+      "input_dtype": "Int64",
+      "results": {
+        "sum": {
+          "dtype": "Int64",
+          "values": [
+            -9223372036854775808
+          ]
+        },
+        "avg": {
+          "dtype": "Float64",
+          "values": [
+            4.611686018427388e+18
+          ]
+        },
+        "min": {
+          "dtype": "Int64",
+          "values": [
+            1
+          ]
+        },
+        "max": {
+          "dtype": "Int64",
+          "values": [
+            9223372036854775807
+          ]
+        },
+        "count": {
+          "dtype": "UInt32",
+          "values": [
+            2
+          ]
+        }
+      }
+    },
+    {
+      "id": "edge/uint64_overflow",
+      "input": [
+        18446744073709551615,
+        1
+      ],
+      "input_dtype": "UInt64",
+      "results": {
+        "sum": {
+          "dtype": "UInt64",
+          "values": [
+            0
+          ]
+        },
+        "avg": {
+          "dtype": "Float64",
+          "values": [
+            9.223372036854776e+18
+          ]
+        },
+        "min": {
+          "dtype": "UInt64",
+          "values": [
+            1
+          ]
+        },
+        "max": {
+          "dtype": "UInt64",
+          "values": [
+            18446744073709551615
+          ]
+        },
+        "count": {
+          "dtype": "UInt32",
+          "values": [
+            2
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int8/'0'",
+      "input": [
+        "0"
+      ],
+      "target_dtype": "Int8",
+      "results": {
+        "strict": {
+          "dtype": "Int8",
+          "values": [
+            0
+          ]
+        },
+        "try": {
+          "dtype": "Int8",
+          "values": [
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int8/'-1'",
+      "input": [
+        "-1"
+      ],
+      "target_dtype": "Int8",
+      "results": {
+        "strict": {
+          "dtype": "Int8",
+          "values": [
+            -1
+          ]
+        },
+        "try": {
+          "dtype": "Int8",
+          "values": [
+            -1
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int8/'+1'",
+      "input": [
+        "+1"
+      ],
+      "target_dtype": "Int8",
+      "results": {
+        "strict": {
+          "dtype": "Int8",
+          "values": [
+            1
+          ]
+        },
+        "try": {
+          "dtype": "Int8",
+          "values": [
+            1
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int8/' 1'",
+      "input": [
+        " 1"
+      ],
+      "target_dtype": "Int8",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int8",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int8/'1 '",
+      "input": [
+        "1 "
+      ],
+      "target_dtype": "Int8",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int8",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int8/'1.5'",
+      "input": [
+        "1.5"
+      ],
+      "target_dtype": "Int8",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int8",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int8/'1e2'",
+      "input": [
+        "1e2"
+      ],
+      "target_dtype": "Int8",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int8",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int8/'NaN'",
+      "input": [
+        "NaN"
+      ],
+      "target_dtype": "Int8",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int8",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int8/'inf'",
+      "input": [
+        "inf"
+      ],
+      "target_dtype": "Int8",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int8",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int8/'-inf'",
+      "input": [
+        "-inf"
+      ],
+      "target_dtype": "Int8",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int8",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int8/''",
+      "input": [
+        ""
+      ],
+      "target_dtype": "Int8",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int8",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int8/'+NaN'",
+      "input": [
+        "+NaN"
+      ],
+      "target_dtype": "Int8",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int8",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int8/'-NaN'",
+      "input": [
+        "-NaN"
+      ],
+      "target_dtype": "Int8",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int8",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int8/'+nan'",
+      "input": [
+        "+nan"
+      ],
+      "target_dtype": "Int8",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int8",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int8/'-nan'",
+      "input": [
+        "-nan"
+      ],
+      "target_dtype": "Int8",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int8",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int8/'1.'",
+      "input": [
+        "1."
+      ],
+      "target_dtype": "Int8",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int8",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int8/'.5'",
+      "input": [
+        ".5"
+      ],
+      "target_dtype": "Int8",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int8",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int8/'+.5'",
+      "input": [
+        "+.5"
+      ],
+      "target_dtype": "Int8",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int8",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int8/'01e2'",
+      "input": [
+        "01e2"
+      ],
+      "target_dtype": "Int8",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int8",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int8/'-0'",
+      "input": [
+        "-0"
+      ],
+      "target_dtype": "Int8",
+      "results": {
+        "strict": {
+          "dtype": "Int8",
+          "values": [
+            0
+          ]
+        },
+        "try": {
+          "dtype": "Int8",
+          "values": [
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int8/'nan'",
+      "input": [
+        "nan"
+      ],
+      "target_dtype": "Int8",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int8",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int8/'NAN'",
+      "input": [
+        "NAN"
+      ],
+      "target_dtype": "Int8",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int8",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int8/'Inf'",
+      "input": [
+        "Inf"
+      ],
+      "target_dtype": "Int8",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int8",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int8/'Infinity'",
+      "input": [
+        "Infinity"
+      ],
+      "target_dtype": "Int8",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int8",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int8/'infinity'",
+      "input": [
+        "infinity"
+      ],
+      "target_dtype": "Int8",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int8",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int8/'+Inf'",
+      "input": [
+        "+Inf"
+      ],
+      "target_dtype": "Int8",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int8",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int8/'-Infinity'",
+      "input": [
+        "-Infinity"
+      ],
+      "target_dtype": "Int8",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int8",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int8/'1e999'",
+      "input": [
+        "1e999"
+      ],
+      "target_dtype": "Int8",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int8",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int8/'1e-999'",
+      "input": [
+        "1e-999"
+      ],
+      "target_dtype": "Int8",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int8",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int8/'1e40'",
+      "input": [
+        "1e40"
+      ],
+      "target_dtype": "Int8",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int8",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int8/'0x1p2'",
+      "input": [
+        "0x1p2"
+      ],
+      "target_dtype": "Int8",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int8",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int8/'0x10'",
+      "input": [
+        "0x10"
+      ],
+      "target_dtype": "Int8",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int8",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int8/'1_000'",
+      "input": [
+        "1_000"
+      ],
+      "target_dtype": "Int8",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int8",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int8/'18446744073709551615'",
+      "input": [
+        "18446744073709551615"
+      ],
+      "target_dtype": "Int8",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int8",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int8/'18446744073709551616'",
+      "input": [
+        "18446744073709551616"
+      ],
+      "target_dtype": "Int8",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int8",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int8/None",
+      "input": [
+        null
+      ],
+      "target_dtype": "Int8",
+      "results": {
+        "strict": {
+          "dtype": "Int8",
+          "values": [
+            null
+          ]
+        },
+        "try": {
+          "dtype": "Int8",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int16/'0'",
+      "input": [
+        "0"
+      ],
+      "target_dtype": "Int16",
+      "results": {
+        "strict": {
+          "dtype": "Int16",
+          "values": [
+            0
+          ]
+        },
+        "try": {
+          "dtype": "Int16",
+          "values": [
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int16/'-1'",
+      "input": [
+        "-1"
+      ],
+      "target_dtype": "Int16",
+      "results": {
+        "strict": {
+          "dtype": "Int16",
+          "values": [
+            -1
+          ]
+        },
+        "try": {
+          "dtype": "Int16",
+          "values": [
+            -1
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int16/'+1'",
+      "input": [
+        "+1"
+      ],
+      "target_dtype": "Int16",
+      "results": {
+        "strict": {
+          "dtype": "Int16",
+          "values": [
+            1
+          ]
+        },
+        "try": {
+          "dtype": "Int16",
+          "values": [
+            1
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int16/' 1'",
+      "input": [
+        " 1"
+      ],
+      "target_dtype": "Int16",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int16",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int16/'1 '",
+      "input": [
+        "1 "
+      ],
+      "target_dtype": "Int16",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int16",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int16/'1.5'",
+      "input": [
+        "1.5"
+      ],
+      "target_dtype": "Int16",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int16",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int16/'1e2'",
+      "input": [
+        "1e2"
+      ],
+      "target_dtype": "Int16",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int16",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int16/'NaN'",
+      "input": [
+        "NaN"
+      ],
+      "target_dtype": "Int16",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int16",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int16/'inf'",
+      "input": [
+        "inf"
+      ],
+      "target_dtype": "Int16",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int16",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int16/'-inf'",
+      "input": [
+        "-inf"
+      ],
+      "target_dtype": "Int16",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int16",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int16/''",
+      "input": [
+        ""
+      ],
+      "target_dtype": "Int16",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int16",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int16/'+NaN'",
+      "input": [
+        "+NaN"
+      ],
+      "target_dtype": "Int16",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int16",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int16/'-NaN'",
+      "input": [
+        "-NaN"
+      ],
+      "target_dtype": "Int16",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int16",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int16/'+nan'",
+      "input": [
+        "+nan"
+      ],
+      "target_dtype": "Int16",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int16",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int16/'-nan'",
+      "input": [
+        "-nan"
+      ],
+      "target_dtype": "Int16",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int16",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int16/'1.'",
+      "input": [
+        "1."
+      ],
+      "target_dtype": "Int16",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int16",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int16/'.5'",
+      "input": [
+        ".5"
+      ],
+      "target_dtype": "Int16",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int16",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int16/'+.5'",
+      "input": [
+        "+.5"
+      ],
+      "target_dtype": "Int16",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int16",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int16/'01e2'",
+      "input": [
+        "01e2"
+      ],
+      "target_dtype": "Int16",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int16",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int16/'-0'",
+      "input": [
+        "-0"
+      ],
+      "target_dtype": "Int16",
+      "results": {
+        "strict": {
+          "dtype": "Int16",
+          "values": [
+            0
+          ]
+        },
+        "try": {
+          "dtype": "Int16",
+          "values": [
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int16/'nan'",
+      "input": [
+        "nan"
+      ],
+      "target_dtype": "Int16",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int16",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int16/'NAN'",
+      "input": [
+        "NAN"
+      ],
+      "target_dtype": "Int16",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int16",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int16/'Inf'",
+      "input": [
+        "Inf"
+      ],
+      "target_dtype": "Int16",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int16",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int16/'Infinity'",
+      "input": [
+        "Infinity"
+      ],
+      "target_dtype": "Int16",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int16",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int16/'infinity'",
+      "input": [
+        "infinity"
+      ],
+      "target_dtype": "Int16",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int16",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int16/'+Inf'",
+      "input": [
+        "+Inf"
+      ],
+      "target_dtype": "Int16",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int16",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int16/'-Infinity'",
+      "input": [
+        "-Infinity"
+      ],
+      "target_dtype": "Int16",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int16",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int16/'1e999'",
+      "input": [
+        "1e999"
+      ],
+      "target_dtype": "Int16",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int16",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int16/'1e-999'",
+      "input": [
+        "1e-999"
+      ],
+      "target_dtype": "Int16",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int16",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int16/'1e40'",
+      "input": [
+        "1e40"
+      ],
+      "target_dtype": "Int16",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int16",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int16/'0x1p2'",
+      "input": [
+        "0x1p2"
+      ],
+      "target_dtype": "Int16",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int16",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int16/'0x10'",
+      "input": [
+        "0x10"
+      ],
+      "target_dtype": "Int16",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int16",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int16/'1_000'",
+      "input": [
+        "1_000"
+      ],
+      "target_dtype": "Int16",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int16",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int16/'18446744073709551615'",
+      "input": [
+        "18446744073709551615"
+      ],
+      "target_dtype": "Int16",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int16",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int16/'18446744073709551616'",
+      "input": [
+        "18446744073709551616"
+      ],
+      "target_dtype": "Int16",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int16",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int16/None",
+      "input": [
+        null
+      ],
+      "target_dtype": "Int16",
+      "results": {
+        "strict": {
+          "dtype": "Int16",
+          "values": [
+            null
+          ]
+        },
+        "try": {
+          "dtype": "Int16",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int32/'0'",
+      "input": [
+        "0"
+      ],
+      "target_dtype": "Int32",
+      "results": {
+        "strict": {
+          "dtype": "Int32",
+          "values": [
+            0
+          ]
+        },
+        "try": {
+          "dtype": "Int32",
+          "values": [
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int32/'-1'",
+      "input": [
+        "-1"
+      ],
+      "target_dtype": "Int32",
+      "results": {
+        "strict": {
+          "dtype": "Int32",
+          "values": [
+            -1
+          ]
+        },
+        "try": {
+          "dtype": "Int32",
+          "values": [
+            -1
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int32/'+1'",
+      "input": [
+        "+1"
+      ],
+      "target_dtype": "Int32",
+      "results": {
+        "strict": {
+          "dtype": "Int32",
+          "values": [
+            1
+          ]
+        },
+        "try": {
+          "dtype": "Int32",
+          "values": [
+            1
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int32/' 1'",
+      "input": [
+        " 1"
+      ],
+      "target_dtype": "Int32",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int32",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int32/'1 '",
+      "input": [
+        "1 "
+      ],
+      "target_dtype": "Int32",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int32",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int32/'1.5'",
+      "input": [
+        "1.5"
+      ],
+      "target_dtype": "Int32",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int32",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int32/'1e2'",
+      "input": [
+        "1e2"
+      ],
+      "target_dtype": "Int32",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int32",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int32/'NaN'",
+      "input": [
+        "NaN"
+      ],
+      "target_dtype": "Int32",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int32",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int32/'inf'",
+      "input": [
+        "inf"
+      ],
+      "target_dtype": "Int32",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int32",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int32/'-inf'",
+      "input": [
+        "-inf"
+      ],
+      "target_dtype": "Int32",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int32",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int32/''",
+      "input": [
+        ""
+      ],
+      "target_dtype": "Int32",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int32",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int32/'+NaN'",
+      "input": [
+        "+NaN"
+      ],
+      "target_dtype": "Int32",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int32",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int32/'-NaN'",
+      "input": [
+        "-NaN"
+      ],
+      "target_dtype": "Int32",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int32",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int32/'+nan'",
+      "input": [
+        "+nan"
+      ],
+      "target_dtype": "Int32",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int32",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int32/'-nan'",
+      "input": [
+        "-nan"
+      ],
+      "target_dtype": "Int32",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int32",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int32/'1.'",
+      "input": [
+        "1."
+      ],
+      "target_dtype": "Int32",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int32",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int32/'.5'",
+      "input": [
+        ".5"
+      ],
+      "target_dtype": "Int32",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int32",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int32/'+.5'",
+      "input": [
+        "+.5"
+      ],
+      "target_dtype": "Int32",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int32",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int32/'01e2'",
+      "input": [
+        "01e2"
+      ],
+      "target_dtype": "Int32",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int32",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int32/'-0'",
+      "input": [
+        "-0"
+      ],
+      "target_dtype": "Int32",
+      "results": {
+        "strict": {
+          "dtype": "Int32",
+          "values": [
+            0
+          ]
+        },
+        "try": {
+          "dtype": "Int32",
+          "values": [
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int32/'nan'",
+      "input": [
+        "nan"
+      ],
+      "target_dtype": "Int32",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int32",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int32/'NAN'",
+      "input": [
+        "NAN"
+      ],
+      "target_dtype": "Int32",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int32",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int32/'Inf'",
+      "input": [
+        "Inf"
+      ],
+      "target_dtype": "Int32",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int32",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int32/'Infinity'",
+      "input": [
+        "Infinity"
+      ],
+      "target_dtype": "Int32",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int32",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int32/'infinity'",
+      "input": [
+        "infinity"
+      ],
+      "target_dtype": "Int32",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int32",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int32/'+Inf'",
+      "input": [
+        "+Inf"
+      ],
+      "target_dtype": "Int32",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int32",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int32/'-Infinity'",
+      "input": [
+        "-Infinity"
+      ],
+      "target_dtype": "Int32",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int32",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int32/'1e999'",
+      "input": [
+        "1e999"
+      ],
+      "target_dtype": "Int32",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int32",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int32/'1e-999'",
+      "input": [
+        "1e-999"
+      ],
+      "target_dtype": "Int32",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int32",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int32/'1e40'",
+      "input": [
+        "1e40"
+      ],
+      "target_dtype": "Int32",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int32",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int32/'0x1p2'",
+      "input": [
+        "0x1p2"
+      ],
+      "target_dtype": "Int32",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int32",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int32/'0x10'",
+      "input": [
+        "0x10"
+      ],
+      "target_dtype": "Int32",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int32",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int32/'1_000'",
+      "input": [
+        "1_000"
+      ],
+      "target_dtype": "Int32",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int32",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int32/'18446744073709551615'",
+      "input": [
+        "18446744073709551615"
+      ],
+      "target_dtype": "Int32",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int32",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int32/'18446744073709551616'",
+      "input": [
+        "18446744073709551616"
+      ],
+      "target_dtype": "Int32",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int32",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int32/None",
+      "input": [
+        null
+      ],
+      "target_dtype": "Int32",
+      "results": {
+        "strict": {
+          "dtype": "Int32",
+          "values": [
+            null
+          ]
+        },
+        "try": {
+          "dtype": "Int32",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int64/'0'",
+      "input": [
+        "0"
+      ],
+      "target_dtype": "Int64",
+      "results": {
+        "strict": {
+          "dtype": "Int64",
+          "values": [
+            0
+          ]
+        },
+        "try": {
+          "dtype": "Int64",
+          "values": [
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int64/'-1'",
+      "input": [
+        "-1"
+      ],
+      "target_dtype": "Int64",
+      "results": {
+        "strict": {
+          "dtype": "Int64",
+          "values": [
+            -1
+          ]
+        },
+        "try": {
+          "dtype": "Int64",
+          "values": [
+            -1
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int64/'+1'",
+      "input": [
+        "+1"
+      ],
+      "target_dtype": "Int64",
+      "results": {
+        "strict": {
+          "dtype": "Int64",
+          "values": [
+            1
+          ]
+        },
+        "try": {
+          "dtype": "Int64",
+          "values": [
+            1
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int64/' 1'",
+      "input": [
+        " 1"
+      ],
+      "target_dtype": "Int64",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int64",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int64/'1 '",
+      "input": [
+        "1 "
+      ],
+      "target_dtype": "Int64",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int64",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int64/'1.5'",
+      "input": [
+        "1.5"
+      ],
+      "target_dtype": "Int64",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int64",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int64/'1e2'",
+      "input": [
+        "1e2"
+      ],
+      "target_dtype": "Int64",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int64",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int64/'NaN'",
+      "input": [
+        "NaN"
+      ],
+      "target_dtype": "Int64",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int64",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int64/'inf'",
+      "input": [
+        "inf"
+      ],
+      "target_dtype": "Int64",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int64",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int64/'-inf'",
+      "input": [
+        "-inf"
+      ],
+      "target_dtype": "Int64",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int64",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int64/''",
+      "input": [
+        ""
+      ],
+      "target_dtype": "Int64",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int64",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int64/'+NaN'",
+      "input": [
+        "+NaN"
+      ],
+      "target_dtype": "Int64",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int64",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int64/'-NaN'",
+      "input": [
+        "-NaN"
+      ],
+      "target_dtype": "Int64",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int64",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int64/'+nan'",
+      "input": [
+        "+nan"
+      ],
+      "target_dtype": "Int64",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int64",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int64/'-nan'",
+      "input": [
+        "-nan"
+      ],
+      "target_dtype": "Int64",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int64",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int64/'1.'",
+      "input": [
+        "1."
+      ],
+      "target_dtype": "Int64",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int64",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int64/'.5'",
+      "input": [
+        ".5"
+      ],
+      "target_dtype": "Int64",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int64",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int64/'+.5'",
+      "input": [
+        "+.5"
+      ],
+      "target_dtype": "Int64",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int64",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int64/'01e2'",
+      "input": [
+        "01e2"
+      ],
+      "target_dtype": "Int64",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int64",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int64/'-0'",
+      "input": [
+        "-0"
+      ],
+      "target_dtype": "Int64",
+      "results": {
+        "strict": {
+          "dtype": "Int64",
+          "values": [
+            0
+          ]
+        },
+        "try": {
+          "dtype": "Int64",
+          "values": [
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int64/'nan'",
+      "input": [
+        "nan"
+      ],
+      "target_dtype": "Int64",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int64",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int64/'NAN'",
+      "input": [
+        "NAN"
+      ],
+      "target_dtype": "Int64",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int64",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int64/'Inf'",
+      "input": [
+        "Inf"
+      ],
+      "target_dtype": "Int64",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int64",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int64/'Infinity'",
+      "input": [
+        "Infinity"
+      ],
+      "target_dtype": "Int64",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int64",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int64/'infinity'",
+      "input": [
+        "infinity"
+      ],
+      "target_dtype": "Int64",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int64",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int64/'+Inf'",
+      "input": [
+        "+Inf"
+      ],
+      "target_dtype": "Int64",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int64",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int64/'-Infinity'",
+      "input": [
+        "-Infinity"
+      ],
+      "target_dtype": "Int64",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int64",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int64/'1e999'",
+      "input": [
+        "1e999"
+      ],
+      "target_dtype": "Int64",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int64",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int64/'1e-999'",
+      "input": [
+        "1e-999"
+      ],
+      "target_dtype": "Int64",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int64",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int64/'1e40'",
+      "input": [
+        "1e40"
+      ],
+      "target_dtype": "Int64",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int64",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int64/'0x1p2'",
+      "input": [
+        "0x1p2"
+      ],
+      "target_dtype": "Int64",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int64",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int64/'0x10'",
+      "input": [
+        "0x10"
+      ],
+      "target_dtype": "Int64",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int64",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int64/'1_000'",
+      "input": [
+        "1_000"
+      ],
+      "target_dtype": "Int64",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int64",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int64/'18446744073709551615'",
+      "input": [
+        "18446744073709551615"
+      ],
+      "target_dtype": "Int64",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int64",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int64/'18446744073709551616'",
+      "input": [
+        "18446744073709551616"
+      ],
+      "target_dtype": "Int64",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Int64",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Int64/None",
+      "input": [
+        null
+      ],
+      "target_dtype": "Int64",
+      "results": {
+        "strict": {
+          "dtype": "Int64",
+          "values": [
+            null
+          ]
+        },
+        "try": {
+          "dtype": "Int64",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt8/'0'",
+      "input": [
+        "0"
+      ],
+      "target_dtype": "UInt8",
+      "results": {
+        "strict": {
+          "dtype": "UInt8",
+          "values": [
+            0
+          ]
+        },
+        "try": {
+          "dtype": "UInt8",
+          "values": [
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt8/'-1'",
+      "input": [
+        "-1"
+      ],
+      "target_dtype": "UInt8",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt8",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt8/'+1'",
+      "input": [
+        "+1"
+      ],
+      "target_dtype": "UInt8",
+      "results": {
+        "strict": {
+          "dtype": "UInt8",
+          "values": [
+            1
+          ]
+        },
+        "try": {
+          "dtype": "UInt8",
+          "values": [
+            1
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt8/' 1'",
+      "input": [
+        " 1"
+      ],
+      "target_dtype": "UInt8",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt8",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt8/'1 '",
+      "input": [
+        "1 "
+      ],
+      "target_dtype": "UInt8",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt8",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt8/'1.5'",
+      "input": [
+        "1.5"
+      ],
+      "target_dtype": "UInt8",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt8",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt8/'1e2'",
+      "input": [
+        "1e2"
+      ],
+      "target_dtype": "UInt8",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt8",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt8/'NaN'",
+      "input": [
+        "NaN"
+      ],
+      "target_dtype": "UInt8",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt8",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt8/'inf'",
+      "input": [
+        "inf"
+      ],
+      "target_dtype": "UInt8",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt8",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt8/'-inf'",
+      "input": [
+        "-inf"
+      ],
+      "target_dtype": "UInt8",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt8",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt8/''",
+      "input": [
+        ""
+      ],
+      "target_dtype": "UInt8",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt8",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt8/'+NaN'",
+      "input": [
+        "+NaN"
+      ],
+      "target_dtype": "UInt8",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt8",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt8/'-NaN'",
+      "input": [
+        "-NaN"
+      ],
+      "target_dtype": "UInt8",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt8",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt8/'+nan'",
+      "input": [
+        "+nan"
+      ],
+      "target_dtype": "UInt8",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt8",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt8/'-nan'",
+      "input": [
+        "-nan"
+      ],
+      "target_dtype": "UInt8",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt8",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt8/'1.'",
+      "input": [
+        "1."
+      ],
+      "target_dtype": "UInt8",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt8",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt8/'.5'",
+      "input": [
+        ".5"
+      ],
+      "target_dtype": "UInt8",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt8",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt8/'+.5'",
+      "input": [
+        "+.5"
+      ],
+      "target_dtype": "UInt8",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt8",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt8/'01e2'",
+      "input": [
+        "01e2"
+      ],
+      "target_dtype": "UInt8",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt8",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt8/'-0'",
+      "input": [
+        "-0"
+      ],
+      "target_dtype": "UInt8",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt8",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt8/'nan'",
+      "input": [
+        "nan"
+      ],
+      "target_dtype": "UInt8",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt8",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt8/'NAN'",
+      "input": [
+        "NAN"
+      ],
+      "target_dtype": "UInt8",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt8",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt8/'Inf'",
+      "input": [
+        "Inf"
+      ],
+      "target_dtype": "UInt8",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt8",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt8/'Infinity'",
+      "input": [
+        "Infinity"
+      ],
+      "target_dtype": "UInt8",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt8",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt8/'infinity'",
+      "input": [
+        "infinity"
+      ],
+      "target_dtype": "UInt8",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt8",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt8/'+Inf'",
+      "input": [
+        "+Inf"
+      ],
+      "target_dtype": "UInt8",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt8",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt8/'-Infinity'",
+      "input": [
+        "-Infinity"
+      ],
+      "target_dtype": "UInt8",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt8",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt8/'1e999'",
+      "input": [
+        "1e999"
+      ],
+      "target_dtype": "UInt8",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt8",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt8/'1e-999'",
+      "input": [
+        "1e-999"
+      ],
+      "target_dtype": "UInt8",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt8",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt8/'1e40'",
+      "input": [
+        "1e40"
+      ],
+      "target_dtype": "UInt8",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt8",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt8/'0x1p2'",
+      "input": [
+        "0x1p2"
+      ],
+      "target_dtype": "UInt8",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt8",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt8/'0x10'",
+      "input": [
+        "0x10"
+      ],
+      "target_dtype": "UInt8",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt8",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt8/'1_000'",
+      "input": [
+        "1_000"
+      ],
+      "target_dtype": "UInt8",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt8",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt8/'18446744073709551615'",
+      "input": [
+        "18446744073709551615"
+      ],
+      "target_dtype": "UInt8",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt8",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt8/'18446744073709551616'",
+      "input": [
+        "18446744073709551616"
+      ],
+      "target_dtype": "UInt8",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt8",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt8/None",
+      "input": [
+        null
+      ],
+      "target_dtype": "UInt8",
+      "results": {
+        "strict": {
+          "dtype": "UInt8",
+          "values": [
+            null
+          ]
+        },
+        "try": {
+          "dtype": "UInt8",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt16/'0'",
+      "input": [
+        "0"
+      ],
+      "target_dtype": "UInt16",
+      "results": {
+        "strict": {
+          "dtype": "UInt16",
+          "values": [
+            0
+          ]
+        },
+        "try": {
+          "dtype": "UInt16",
+          "values": [
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt16/'-1'",
+      "input": [
+        "-1"
+      ],
+      "target_dtype": "UInt16",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt16",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt16/'+1'",
+      "input": [
+        "+1"
+      ],
+      "target_dtype": "UInt16",
+      "results": {
+        "strict": {
+          "dtype": "UInt16",
+          "values": [
+            1
+          ]
+        },
+        "try": {
+          "dtype": "UInt16",
+          "values": [
+            1
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt16/' 1'",
+      "input": [
+        " 1"
+      ],
+      "target_dtype": "UInt16",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt16",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt16/'1 '",
+      "input": [
+        "1 "
+      ],
+      "target_dtype": "UInt16",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt16",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt16/'1.5'",
+      "input": [
+        "1.5"
+      ],
+      "target_dtype": "UInt16",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt16",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt16/'1e2'",
+      "input": [
+        "1e2"
+      ],
+      "target_dtype": "UInt16",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt16",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt16/'NaN'",
+      "input": [
+        "NaN"
+      ],
+      "target_dtype": "UInt16",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt16",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt16/'inf'",
+      "input": [
+        "inf"
+      ],
+      "target_dtype": "UInt16",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt16",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt16/'-inf'",
+      "input": [
+        "-inf"
+      ],
+      "target_dtype": "UInt16",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt16",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt16/''",
+      "input": [
+        ""
+      ],
+      "target_dtype": "UInt16",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt16",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt16/'+NaN'",
+      "input": [
+        "+NaN"
+      ],
+      "target_dtype": "UInt16",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt16",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt16/'-NaN'",
+      "input": [
+        "-NaN"
+      ],
+      "target_dtype": "UInt16",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt16",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt16/'+nan'",
+      "input": [
+        "+nan"
+      ],
+      "target_dtype": "UInt16",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt16",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt16/'-nan'",
+      "input": [
+        "-nan"
+      ],
+      "target_dtype": "UInt16",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt16",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt16/'1.'",
+      "input": [
+        "1."
+      ],
+      "target_dtype": "UInt16",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt16",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt16/'.5'",
+      "input": [
+        ".5"
+      ],
+      "target_dtype": "UInt16",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt16",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt16/'+.5'",
+      "input": [
+        "+.5"
+      ],
+      "target_dtype": "UInt16",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt16",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt16/'01e2'",
+      "input": [
+        "01e2"
+      ],
+      "target_dtype": "UInt16",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt16",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt16/'-0'",
+      "input": [
+        "-0"
+      ],
+      "target_dtype": "UInt16",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt16",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt16/'nan'",
+      "input": [
+        "nan"
+      ],
+      "target_dtype": "UInt16",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt16",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt16/'NAN'",
+      "input": [
+        "NAN"
+      ],
+      "target_dtype": "UInt16",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt16",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt16/'Inf'",
+      "input": [
+        "Inf"
+      ],
+      "target_dtype": "UInt16",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt16",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt16/'Infinity'",
+      "input": [
+        "Infinity"
+      ],
+      "target_dtype": "UInt16",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt16",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt16/'infinity'",
+      "input": [
+        "infinity"
+      ],
+      "target_dtype": "UInt16",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt16",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt16/'+Inf'",
+      "input": [
+        "+Inf"
+      ],
+      "target_dtype": "UInt16",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt16",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt16/'-Infinity'",
+      "input": [
+        "-Infinity"
+      ],
+      "target_dtype": "UInt16",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt16",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt16/'1e999'",
+      "input": [
+        "1e999"
+      ],
+      "target_dtype": "UInt16",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt16",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt16/'1e-999'",
+      "input": [
+        "1e-999"
+      ],
+      "target_dtype": "UInt16",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt16",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt16/'1e40'",
+      "input": [
+        "1e40"
+      ],
+      "target_dtype": "UInt16",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt16",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt16/'0x1p2'",
+      "input": [
+        "0x1p2"
+      ],
+      "target_dtype": "UInt16",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt16",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt16/'0x10'",
+      "input": [
+        "0x10"
+      ],
+      "target_dtype": "UInt16",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt16",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt16/'1_000'",
+      "input": [
+        "1_000"
+      ],
+      "target_dtype": "UInt16",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt16",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt16/'18446744073709551615'",
+      "input": [
+        "18446744073709551615"
+      ],
+      "target_dtype": "UInt16",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt16",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt16/'18446744073709551616'",
+      "input": [
+        "18446744073709551616"
+      ],
+      "target_dtype": "UInt16",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt16",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt16/None",
+      "input": [
+        null
+      ],
+      "target_dtype": "UInt16",
+      "results": {
+        "strict": {
+          "dtype": "UInt16",
+          "values": [
+            null
+          ]
+        },
+        "try": {
+          "dtype": "UInt16",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt32/'0'",
+      "input": [
+        "0"
+      ],
+      "target_dtype": "UInt32",
+      "results": {
+        "strict": {
+          "dtype": "UInt32",
+          "values": [
+            0
+          ]
+        },
+        "try": {
+          "dtype": "UInt32",
+          "values": [
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt32/'-1'",
+      "input": [
+        "-1"
+      ],
+      "target_dtype": "UInt32",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt32",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt32/'+1'",
+      "input": [
+        "+1"
+      ],
+      "target_dtype": "UInt32",
+      "results": {
+        "strict": {
+          "dtype": "UInt32",
+          "values": [
+            1
+          ]
+        },
+        "try": {
+          "dtype": "UInt32",
+          "values": [
+            1
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt32/' 1'",
+      "input": [
+        " 1"
+      ],
+      "target_dtype": "UInt32",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt32",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt32/'1 '",
+      "input": [
+        "1 "
+      ],
+      "target_dtype": "UInt32",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt32",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt32/'1.5'",
+      "input": [
+        "1.5"
+      ],
+      "target_dtype": "UInt32",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt32",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt32/'1e2'",
+      "input": [
+        "1e2"
+      ],
+      "target_dtype": "UInt32",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt32",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt32/'NaN'",
+      "input": [
+        "NaN"
+      ],
+      "target_dtype": "UInt32",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt32",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt32/'inf'",
+      "input": [
+        "inf"
+      ],
+      "target_dtype": "UInt32",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt32",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt32/'-inf'",
+      "input": [
+        "-inf"
+      ],
+      "target_dtype": "UInt32",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt32",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt32/''",
+      "input": [
+        ""
+      ],
+      "target_dtype": "UInt32",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt32",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt32/'+NaN'",
+      "input": [
+        "+NaN"
+      ],
+      "target_dtype": "UInt32",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt32",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt32/'-NaN'",
+      "input": [
+        "-NaN"
+      ],
+      "target_dtype": "UInt32",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt32",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt32/'+nan'",
+      "input": [
+        "+nan"
+      ],
+      "target_dtype": "UInt32",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt32",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt32/'-nan'",
+      "input": [
+        "-nan"
+      ],
+      "target_dtype": "UInt32",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt32",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt32/'1.'",
+      "input": [
+        "1."
+      ],
+      "target_dtype": "UInt32",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt32",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt32/'.5'",
+      "input": [
+        ".5"
+      ],
+      "target_dtype": "UInt32",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt32",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt32/'+.5'",
+      "input": [
+        "+.5"
+      ],
+      "target_dtype": "UInt32",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt32",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt32/'01e2'",
+      "input": [
+        "01e2"
+      ],
+      "target_dtype": "UInt32",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt32",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt32/'-0'",
+      "input": [
+        "-0"
+      ],
+      "target_dtype": "UInt32",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt32",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt32/'nan'",
+      "input": [
+        "nan"
+      ],
+      "target_dtype": "UInt32",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt32",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt32/'NAN'",
+      "input": [
+        "NAN"
+      ],
+      "target_dtype": "UInt32",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt32",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt32/'Inf'",
+      "input": [
+        "Inf"
+      ],
+      "target_dtype": "UInt32",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt32",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt32/'Infinity'",
+      "input": [
+        "Infinity"
+      ],
+      "target_dtype": "UInt32",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt32",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt32/'infinity'",
+      "input": [
+        "infinity"
+      ],
+      "target_dtype": "UInt32",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt32",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt32/'+Inf'",
+      "input": [
+        "+Inf"
+      ],
+      "target_dtype": "UInt32",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt32",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt32/'-Infinity'",
+      "input": [
+        "-Infinity"
+      ],
+      "target_dtype": "UInt32",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt32",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt32/'1e999'",
+      "input": [
+        "1e999"
+      ],
+      "target_dtype": "UInt32",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt32",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt32/'1e-999'",
+      "input": [
+        "1e-999"
+      ],
+      "target_dtype": "UInt32",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt32",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt32/'1e40'",
+      "input": [
+        "1e40"
+      ],
+      "target_dtype": "UInt32",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt32",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt32/'0x1p2'",
+      "input": [
+        "0x1p2"
+      ],
+      "target_dtype": "UInt32",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt32",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt32/'0x10'",
+      "input": [
+        "0x10"
+      ],
+      "target_dtype": "UInt32",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt32",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt32/'1_000'",
+      "input": [
+        "1_000"
+      ],
+      "target_dtype": "UInt32",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt32",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt32/'18446744073709551615'",
+      "input": [
+        "18446744073709551615"
+      ],
+      "target_dtype": "UInt32",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt32",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt32/'18446744073709551616'",
+      "input": [
+        "18446744073709551616"
+      ],
+      "target_dtype": "UInt32",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt32",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt32/None",
+      "input": [
+        null
+      ],
+      "target_dtype": "UInt32",
+      "results": {
+        "strict": {
+          "dtype": "UInt32",
+          "values": [
+            null
+          ]
+        },
+        "try": {
+          "dtype": "UInt32",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt64/'0'",
+      "input": [
+        "0"
+      ],
+      "target_dtype": "UInt64",
+      "results": {
+        "strict": {
+          "dtype": "UInt64",
+          "values": [
+            0
+          ]
+        },
+        "try": {
+          "dtype": "UInt64",
+          "values": [
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt64/'-1'",
+      "input": [
+        "-1"
+      ],
+      "target_dtype": "UInt64",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt64",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt64/'+1'",
+      "input": [
+        "+1"
+      ],
+      "target_dtype": "UInt64",
+      "results": {
+        "strict": {
+          "dtype": "UInt64",
+          "values": [
+            1
+          ]
+        },
+        "try": {
+          "dtype": "UInt64",
+          "values": [
+            1
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt64/' 1'",
+      "input": [
+        " 1"
+      ],
+      "target_dtype": "UInt64",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt64",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt64/'1 '",
+      "input": [
+        "1 "
+      ],
+      "target_dtype": "UInt64",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt64",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt64/'1.5'",
+      "input": [
+        "1.5"
+      ],
+      "target_dtype": "UInt64",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt64",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt64/'1e2'",
+      "input": [
+        "1e2"
+      ],
+      "target_dtype": "UInt64",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt64",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt64/'NaN'",
+      "input": [
+        "NaN"
+      ],
+      "target_dtype": "UInt64",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt64",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt64/'inf'",
+      "input": [
+        "inf"
+      ],
+      "target_dtype": "UInt64",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt64",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt64/'-inf'",
+      "input": [
+        "-inf"
+      ],
+      "target_dtype": "UInt64",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt64",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt64/''",
+      "input": [
+        ""
+      ],
+      "target_dtype": "UInt64",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt64",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt64/'+NaN'",
+      "input": [
+        "+NaN"
+      ],
+      "target_dtype": "UInt64",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt64",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt64/'-NaN'",
+      "input": [
+        "-NaN"
+      ],
+      "target_dtype": "UInt64",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt64",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt64/'+nan'",
+      "input": [
+        "+nan"
+      ],
+      "target_dtype": "UInt64",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt64",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt64/'-nan'",
+      "input": [
+        "-nan"
+      ],
+      "target_dtype": "UInt64",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt64",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt64/'1.'",
+      "input": [
+        "1."
+      ],
+      "target_dtype": "UInt64",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt64",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt64/'.5'",
+      "input": [
+        ".5"
+      ],
+      "target_dtype": "UInt64",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt64",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt64/'+.5'",
+      "input": [
+        "+.5"
+      ],
+      "target_dtype": "UInt64",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt64",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt64/'01e2'",
+      "input": [
+        "01e2"
+      ],
+      "target_dtype": "UInt64",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt64",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt64/'-0'",
+      "input": [
+        "-0"
+      ],
+      "target_dtype": "UInt64",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt64",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt64/'nan'",
+      "input": [
+        "nan"
+      ],
+      "target_dtype": "UInt64",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt64",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt64/'NAN'",
+      "input": [
+        "NAN"
+      ],
+      "target_dtype": "UInt64",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt64",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt64/'Inf'",
+      "input": [
+        "Inf"
+      ],
+      "target_dtype": "UInt64",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt64",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt64/'Infinity'",
+      "input": [
+        "Infinity"
+      ],
+      "target_dtype": "UInt64",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt64",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt64/'infinity'",
+      "input": [
+        "infinity"
+      ],
+      "target_dtype": "UInt64",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt64",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt64/'+Inf'",
+      "input": [
+        "+Inf"
+      ],
+      "target_dtype": "UInt64",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt64",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt64/'-Infinity'",
+      "input": [
+        "-Infinity"
+      ],
+      "target_dtype": "UInt64",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt64",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt64/'1e999'",
+      "input": [
+        "1e999"
+      ],
+      "target_dtype": "UInt64",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt64",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt64/'1e-999'",
+      "input": [
+        "1e-999"
+      ],
+      "target_dtype": "UInt64",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt64",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt64/'1e40'",
+      "input": [
+        "1e40"
+      ],
+      "target_dtype": "UInt64",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt64",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt64/'0x1p2'",
+      "input": [
+        "0x1p2"
+      ],
+      "target_dtype": "UInt64",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt64",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt64/'0x10'",
+      "input": [
+        "0x10"
+      ],
+      "target_dtype": "UInt64",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt64",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt64/'1_000'",
+      "input": [
+        "1_000"
+      ],
+      "target_dtype": "UInt64",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt64",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt64/'18446744073709551615'",
+      "input": [
+        "18446744073709551615"
+      ],
+      "target_dtype": "UInt64",
+      "results": {
+        "strict": {
+          "dtype": "UInt64",
+          "values": [
+            18446744073709551615
+          ]
+        },
+        "try": {
+          "dtype": "UInt64",
+          "values": [
+            18446744073709551615
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt64/'18446744073709551616'",
+      "input": [
+        "18446744073709551616"
+      ],
+      "target_dtype": "UInt64",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "UInt64",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/UInt64/None",
+      "input": [
+        null
+      ],
+      "target_dtype": "UInt64",
+      "results": {
+        "strict": {
+          "dtype": "UInt64",
+          "values": [
+            null
+          ]
+        },
+        "try": {
+          "dtype": "UInt64",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Float32/'0'",
+      "input": [
+        "0"
+      ],
+      "target_dtype": "Float32",
+      "results": {
+        "strict": {
+          "dtype": "Float32",
+          "values": [
+            0.0
+          ]
+        },
+        "try": {
+          "dtype": "Float32",
+          "values": [
+            0.0
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Float32/'-1'",
+      "input": [
+        "-1"
+      ],
+      "target_dtype": "Float32",
+      "results": {
+        "strict": {
+          "dtype": "Float32",
+          "values": [
+            -1.0
+          ]
+        },
+        "try": {
+          "dtype": "Float32",
+          "values": [
+            -1.0
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Float32/'+1'",
+      "input": [
+        "+1"
+      ],
+      "target_dtype": "Float32",
+      "results": {
+        "strict": {
+          "dtype": "Float32",
+          "values": [
+            1.0
+          ]
+        },
+        "try": {
+          "dtype": "Float32",
+          "values": [
+            1.0
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Float32/' 1'",
+      "input": [
+        " 1"
+      ],
+      "target_dtype": "Float32",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Float32",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Float32/'1 '",
+      "input": [
+        "1 "
+      ],
+      "target_dtype": "Float32",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Float32",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Float32/'1.5'",
+      "input": [
+        "1.5"
+      ],
+      "target_dtype": "Float32",
+      "results": {
+        "strict": {
+          "dtype": "Float32",
+          "values": [
+            1.5
+          ]
+        },
+        "try": {
+          "dtype": "Float32",
+          "values": [
+            1.5
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Float32/'1e2'",
+      "input": [
+        "1e2"
+      ],
+      "target_dtype": "Float32",
+      "results": {
+        "strict": {
+          "dtype": "Float32",
+          "values": [
+            100.0
+          ]
+        },
+        "try": {
+          "dtype": "Float32",
+          "values": [
+            100.0
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Float32/'NaN'",
+      "input": [
+        "NaN"
+      ],
+      "target_dtype": "Float32",
+      "results": {
+        "strict": {
+          "dtype": "Float32",
+          "values": [
+            "NaN"
+          ]
+        },
+        "try": {
+          "dtype": "Float32",
+          "values": [
+            "NaN"
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Float32/'inf'",
+      "input": [
+        "inf"
+      ],
+      "target_dtype": "Float32",
+      "results": {
+        "strict": {
+          "dtype": "Float32",
+          "values": [
+            "+Inf"
+          ]
+        },
+        "try": {
+          "dtype": "Float32",
+          "values": [
+            "+Inf"
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Float32/'-inf'",
+      "input": [
+        "-inf"
+      ],
+      "target_dtype": "Float32",
+      "results": {
+        "strict": {
+          "dtype": "Float32",
+          "values": [
+            "-Inf"
+          ]
+        },
+        "try": {
+          "dtype": "Float32",
+          "values": [
+            "-Inf"
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Float32/''",
+      "input": [
+        ""
+      ],
+      "target_dtype": "Float32",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Float32",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Float32/'+NaN'",
+      "input": [
+        "+NaN"
+      ],
+      "target_dtype": "Float32",
+      "results": {
+        "strict": {
+          "dtype": "Float32",
+          "values": [
+            "NaN"
+          ]
+        },
+        "try": {
+          "dtype": "Float32",
+          "values": [
+            "NaN"
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Float32/'-NaN'",
+      "input": [
+        "-NaN"
+      ],
+      "target_dtype": "Float32",
+      "results": {
+        "strict": {
+          "dtype": "Float32",
+          "values": [
+            "NaN"
+          ]
+        },
+        "try": {
+          "dtype": "Float32",
+          "values": [
+            "NaN"
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Float32/'+nan'",
+      "input": [
+        "+nan"
+      ],
+      "target_dtype": "Float32",
+      "results": {
+        "strict": {
+          "dtype": "Float32",
+          "values": [
+            "NaN"
+          ]
+        },
+        "try": {
+          "dtype": "Float32",
+          "values": [
+            "NaN"
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Float32/'-nan'",
+      "input": [
+        "-nan"
+      ],
+      "target_dtype": "Float32",
+      "results": {
+        "strict": {
+          "dtype": "Float32",
+          "values": [
+            "NaN"
+          ]
+        },
+        "try": {
+          "dtype": "Float32",
+          "values": [
+            "NaN"
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Float32/'1.'",
+      "input": [
+        "1."
+      ],
+      "target_dtype": "Float32",
+      "results": {
+        "strict": {
+          "dtype": "Float32",
+          "values": [
+            1.0
+          ]
+        },
+        "try": {
+          "dtype": "Float32",
+          "values": [
+            1.0
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Float32/'.5'",
+      "input": [
+        ".5"
+      ],
+      "target_dtype": "Float32",
+      "results": {
+        "strict": {
+          "dtype": "Float32",
+          "values": [
+            0.5
+          ]
+        },
+        "try": {
+          "dtype": "Float32",
+          "values": [
+            0.5
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Float32/'+.5'",
+      "input": [
+        "+.5"
+      ],
+      "target_dtype": "Float32",
+      "results": {
+        "strict": {
+          "dtype": "Float32",
+          "values": [
+            0.5
+          ]
+        },
+        "try": {
+          "dtype": "Float32",
+          "values": [
+            0.5
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Float32/'01e2'",
+      "input": [
+        "01e2"
+      ],
+      "target_dtype": "Float32",
+      "results": {
+        "strict": {
+          "dtype": "Float32",
+          "values": [
+            100.0
+          ]
+        },
+        "try": {
+          "dtype": "Float32",
+          "values": [
+            100.0
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Float32/'-0'",
+      "input": [
+        "-0"
+      ],
+      "target_dtype": "Float32",
+      "results": {
+        "strict": {
+          "dtype": "Float32",
+          "values": [
+            -0.0
+          ]
+        },
+        "try": {
+          "dtype": "Float32",
+          "values": [
+            -0.0
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Float32/'nan'",
+      "input": [
+        "nan"
+      ],
+      "target_dtype": "Float32",
+      "results": {
+        "strict": {
+          "dtype": "Float32",
+          "values": [
+            "NaN"
+          ]
+        },
+        "try": {
+          "dtype": "Float32",
+          "values": [
+            "NaN"
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Float32/'NAN'",
+      "input": [
+        "NAN"
+      ],
+      "target_dtype": "Float32",
+      "results": {
+        "strict": {
+          "dtype": "Float32",
+          "values": [
+            "NaN"
+          ]
+        },
+        "try": {
+          "dtype": "Float32",
+          "values": [
+            "NaN"
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Float32/'Inf'",
+      "input": [
+        "Inf"
+      ],
+      "target_dtype": "Float32",
+      "results": {
+        "strict": {
+          "dtype": "Float32",
+          "values": [
+            "+Inf"
+          ]
+        },
+        "try": {
+          "dtype": "Float32",
+          "values": [
+            "+Inf"
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Float32/'Infinity'",
+      "input": [
+        "Infinity"
+      ],
+      "target_dtype": "Float32",
+      "results": {
+        "strict": {
+          "dtype": "Float32",
+          "values": [
+            "+Inf"
+          ]
+        },
+        "try": {
+          "dtype": "Float32",
+          "values": [
+            "+Inf"
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Float32/'infinity'",
+      "input": [
+        "infinity"
+      ],
+      "target_dtype": "Float32",
+      "results": {
+        "strict": {
+          "dtype": "Float32",
+          "values": [
+            "+Inf"
+          ]
+        },
+        "try": {
+          "dtype": "Float32",
+          "values": [
+            "+Inf"
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Float32/'+Inf'",
+      "input": [
+        "+Inf"
+      ],
+      "target_dtype": "Float32",
+      "results": {
+        "strict": {
+          "dtype": "Float32",
+          "values": [
+            "+Inf"
+          ]
+        },
+        "try": {
+          "dtype": "Float32",
+          "values": [
+            "+Inf"
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Float32/'-Infinity'",
+      "input": [
+        "-Infinity"
+      ],
+      "target_dtype": "Float32",
+      "results": {
+        "strict": {
+          "dtype": "Float32",
+          "values": [
+            "-Inf"
+          ]
+        },
+        "try": {
+          "dtype": "Float32",
+          "values": [
+            "-Inf"
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Float32/'1e999'",
+      "input": [
+        "1e999"
+      ],
+      "target_dtype": "Float32",
+      "results": {
+        "strict": {
+          "dtype": "Float32",
+          "values": [
+            "+Inf"
+          ]
+        },
+        "try": {
+          "dtype": "Float32",
+          "values": [
+            "+Inf"
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Float32/'1e-999'",
+      "input": [
+        "1e-999"
+      ],
+      "target_dtype": "Float32",
+      "results": {
+        "strict": {
+          "dtype": "Float32",
+          "values": [
+            0.0
+          ]
+        },
+        "try": {
+          "dtype": "Float32",
+          "values": [
+            0.0
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Float32/'1e40'",
+      "input": [
+        "1e40"
+      ],
+      "target_dtype": "Float32",
+      "results": {
+        "strict": {
+          "dtype": "Float32",
+          "values": [
+            "+Inf"
+          ]
+        },
+        "try": {
+          "dtype": "Float32",
+          "values": [
+            "+Inf"
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Float32/'0x1p2'",
+      "input": [
+        "0x1p2"
+      ],
+      "target_dtype": "Float32",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Float32",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Float32/'0x10'",
+      "input": [
+        "0x10"
+      ],
+      "target_dtype": "Float32",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Float32",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Float32/'1_000'",
+      "input": [
+        "1_000"
+      ],
+      "target_dtype": "Float32",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Float32",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Float32/'18446744073709551615'",
+      "input": [
+        "18446744073709551615"
+      ],
+      "target_dtype": "Float32",
+      "results": {
+        "strict": {
+          "dtype": "Float32",
+          "values": [
+            1.8446744073709552e+19
+          ]
+        },
+        "try": {
+          "dtype": "Float32",
+          "values": [
+            1.8446744073709552e+19
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Float32/'18446744073709551616'",
+      "input": [
+        "18446744073709551616"
+      ],
+      "target_dtype": "Float32",
+      "results": {
+        "strict": {
+          "dtype": "Float32",
+          "values": [
+            1.8446744073709552e+19
+          ]
+        },
+        "try": {
+          "dtype": "Float32",
+          "values": [
+            1.8446744073709552e+19
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Float32/None",
+      "input": [
+        null
+      ],
+      "target_dtype": "Float32",
+      "results": {
+        "strict": {
+          "dtype": "Float32",
+          "values": [
+            null
+          ]
+        },
+        "try": {
+          "dtype": "Float32",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Float64/'0'",
+      "input": [
+        "0"
+      ],
+      "target_dtype": "Float64",
+      "results": {
+        "strict": {
+          "dtype": "Float64",
+          "values": [
+            0.0
+          ]
+        },
+        "try": {
+          "dtype": "Float64",
+          "values": [
+            0.0
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Float64/'-1'",
+      "input": [
+        "-1"
+      ],
+      "target_dtype": "Float64",
+      "results": {
+        "strict": {
+          "dtype": "Float64",
+          "values": [
+            -1.0
+          ]
+        },
+        "try": {
+          "dtype": "Float64",
+          "values": [
+            -1.0
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Float64/'+1'",
+      "input": [
+        "+1"
+      ],
+      "target_dtype": "Float64",
+      "results": {
+        "strict": {
+          "dtype": "Float64",
+          "values": [
+            1.0
+          ]
+        },
+        "try": {
+          "dtype": "Float64",
+          "values": [
+            1.0
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Float64/' 1'",
+      "input": [
+        " 1"
+      ],
+      "target_dtype": "Float64",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Float64/'1 '",
+      "input": [
+        "1 "
+      ],
+      "target_dtype": "Float64",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Float64/'1.5'",
+      "input": [
+        "1.5"
+      ],
+      "target_dtype": "Float64",
+      "results": {
+        "strict": {
+          "dtype": "Float64",
+          "values": [
+            1.5
+          ]
+        },
+        "try": {
+          "dtype": "Float64",
+          "values": [
+            1.5
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Float64/'1e2'",
+      "input": [
+        "1e2"
+      ],
+      "target_dtype": "Float64",
+      "results": {
+        "strict": {
+          "dtype": "Float64",
+          "values": [
+            100.0
+          ]
+        },
+        "try": {
+          "dtype": "Float64",
+          "values": [
+            100.0
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Float64/'NaN'",
+      "input": [
+        "NaN"
+      ],
+      "target_dtype": "Float64",
+      "results": {
+        "strict": {
+          "dtype": "Float64",
+          "values": [
+            "NaN"
+          ]
+        },
+        "try": {
+          "dtype": "Float64",
+          "values": [
+            "NaN"
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Float64/'inf'",
+      "input": [
+        "inf"
+      ],
+      "target_dtype": "Float64",
+      "results": {
+        "strict": {
+          "dtype": "Float64",
+          "values": [
+            "+Inf"
+          ]
+        },
+        "try": {
+          "dtype": "Float64",
+          "values": [
+            "+Inf"
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Float64/'-inf'",
+      "input": [
+        "-inf"
+      ],
+      "target_dtype": "Float64",
+      "results": {
+        "strict": {
+          "dtype": "Float64",
+          "values": [
+            "-Inf"
+          ]
+        },
+        "try": {
+          "dtype": "Float64",
+          "values": [
+            "-Inf"
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Float64/''",
+      "input": [
+        ""
+      ],
+      "target_dtype": "Float64",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Float64/'+NaN'",
+      "input": [
+        "+NaN"
+      ],
+      "target_dtype": "Float64",
+      "results": {
+        "strict": {
+          "dtype": "Float64",
+          "values": [
+            "NaN"
+          ]
+        },
+        "try": {
+          "dtype": "Float64",
+          "values": [
+            "NaN"
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Float64/'-NaN'",
+      "input": [
+        "-NaN"
+      ],
+      "target_dtype": "Float64",
+      "results": {
+        "strict": {
+          "dtype": "Float64",
+          "values": [
+            "NaN"
+          ]
+        },
+        "try": {
+          "dtype": "Float64",
+          "values": [
+            "NaN"
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Float64/'+nan'",
+      "input": [
+        "+nan"
+      ],
+      "target_dtype": "Float64",
+      "results": {
+        "strict": {
+          "dtype": "Float64",
+          "values": [
+            "NaN"
+          ]
+        },
+        "try": {
+          "dtype": "Float64",
+          "values": [
+            "NaN"
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Float64/'-nan'",
+      "input": [
+        "-nan"
+      ],
+      "target_dtype": "Float64",
+      "results": {
+        "strict": {
+          "dtype": "Float64",
+          "values": [
+            "NaN"
+          ]
+        },
+        "try": {
+          "dtype": "Float64",
+          "values": [
+            "NaN"
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Float64/'1.'",
+      "input": [
+        "1."
+      ],
+      "target_dtype": "Float64",
+      "results": {
+        "strict": {
+          "dtype": "Float64",
+          "values": [
+            1.0
+          ]
+        },
+        "try": {
+          "dtype": "Float64",
+          "values": [
+            1.0
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Float64/'.5'",
+      "input": [
+        ".5"
+      ],
+      "target_dtype": "Float64",
+      "results": {
+        "strict": {
+          "dtype": "Float64",
+          "values": [
+            0.5
+          ]
+        },
+        "try": {
+          "dtype": "Float64",
+          "values": [
+            0.5
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Float64/'+.5'",
+      "input": [
+        "+.5"
+      ],
+      "target_dtype": "Float64",
+      "results": {
+        "strict": {
+          "dtype": "Float64",
+          "values": [
+            0.5
+          ]
+        },
+        "try": {
+          "dtype": "Float64",
+          "values": [
+            0.5
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Float64/'01e2'",
+      "input": [
+        "01e2"
+      ],
+      "target_dtype": "Float64",
+      "results": {
+        "strict": {
+          "dtype": "Float64",
+          "values": [
+            100.0
+          ]
+        },
+        "try": {
+          "dtype": "Float64",
+          "values": [
+            100.0
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Float64/'-0'",
+      "input": [
+        "-0"
+      ],
+      "target_dtype": "Float64",
+      "results": {
+        "strict": {
+          "dtype": "Float64",
+          "values": [
+            -0.0
+          ]
+        },
+        "try": {
+          "dtype": "Float64",
+          "values": [
+            -0.0
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Float64/'nan'",
+      "input": [
+        "nan"
+      ],
+      "target_dtype": "Float64",
+      "results": {
+        "strict": {
+          "dtype": "Float64",
+          "values": [
+            "NaN"
+          ]
+        },
+        "try": {
+          "dtype": "Float64",
+          "values": [
+            "NaN"
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Float64/'NAN'",
+      "input": [
+        "NAN"
+      ],
+      "target_dtype": "Float64",
+      "results": {
+        "strict": {
+          "dtype": "Float64",
+          "values": [
+            "NaN"
+          ]
+        },
+        "try": {
+          "dtype": "Float64",
+          "values": [
+            "NaN"
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Float64/'Inf'",
+      "input": [
+        "Inf"
+      ],
+      "target_dtype": "Float64",
+      "results": {
+        "strict": {
+          "dtype": "Float64",
+          "values": [
+            "+Inf"
+          ]
+        },
+        "try": {
+          "dtype": "Float64",
+          "values": [
+            "+Inf"
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Float64/'Infinity'",
+      "input": [
+        "Infinity"
+      ],
+      "target_dtype": "Float64",
+      "results": {
+        "strict": {
+          "dtype": "Float64",
+          "values": [
+            "+Inf"
+          ]
+        },
+        "try": {
+          "dtype": "Float64",
+          "values": [
+            "+Inf"
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Float64/'infinity'",
+      "input": [
+        "infinity"
+      ],
+      "target_dtype": "Float64",
+      "results": {
+        "strict": {
+          "dtype": "Float64",
+          "values": [
+            "+Inf"
+          ]
+        },
+        "try": {
+          "dtype": "Float64",
+          "values": [
+            "+Inf"
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Float64/'+Inf'",
+      "input": [
+        "+Inf"
+      ],
+      "target_dtype": "Float64",
+      "results": {
+        "strict": {
+          "dtype": "Float64",
+          "values": [
+            "+Inf"
+          ]
+        },
+        "try": {
+          "dtype": "Float64",
+          "values": [
+            "+Inf"
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Float64/'-Infinity'",
+      "input": [
+        "-Infinity"
+      ],
+      "target_dtype": "Float64",
+      "results": {
+        "strict": {
+          "dtype": "Float64",
+          "values": [
+            "-Inf"
+          ]
+        },
+        "try": {
+          "dtype": "Float64",
+          "values": [
+            "-Inf"
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Float64/'1e999'",
+      "input": [
+        "1e999"
+      ],
+      "target_dtype": "Float64",
+      "results": {
+        "strict": {
+          "dtype": "Float64",
+          "values": [
+            "+Inf"
+          ]
+        },
+        "try": {
+          "dtype": "Float64",
+          "values": [
+            "+Inf"
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Float64/'1e-999'",
+      "input": [
+        "1e-999"
+      ],
+      "target_dtype": "Float64",
+      "results": {
+        "strict": {
+          "dtype": "Float64",
+          "values": [
+            0.0
+          ]
+        },
+        "try": {
+          "dtype": "Float64",
+          "values": [
+            0.0
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Float64/'1e40'",
+      "input": [
+        "1e40"
+      ],
+      "target_dtype": "Float64",
+      "results": {
+        "strict": {
+          "dtype": "Float64",
+          "values": [
+            1e+40
+          ]
+        },
+        "try": {
+          "dtype": "Float64",
+          "values": [
+            1e+40
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Float64/'0x1p2'",
+      "input": [
+        "0x1p2"
+      ],
+      "target_dtype": "Float64",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Float64/'0x10'",
+      "input": [
+        "0x10"
+      ],
+      "target_dtype": "Float64",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Float64/'1_000'",
+      "input": [
+        "1_000"
+      ],
+      "target_dtype": "Float64",
+      "results": {
+        "strict": {
+          "error": "InvalidOperationError"
+        },
+        "try": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Float64/'18446744073709551615'",
+      "input": [
+        "18446744073709551615"
+      ],
+      "target_dtype": "Float64",
+      "results": {
+        "strict": {
+          "dtype": "Float64",
+          "values": [
+            1.8446744073709552e+19
+          ]
+        },
+        "try": {
+          "dtype": "Float64",
+          "values": [
+            1.8446744073709552e+19
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Float64/'18446744073709551616'",
+      "input": [
+        "18446744073709551616"
+      ],
+      "target_dtype": "Float64",
+      "results": {
+        "strict": {
+          "dtype": "Float64",
+          "values": [
+            1.8446744073709552e+19
+          ]
+        },
+        "try": {
+          "dtype": "Float64",
+          "values": [
+            1.8446744073709552e+19
+          ]
+        }
+      }
+    },
+    {
+      "id": "cast/Float64/None",
+      "input": [
+        null
+      ],
+      "target_dtype": "Float64",
+      "results": {
+        "strict": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "try": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "math/float64",
+      "input": [
+        -2.5,
+        -1.5,
+        -0.0,
+        0.0,
+        1.5,
+        2.5,
+        null,
+        "NaN",
+        "+Inf"
+      ],
+      "results": {
+        "abs": {
+          "dtype": "Float64",
+          "values": [
+            2.5,
+            1.5,
+            0.0,
+            0.0,
+            1.5,
+            2.5,
+            null,
+            "NaN",
+            "+Inf"
+          ]
+        },
+        "round": {
+          "dtype": "Float64",
+          "values": [
+            -2.0,
+            -2.0,
+            -0.0,
+            0.0,
+            2.0,
+            2.0,
+            null,
+            "NaN",
+            "+Inf"
+          ]
+        },
+        "floor": {
+          "dtype": "Float64",
+          "values": [
+            -3.0,
+            -2.0,
+            -0.0,
+            0.0,
+            1.0,
+            2.0,
+            null,
+            "NaN",
+            "+Inf"
+          ]
+        },
+        "ceil": {
+          "dtype": "Float64",
+          "values": [
+            -2.0,
+            -1.0,
+            -0.0,
+            0.0,
+            2.0,
+            3.0,
+            null,
+            "NaN",
+            "+Inf"
+          ]
+        },
+        "sqrt": {
+          "dtype": "Float64",
+          "values": [
+            "NaN",
+            "NaN",
+            -0.0,
+            0.0,
+            1.224744871391589,
+            1.5811388300841898,
+            null,
+            "NaN",
+            "+Inf"
+          ]
+        },
+        "log": {
+          "dtype": "Float64",
+          "values": [
+            "NaN",
+            "NaN",
+            "-Inf",
+            "-Inf",
+            0.4054651081081644,
+            0.9162907318741551,
+            null,
+            "NaN",
+            "+Inf"
+          ]
+        },
+        "pow2": {
+          "dtype": "Float64",
+          "values": [
+            6.25,
+            2.25,
+            0.0,
+            0.0,
+            2.25,
+            6.25,
+            null,
+            "NaN",
+            "+Inf"
+          ]
+        },
+        "mod2": {
+          "dtype": "Float64",
+          "values": [
+            1.5,
+            0.5,
+            0.0,
+            0.0,
+            1.5,
+            0.5,
+            null,
+            "NaN",
+            "NaN"
+          ]
+        },
+        "floordiv2": {
+          "dtype": "Float64",
+          "values": [
+            -2.0,
+            -1.0,
+            -0.0,
+            0.0,
+            0.0,
+            1.0,
+            null,
+            "NaN",
+            "+Inf"
+          ]
+        }
+      }
+    },
+    {
+      "id": "grouped/null_keys",
+      "input": {
+        "k": [
+          null,
+          null,
+          1,
+          1
+        ],
+        "v": [
+          null,
+          null,
+          2,
+          4
+        ]
+      },
+      "results": {
+        "k": [
+          null,
+          1
+        ],
+        "sum": [
+          0,
+          6
+        ],
+        "count": [
+          0,
+          2
+        ],
+        "avg": [
+          null,
+          3.0
+        ],
+        "len": [
+          2,
+          2
+        ]
+      }
+    },
+    {
+      "id": "math/int64_domains",
+      "input": [
+        -9223372036854775808,
+        -5,
+        -1,
+        0,
+        1,
+        5,
+        null
+      ],
+      "results": {
+        "abs": {
+          "dtype": "Int64",
+          "values": [
+            -9223372036854775808,
+            5,
+            1,
+            0,
+            1,
+            5,
+            null
+          ]
+        },
+        "floor": {
+          "dtype": "Int64",
+          "values": [
+            -9223372036854775808,
+            -5,
+            -1,
+            0,
+            1,
+            5,
+            null
+          ]
+        },
+        "ceil": {
+          "dtype": "Int64",
+          "values": [
+            -9223372036854775808,
+            -5,
+            -1,
+            0,
+            1,
+            5,
+            null
+          ]
+        },
+        "pow_neg1": {
+          "error": "InvalidOperationError"
+        },
+        "pow_half": {
+          "dtype": "Float64",
+          "values": [
+            "NaN",
+            "NaN",
+            "NaN",
+            0.0,
+            1.0,
+            2.23606797749979,
+            null
+          ]
+        },
+        "mod_-2": {
+          "dtype": "Int64",
+          "values": [
+            0,
+            -1,
+            -1,
+            0,
+            -1,
+            -1,
+            null
+          ]
+        },
+        "floordiv_-2": {
+          "dtype": "Int64",
+          "values": [
+            4611686018427387904,
+            2,
+            0,
+            0,
+            -1,
+            -3,
+            null
+          ]
+        },
+        "mod_0": {
+          "dtype": "Int64",
+          "values": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ]
+        },
+        "floordiv_0": {
+          "dtype": "Int64",
+          "values": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ]
+        },
+        "mod_2": {
+          "dtype": "Int64",
+          "values": [
+            0,
+            1,
+            1,
+            0,
+            1,
+            1,
+            null
+          ]
+        },
+        "floordiv_2": {
+          "dtype": "Int64",
+          "values": [
+            -4611686018427387904,
+            -3,
+            -1,
+            0,
+            0,
+            2,
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "math/float64_domains",
+      "input": [
+        -5.0,
+        -1.0,
+        -0.0,
+        0.0,
+        1.0,
+        5.0,
+        null
+      ],
+      "results": {
+        "abs": {
+          "dtype": "Float64",
+          "values": [
+            5.0,
+            1.0,
+            0.0,
+            0.0,
+            1.0,
+            5.0,
+            null
+          ]
+        },
+        "floor": {
+          "dtype": "Float64",
+          "values": [
+            -5.0,
+            -1.0,
+            -0.0,
+            0.0,
+            1.0,
+            5.0,
+            null
+          ]
+        },
+        "ceil": {
+          "dtype": "Float64",
+          "values": [
+            -5.0,
+            -1.0,
+            -0.0,
+            0.0,
+            1.0,
+            5.0,
+            null
+          ]
+        },
+        "pow_neg1": {
+          "dtype": "Float64",
+          "values": [
+            -0.2,
+            -1.0,
+            "-Inf",
+            "+Inf",
+            1.0,
+            0.2,
+            null
+          ]
+        },
+        "pow_half": {
+          "dtype": "Float64",
+          "values": [
+            "NaN",
+            "NaN",
+            -0.0,
+            0.0,
+            1.0,
+            2.23606797749979,
+            null
+          ]
+        },
+        "mod_-2": {
+          "dtype": "Float64",
+          "values": [
+            -1.0,
+            -1.0,
+            0.0,
+            0.0,
+            -1.0,
+            -1.0,
+            null
+          ]
+        },
+        "floordiv_-2": {
+          "dtype": "Float64",
+          "values": [
+            2.0,
+            0.0,
+            0.0,
+            -0.0,
+            -1.0,
+            -3.0,
+            null
+          ]
+        },
+        "mod_0": {
+          "dtype": "Float64",
+          "values": [
+            "NaN",
+            "NaN",
+            "NaN",
+            "NaN",
+            "NaN",
+            "NaN",
+            null
+          ]
+        },
+        "floordiv_0": {
+          "dtype": "Float64",
+          "values": [
+            "-Inf",
+            "-Inf",
+            "NaN",
+            "NaN",
+            "+Inf",
+            "+Inf",
+            null
+          ]
+        },
+        "mod_2": {
+          "dtype": "Float64",
+          "values": [
+            1.0,
+            1.0,
+            0.0,
+            0.0,
+            1.0,
+            1.0,
+            null
+          ]
+        },
+        "floordiv_2": {
+          "dtype": "Float64",
+          "values": [
+            -3.0,
+            -1.0,
+            -0.0,
+            0.0,
+            0.0,
+            2.0,
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "statistics/empty",
+      "input": [],
+      "results": {
+        "first": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "last": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "n_unique": {
+          "dtype": "UInt32",
+          "values": [
+            0
+          ]
+        },
+        "median": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "shift1": {
+          "dtype": "Float64",
+          "values": []
+        },
+        "shift_neg1": {
+          "dtype": "Float64",
+          "values": []
+        },
+        "diff1": {
+          "dtype": "Float64",
+          "values": []
+        },
+        "fill_null": {
+          "dtype": "Float64",
+          "values": []
+        },
+        "fill_nan": {
+          "dtype": "Float64",
+          "values": []
+        },
+        "var_ddof0": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "std_ddof0": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "var_ddof1": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "std_ddof1": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "var_ddof2": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "std_ddof2": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "quantile_0.25_nearest": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "quantile_0.25_lower": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "quantile_0.25_higher": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "quantile_0.25_midpoint": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "quantile_0.25_linear": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "quantile_0.25_equiprobable": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "statistics/singleton",
+      "input": [
+        2.0
+      ],
+      "results": {
+        "first": {
+          "dtype": "Float64",
+          "values": [
+            2.0
+          ]
+        },
+        "last": {
+          "dtype": "Float64",
+          "values": [
+            2.0
+          ]
+        },
+        "n_unique": {
+          "dtype": "UInt32",
+          "values": [
+            1
+          ]
+        },
+        "median": {
+          "dtype": "Float64",
+          "values": [
+            2.0
+          ]
+        },
+        "shift1": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "shift_neg1": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "diff1": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "fill_null": {
+          "dtype": "Float64",
+          "values": [
+            2.0
+          ]
+        },
+        "fill_nan": {
+          "dtype": "Float64",
+          "values": [
+            2.0
+          ]
+        },
+        "var_ddof0": {
+          "dtype": "Float64",
+          "values": [
+            0.0
+          ]
+        },
+        "std_ddof0": {
+          "dtype": "Float64",
+          "values": [
+            0.0
+          ]
+        },
+        "var_ddof1": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "std_ddof1": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "var_ddof2": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "std_ddof2": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "quantile_0.25_nearest": {
+          "dtype": "Float64",
+          "values": [
+            2.0
+          ]
+        },
+        "quantile_0.25_lower": {
+          "dtype": "Float64",
+          "values": [
+            2.0
+          ]
+        },
+        "quantile_0.25_higher": {
+          "dtype": "Float64",
+          "values": [
+            2.0
+          ]
+        },
+        "quantile_0.25_midpoint": {
+          "dtype": "Float64",
+          "values": [
+            2.0
+          ]
+        },
+        "quantile_0.25_linear": {
+          "dtype": "Float64",
+          "values": [
+            2.0
+          ]
+        },
+        "quantile_0.25_equiprobable": {
+          "dtype": "Float64",
+          "values": [
+            2.0
+          ]
+        }
+      }
+    },
+    {
+      "id": "statistics/null_edges",
+      "input": [
+        null,
+        1.0,
+        3.0,
+        null
+      ],
+      "results": {
+        "first": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "last": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "n_unique": {
+          "dtype": "UInt32",
+          "values": [
+            3
+          ]
+        },
+        "median": {
+          "dtype": "Float64",
+          "values": [
+            2.0
+          ]
+        },
+        "shift1": {
+          "dtype": "Float64",
+          "values": [
+            null,
+            null,
+            1.0,
+            3.0
+          ]
+        },
+        "shift_neg1": {
+          "dtype": "Float64",
+          "values": [
+            1.0,
+            3.0,
+            null,
+            null
+          ]
+        },
+        "diff1": {
+          "dtype": "Float64",
+          "values": [
+            null,
+            null,
+            2.0,
+            null
+          ]
+        },
+        "fill_null": {
+          "dtype": "Float64",
+          "values": [
+            0.0,
+            1.0,
+            3.0,
+            0.0
+          ]
+        },
+        "fill_nan": {
+          "dtype": "Float64",
+          "values": [
+            null,
+            1.0,
+            3.0,
+            null
+          ]
+        },
+        "var_ddof0": {
+          "dtype": "Float64",
+          "values": [
+            1.0
+          ]
+        },
+        "std_ddof0": {
+          "dtype": "Float64",
+          "values": [
+            1.0
+          ]
+        },
+        "var_ddof1": {
+          "dtype": "Float64",
+          "values": [
+            2.0
+          ]
+        },
+        "std_ddof1": {
+          "dtype": "Float64",
+          "values": [
+            1.4142135623730951
+          ]
+        },
+        "var_ddof2": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "std_ddof2": {
+          "dtype": "Float64",
+          "values": [
+            null
+          ]
+        },
+        "quantile_0.25_nearest": {
+          "dtype": "Float64",
+          "values": [
+            1.0
+          ]
+        },
+        "quantile_0.25_lower": {
+          "dtype": "Float64",
+          "values": [
+            1.0
+          ]
+        },
+        "quantile_0.25_higher": {
+          "dtype": "Float64",
+          "values": [
+            3.0
+          ]
+        },
+        "quantile_0.25_midpoint": {
+          "dtype": "Float64",
+          "values": [
+            2.0
+          ]
+        },
+        "quantile_0.25_linear": {
+          "dtype": "Float64",
+          "values": [
+            1.5
+          ]
+        },
+        "quantile_0.25_equiprobable": {
+          "dtype": "Float64",
+          "values": [
+            1.0
+          ]
+        }
+      }
+    },
+    {
+      "id": "statistics/nan",
+      "input": [
+        "NaN",
+        "NaN",
+        null,
+        2.0
+      ],
+      "results": {
+        "first": {
+          "dtype": "Float64",
+          "values": [
+            "NaN"
+          ]
+        },
+        "last": {
+          "dtype": "Float64",
+          "values": [
+            2.0
+          ]
+        },
+        "n_unique": {
+          "dtype": "UInt32",
+          "values": [
+            3
+          ]
+        },
+        "median": {
+          "dtype": "Float64",
+          "values": [
+            "NaN"
+          ]
+        },
+        "shift1": {
+          "dtype": "Float64",
+          "values": [
+            null,
+            "NaN",
+            "NaN",
+            null
+          ]
+        },
+        "shift_neg1": {
+          "dtype": "Float64",
+          "values": [
+            "NaN",
+            null,
+            2.0,
+            null
+          ]
+        },
+        "diff1": {
+          "dtype": "Float64",
+          "values": [
+            null,
+            "NaN",
+            null,
+            null
+          ]
+        },
+        "fill_null": {
+          "dtype": "Float64",
+          "values": [
+            "NaN",
+            "NaN",
+            0.0,
+            2.0
+          ]
+        },
+        "fill_nan": {
+          "dtype": "Float64",
+          "values": [
+            0.0,
+            0.0,
+            null,
+            2.0
+          ]
+        },
+        "var_ddof0": {
+          "dtype": "Float64",
+          "values": [
+            "NaN"
+          ]
+        },
+        "std_ddof0": {
+          "dtype": "Float64",
+          "values": [
+            "NaN"
+          ]
+        },
+        "var_ddof1": {
+          "dtype": "Float64",
+          "values": [
+            "NaN"
+          ]
+        },
+        "std_ddof1": {
+          "dtype": "Float64",
+          "values": [
+            "NaN"
+          ]
+        },
+        "var_ddof2": {
+          "dtype": "Float64",
+          "values": [
+            "NaN"
+          ]
+        },
+        "std_ddof2": {
+          "dtype": "Float64",
+          "values": [
+            "NaN"
+          ]
+        },
+        "quantile_0.25_nearest": {
+          "dtype": "Float64",
+          "values": [
+            "NaN"
+          ]
+        },
+        "quantile_0.25_lower": {
+          "dtype": "Float64",
+          "values": [
+            2.0
+          ]
+        },
+        "quantile_0.25_higher": {
+          "dtype": "Float64",
+          "values": [
+            "NaN"
+          ]
+        },
+        "quantile_0.25_midpoint": {
+          "dtype": "Float64",
+          "values": [
+            "NaN"
+          ]
+        },
+        "quantile_0.25_linear": {
+          "dtype": "Float64",
+          "values": [
+            "NaN"
+          ]
+        },
+        "quantile_0.25_equiprobable": {
+          "dtype": "Float64",
+          "values": [
+            2.0
+          ]
+        }
+      }
+    },
+    {
+      "id": "math/infinite_divisors",
+      "input": [
+        -5.0,
+        -0.0,
+        0.0,
+        5.0,
+        "+Inf",
+        "-Inf",
+        "NaN",
+        null
+      ],
+      "results": {
+        "mod_posinf": {
+          "dtype": "Float64",
+          "values": [
+            "NaN",
+            "NaN",
+            "NaN",
+            "NaN",
+            "NaN",
+            "NaN",
+            "NaN",
+            null
+          ]
+        },
+        "mod_neginf": {
+          "dtype": "Float64",
+          "values": [
+            "NaN",
+            "NaN",
+            "NaN",
+            "NaN",
+            "NaN",
+            "NaN",
+            "NaN",
+            null
+          ]
+        },
+        "floordiv_posinf": {
+          "dtype": "Float64",
+          "values": [
+            -0.0,
+            -0.0,
+            0.0,
+            0.0,
+            "NaN",
+            "NaN",
+            "NaN",
+            null
+          ]
+        },
+        "floordiv_neginf": {
+          "dtype": "Float64",
+          "values": [
+            0.0,
+            0.0,
+            -0.0,
+            -0.0,
+            "NaN",
+            "NaN",
+            "NaN",
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "math/overflow_and_large_remainder",
+      "results": {
+        "int64_min_floordiv_neg1": {
+          "dtype": "Int64",
+          "values": [
+            -9223372036854775808
+          ]
+        },
+        "int64_min_mod_neg1": {
+          "dtype": "Int64",
+          "values": [
+            0
+          ]
+        },
+        "int64_pow63": {
+          "dtype": "Int64",
+          "values": [
+            -9223372036854775808
+          ]
+        },
+        "int64_pow64": {
+          "dtype": "Int64",
+          "values": [
+            0
+          ]
+        },
+        "uint64_pow64": {
+          "dtype": "UInt64",
+          "values": [
+            0
+          ]
+        },
+        "large_mod3": {
+          "dtype": "Float64",
+          "values": [
+            0.0
+          ]
+        },
+        "negative_large_mod3": {
+          "dtype": "Float64",
+          "values": [
+            0.0
+          ]
+        }
+      }
+    },
+    {
+      "id": "grouped/empty",
+      "input": {
+        "k": [],
+        "v": []
+      },
+      "results": {
+        "k": [],
+        "v": []
+      }
+    }
+  ]
+}
