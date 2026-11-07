@@ -1,0 +1,32 @@
+goos: linux
+goarch: amd64
+pkg: gocolumn/engine
+cpu: AMD EPYC 9V74 80-Core Processor                
+                                         │ /tmp/multi-column-legacy-before-final.txt │ /tmp/multi-column-legacy-after-final.txt │
+                                         │                  sec/op                   │      sec/op       vs base                │
+MultiColumnAggregate/groups=0/lanes=1                                   4.874m ± 47%       3.260m ± 26%        ~ (p=0.436 n=10)
+MultiColumnAggregate/groups=64/lanes=1                                 1039.0µ ± 35%       340.9µ ±  4%  -67.18% (p=0.000 n=10)
+MultiColumnAggregate/groups=4096/lanes=1                               1733.5µ ± 43%       460.8µ ± 67%  -73.42% (p=0.000 n=10)
+geomean                                                                 2.063m             800.1µ        -61.22%
+
+                                         │ /tmp/multi-column-legacy-before-final.txt │ /tmp/multi-column-legacy-after-final.txt │
+                                         │                    B/s                    │       B/s        vs base                 │
+MultiColumnAggregate/groups=0/lanes=1                                  160.8Mi ± 82%     230.3Mi ± 21%         ~ (p=0.436 n=10)
+MultiColumnAggregate/groups=64/lanes=1                                 724.4Mi ± 53%    2199.7Mi ±  4%  +203.66% (p=0.000 n=10)
+MultiColumnAggregate/groups=4096/lanes=1                               439.5Mi ± 44%    1628.7Mi ± 40%  +270.58% (p=0.000 n=10)
+geomean                                                                371.3Mi           937.9Mi        +152.62%
+
+                                         │ /tmp/multi-column-legacy-before-final.txt │ /tmp/multi-column-legacy-after-final.txt │
+                                         │                   B/op                    │       B/op         vs base               │
+MultiColumnAggregate/groups=0/lanes=1                                   26.97Ki ± 0%        27.10Ki ± 0%  +0.46% (p=0.000 n=10)
+MultiColumnAggregate/groups=64/lanes=1                                  31.10Ki ± 0%        31.10Ki ± 0%       ~ (p=1.000 n=10)
+MultiColumnAggregate/groups=4096/lanes=1                                228.0Ki ± 0%        228.0Ki ± 0%       ~ (p=0.141 n=10)
+geomean                                                                 57.61Ki             57.70Ki       +0.15%
+
+                                         │ /tmp/multi-column-legacy-before-final.txt │ /tmp/multi-column-legacy-after-final.txt │
+                                         │                 allocs/op                 │    allocs/op     vs base                 │
+MultiColumnAggregate/groups=0/lanes=1                                     109.0 ± 0%        109.0 ± 0%       ~ (p=1.000 n=10) ¹
+MultiColumnAggregate/groups=64/lanes=1                                    127.0 ± 0%        127.0 ± 0%       ~ (p=1.000 n=10) ¹
+MultiColumnAggregate/groups=4096/lanes=1                                  128.0 ± 0%        128.0 ± 0%       ~ (p=1.000 n=10) ¹
+geomean                                                                   121.0             121.0       +0.00%
+¹ all samples are equal

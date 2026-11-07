@@ -1,0 +1,51 @@
+goos: linux
+goarch: amd64
+pkg: gocolumn/engine
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkMultiColumnAggregate/groups=0/lanes=1         	     100	   2576468 ns/op	 305.24 MB/s	   27748 B/op	     109 allocs/op
+BenchmarkMultiColumnAggregate/groups=0/lanes=1         	     100	   2388745 ns/op	 329.22 MB/s	   27748 B/op	     109 allocs/op
+BenchmarkMultiColumnAggregate/groups=0/lanes=1         	     100	   2218447 ns/op	 354.50 MB/s	   27748 B/op	     109 allocs/op
+BenchmarkMultiColumnAggregate/groups=0/lanes=1         	     100	   2171668 ns/op	 362.13 MB/s	   27748 B/op	     109 allocs/op
+BenchmarkMultiColumnAggregate/groups=0/lanes=1         	     100	   2203385 ns/op	 356.92 MB/s	   27747 B/op	     109 allocs/op
+BenchmarkMultiColumnAggregate/groups=0/lanes=2         	     100	   3425670 ns/op	 382.62 MB/s	   28972 B/op	     122 allocs/op
+BenchmarkMultiColumnAggregate/groups=0/lanes=2         	     100	   3543774 ns/op	 369.87 MB/s	   28971 B/op	     122 allocs/op
+BenchmarkMultiColumnAggregate/groups=0/lanes=2         	     100	   3548304 ns/op	 369.39 MB/s	   28971 B/op	     122 allocs/op
+BenchmarkMultiColumnAggregate/groups=0/lanes=2         	     100	   3679101 ns/op	 356.26 MB/s	   28971 B/op	     122 allocs/op
+BenchmarkMultiColumnAggregate/groups=0/lanes=2         	     100	   3929093 ns/op	 333.59 MB/s	   28971 B/op	     122 allocs/op
+BenchmarkMultiColumnAggregate/groups=0/lanes=4         	     100	   5519100 ns/op	 427.48 MB/s	   30083 B/op	     128 allocs/op
+BenchmarkMultiColumnAggregate/groups=0/lanes=4         	     100	   5645775 ns/op	 417.89 MB/s	   30084 B/op	     128 allocs/op
+BenchmarkMultiColumnAggregate/groups=0/lanes=4         	     100	   5486183 ns/op	 430.04 MB/s	   30083 B/op	     128 allocs/op
+BenchmarkMultiColumnAggregate/groups=0/lanes=4         	     100	   5433367 ns/op	 434.22 MB/s	   30083 B/op	     128 allocs/op
+BenchmarkMultiColumnAggregate/groups=0/lanes=4         	     100	   5224634 ns/op	 451.57 MB/s	   30083 B/op	     128 allocs/op
+BenchmarkMultiColumnAggregate/groups=64/lanes=1        	     100	    339017 ns/op	2319.74 MB/s	   31843 B/op	     127 allocs/op
+BenchmarkMultiColumnAggregate/groups=64/lanes=1        	     100	    337529 ns/op	2329.97 MB/s	   31843 B/op	     127 allocs/op
+BenchmarkMultiColumnAggregate/groups=64/lanes=1        	     100	    337872 ns/op	2327.61 MB/s	   31843 B/op	     127 allocs/op
+BenchmarkMultiColumnAggregate/groups=64/lanes=1        	     100	    341730 ns/op	2301.33 MB/s	   31843 B/op	     127 allocs/op
+BenchmarkMultiColumnAggregate/groups=64/lanes=1        	     100	    342076 ns/op	2299.00 MB/s	   31843 B/op	     127 allocs/op
+BenchmarkMultiColumnAggregate/groups=64/lanes=2        	     100	   6108918 ns/op	 214.56 MB/s	   41037 B/op	     195 allocs/op
+BenchmarkMultiColumnAggregate/groups=64/lanes=2        	     100	   6074786 ns/op	 215.76 MB/s	   41037 B/op	     195 allocs/op
+BenchmarkMultiColumnAggregate/groups=64/lanes=2        	     100	   6064840 ns/op	 216.12 MB/s	   41037 B/op	     195 allocs/op
+BenchmarkMultiColumnAggregate/groups=64/lanes=2        	     100	   6074201 ns/op	 215.78 MB/s	   41037 B/op	     195 allocs/op
+BenchmarkMultiColumnAggregate/groups=64/lanes=2        	     100	   6181641 ns/op	 212.03 MB/s	   41037 B/op	     195 allocs/op
+BenchmarkMultiColumnAggregate/groups=64/lanes=4        	     100	   8182569 ns/op	 288.33 MB/s	   45573 B/op	     213 allocs/op
+BenchmarkMultiColumnAggregate/groups=64/lanes=4        	     100	   8338728 ns/op	 282.93 MB/s	   45573 B/op	     213 allocs/op
+BenchmarkMultiColumnAggregate/groups=64/lanes=4        	     100	   8225279 ns/op	 286.83 MB/s	   45573 B/op	     213 allocs/op
+BenchmarkMultiColumnAggregate/groups=64/lanes=4        	     100	   8159114 ns/op	 289.16 MB/s	   45573 B/op	     213 allocs/op
+BenchmarkMultiColumnAggregate/groups=64/lanes=4        	     100	   8294856 ns/op	 284.43 MB/s	   45573 B/op	     213 allocs/op
+BenchmarkMultiColumnAggregate/groups=4096/lanes=1      	     100	    444722 ns/op	1768.37 MB/s	  233463 B/op	     128 allocs/op
+BenchmarkMultiColumnAggregate/groups=4096/lanes=1      	     100	    445078 ns/op	1766.95 MB/s	  233462 B/op	     128 allocs/op
+BenchmarkMultiColumnAggregate/groups=4096/lanes=1      	     100	    445202 ns/op	1766.46 MB/s	  233462 B/op	     128 allocs/op
+BenchmarkMultiColumnAggregate/groups=4096/lanes=1      	     100	    443809 ns/op	1772.01 MB/s	  233464 B/op	     128 allocs/op
+BenchmarkMultiColumnAggregate/groups=4096/lanes=1      	     100	    459625 ns/op	1711.03 MB/s	  233464 B/op	     128 allocs/op
+BenchmarkMultiColumnAggregate/groups=4096/lanes=2      	     100	   7227487 ns/op	 181.35 MB/s	  901103 B/op	     322 allocs/op
+BenchmarkMultiColumnAggregate/groups=4096/lanes=2      	     100	   7287640 ns/op	 179.86 MB/s	  901103 B/op	     322 allocs/op
+BenchmarkMultiColumnAggregate/groups=4096/lanes=2      	     100	   7099374 ns/op	 184.62 MB/s	  901103 B/op	     322 allocs/op
+BenchmarkMultiColumnAggregate/groups=4096/lanes=2      	     100	   7060334 ns/op	 185.65 MB/s	  901101 B/op	     322 allocs/op
+BenchmarkMultiColumnAggregate/groups=4096/lanes=2      	     100	   7310458 ns/op	 179.29 MB/s	  901101 B/op	     322 allocs/op
+BenchmarkMultiColumnAggregate/groups=4096/lanes=4      	     100	   9249337 ns/op	 255.08 MB/s	 1053660 B/op	     364 allocs/op
+BenchmarkMultiColumnAggregate/groups=4096/lanes=4      	     100	   9599904 ns/op	 245.76 MB/s	 1053661 B/op	     364 allocs/op
+BenchmarkMultiColumnAggregate/groups=4096/lanes=4      	     100	   9481306 ns/op	 248.84 MB/s	 1053660 B/op	     364 allocs/op
+BenchmarkMultiColumnAggregate/groups=4096/lanes=4      	     100	   9603279 ns/op	 245.68 MB/s	 1053661 B/op	     364 allocs/op
+BenchmarkMultiColumnAggregate/groups=4096/lanes=4      	     100	   9863593 ns/op	 239.19 MB/s	 1053660 B/op	     364 allocs/op
+PASS
+ok  	gocolumn/engine	21.949s

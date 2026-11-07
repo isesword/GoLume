@@ -20,7 +20,10 @@ func aggregateKeysEqual(shape GroupShape, left, right aggregateRecord) bool {
 }
 
 func (p *PreparedQuery) bindSortedBatch(batch *memory.Batch) (aggregateBatchBinding, error) {
-	binding := aggregateBatchBinding{}
+	binding := aggregateBatchBinding{batch: batch}
+	if err := p.bindMultiValues(batch); err != nil {
+		return binding, err
+	}
 	var err error
 	if p.cq.ValueColumn != "" {
 		binding.values, err = batch.Int64(p.cq.ValueColumn)
@@ -47,7 +50,7 @@ func (p *PreparedQuery) bindSortedBatch(batch *memory.Batch) (aggregateBatchBind
 
 func (p *PreparedQuery) materializeRecord(record aggregateRecord) AggregateRow {
 	state := record.state
-	row := AggregateRow{Sum: state.Sum, Count: state.CountRows, Aggregates: p.materializeAggregates(state)}
+	row := AggregateRow{Sum: state.Sum, Count: state.CountRows, Aggregates: p.materializeRecordAggregates(record)}
 	switch p.cq.GroupShape {
 	case GroupShapeGlobal:
 		// A global aggregate has no materialized key.
@@ -65,4 +68,20 @@ func (p *PreparedQuery) materializeRecord(record aggregateRecord) AggregateRow {
 		row.Keys = []KeyPart{p.decodeFixedValid(p.cq.GroupBy[0], record.a, record.validMask&1 != 0)}
 	}
 	return row
+}
+
+// aggregateKeyMatches avoids copying aggregate state while comparing adjacent
+// keys. A row's input key is independent of its aggregate-state representation.
+func aggregateKeyMatches(shape GroupShape, left *aggregateRecord, right aggregateKey) bool {
+	if left.validMask != right.validMask {
+		return false
+	}
+	switch shape {
+	case GroupShapePairFixed:
+		return left.a == right.a && left.b == right.b
+	case GroupShapeStringView:
+		return bytes.Equal(left.stringKey, right.stringKey)
+	default:
+		return left.a == right.a
+	}
 }

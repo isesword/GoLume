@@ -34,6 +34,10 @@ type aggregateRecord struct {
 	validMask uint8
 	stringKey []byte
 	state     aggregate.Int64Result
+	states    []aggregate.Int64Result
+	rawStates []byte
+	bundle    *aggregate.Int64Bundle
+	groupID   int
 }
 
 type aggregateRunRef struct {
@@ -49,18 +53,27 @@ type aggregateStateTable struct {
 	retained    int64
 	reserve     hashagg.ReserveFunc
 
-	i32  *hashagg.I32Table
-	u64  *hashagg.U64Table
-	u32  *hashagg.U32Table
-	pair *hashagg.PairTable
-	str  *hashagg.StringTable
+	i32   *hashagg.I32Table
+	u64   *hashagg.U64Table
+	u32   *hashagg.U32Table
+	pair  *hashagg.PairTable
+	str   *hashagg.StringTable
+	multi *multiAggregateState
 }
 
-func newAggregateStateTable(shape GroupShape, layout aggregate.Layout, cardinalityHint, averageKeyBytes int, maxRetained int64, reserve hashagg.ReserveFunc) (*aggregateStateTable, error) {
+func newAggregateStateTable(shape GroupShape, layout aggregate.Layout, cardinalityHint, averageKeyBytes int, maxRetained int64, reserve hashagg.ReserveFunc, compiled ...*CompiledMultiAggregate) (*aggregateStateTable, error) {
 	if reserve == nil {
 		return nil, fmt.Errorf("aggregate state table requires a reservation callback")
 	}
 	t := &aggregateStateTable{shape: shape, layout: layout, maxRetained: maxRetained, reserve: reserve}
+	if len(compiled) > 0 && compiled[0] != nil {
+		var err error
+		t.multi, err = newMultiAggregateState(t, compiled[0], cardinalityHint)
+		if err != nil {
+			return nil, err
+		}
+		return t, nil
+	}
 	if cardinalityHint < 8 {
 		cardinalityHint = 8
 	}
@@ -154,6 +167,10 @@ func (t *aggregateStateTable) reserveGrowth(bytes int64) (memory.Reservation, er
 }
 
 func (t *aggregateStateTable) close() {
+	if t.multi != nil {
+		t.multi.close()
+		t.multi = nil
+	}
 	if t.i32 != nil {
 		t.i32.Close()
 		t.i32 = nil
@@ -177,6 +194,9 @@ func (t *aggregateStateTable) close() {
 }
 
 func (t *aggregateStateTable) len() int {
+	if t.multi != nil {
+		return t.multi.index.Len()
+	}
 	switch t.shape {
 	case GroupShapeI32:
 		return t.i32.Len()
@@ -194,6 +214,11 @@ func (t *aggregateStateTable) len() int {
 }
 
 func (t *aggregateStateTable) visit(fn func(aggregateRecord) error) error {
+	if t.multi != nil {
+		cursor := 0
+		_, err := t.multi.visitChunk(&cursor, t.multi.index.Len(), fn)
+		return err
+	}
 	switch t.shape {
 	case GroupShapeI32:
 		return t.i32.Visit(func(key int32, valid bool, state aggregate.Int64Result) error {
@@ -240,6 +265,9 @@ func (t *aggregateStateTable) visit(fn func(aggregateRecord) error) error {
 // limit records. It lets resident aggregation produce bounded output batches
 // without first materializing an engine.Result or a group slice.
 func (t *aggregateStateTable) visitChunk(cursor *int, limit int, fn func(aggregateRecord) error) (bool, error) {
+	if t.multi != nil {
+		return t.multi.visitChunk(cursor, limit, fn)
+	}
 	switch t.shape {
 	case GroupShapeI32:
 		return t.i32.VisitChunk(cursor, limit, func(key int32, valid bool, state aggregate.Int64Result) error {
@@ -283,6 +311,9 @@ func (t *aggregateStateTable) visitChunk(cursor *int, limit int, fn func(aggrega
 }
 
 func (t *aggregateStateTable) merge(record aggregateRecord) (bool, error) {
+	if t.multi != nil {
+		return t.multi.merge(record)
+	}
 	switch t.shape {
 	case GroupShapeI32:
 		return t.i32.TryMergeNullable(int32(uint32(record.a)), record.validMask&1 != 0, record.state)
@@ -447,6 +478,7 @@ func encodeAggregateRecord(w *aggregateRunWriter, shape GroupShape, record aggre
 }
 
 type aggregateRunReader struct {
+	multi  *multiAggregateRunReader
 	buf    []byte
 	pos    int
 	err    error
@@ -515,6 +547,9 @@ func (r *aggregateRunReader) u64() uint64 {
 }
 
 func (r *aggregateRunReader) next() (aggregateRecord, bool, error) {
+	if r.multi != nil {
+		return r.multi.next()
+	}
 	if r.err != nil {
 		return aggregateRecord{}, false, r.err
 	}
@@ -685,7 +720,7 @@ type aggregateTableOwner struct {
 func newAggregateTableOwner(ctx context.Context, p *PreparedQuery, operator *memory.OperatorBudget, maxRetained int64) (*aggregateTableOwner, error) {
 	table, err := newAggregateStateTable(p.cq.GroupShape, p.cq.AggregateLayout, 8, p.cq.AverageKeyBytes, maxRetained, func(bytes int64) (memory.Reservation, error) {
 		return operator.ReserveGrowth(ctx, bytes)
-	})
+	}, p.cq.MultiAggregate)
 	if err != nil {
 		return nil, err
 	}
@@ -934,7 +969,7 @@ func (s *spillableAggregateStream) spillTableLocked(ctx context.Context, bitOffs
 	for partition := range destinations {
 		part := uint64(partition)
 		mask := uint64(len(destinations) - 1)
-		encoded, err := encodeAggregateRun(ctx, s.query.cq.GroupShape, s.query.cq.AggregateLayout, owner.table.visit, func(index int, _ aggregateRecord) bool {
+		encoded, err := s.query.encodeAggregateRun(ctx, owner.table.visit, func(index int, _ aggregateRecord) bool {
 			return hashes[index]>>bitOffset&mask == part
 		}, s.encoder)
 		if err != nil {
@@ -946,7 +981,7 @@ func (s *spillableAggregateStream) spillTableLocked(ctx context.Context, bitOffs
 			continue
 		}
 		handle, err := s.store.Spill(ctx, memory.SpillObject{
-			Kind: memory.SpillAggregateState, Partition: int32(partition), Codec: aggregateRunCodec,
+			Kind: memory.SpillAggregateState, Partition: int32(partition), Codec: s.query.aggregateRunCodec(),
 			SchemaFingerprint: s.fingerprint, Payload: encoded.payload,
 		})
 		bytes := handleBytes(handle)
@@ -989,6 +1024,7 @@ func (s *spillableAggregateStream) deleteRunRefs(ctx context.Context, refs []agg
 }
 
 type aggregateBatchBinding struct {
+	batch   *memory.Batch
 	first   fixedColumn
 	second  fixedColumn
 	strings *memory.StringViewVector
@@ -996,7 +1032,10 @@ type aggregateBatchBinding struct {
 }
 
 func (s *spillableAggregateStream) bindBatch(batch *memory.Batch) (aggregateBatchBinding, error) {
-	var binding aggregateBatchBinding
+	binding := aggregateBatchBinding{batch: batch}
+	if err := s.query.bindMultiValues(batch); err != nil {
+		return binding, err
+	}
 	var err error
 	if s.query.cq.ValueColumn != "" {
 		binding.values, err = batch.Int64(s.query.cq.ValueColumn)
@@ -1018,18 +1057,29 @@ func (s *spillableAggregateStream) bindBatch(batch *memory.Batch) (aggregateBatc
 	return binding, err
 }
 
+type aggregateKey struct {
+	a, b      uint64
+	validMask uint8
+	stringKey []byte
+}
+
 func (b aggregateBatchBinding) record(shape GroupShape, row int) aggregateRecord {
+	key := b.key(shape, row)
+	return aggregateRecord{a: key.a, b: key.b, validMask: key.validMask, stringKey: key.stringKey}
+}
+
+func (b aggregateBatchBinding) key(shape GroupShape, row int) aggregateKey {
 	switch shape {
 	case GroupShapeGlobal:
-		return aggregateRecord{}
+		return aggregateKey{}
 	case GroupShapeStringView:
 		if !b.strings.IsValid(row) {
-			return aggregateRecord{}
+			return aggregateKey{}
 		}
-		return aggregateRecord{stringKey: b.strings.ValueBytes(row), validMask: 1}
+		return aggregateKey{stringKey: b.strings.ValueBytes(row), validMask: 1}
 	case GroupShapePairFixed:
 		mask := uint8(0)
-		record := aggregateRecord{}
+		record := aggregateKey{}
 		if b.first.valid(row) {
 			mask |= 1
 			record.a = b.first.at(row)
@@ -1042,9 +1092,9 @@ func (b aggregateBatchBinding) record(shape GroupShape, row int) aggregateRecord
 		return record
 	default:
 		if !b.first.valid(row) {
-			return aggregateRecord{}
+			return aggregateKey{}
 		}
-		return aggregateRecord{a: b.first.at(row), validMask: 1}
+		return aggregateKey{a: b.first.at(row), validMask: 1}
 	}
 }
 
@@ -1114,7 +1164,12 @@ func (s *spillableAggregateStream) aggregateBatch(ctx context.Context, batch *me
 			err = forSelectedFrom(selection.Truth, batch.Rows, resume, func(row int) error {
 				record := binding.record(s.query.cq.GroupShape, row)
 				value, valueValid := binding.value(row)
-				_, addErr := s.table.table.add(record, value, valueValid)
+				var addErr error
+				if s.table.table.multi != nil {
+					_, addErr = s.table.table.multi.add(record, batch, row)
+				} else {
+					_, addErr = s.table.table.add(record, value, valueValid)
+				}
 				if addErr != nil {
 					failedRow = row
 					return addErr

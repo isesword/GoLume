@@ -180,7 +180,7 @@ func (s *residentPartitionedState) reset() {
 }
 
 func (p *PreparedQuery) reuseEligible() bool {
-	if p.cacheHandle == nil || !p.e.cache.enabled() {
+	if p.cq.MultiAggregate != nil || p.cacheHandle == nil || !p.e.cache.enabled() {
 		return false
 	}
 	// Only entirely owned, fixed-width group keys enter the initial cache.

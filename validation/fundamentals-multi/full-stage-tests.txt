@@ -1,0 +1,84 @@
+ok  	gocolumn/aggregate	(cached)
+?   	gocolumn/cmd/demo	[no test files]
+ok  	gocolumn/cmd/kernel-info	(cached)
+?   	gocolumn/cmd/lazy-demo	[no test files]
+?   	gocolumn/costmodel	[no test files]
+ok  	gocolumn/engine	1.661s
+ok  	gocolumn/expr	(cached)
+ok  	gocolumn/hashagg	(cached)
+ok  	gocolumn/internal/benchtrack	(cached)
+?   	gocolumn/internal/cmd/gensimd	[no test files]
+ok  	gocolumn/internal/fixturegen	(cached)
+?   	gocolumn/internal/hashmix	[no test files]
+ok  	gocolumn/internal/kernelgate	(cached)
+ok  	gocolumn/internal/oracle	18.191s
+?   	gocolumn/internal/platformcal	[no test files]
+ok  	gocolumn/internal/proptest	0.054s
+ok  	gocolumn/join	(cached)
+ok  	gocolumn/kernel	(cached)
+ok  	gocolumn/lazy	2.267s
+?   	gocolumn/logical	[no test files]
+ok  	gocolumn/memory	(cached)
+?   	gocolumn/observer	[no test files]
+ok  	gocolumn/optimizer	(cached)
+ok  	gocolumn/physical	(cached)
+ok  	gocolumn/pipeline	(cached)
+ok  	gocolumn/planner	(cached)
+ok  	gocolumn/radix	(cached)
+ok  	gocolumn/scheduler	(cached)
+ok  	gocolumn/source	(cached)
+ok  	gocolumn/source/arrowrecord	(cached)
+ok  	gocolumn/source/inmemory	(cached)
+?   	gocolumn/source/internal/batchview	[no test files]
+ok  	gocolumn/source/parquet	0.732s
+ok  	gocolumn/tools/benchtrack	(cached)
+?   	gocolumn/tools/checkgodoc	[no test files]
+ok  	gocolumn/tools/genfallbackfixture	(cached)
+ok  	gocolumn/tools/genfixture	(cached)
+ok  	gocolumn/tools/kernelgate	(cached)
+ok  	gocolumn/aggregate	(cached)
+?   	gocolumn/cmd/demo	[no test files]
+ok  	gocolumn/cmd/kernel-info	(cached)
+?   	gocolumn/cmd/lazy-demo	[no test files]
+?   	gocolumn/costmodel	[no test files]
+ok  	gocolumn/engine	1.696s
+ok  	gocolumn/expr	(cached)
+ok  	gocolumn/hashagg	(cached)
+ok  	gocolumn/internal/benchtrack	(cached)
+?   	gocolumn/internal/cmd/gensimd	[no test files]
+ok  	gocolumn/internal/fixturegen	(cached)
+?   	gocolumn/internal/hashmix	[no test files]
+ok  	gocolumn/internal/kernelgate	(cached)
+ok  	gocolumn/internal/oracle	14.701s
+?   	gocolumn/internal/platformcal	[no test files]
+ok  	gocolumn/internal/proptest	0.063s
+ok  	gocolumn/join	(cached)
+ok  	gocolumn/kernel	(cached)
+ok  	gocolumn/lazy	2.288s
+?   	gocolumn/logical	[no test files]
+ok  	gocolumn/memory	(cached)
+?   	gocolumn/observer	[no test files]
+ok  	gocolumn/optimizer	(cached)
+ok  	gocolumn/physical	(cached)
+ok  	gocolumn/pipeline	(cached)
+ok  	gocolumn/planner	(cached)
+ok  	gocolumn/radix	(cached)
+ok  	gocolumn/scheduler	(cached)
+ok  	gocolumn/source	(cached)
+ok  	gocolumn/source/arrowrecord	(cached)
+ok  	gocolumn/source/inmemory	(cached)
+?   	gocolumn/source/internal/batchview	[no test files]
+ok  	gocolumn/source/parquet	0.668s
+ok  	gocolumn/tools/benchtrack	(cached)
+?   	gocolumn/tools/checkgodoc	[no test files]
+ok  	gocolumn/tools/genfallbackfixture	(cached)
+ok  	gocolumn/tools/genfixture	(cached)
+ok  	gocolumn/tools/kernelgate	(cached)
+ok  	gocolumn/engine	13.380s
+ok  	gocolumn/lazy	12.438s
+ok  	gocolumn/aggregate	(cached)
+ok  	gocolumn/hashagg	(cached)
+ok  	gocolumn/physical	(cached)
+ok  	gocolumn/optimizer	(cached)
+GoDoc check: PASS (package docs and exported API comments follow naming conventions)
+kernel registry, gates file, and code are consistent

@@ -2,7 +2,6 @@ package engine
 
 import (
 	"fmt"
-	"gocolumn/aggregate"
 	"gocolumn/expr"
 	"gocolumn/memory"
 )
@@ -93,9 +92,14 @@ func (p *PreparedQuery) decodeFixedValid(g CompiledGroupColumn, v uint64, valid 
 	}
 }
 
-func (p *PreparedQuery) materializeAggregates(st aggregate.Int64Result) []AggregateValue {
+func (p *PreparedQuery) materializeRecordAggregates(record aggregateRecord) []AggregateValue {
 	out := make([]AggregateValue, 0, len(p.cq.Aggregates))
-	for _, a := range p.cq.Aggregates {
+	for index, a := range p.cq.Aggregates {
+		lane := 0
+		if p.cq.MultiAggregate != nil {
+			lane = p.cq.MultiAggregate.OutputLane[index]
+		}
+		st := aggregateRecordState(record, lane)
 		v := AggregateValue{Alias: a.Alias, Kind: a.Kind}
 		switch a.Kind {
 		case expr.AggSum:

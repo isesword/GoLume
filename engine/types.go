@@ -89,6 +89,7 @@ type CompiledQuery struct {
 	ValueNullable    bool
 	Aggregates       []expr.Aggregate
 	AggregateLayout  aggregate.Layout
+	MultiAggregate   *CompiledMultiAggregate
 	CardinalityHint  int
 	SelectivityHint  float64
 	AverageKeyBytes  int

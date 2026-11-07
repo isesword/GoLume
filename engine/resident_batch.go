@@ -14,6 +14,9 @@ func (p *PreparedQuery) aggregateResidentBatch(ctx context.Context, batch *memor
 	if err = ctx.Err(); err != nil {
 		return
 	}
+	if table.multi != nil {
+		return p.aggregateMultiResidentBatch(ctx, batch, table, workspace)
+	}
 	var vals *memory.Int64Vector
 	if p.cq.ValueColumn != "" {
 		vals, err = batch.Int64(p.cq.ValueColumn)

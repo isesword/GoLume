@@ -23,10 +23,10 @@ func (s *spillableAggregateStream) restoreRun(ctx context.Context, ref aggregate
 		return err
 	}
 	defer restored.Close()
-	if restored.Object.Kind != memory.SpillAggregateState || restored.Object.Codec != aggregateRunCodec {
+	if restored.Object.Kind != memory.SpillAggregateState || restored.Object.Codec != s.query.aggregateRunCodec() {
 		return fmt.Errorf("%w: aggregate spill kind or codec mismatch", memory.ErrSpillCorrupt)
 	}
-	reader, err := newAggregateRunReader(restored.Object.Payload, s.query.cq.GroupShape, s.query.cq.AggregateLayout)
+	reader, err := s.query.newAggregateRunReader(restored.Object.Payload)
 	if err != nil {
 		return err
 	}
@@ -59,14 +59,14 @@ func (s *spillableAggregateStream) repartitionRuns(ctx context.Context, refs []a
 			s.deleteRunRefs(context.Background(), created)
 			return nil, err
 		}
-		if restored.Object.Kind != memory.SpillAggregateState || restored.Object.Codec != aggregateRunCodec {
+		if restored.Object.Kind != memory.SpillAggregateState || restored.Object.Codec != s.query.aggregateRunCodec() {
 			_ = restored.Close()
 			s.deleteRunRefs(context.Background(), created)
 			return nil, fmt.Errorf("%w: aggregate spill kind or codec mismatch", memory.ErrSpillCorrupt)
 		}
 		for child := range children {
 			visit := func(fn func(aggregateRecord) error) error {
-				reader, readerErr := newAggregateRunReader(restored.Object.Payload, s.query.cq.GroupShape, s.query.cq.AggregateLayout)
+				reader, readerErr := s.query.newAggregateRunReader(restored.Object.Payload)
 				if readerErr != nil {
 					return readerErr
 				}
@@ -75,7 +75,7 @@ func (s *spillableAggregateStream) repartitionRuns(ctx context.Context, refs []a
 				}
 				return reader.visit(fn)
 			}
-			encoded, encodeErr := encodeAggregateRun(ctx, s.query.cq.GroupShape, s.query.cq.AggregateLayout, visit, func(_ int, record aggregateRecord) bool {
+			encoded, encodeErr := s.query.encodeAggregateRun(ctx, visit, func(_ int, record aggregateRecord) bool {
 				return int(aggregateRecordHash(s.query.cq.GroupShape, record)>>bitOffset&((1<<aggregateRadixBits)-1)) == child
 			}, s.encoder)
 			if encodeErr != nil {
@@ -88,7 +88,7 @@ func (s *spillableAggregateStream) repartitionRuns(ctx context.Context, refs []a
 				continue
 			}
 			handle, spillErr := s.store.Spill(ctx, memory.SpillObject{
-				Kind: memory.SpillAggregateState, Partition: int32(child), Codec: aggregateRunCodec,
+				Kind: memory.SpillAggregateState, Partition: int32(child), Codec: s.query.aggregateRunCodec(),
 				SchemaFingerprint: s.fingerprint, Payload: encoded.payload,
 			})
 			groups := encoded.groups
@@ -197,7 +197,7 @@ func (s *spillableAggregateStream) writeOutputRuns(ctx context.Context, table *a
 		if end > groups {
 			end = groups
 		}
-		encoded, err := encodeAggregateRun(ctx, s.query.cq.GroupShape, s.query.cq.AggregateLayout, table.visit, func(index int, _ aggregateRecord) bool {
+		encoded, err := s.query.encodeAggregateRun(ctx, table.visit, func(index int, _ aggregateRecord) bool {
 			return index >= start && index < end
 		}, s.encoder)
 		if err != nil {
@@ -215,7 +215,7 @@ func (s *spillableAggregateStream) writeOutputRuns(ctx context.Context, table *a
 			return fmt.Errorf("aggregate output run count exceeds int32")
 		}
 		handle, err := s.store.Spill(ctx, memory.SpillObject{
-			Kind: memory.SpillAggregateState, Partition: int32(partition), Codec: aggregateRunCodec,
+			Kind: memory.SpillAggregateState, Partition: int32(partition), Codec: s.query.aggregateRunCodec(),
 			SchemaFingerprint: s.fingerprint, Payload: encoded.payload,
 		})
 		count := encoded.groups
@@ -453,7 +453,13 @@ func (s *spillableAggregateStream) setOutputRecord(dst *memory.Batch, row int, r
 		if name == "" {
 			name = fmt.Sprintf("agg_%d", index)
 		}
-		integer, floating, valid := aggregateValue(record, agg.Kind)
+		lane := 0
+		if s.query.cq.MultiAggregate != nil {
+			lane = s.query.cq.MultiAggregate.OutputLane[index]
+		}
+		valueRecord := record
+		valueRecord.state = aggregateRecordState(record, lane)
+		integer, floating, valid := aggregateValue(valueRecord, agg.Kind)
 		field, _ := s.schema.Field(name)
 		if !valid && !field.Nullable {
 			return fmt.Errorf("%w: NULL aggregate value for non-nullable field %q", memory.ErrSpillCorrupt, name)
@@ -488,10 +494,10 @@ func (s *spillableAggregateStream) materializeOutputRun(ctx context.Context, ref
 		return nil, err
 	}
 	defer restored.Close()
-	if restored.Object.Kind != memory.SpillAggregateState || restored.Object.Codec != aggregateRunCodec {
+	if restored.Object.Kind != memory.SpillAggregateState || restored.Object.Codec != s.query.aggregateRunCodec() {
 		return nil, fmt.Errorf("%w: aggregate spill kind or codec mismatch", memory.ErrSpillCorrupt)
 	}
-	preflight, err := newAggregateRunReader(restored.Object.Payload, s.query.cq.GroupShape, s.query.cq.AggregateLayout)
+	preflight, err := s.query.newAggregateRunReader(restored.Object.Payload)
 	if err != nil {
 		return nil, err
 	}
@@ -528,7 +534,7 @@ func (s *spillableAggregateStream) materializeOutputRun(ctx context.Context, ref
 		lease.Release()
 		return nil, err
 	}
-	reader, err := newAggregateRunReader(restored.Object.Payload, s.query.cq.GroupShape, s.query.cq.AggregateLayout)
+	reader, err := s.query.newAggregateRunReader(restored.Object.Payload)
 	if err != nil {
 		dst.ClearColumns()
 		lease.Release()

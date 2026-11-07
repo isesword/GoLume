@@ -51,10 +51,13 @@ func compileQuery(schema memory.Schema, q expr.Query) (CompiledQuery, error) {
 		if a.Column == "" {
 			return CompiledQuery{}, fmt.Errorf("aggregate %q requires an input column", a.Alias)
 		}
-		if value != "" && value != a.Column {
-			return CompiledQuery{}, fmt.Errorf("phase-2.2 requires value aggregates to share one int64 column: %q vs %q", value, a.Column)
+		if value == "" {
+			value = a.Column
 		}
-		value = a.Column
+	}
+	multi, err := compileMultiAggregate(schema, q.Aggregates)
+	if err != nil {
+		return CompiledQuery{}, err
 	}
 	valueNullable := false
 	if value != "" {
@@ -152,11 +155,11 @@ func compileQuery(schema memory.Schema, q expr.Query) (CompiledQuery, error) {
 	}
 	comparisonID, hasComparisonID := simpleComparisonKernelID(simple)
 	return CompiledQuery{
-		Predicate: prog, SimpleComparison: simple, GroupBy: groups, GroupShape: shape,
+		MultiAggregate: multi, Predicate: prog, SimpleComparison: simple, GroupBy: groups, GroupShape: shape,
 		ValueColumn: value, ValueNullable: valueNullable, Aggregates: append([]expr.Aggregate(nil), q.Aggregates...), AggregateLayout: layout,
 		CardinalityHint: card, SelectivityHint: sel, AverageKeyBytes: avg,
 		ReuseSelection: q.Hints.ReuseSelection, ForceStrategy: q.Hints.ForceStrategy,
-		FusedCapable: simple != nil, ComparisonID: comparisonID, HasComparisonID: hasComparisonID, KeyWidthBytes: keyWidth,
+		FusedCapable: simple != nil && multi == nil, ComparisonID: comparisonID, HasComparisonID: hasComparisonID, KeyWidthBytes: keyWidth,
 	}, nil
 }
 

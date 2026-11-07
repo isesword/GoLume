@@ -50,7 +50,7 @@ func newResidentTableOwner(ctx context.Context, query *PreparedQuery, state resi
 	if lane, ok := state.(*residentAllocationLane); ok {
 		reserve = lane.reserveCurrent
 	}
-	table, err := newAggregateStateTable(query.cq.GroupShape, query.cq.AggregateLayout, cardinality, query.cq.AverageKeyBytes, 0, reserve)
+	table, err := newAggregateStateTable(query.cq.GroupShape, query.cq.AggregateLayout, cardinality, query.cq.AverageKeyBytes, 0, reserve, query.cq.MultiAggregate)
 	if err != nil {
 		return nil, err
 	}
@@ -114,7 +114,7 @@ func newResidentPartitionedStateOwned(ctx context.Context, query *PreparedQuery,
 }
 
 func (s *residentPartitionedState) packed() bool {
-	return s.query.cq.ValueColumn != "" && s.query.cq.GroupShape != GroupShapePairFixed && s.query.cq.GroupShape != GroupShapeStringView
+	return s.query.cq.MultiAggregate == nil && s.query.cq.ValueColumn != "" && s.query.cq.GroupShape != GroupShapePairFixed && s.query.cq.GroupShape != GroupShapeStringView
 }
 
 func (s *residentPartitionedState) ensureScratch(ctx context.Context, rows int) error {
@@ -430,7 +430,7 @@ func aggregateIndexedBatch(ctx context.Context, table *aggregateStateTable, bind
 	checksum := int64(0)
 	// Share the same optimized typed kernel with bitmap aggregation. Bound
 	// each call so cancellation is checked even when a skewed shard is huge.
-	if binding.values != nil && table.shape != GroupShapePairFixed && table.shape != GroupShapeStringView {
+	if table.multi == nil && binding.values != nil && table.shape != GroupShapePairFixed && table.shape != GroupShapeStringView {
 		for len(indices) > 0 {
 			if err := ctx.Err(); err != nil {
 				return 0, err
@@ -463,7 +463,12 @@ func aggregateIndexedBatch(ctx context.Context, table *aggregateStateTable, bind
 			}
 		}
 		value, valid := binding.value(row)
-		_, err := table.add(binding.record(table.shape, row), value, valid)
+		var err error
+		if table.multi != nil {
+			_, err = table.multi.add(binding.record(table.shape, row), binding.batch, row)
+		} else {
+			_, err = table.add(binding.record(table.shape, row), value, valid)
+		}
 		if err != nil {
 			return 0, err
 		}
