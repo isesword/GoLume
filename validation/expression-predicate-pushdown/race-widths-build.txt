@@ -1,0 +1,33 @@
++ GOEXPERIMENT=simd
++ go test -race ./optimizer ./lazy ./engine ./physical ./source/parquet
+ok  	gocolumn/optimizer	1.024s
+ok  	gocolumn/lazy	11.521s
+ok  	gocolumn/engine	13.677s
+ok  	gocolumn/physical	2.691s
+ok  	gocolumn/source/parquet	3.982s
++ GOEXPERIMENT=simd
++ GODEBUG=simd=0
++ go test ./optimizer ./lazy ./engine ./physical
+ok  	gocolumn/optimizer	0.008s
+ok  	gocolumn/lazy	2.021s
+ok  	gocolumn/engine	1.589s
+ok  	gocolumn/physical	0.476s
++ GOEXPERIMENT=simd
++ GODEBUG=simd=+128
++ go test ./optimizer ./lazy
+ok  	gocolumn/optimizer	0.003s
+ok  	gocolumn/lazy	1.641s
++ GOEXPERIMENT=simd
++ GODEBUG=simd=+256
++ go test ./optimizer ./lazy
+ok  	gocolumn/optimizer	0.003s
+ok  	gocolumn/lazy	1.580s
++ GOEXPERIMENT=simd
++ GODEBUG=simd=+512
++ go test ./optimizer ./lazy
+ok  	gocolumn/optimizer	0.004s
+ok  	gocolumn/lazy	1.618s
++ GOOS=linux
++ GOARCH=arm64
++ GOEXPERIMENT=simd
++ go build -buildvcs=false ./...

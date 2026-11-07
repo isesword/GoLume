@@ -1,0 +1,16 @@
+goos: linux
+goarch: amd64
+pkg: gocolumn/lazy
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkExpressionProjectionPredicatePushdown/unoptimized         	     100	   2795749 ns/op	     65536 source_rows/op	 4116578 B/op	    2377 allocs/op
+BenchmarkExpressionProjectionPredicatePushdown/unoptimized         	     100	   2377020 ns/op	     65536 source_rows/op	 4117320 B/op	    2377 allocs/op
+BenchmarkExpressionProjectionPredicatePushdown/unoptimized         	     100	   2268802 ns/op	     65536 source_rows/op	 4116944 B/op	    2377 allocs/op
+BenchmarkExpressionProjectionPredicatePushdown/unoptimized         	     100	   3529883 ns/op	     65536 source_rows/op	 4116568 B/op	    2377 allocs/op
+BenchmarkExpressionProjectionPredicatePushdown/unoptimized         	      86	   2900541 ns/op	     65536 source_rows/op	 4116524 B/op	    2377 allocs/op
+BenchmarkExpressionProjectionPredicatePushdown/optimized           	     710	    402899 ns/op	      4096 source_rows/op	  481992 B/op	     920 allocs/op
+BenchmarkExpressionProjectionPredicatePushdown/optimized           	     700	    328347 ns/op	      4096 source_rows/op	  481939 B/op	     920 allocs/op
+BenchmarkExpressionProjectionPredicatePushdown/optimized           	     771	    353434 ns/op	      4096 source_rows/op	  481939 B/op	     920 allocs/op
+BenchmarkExpressionProjectionPredicatePushdown/optimized           	     644	    400000 ns/op	      4096 source_rows/op	  481938 B/op	     920 allocs/op
+BenchmarkExpressionProjectionPredicatePushdown/optimized           	     674	    396183 ns/op	      4096 source_rows/op	  481939 B/op	     920 allocs/op
+PASS
+ok  	gocolumn/lazy	2.880s

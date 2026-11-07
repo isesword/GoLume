@@ -157,7 +157,7 @@ func mergeLimits(plan logical.Plan, rules *[]string) logical.Plan {
 }
 
 // pushPredicates annotates scans with every filter predicate that can cross
-// column-only projections. Filters are intentionally retained as residual
+// column-only and safe expression projections. Filters are retained as residual
 // row-level predicates because row-group statistics only prove that a group can
 // be skipped; they do not identify matching rows inside a retained group.
 func pushPredicates(plan logical.Plan, inherited expr.Expr, rules *[]string) logical.Plan {
@@ -174,10 +174,11 @@ func pushPredicates(plan logical.Plan, inherited expr.Expr, rules *[]string) log
 	case *logical.Projection:
 		return &logical.Projection{Input: pushPredicates(n.Input, inherited, rules), Columns: append([]string(nil), n.Columns...)}
 	case *logical.ExprProjection:
-		// A predicate above a computed projection may reference aliases or replaced
-		// columns, so it cannot be pushed below the expression boundary without
-		// substitution analysis. Filters already inside the child still push down.
-		return &logical.ExprProjection{Input: pushPredicates(n.Input, nil, rules), Exprs: cloneNamedExprs(n.Exprs), IncludeInput: n.IncludeInput}
+		predicate := predicateThroughExpressions(n, inherited)
+		if predicate != nil {
+			*rules = append(*rules, "expression-predicate-pushdown")
+		}
+		return &logical.ExprProjection{Input: pushPredicates(n.Input, predicate, rules), Exprs: cloneNamedExprs(n.Exprs), IncludeInput: n.IncludeInput}
 	case *logical.Sort:
 		for _, key := range n.By {
 			value, err := key.Expression()
