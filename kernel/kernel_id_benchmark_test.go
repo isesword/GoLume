@@ -113,12 +113,12 @@ func (o kernelBenchOutput) diff(other kernelBenchOutput) error {
 // mixed ASCII/Unicode string layout of BenchmarkStringMatchKernel.
 type kernelBenchFixture struct {
 	rows                           int
-	i8a                            []int8
-	i16a                           []int16
+	i8a, i8b                       []int8
+	i16a, i16b                     []int16
 	i32a, i32b                     []int32
 	i64a, i64b, i64base            []int64
-	u8a                            []uint8
-	u16a                           []uint16
+	u8a, u8b                       []uint8
+	u16a, u16b                     []uint16
 	u32a, u32b                     []uint32
 	u64a, u64b                     []uint64
 	f32a, f32b                     []float32
@@ -136,12 +136,12 @@ type kernelBenchFixture struct {
 
 func newKernelBenchFixture(rows int) *kernelBenchFixture {
 	f := &kernelBenchFixture{rows: rows}
-	f.i8a = make([]int8, rows)
-	f.i16a = make([]int16, rows)
+	f.i8a, f.i8b = make([]int8, rows), make([]int8, rows)
+	f.i16a, f.i16b = make([]int16, rows), make([]int16, rows)
 	f.i32a, f.i32b = make([]int32, rows), make([]int32, rows)
 	f.i64a, f.i64b, f.i64base = make([]int64, rows), make([]int64, rows), make([]int64, rows)
-	f.u8a = make([]uint8, rows)
-	f.u16a = make([]uint16, rows)
+	f.u8a, f.u8b = make([]uint8, rows), make([]uint8, rows)
+	f.u16a, f.u16b = make([]uint16, rows), make([]uint16, rows)
 	f.u32a, f.u32b = make([]uint32, rows), make([]uint32, rows)
 	f.u64a, f.u64b = make([]uint64, rows), make([]uint64, rows)
 	f.f32a, f.f32b = make([]float32, rows), make([]float32, rows)
@@ -156,12 +156,12 @@ func newKernelBenchFixture(rows int) *kernelBenchFixture {
 	f.outputs[0] = newKernelBenchOutput(rows)
 	f.outputs[1] = newKernelBenchOutput(rows)
 	for row := 0; row < rows; row++ {
-		f.i8a[row] = int8(row)
-		f.i16a[row] = int16(row)
+		f.i8a[row], f.i8b[row] = int8(row), 2
+		f.i16a[row], f.i16b[row] = int16(row), 2
 		f.i32a[row], f.i32b[row] = int32(row), 2
 		f.i64a[row], f.i64b[row], f.i64base[row] = int64(row), 2, int64(row+1)
-		f.u8a[row] = uint8(row)
-		f.u16a[row] = uint16(row)
+		f.u8a[row], f.u8b[row] = uint8(row), 2
+		f.u16a[row], f.u16b[row] = uint16(row), 2
 		f.u32a[row], f.u32b[row] = uint32(row), 2
 		f.u64a[row], f.u64b[row] = uint64(row), 2
 		f.f32a[row], f.f32b[row] = float32(row+1), 2
@@ -215,6 +215,53 @@ func (f *kernelBenchFixture) matchLiteral(op StringMatchOp) []byte {
 func (f *kernelBenchFixture) invoke(set Set, id KernelID, slot int) {
 	out := &f.outputs[slot]
 	switch id.kind {
+	case KernelMathUnary:
+		switch id.typ {
+		case memory.TypeInt8:
+			set.MathUnaryInt8(f.i8a, out.i8, nil, MathUnaryOp(id.op))
+		case memory.TypeInt16:
+			set.MathUnaryInt16(f.i16a, out.i16, nil, MathUnaryOp(id.op))
+		case memory.TypeInt32:
+			set.MathUnaryInt32(f.i32a, out.i32, nil, MathUnaryOp(id.op))
+		case memory.TypeInt64:
+			set.MathUnaryInt64(f.i64a, out.i64, nil, MathUnaryOp(id.op))
+		case memory.TypeUint8:
+			set.MathUnaryUint8(f.u8a, out.u8, nil, MathUnaryOp(id.op))
+		case memory.TypeUint16:
+			set.MathUnaryUint16(f.u16a, out.u16, nil, MathUnaryOp(id.op))
+		case memory.TypeUint32:
+			set.MathUnaryUint32(f.u32a, out.u32, nil, MathUnaryOp(id.op))
+		case memory.TypeUint64:
+			set.MathUnaryUint64(f.u64a, out.u64, nil, MathUnaryOp(id.op))
+		case memory.TypeFloat32:
+			set.MathUnaryFloat32(f.f32a, out.f32, nil, MathUnaryOp(id.op))
+		case memory.TypeFloat64:
+			set.MathUnaryFloat64(f.f64a, out.f64, nil, MathUnaryOp(id.op))
+		}
+	case KernelMathBinary:
+		switch id.typ {
+		case memory.TypeInt8:
+			out.count = set.MathBinaryInt8(f.i8a, f.i8b, out.i8, nil, out.validity, MathBinaryOp(id.op))
+		case memory.TypeInt16:
+			out.count = set.MathBinaryInt16(f.i16a, f.i16b, out.i16, nil, out.validity, MathBinaryOp(id.op))
+		case memory.TypeInt32:
+			out.count = set.MathBinaryInt32(f.i32a, f.i32b, out.i32, nil, out.validity, MathBinaryOp(id.op))
+		case memory.TypeInt64:
+			out.count = set.MathBinaryInt64(f.i64a, f.i64b, out.i64, nil, out.validity, MathBinaryOp(id.op))
+		case memory.TypeUint8:
+			out.count = set.MathBinaryUint8(f.u8a, f.u8b, out.u8, nil, out.validity, MathBinaryOp(id.op))
+		case memory.TypeUint16:
+			out.count = set.MathBinaryUint16(f.u16a, f.u16b, out.u16, nil, out.validity, MathBinaryOp(id.op))
+		case memory.TypeUint32:
+			out.count = set.MathBinaryUint32(f.u32a, f.u32b, out.u32, nil, out.validity, MathBinaryOp(id.op))
+		case memory.TypeUint64:
+			out.count = set.MathBinaryUint64(f.u64a, f.u64b, out.u64, nil, out.validity, MathBinaryOp(id.op))
+		case memory.TypeFloat32:
+			out.count = set.MathBinaryFloat32(f.f32a, f.f32b, out.f32, nil, out.validity, MathBinaryOp(id.op))
+		case memory.TypeFloat64:
+			out.count = set.MathBinaryFloat64(f.f64a, f.f64b, out.f64, nil, out.validity, MathBinaryOp(id.op))
+		}
+
 	case KernelComparison:
 		switch id.typ {
 		case memory.TypeInt8:

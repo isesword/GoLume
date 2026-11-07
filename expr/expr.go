@@ -54,6 +54,15 @@ const (
 	OpRegexExtract
 	OpSplit
 	OpRegexExtractAll
+	OpAbs
+	OpRound
+	OpFloor
+	OpCeil
+	OpSqrt
+	OpLog
+	OpMod
+	OpFloorDiv
+	OpPow
 )
 
 // Expr is a logical scalar expression node.
@@ -332,6 +341,25 @@ func (c Cast) String() string { return fmt.Sprintf("CAST(%s AS %s)", c.Value, c.
 // String returns the SQL-like spelling of the operator.
 func (o Op) String() string {
 	switch o {
+	case OpAbs:
+		return "ABS"
+	case OpRound:
+		return "ROUND"
+	case OpFloor:
+		return "FLOOR"
+	case OpCeil:
+		return "CEIL"
+	case OpSqrt:
+		return "SQRT"
+	case OpLog:
+		return "LOG"
+	case OpMod:
+		return "MOD"
+	case OpFloorDiv:
+		return "FLOORDIV"
+	case OpPow:
+		return "POW"
+
 	case OpGT:
 		return ">"
 	case OpGE:

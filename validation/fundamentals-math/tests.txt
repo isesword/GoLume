@@ -1,0 +1,105 @@
+ok  	gocolumn/aggregate	0.008s
+?   	gocolumn/cmd/demo	[no test files]
+ok  	gocolumn/cmd/kernel-info	0.008s
+?   	gocolumn/cmd/lazy-demo	[no test files]
+?   	gocolumn/costmodel	[no test files]
+ok  	gocolumn/engine	1.922s
+ok  	gocolumn/expr	4.912s
+ok  	gocolumn/hashagg	4.880s
+ok  	gocolumn/internal/benchtrack	0.006s
+?   	gocolumn/internal/cmd/gensimd	[no test files]
+ok  	gocolumn/internal/fixturegen	0.224s
+?   	gocolumn/internal/hashmix	[no test files]
+ok  	gocolumn/internal/kernelgate	0.018s
+ok  	gocolumn/internal/oracle	14.516s
+?   	gocolumn/internal/platformcal	[no test files]
+ok  	gocolumn/internal/proptest	0.057s
+ok  	gocolumn/join	0.004s
+ok  	gocolumn/kernel	0.071s
+ok  	gocolumn/lazy	2.206s
+?   	gocolumn/logical	[no test files]
+ok  	gocolumn/memory	0.620s
+?   	gocolumn/observer	[no test files]
+ok  	gocolumn/optimizer	0.006s
+ok  	gocolumn/physical	0.199s
+ok  	gocolumn/pipeline	0.090s
+ok  	gocolumn/planner	0.003s
+ok  	gocolumn/radix	0.004s
+ok  	gocolumn/scheduler	0.003s
+ok  	gocolumn/source	0.007s
+ok  	gocolumn/source/arrowrecord	0.005s
+ok  	gocolumn/source/inmemory	0.006s
+?   	gocolumn/source/internal/batchview	[no test files]
+ok  	gocolumn/source/parquet	0.803s
+ok  	gocolumn/tools/benchtrack	0.007s
+?   	gocolumn/tools/checkgodoc	[no test files]
+ok  	gocolumn/tools/genfallbackfixture	0.132s
+ok  	gocolumn/tools/genfixture	0.026s
+ok  	gocolumn/tools/kernelgate	0.005s
+ok  	gocolumn/aggregate	0.005s
+?   	gocolumn/cmd/demo	[no test files]
+ok  	gocolumn/cmd/kernel-info	0.010s
+?   	gocolumn/cmd/lazy-demo	[no test files]
+?   	gocolumn/costmodel	[no test files]
+ok  	gocolumn/engine	2.130s
+ok  	gocolumn/expr	6.535s
+ok  	gocolumn/hashagg	6.489s
+ok  	gocolumn/internal/benchtrack	0.009s
+?   	gocolumn/internal/cmd/gensimd	[no test files]
+ok  	gocolumn/internal/fixturegen	0.215s
+?   	gocolumn/internal/hashmix	[no test files]
+ok  	gocolumn/internal/kernelgate	0.023s
+ok  	gocolumn/internal/oracle	16.312s
+?   	gocolumn/internal/platformcal	[no test files]
+ok  	gocolumn/internal/proptest	0.109s
+ok  	gocolumn/join	0.019s
+ok  	gocolumn/kernel	0.102s
+ok  	gocolumn/lazy	2.913s
+?   	gocolumn/logical	[no test files]
+ok  	gocolumn/memory	1.093s
+?   	gocolumn/observer	[no test files]
+ok  	gocolumn/optimizer	0.006s
+ok  	gocolumn/physical	0.483s
+ok  	gocolumn/pipeline	0.119s
+ok  	gocolumn/planner	0.009s
+ok  	gocolumn/radix	0.005s
+ok  	gocolumn/scheduler	0.004s
+ok  	gocolumn/source	0.007s
+ok  	gocolumn/source/arrowrecord	0.006s
+ok  	gocolumn/source/inmemory	0.003s
+?   	gocolumn/source/internal/batchview	[no test files]
+ok  	gocolumn/source/parquet	1.247s
+ok  	gocolumn/tools/benchtrack	0.005s
+?   	gocolumn/tools/checkgodoc	[no test files]
+ok  	gocolumn/tools/genfallbackfixture	0.230s
+ok  	gocolumn/tools/genfixture	0.039s
+ok  	gocolumn/tools/kernelgate	0.012s
+ok  	gocolumn/expr	18.072s
+ok  	gocolumn/kernel	1.134s
+ok  	gocolumn/engine	12.527s
+ok  	gocolumn/lazy	11.389s
+ok  	gocolumn/optimizer	1.015s
+ok  	gocolumn/physical	1.675s
+GoDoc check: PASS (package docs and exported API comments follow naming conventions)
+kernel registry, gates file, and code are consistent
+SIMD structure checks passed
+error obtaining VCS status: exit status 128
+	Use -buildvcs=false to disable VCS stamping.
+error obtaining VCS status: exit status 128
+	Use -buildvcs=false to disable VCS stamping.
+error obtaining VCS status: exit status 128
+	Use -buildvcs=false to disable VCS stamping.
+error obtaining VCS status: exit status 128
+	Use -buildvcs=false to disable VCS stamping.
+error obtaining VCS status: exit status 128
+	Use -buildvcs=false to disable VCS stamping.
+error obtaining VCS status: exit status 128
+	Use -buildvcs=false to disable VCS stamping.
+error obtaining VCS status: exit status 128
+	Use -buildvcs=false to disable VCS stamping.
+error obtaining VCS status: exit status 128
+	Use -buildvcs=false to disable VCS stamping.
+error obtaining VCS status: exit status 128
+	Use -buildvcs=false to disable VCS stamping.
+
+ARM64 retry with -buildvcs=false: PASS (exit 0); source snapshot has no Git metadata.

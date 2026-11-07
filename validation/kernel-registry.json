@@ -852,6 +852,598 @@
       }
     },
     {
+      "id": "math-float32-abs",
+      "family": "math-unary",
+      "type": "float32",
+      "operation": "abs",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "math-float32-ceil",
+      "family": "math-unary",
+      "type": "float32",
+      "operation": "ceil",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "math-float32-floor",
+      "family": "math-unary",
+      "type": "float32",
+      "operation": "floor",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "math-float32-floor-div",
+      "family": "math-binary",
+      "type": "float32",
+      "operation": "floor-div",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "math-float32-log",
+      "family": "math-unary",
+      "type": "float32",
+      "operation": "log",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "math-float32-mod",
+      "family": "math-binary",
+      "type": "float32",
+      "operation": "mod",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "math-float32-pow",
+      "family": "math-binary",
+      "type": "float32",
+      "operation": "pow",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "math-float32-round",
+      "family": "math-unary",
+      "type": "float32",
+      "operation": "round",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "math-float32-sqrt",
+      "family": "math-unary",
+      "type": "float32",
+      "operation": "sqrt",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "math-float64-abs",
+      "family": "math-unary",
+      "type": "float64",
+      "operation": "abs",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "math-float64-ceil",
+      "family": "math-unary",
+      "type": "float64",
+      "operation": "ceil",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "math-float64-floor",
+      "family": "math-unary",
+      "type": "float64",
+      "operation": "floor",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "math-float64-floor-div",
+      "family": "math-binary",
+      "type": "float64",
+      "operation": "floor-div",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "math-float64-log",
+      "family": "math-unary",
+      "type": "float64",
+      "operation": "log",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "math-float64-mod",
+      "family": "math-binary",
+      "type": "float64",
+      "operation": "mod",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "math-float64-pow",
+      "family": "math-binary",
+      "type": "float64",
+      "operation": "pow",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "math-float64-round",
+      "family": "math-unary",
+      "type": "float64",
+      "operation": "round",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "math-float64-sqrt",
+      "family": "math-unary",
+      "type": "float64",
+      "operation": "sqrt",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "math-int16-abs",
+      "family": "math-unary",
+      "type": "int16",
+      "operation": "abs",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "math-int16-ceil",
+      "family": "math-unary",
+      "type": "int16",
+      "operation": "ceil",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "math-int16-floor",
+      "family": "math-unary",
+      "type": "int16",
+      "operation": "floor",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "math-int16-floor-div",
+      "family": "math-binary",
+      "type": "int16",
+      "operation": "floor-div",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "math-int16-mod",
+      "family": "math-binary",
+      "type": "int16",
+      "operation": "mod",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "math-int16-pow",
+      "family": "math-binary",
+      "type": "int16",
+      "operation": "pow",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "math-int16-round",
+      "family": "math-unary",
+      "type": "int16",
+      "operation": "round",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "math-int32-abs",
+      "family": "math-unary",
+      "type": "int32",
+      "operation": "abs",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "math-int32-ceil",
+      "family": "math-unary",
+      "type": "int32",
+      "operation": "ceil",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "math-int32-floor",
+      "family": "math-unary",
+      "type": "int32",
+      "operation": "floor",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "math-int32-floor-div",
+      "family": "math-binary",
+      "type": "int32",
+      "operation": "floor-div",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "math-int32-mod",
+      "family": "math-binary",
+      "type": "int32",
+      "operation": "mod",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "math-int32-pow",
+      "family": "math-binary",
+      "type": "int32",
+      "operation": "pow",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "math-int32-round",
+      "family": "math-unary",
+      "type": "int32",
+      "operation": "round",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "math-int64-abs",
+      "family": "math-unary",
+      "type": "int64",
+      "operation": "abs",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "math-int64-ceil",
+      "family": "math-unary",
+      "type": "int64",
+      "operation": "ceil",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "math-int64-floor",
+      "family": "math-unary",
+      "type": "int64",
+      "operation": "floor",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "math-int64-floor-div",
+      "family": "math-binary",
+      "type": "int64",
+      "operation": "floor-div",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "math-int64-mod",
+      "family": "math-binary",
+      "type": "int64",
+      "operation": "mod",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "math-int64-pow",
+      "family": "math-binary",
+      "type": "int64",
+      "operation": "pow",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "math-int64-round",
+      "family": "math-unary",
+      "type": "int64",
+      "operation": "round",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "math-int8-abs",
+      "family": "math-unary",
+      "type": "int8",
+      "operation": "abs",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "math-int8-ceil",
+      "family": "math-unary",
+      "type": "int8",
+      "operation": "ceil",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "math-int8-floor",
+      "family": "math-unary",
+      "type": "int8",
+      "operation": "floor",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "math-int8-floor-div",
+      "family": "math-binary",
+      "type": "int8",
+      "operation": "floor-div",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "math-int8-mod",
+      "family": "math-binary",
+      "type": "int8",
+      "operation": "mod",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "math-int8-pow",
+      "family": "math-binary",
+      "type": "int8",
+      "operation": "pow",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "math-int8-round",
+      "family": "math-unary",
+      "type": "int8",
+      "operation": "round",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "math-uint16-abs",
+      "family": "math-unary",
+      "type": "uint16",
+      "operation": "abs",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "math-uint16-ceil",
+      "family": "math-unary",
+      "type": "uint16",
+      "operation": "ceil",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "math-uint16-floor",
+      "family": "math-unary",
+      "type": "uint16",
+      "operation": "floor",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "math-uint16-floor-div",
+      "family": "math-binary",
+      "type": "uint16",
+      "operation": "floor-div",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "math-uint16-mod",
+      "family": "math-binary",
+      "type": "uint16",
+      "operation": "mod",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "math-uint16-pow",
+      "family": "math-binary",
+      "type": "uint16",
+      "operation": "pow",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "math-uint16-round",
+      "family": "math-unary",
+      "type": "uint16",
+      "operation": "round",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "math-uint32-abs",
+      "family": "math-unary",
+      "type": "uint32",
+      "operation": "abs",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "math-uint32-ceil",
+      "family": "math-unary",
+      "type": "uint32",
+      "operation": "ceil",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "math-uint32-floor",
+      "family": "math-unary",
+      "type": "uint32",
+      "operation": "floor",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "math-uint32-floor-div",
+      "family": "math-binary",
+      "type": "uint32",
+      "operation": "floor-div",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "math-uint32-mod",
+      "family": "math-binary",
+      "type": "uint32",
+      "operation": "mod",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "math-uint32-pow",
+      "family": "math-binary",
+      "type": "uint32",
+      "operation": "pow",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "math-uint32-round",
+      "family": "math-unary",
+      "type": "uint32",
+      "operation": "round",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "math-uint64-abs",
+      "family": "math-unary",
+      "type": "uint64",
+      "operation": "abs",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "math-uint64-ceil",
+      "family": "math-unary",
+      "type": "uint64",
+      "operation": "ceil",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "math-uint64-floor",
+      "family": "math-unary",
+      "type": "uint64",
+      "operation": "floor",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "math-uint64-floor-div",
+      "family": "math-binary",
+      "type": "uint64",
+      "operation": "floor-div",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "math-uint64-mod",
+      "family": "math-binary",
+      "type": "uint64",
+      "operation": "mod",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "math-uint64-pow",
+      "family": "math-binary",
+      "type": "uint64",
+      "operation": "pow",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "math-uint64-round",
+      "family": "math-unary",
+      "type": "uint64",
+      "operation": "round",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "math-uint8-abs",
+      "family": "math-unary",
+      "type": "uint8",
+      "operation": "abs",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "math-uint8-ceil",
+      "family": "math-unary",
+      "type": "uint8",
+      "operation": "ceil",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "math-uint8-floor",
+      "family": "math-unary",
+      "type": "uint8",
+      "operation": "floor",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "math-uint8-floor-div",
+      "family": "math-binary",
+      "type": "uint8",
+      "operation": "floor-div",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "math-uint8-mod",
+      "family": "math-binary",
+      "type": "uint8",
+      "operation": "mod",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "math-uint8-pow",
+      "family": "math-binary",
+      "type": "uint8",
+      "operation": "pow",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "math-uint8-round",
+      "family": "math-unary",
+      "type": "uint8",
+      "operation": "round",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
       "id": "string-byte-length",
       "family": "string-length",
       "type": "string",

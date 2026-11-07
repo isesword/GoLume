@@ -145,11 +145,19 @@ const (
 	KernelCompact
 	// KernelStringMatch identifies a literal byte-string predicate.
 	KernelStringMatch
+	// KernelMathUnary identifies native-width unary math.
+	KernelMathUnary
+	// KernelMathBinary identifies native-width binary math.
+	KernelMathBinary
 )
 
 // String returns the stable kernel-family name.
 func (k KernelKind) String() string {
 	switch k {
+	case KernelMathUnary:
+		return "math-unary"
+	case KernelMathBinary:
+		return "math-binary"
 	case KernelComparison:
 		return "comparison"
 	case KernelArithmetic:
@@ -183,6 +191,10 @@ func (id KernelID) Kind() KernelKind { return id.kind }
 // String returns the stable operation-level identifier.
 func (id KernelID) String() string {
 	switch id.kind {
+	case KernelMathUnary:
+		return fmt.Sprintf("math-%s-%s", id.typ, MathUnaryOp(id.op))
+	case KernelMathBinary:
+		return fmt.Sprintf("math-%s-%s", id.typ, MathBinaryOp(id.op))
 	case KernelComparison:
 		return fmt.Sprintf("compare-%s-%s", id.typ, CompareOp(id.op))
 	case KernelArithmetic:
@@ -333,6 +345,17 @@ func buildKernelIDs() []KernelID {
 			ids = append(ids, id)
 		}
 	}
+	for _, typ := range comparisonTypes {
+		for op := MathAbs; op <= MathLog; op++ {
+			if id, ok := MathUnaryID(typ, op); ok {
+				ids = append(ids, id)
+			}
+		}
+		for op := MathMod; op <= MathPow; op++ {
+			id, _ := MathBinaryID(typ, op)
+			ids = append(ids, id)
+		}
+	}
 	return append(ids,
 		KernelBoolAnd, KernelBoolOr, KernelBoolNot,
 		KernelHash64Batch, KernelHash128Batch, KernelInt64Scale,
@@ -424,6 +447,7 @@ type uint16CompactFunc func(values []uint16, selection memory.Bitmap, out []uint
 type float32CompactFunc func(values []float32, selection memory.Bitmap, out []float32) int
 
 type dispatch struct {
+	math                  mathDispatch
 	compareInt8           [CompareEQ + 1]int8CompareFunc
 	compareInt32          [CompareEQ + 1]int32CompareFunc
 	compareInt64          [CompareEQ + 1]int64CompareFunc
@@ -684,6 +708,7 @@ func (s Set) setCapability(id KernelID, capability KernelCapability) { s.d.caps.
 
 func newScalarSet(mode Mode) Set {
 	d := &dispatch{caps: &capabilityState{mode: mode, arch: runtimeArch(), byID: make(map[KernelID]KernelCapability, len(allKernelIDs))}}
+	installMathScalar(d)
 	installGeneratedScalar(d)
 	installFloat32Scalar(d)
 	installInt32ColumnScalar(d)

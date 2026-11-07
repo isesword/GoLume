@@ -260,6 +260,9 @@ func bindExpression(schema memory.Schema, e Expr) (*BoundExpr, error) {
 }
 
 func bindBinary(bound *BoundExpr, n Binary) error {
+	if _, ok := mathBinaryOp(n.Op); ok {
+		return bindMathBinary(bound, n)
+	}
 	left, right := bound.Children[0].Field, bound.Children[1].Field
 	nullable := left.Nullable || right.Nullable
 	switch n.Op {
@@ -325,6 +328,9 @@ func bindBinary(bound *BoundExpr, n Binary) error {
 }
 
 func bindUnary(bound *BoundExpr, n Unary) error {
+	if _, ok := mathUnaryOp(n.Op); ok {
+		return bindMathUnary(bound, n)
+	}
 	input := bound.Children[0].Field
 	switch n.Op {
 	case OpNot:

@@ -11,6 +11,8 @@ import (
 var kernelFamilies = map[string]bool{
 	"comparison":    true,
 	"arithmetic":    true,
+	"math-unary":    true,
+	"math-binary":   true,
 	"boolean":       true,
 	"hash":          true,
 	"scale":         true,
@@ -40,6 +42,20 @@ func ParseKernelID(id string) (family, typ, op string, err error) {
 			return "", "", "", fmt.Errorf("kernelgate: malformed arithmetic id %q", id)
 		}
 		return "arithmetic", typ, op, nil
+	}
+	if rest, ok := strings.CutPrefix(id, "math-"); ok {
+		typ, op, ok = strings.Cut(rest, "-")
+		if !ok || typ == "" || op == "" {
+			return "", "", "", fmt.Errorf("kernelgate: malformed math id %q", id)
+		}
+		switch op {
+		case "abs", "round", "floor", "ceil", "sqrt", "log":
+			return "math-unary", typ, op, nil
+		case "mod", "floor-div", "pow":
+			return "math-binary", typ, op, nil
+		default:
+			return "", "", "", fmt.Errorf("kernelgate: unknown math operation in %q", id)
+		}
 	}
 	if rest, ok := strings.CutPrefix(id, "boolean-"); ok && rest != "" {
 		return "boolean", "", rest, nil

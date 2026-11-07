@@ -610,7 +610,7 @@ func evaluateInstructionsActive(instructions []instruction, batch *memory.Batch,
 				return err
 			}
 		case scalarUnary:
-			if err := evalUnary(r, &w.regs[in.A], in.Op, in.SourceType, batch.Rows); err != nil {
+			if err := evalUnary(r, &w.regs[in.A], in.Op, in.SourceType, batch.Rows, kernels); err != nil {
 				return err
 			}
 		case scalarTernary:
@@ -901,6 +901,9 @@ func ensureOffsets(r *scalarRegister, rows int) []uint32 {
 }
 
 func evalBinary(out, a, b *scalarRegister, op Op, result memory.DataType, rows int, kernels kernel.Set) error {
+	if physical, ok := mathBinaryOp(op); ok {
+		return evalMathBinary(out, a, b, physical, rows, kernels)
+	}
 	combineValidity(out, a, b, rows)
 	if op == OpSplit {
 		return evalStringSplit(out, a, b, rows)
@@ -1245,7 +1248,10 @@ func normalizeTimestampUnitLiteral(v TimestampUnitLiteral) (int64, error) {
 	return nanos, nil
 }
 
-func evalUnary(out, in *scalarRegister, op Op, source memory.DataType, rows int) error {
+func evalUnary(out, in *scalarRegister, op Op, source memory.DataType, rows int, kernels kernel.Set) error {
+	if physical, ok := mathUnaryOp(op); ok {
+		return evalMathUnary(out, in, physical, rows, kernels)
+	}
 	copyRegisterValidity(out, in, rows)
 	if out.typ == memory.TypeString {
 		return evalStringUnary(out, in, op, rows)

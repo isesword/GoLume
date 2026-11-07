@@ -11,6 +11,7 @@ import (
 // Evaluation correctness is covered independently by the operator matrices.
 func TestAllFluentConstructorsMatchFreeFunctions(t *testing.T) {
 	constructors := map[string]any{
+		"Abs": Abs, "Round": Round, "Floor": Floor, "Ceil": Ceil, "Sqrt": Sqrt, "Log": Log, "Mod": Mod, "FloorDiv": FloorDiv, "Pow": Pow,
 		"Add": Add, "Sub": Sub, "Mul": Mul, "Div": Div, "Concat": Concat,
 		"Contains": Contains, "StartsWith": StartsWith, "EndsWith": EndsWith,
 		"Length": Length, "ByteLength": ByteLength, "Trim": Trim, "TrimStart": TrimStart, "TrimEnd": TrimEnd,

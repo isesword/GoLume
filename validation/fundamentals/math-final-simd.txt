@@ -1,0 +1,3 @@
+ok  	gocolumn/expr	2.956s
+ok  	gocolumn/kernel	0.035s
+ok  	gocolumn/internal/kernelgate	(cached)

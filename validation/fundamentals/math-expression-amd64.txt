@@ -1,0 +1,46 @@
+goos: linux
+goarch: amd64
+pkg: gocolumn/expr
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkMathExpression/abs/scalar/65536         	   11905	    104545 ns/op	5014.93 MB/s	      64 B/op	       1 allocs/op
+BenchmarkMathExpression/abs/scalar/65536         	   10687	    114927 ns/op	4561.94 MB/s	      64 B/op	       1 allocs/op
+BenchmarkMathExpression/abs/scalar/65536         	   10000	    108897 ns/op	4814.53 MB/s	      64 B/op	       1 allocs/op
+BenchmarkMathExpression/abs/scalar/65536         	   10000	    151367 ns/op	3463.68 MB/s	      64 B/op	       1 allocs/op
+BenchmarkMathExpression/abs/scalar/65536         	   10000	    109619 ns/op	4782.82 MB/s	      64 B/op	       1 allocs/op
+BenchmarkMathExpression/abs/scalar/65536         	   10000	    108934 ns/op	4812.90 MB/s	      64 B/op	       1 allocs/op
+BenchmarkMathExpression/abs/scalar/65536         	    8034	    220962 ns/op	2372.75 MB/s	      64 B/op	       1 allocs/op
+BenchmarkMathExpression/abs/scalar/65536         	    8360	    161820 ns/op	3239.94 MB/s	      64 B/op	       1 allocs/op
+BenchmarkMathExpression/abs/scalar/65536         	    9018	    252855 ns/op	2073.48 MB/s	      64 B/op	       1 allocs/op
+BenchmarkMathExpression/abs/scalar/65536         	    4404	    391580 ns/op	1338.90 MB/s	      64 B/op	       1 allocs/op
+BenchmarkMathExpression/abs/forced-simd/65536    	   27442	     39018 ns/op	13437.08 MB/s	      64 B/op	       1 allocs/op
+BenchmarkMathExpression/abs/forced-simd/65536    	   25611	     42544 ns/op	12323.29 MB/s	      64 B/op	       1 allocs/op
+BenchmarkMathExpression/abs/forced-simd/65536    	   35329	     31911 ns/op	16429.67 MB/s	      64 B/op	       1 allocs/op
+BenchmarkMathExpression/abs/forced-simd/65536    	   48626	     23292 ns/op	22509.38 MB/s	      64 B/op	       1 allocs/op
+BenchmarkMathExpression/abs/forced-simd/65536    	   59712	     21786 ns/op	24065.25 MB/s	      64 B/op	       1 allocs/op
+BenchmarkMathExpression/abs/forced-simd/65536    	   55162	     22145 ns/op	23675.59 MB/s	      64 B/op	       1 allocs/op
+BenchmarkMathExpression/abs/forced-simd/65536    	   66231	     18021 ns/op	29093.27 MB/s	      64 B/op	       1 allocs/op
+BenchmarkMathExpression/abs/forced-simd/65536    	   64917	     19167 ns/op	27352.99 MB/s	      64 B/op	       1 allocs/op
+BenchmarkMathExpression/abs/forced-simd/65536    	   70516	     17283 ns/op	30335.75 MB/s	      64 B/op	       1 allocs/op
+BenchmarkMathExpression/abs/forced-simd/65536    	   76561	     17763 ns/op	29516.44 MB/s	      64 B/op	       1 allocs/op
+BenchmarkMathExpression/sqrt/scalar/65536        	    3128	    398455 ns/op	1315.80 MB/s	      64 B/op	       1 allocs/op
+BenchmarkMathExpression/sqrt/scalar/65536        	    3151	    381673 ns/op	1373.66 MB/s	      64 B/op	       1 allocs/op
+BenchmarkMathExpression/sqrt/scalar/65536        	    2925	    385447 ns/op	1360.21 MB/s	      64 B/op	       1 allocs/op
+BenchmarkMathExpression/sqrt/scalar/65536        	    3176	    410054 ns/op	1278.58 MB/s	      64 B/op	       1 allocs/op
+BenchmarkMathExpression/sqrt/scalar/65536        	    2522	    455767 ns/op	1150.34 MB/s	      64 B/op	       1 allocs/op
+BenchmarkMathExpression/sqrt/scalar/65536        	    2433	    521803 ns/op	1004.76 MB/s	      64 B/op	       1 allocs/op
+BenchmarkMathExpression/sqrt/scalar/65536        	    2739	    428852 ns/op	1222.54 MB/s	      64 B/op	       1 allocs/op
+BenchmarkMathExpression/sqrt/scalar/65536        	    3122	    404811 ns/op	1295.14 MB/s	      64 B/op	       1 allocs/op
+BenchmarkMathExpression/sqrt/scalar/65536        	    3075	    396384 ns/op	1322.68 MB/s	      64 B/op	       1 allocs/op
+BenchmarkMathExpression/sqrt/scalar/65536        	    3030	    411557 ns/op	1273.91 MB/s	      64 B/op	       1 allocs/op
+BenchmarkMathExpression/sqrt/forced-simd/65536   	   24996	     43831 ns/op	11961.49 MB/s	      64 B/op	       1 allocs/op
+BenchmarkMathExpression/sqrt/forced-simd/65536   	   31306	     39389 ns/op	13310.36 MB/s	      64 B/op	       1 allocs/op
+BenchmarkMathExpression/sqrt/forced-simd/65536   	   31222	     39291 ns/op	13343.69 MB/s	      64 B/op	       1 allocs/op
+BenchmarkMathExpression/sqrt/forced-simd/65536   	   31290	     38952 ns/op	13459.91 MB/s	      64 B/op	       1 allocs/op
+BenchmarkMathExpression/sqrt/forced-simd/65536   	   31080	     38924 ns/op	13469.59 MB/s	      64 B/op	       1 allocs/op
+BenchmarkMathExpression/sqrt/forced-simd/65536   	   31431	     38420 ns/op	13646.27 MB/s	      64 B/op	       1 allocs/op
+BenchmarkMathExpression/sqrt/forced-simd/65536   	   30620	     39236 ns/op	13362.28 MB/s	      64 B/op	       1 allocs/op
+BenchmarkMathExpression/sqrt/forced-simd/65536   	   30158	     39210 ns/op	13371.30 MB/s	      64 B/op	       1 allocs/op
+BenchmarkMathExpression/sqrt/forced-simd/65536   	   30795	     40038 ns/op	13094.78 MB/s	      64 B/op	       1 allocs/op
+BenchmarkMathExpression/sqrt/forced-simd/65536   	   27548	     42497 ns/op	12337.06 MB/s	      64 B/op	       1 allocs/op
+PASS
+ok  	gocolumn/expr	50.576s
