@@ -32,6 +32,10 @@ const (
 	WindowMax
 	// WindowAvg averages non-NULL frame values.
 	WindowAvg
+	// WindowShift reads one partition-relative row without changing cardinality.
+	WindowShift
+	// WindowDiff subtracts a partition-relative value from the current value.
+	WindowDiff
 )
 
 // WindowBoundKind identifies one side of an inclusive ROWS frame.
@@ -145,6 +149,13 @@ func NewWindowSourceWithOptions(input source.Source, partitionBy []string, order
 		return nil, fmt.Errorf("window expressions and output fields must be non-empty and aligned")
 	}
 	inputSchema := input.Schema()
+	for index, expression := range expressions {
+		if expression.Function == WindowShift || expression.Function == WindowDiff {
+			if err := validateOffsetWindow(inputSchema, expression, outputFields[index]); err != nil {
+				return nil, err
+			}
+		}
+	}
 	for _, name := range partitionBy {
 		if _, ok := inputSchema.Field(name); !ok {
 			return nil, fmt.Errorf("window partition column %q not found", name)
@@ -353,6 +364,8 @@ func sameRowsByKeys(batch *memory.Batch, schema memory.Schema, keys []SortKey, l
 
 func evaluateWindowExpression(ctx context.Context, input *memory.Batch, schema memory.Schema, output *memory.Batch, rows []int, order []SortKey, window WindowExpression) error {
 	switch window.Function {
+	case WindowShift, WindowDiff:
+		return evaluateOffsetWindow(ctx, input, schema, output, rows, window)
 	case WindowRowNumber, WindowRank, WindowDenseRank:
 		values := windowI64Values(output, window.Alias, input.Rows)
 		for i, row := range rows {
@@ -482,6 +495,11 @@ func everyWindowRows(ctx context.Context, i int) error {
 }
 
 func clearWindowOutput(batch *memory.Batch, name string) {
+	delete(batch.Int8s, name)
+	delete(batch.Int16s, name)
+	delete(batch.Uint8s, name)
+	delete(batch.Uint16s, name)
+	delete(batch.Float32s, name)
 	delete(batch.Int64s, name)
 	delete(batch.Int32s, name)
 	delete(batch.Uint32s, name)

@@ -1,0 +1,19 @@
+ok  	gocolumn/physical	0.173s
+ok  	gocolumn/lazy	1.605s
+?   	gocolumn/logical	[no test files]
+ok  	gocolumn/expr	(cached)
+ok  	gocolumn/physical	0.011s
+ok  	gocolumn/lazy	0.013s
+ok  	gocolumn/expr	0.004s
+ok  	gocolumn/physical	1.049s
+ok  	gocolumn/lazy	1.051s
+ok  	gocolumn/expr	1.029s
+physical/window_lookahead.go:25: exported function Schema is missing GoDoc
+physical/window_lookahead.go:26: exported function Stats is missing GoDoc
+physical/window_lookahead.go:29: exported function Partitions is missing GoDoc
+physical/window_lookahead.go:32: exported function StreamPlan is missing GoDoc
+physical/window_lookahead.go:35: exported function NewBatchStream is missing GoDoc
+physical/window_lookahead.go:170: exported function Next is missing GoDoc
+physical/window_lookahead.go:250: exported function Close is missing GoDoc
+7 GoDoc convention issue(s) found
+exit status 1

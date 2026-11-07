@@ -1,0 +1,82 @@
+ok  	gocolumn/aggregate	0.017s
+?   	gocolumn/cmd/demo	[no test files]
+ok  	gocolumn/cmd/kernel-info	0.008s
+?   	gocolumn/cmd/lazy-demo	[no test files]
+?   	gocolumn/costmodel	[no test files]
+ok  	gocolumn/engine	2.066s
+ok  	gocolumn/expr	5.424s
+ok  	gocolumn/hashagg	5.355s
+ok  	gocolumn/internal/benchtrack	0.008s
+?   	gocolumn/internal/cmd/gensimd	[no test files]
+ok  	gocolumn/internal/fixturegen	0.249s
+?   	gocolumn/internal/hashmix	[no test files]
+ok  	gocolumn/internal/kernelgate	0.034s
+ok  	gocolumn/internal/oracle	21.073s
+?   	gocolumn/internal/platformcal	[no test files]
+ok  	gocolumn/internal/proptest	0.085s
+ok  	gocolumn/join	0.006s
+ok  	gocolumn/kernel	0.084s
+ok  	gocolumn/lazy	2.578s
+?   	gocolumn/logical	[no test files]
+ok  	gocolumn/memory	0.796s
+?   	gocolumn/observer	[no test files]
+ok  	gocolumn/optimizer	0.009s
+ok  	gocolumn/physical	0.384s
+ok  	gocolumn/pipeline	0.104s
+ok  	gocolumn/planner	0.007s
+ok  	gocolumn/radix	0.009s
+ok  	gocolumn/scheduler	0.004s
+ok  	gocolumn/source	0.010s
+ok  	gocolumn/source/arrowrecord	0.005s
+ok  	gocolumn/source/inmemory	0.004s
+?   	gocolumn/source/internal/batchview	[no test files]
+ok  	gocolumn/source/parquet	0.919s
+ok  	gocolumn/tools/benchtrack	0.006s
+?   	gocolumn/tools/checkgodoc	[no test files]
+ok  	gocolumn/tools/genfallbackfixture	0.200s
+ok  	gocolumn/tools/genfixture	0.027s
+ok  	gocolumn/tools/kernelgate	0.004s
+ok  	gocolumn/aggregate	0.017s
+?   	gocolumn/cmd/demo	[no test files]
+ok  	gocolumn/cmd/kernel-info	0.015s
+?   	gocolumn/cmd/lazy-demo	[no test files]
+?   	gocolumn/costmodel	[no test files]
+ok  	gocolumn/engine	2.253s
+ok  	gocolumn/expr	5.625s
+ok  	gocolumn/hashagg	5.832s
+ok  	gocolumn/internal/benchtrack	0.020s
+?   	gocolumn/internal/cmd/gensimd	[no test files]
+ok  	gocolumn/internal/fixturegen	0.198s
+?   	gocolumn/internal/hashmix	[no test files]
+ok  	gocolumn/internal/kernelgate	0.018s
+ok  	gocolumn/internal/oracle	17.276s
+?   	gocolumn/internal/platformcal	[no test files]
+ok  	gocolumn/internal/proptest	0.095s
+ok  	gocolumn/join	0.020s
+ok  	gocolumn/kernel	0.086s
+ok  	gocolumn/lazy	2.489s
+?   	gocolumn/logical	[no test files]
+ok  	gocolumn/memory	0.715s
+?   	gocolumn/observer	[no test files]
+ok  	gocolumn/optimizer	0.009s
+ok  	gocolumn/physical	0.295s
+ok  	gocolumn/pipeline	0.098s
+ok  	gocolumn/planner	0.009s
+ok  	gocolumn/radix	0.005s
+ok  	gocolumn/scheduler	0.003s
+ok  	gocolumn/source	0.013s
+ok  	gocolumn/source/arrowrecord	0.011s
+ok  	gocolumn/source/inmemory	0.006s
+?   	gocolumn/source/internal/batchview	[no test files]
+ok  	gocolumn/source/parquet	0.903s
+ok  	gocolumn/tools/benchtrack	0.003s
+?   	gocolumn/tools/checkgodoc	[no test files]
+ok  	gocolumn/tools/genfallbackfixture	0.150s
+ok  	gocolumn/tools/genfixture	0.038s
+ok  	gocolumn/tools/kernelgate	0.005s
+ok  	gocolumn/physical	1.624s
+ok  	gocolumn/lazy	11.782s
+?   	gocolumn/logical	[no test files]
+ok  	gocolumn/expr	18.303s
+ok  	gocolumn/engine	12.786s
+GoDoc check: PASS (package docs and exported API comments follow naming conventions)

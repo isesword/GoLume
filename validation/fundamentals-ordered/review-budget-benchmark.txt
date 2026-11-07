@@ -1,0 +1,12 @@
+goos: linux
+goarch: amd64
+pkg: gocolumn/physical
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkOffsetWindowStream/past         	      78	  15863705 ns/op	  33.05 MB/s	  559864 B/op	     384 allocs/op
+BenchmarkOffsetWindowStream/past         	      84	  15602306 ns/op	  33.60 MB/s	  559864 B/op	     384 allocs/op
+BenchmarkOffsetWindowStream/past         	      68	  14800745 ns/op	  35.42 MB/s	  559864 B/op	     384 allocs/op
+BenchmarkOffsetWindowStream/future       	      58	  23999773 ns/op	  21.85 MB/s	 1701050 B/op	    2018 allocs/op
+BenchmarkOffsetWindowStream/future       	      54	  19754550 ns/op	  26.54 MB/s	 1701056 B/op	    2018 allocs/op
+BenchmarkOffsetWindowStream/future       	      61	  19688572 ns/op	  26.63 MB/s	 1701054 B/op	    2018 allocs/op
+PASS
+ok  	gocolumn/physical	8.211s

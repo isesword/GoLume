@@ -30,6 +30,10 @@ const (
 	WindowMax
 	// WindowAvg averages non-NULL frame values.
 	WindowAvg
+	// WindowShift reads one partition-relative row without changing cardinality.
+	WindowShift
+	// WindowDiff subtracts a partition-relative value from the current value.
+	WindowDiff
 )
 
 // RowBoundKind identifies one side of a ROWS frame.

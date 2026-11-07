@@ -21,6 +21,11 @@ func validateBoundedWindowExpressions(expressions []WindowExpression) error {
 		switch expression.Function {
 		case WindowRowNumber, WindowRank, WindowDenseRank:
 			continue
+		case WindowShift, WindowDiff:
+			if expression.Frame.Start != expression.Frame.End || (expression.Frame.Start.Kind != WindowCurrentRow && expression.Frame.Start.Kind != WindowPreceding && expression.Frame.Start.Kind != WindowFollowing) || expression.Frame.Start.Offset < 0 {
+				return fmt.Errorf("bounded offset window %q requires a finite offset", expression.Alias)
+			}
+			continue
 		}
 		if expression.Frame.End.Kind != WindowCurrentRow {
 			return fmt.Errorf("bounded window %q requires a frame ending at CURRENT ROW", expression.Alias)
@@ -401,6 +406,10 @@ func (s *rollingWindowState) reset() {
 func (s *rollingWindowState) advance(cell windowNumericCell) error {
 	cell.seq = s.position
 	s.position++
+	if s.expression.Function == WindowShift || s.expression.Function == WindowDiff {
+		s.queue.push(cell)
+		return nil
+	}
 	if s.expression.Function == WindowCountRows {
 		return nil
 	}
@@ -526,35 +535,57 @@ func windowCellBetter(value, best windowNumericCell, typ memory.DataType, minimu
 }
 
 type orderedWindowStream struct {
-	owner             *WindowSource
-	inputSchema       memory.Schema
-	output            memory.Schema
-	child             source.BatchStream
-	states            []*rollingWindowState
-	input             *memory.Batch
-	partitionKeys     []SortKey
-	previousPartition rowCandidate
-	previousOrder     rowCandidate
-	havePrevious      bool
-	rowNumber         int64
-	rank              int64
-	denseRank         int64
-	manager           memory.Manager
-	baseReservation   memory.Reservation
-	extraReservations []memory.Reservation
-	baseBytes         int64
-	keyBytes          int64
-	reservedBytes     int64
-	outputReservation memory.Reservation
-	closed            bool
+	hiddenColumns          []string
+	preparationReservation memory.Reservation
+	owner                  *WindowSource
+	inputSchema            memory.Schema
+	output                 memory.Schema
+	child                  source.BatchStream
+	states                 []*rollingWindowState
+	input                  *memory.Batch
+	partitionKeys          []SortKey
+	previousPartition      rowCandidate
+	previousOrder          rowCandidate
+	havePrevious           bool
+	rowNumber              int64
+	rank                   int64
+	denseRank              int64
+	manager                memory.Manager
+	baseReservation        memory.Reservation
+	extraReservations      []memory.Reservation
+	baseBytes              int64
+	keyBytes               int64
+	reservedBytes          int64
+	outputReservation      memory.Reservation
+	closed                 bool
 }
 
 func newOrderedWindowStream(ctx context.Context, owner *WindowSource, input source.Source, output memory.Schema, opts source.ReadOptions) (source.BatchStream, error) {
+	var preparation memory.Reservation
+	preparationBytes, err := futurePreparationAdmissionBytes(owner, input)
+	if err != nil {
+		return nil, err
+	}
+	if preparationBytes != 0 && owner.manager != nil {
+		preparation, err = owner.manager.Reserve(ctx, preparationBytes)
+		if err != nil {
+			return nil, fmt.Errorf("window lookahead descriptors: %w", err)
+		}
+	}
+	keepPreparation := false
+	defer func() {
+		if !keepPreparation && preparation != nil {
+			preparation.Release()
+		}
+	}()
+	owner, input, hidden := prepareFutureWindow(owner, input)
 	child, err := source.OpenBatchStream(ctx, input, opts)
 	if err != nil {
 		return nil, err
 	}
 	stream := &orderedWindowStream{owner: owner, inputSchema: input.Schema(), output: output, child: child, input: memory.NewBatch(), manager: owner.manager}
+	stream.hiddenColumns = hidden
+	stream.preparationReservation = preparation
 	for _, column := range owner.partitionBy {
 		stream.partitionKeys = append(stream.partitionKeys, SortKey{Column: column})
 	}
@@ -600,6 +631,7 @@ func newOrderedWindowStream(ctx context.Context, owner *WindowSource, input sour
 	for _, state := range stream.states {
 		state.initialize()
 	}
+	keepPreparation = true
 	return stream, nil
 }
 
@@ -672,7 +704,7 @@ func (s *orderedWindowStream) Next(ctx context.Context, dst *memory.Batch) (bool
 	dst.ClearColumns()
 	bindAll(dst, s.input)
 	dst.Reset(s.input.Rows)
-	initializeWindowOutputs(dst, s.owner.outputFields, s.input.Rows)
+	initializeWindowOutputs(dst, s.owner.outputFields, s.input.Rows, s.owner.expressions)
 	for row := 0; row < s.input.Rows; row++ {
 		if row&1023 == 0 {
 			if err := ctx.Err(); err != nil {
@@ -754,6 +786,9 @@ func (s *orderedWindowStream) Next(ctx context.Context, dst *memory.Batch) (bool
 		}
 		s.havePrevious = true
 	}
+	for _, name := range s.hiddenColumns {
+		clearWindowOutput(dst, name)
+	}
 	return true, nil
 }
 
@@ -776,8 +811,13 @@ func estimateWindowOutputBytes(_ memory.Schema, fields []memory.Field, rows int)
 	return width*int64(rows) + 256, nil
 }
 
-func initializeWindowOutputs(batch *memory.Batch, fields []memory.Field, rows int) {
-	for _, field := range fields {
+func initializeWindowOutputs(batch *memory.Batch, fields []memory.Field, rows int, expressions []WindowExpression) {
+	for index, field := range fields {
+		if expressions[index].Function == WindowShift || expressions[index].Function == WindowDiff {
+			clearWindowOutput(batch, field.Name)
+			initializeOffsetOutput(batch, field.Name, field.Type, rows)
+			continue
+		}
 		validity := memory.Bitmap(nil)
 		if field.Nullable {
 			validity = memory.EnsureBitmap(nil, rows)
@@ -829,6 +869,17 @@ func setWindowInt64(batch *memory.Batch, name string, row int, value int64, vali
 
 func (s *rollingWindowState) write(batch *memory.Batch, row int) error {
 	expression := s.expression
+	if expression.Function == WindowShift || expression.Function == WindowDiff {
+		if s.queue.len < s.width {
+			return nil
+		}
+		value := s.queue.front()
+		if expression.Function == WindowDiff {
+			value = offsetDifference(s.queue.back(), value, s.inputType)
+		}
+		setOffsetOutput(batch, expression.Alias, s.outputType, row, value)
+		return nil
+	}
 	if expression.Function == WindowCountRows {
 		value := s.position
 		if !s.unbounded && value > int64(s.width) {
@@ -918,7 +969,27 @@ func (s *orderedWindowStream) Close() error {
 		reservation.Release()
 	}
 	s.input.ReleaseOwned()
-	return s.child.Close()
+	err := s.child.Close()
+	if s.preparationReservation != nil {
+		s.preparationReservation.Release()
+		s.preparationReservation = nil
+	}
+	// Closed streams may themselves remain reachable. Drop their execution-owned
+	// rings and derived future descriptors when their reservations are released.
+	s.owner = nil
+	s.child = nil
+	s.input = nil
+	s.states = nil
+	s.hiddenColumns = nil
+	s.partitionKeys = nil
+	s.inputSchema = memory.Schema{}
+	s.output = memory.Schema{}
+	s.previousPartition = rowCandidate{}
+	s.previousOrder = rowCandidate{}
+	s.extraReservations = nil
+	s.outputReservation = nil
+	s.baseReservation = nil
+	return err
 }
 
 var _ source.BatchStreamDiagnostics = (*externalWindowStream)(nil)

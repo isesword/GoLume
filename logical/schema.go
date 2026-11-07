@@ -338,6 +338,8 @@ func InferSchema(plan Plan) (memory.Schema, error) {
 func inferWindowField(schema memory.Schema, window WindowExpr) (memory.Field, error) {
 	field := memory.Field{Name: window.Alias, Encoding: memory.EncodingPlain}
 	switch window.Function {
+	case WindowShift, WindowDiff:
+		return inferOffsetWindowField(schema, window)
 	case WindowRowNumber, WindowRank, WindowDenseRank, WindowCountRows:
 		if window.Column != "" {
 			return memory.Field{}, fmt.Errorf("window %q does not accept an input column", window.Alias)

@@ -205,6 +205,11 @@ func (f LazyFrame) validateExecutionSource(src source.Source) error {
 func logicalWindowBoundedCapable(expressions []logical.WindowExpr) bool {
 	for _, expression := range expressions {
 		switch expression.Function {
+		case logical.WindowShift, logical.WindowDiff:
+			if expression.Frame.Start != expression.Frame.End || (expression.Frame.Start.Kind != logical.RowCurrent && expression.Frame.Start.Kind != logical.RowPreceding && expression.Frame.Start.Kind != logical.RowFollowing) {
+				return false
+			}
+			continue
 		case logical.WindowRowNumber, logical.WindowRank, logical.WindowDenseRank:
 			continue
 		}

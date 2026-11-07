@@ -1,0 +1,7 @@
+ok  	gocolumn/physical	0.132s
+ok  	gocolumn/expr	(cached)
+ok  	gocolumn/physical	0.017s
+ok  	gocolumn/expr	0.005s
+ok  	gocolumn/physical	1.079s
+ok  	gocolumn/expr	1.027s
+GoDoc check: PASS (package docs and exported API comments follow naming conventions)

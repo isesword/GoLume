@@ -1,0 +1,7 @@
+# gocolumn/engine
+engine/multi_aggregate.go:336:8: s.numeric undefined (type *sortedAggregateStream has no field or method numeric)
+engine/multi_aggregate.go:338:6: s.numeric undefined (type *sortedAggregateStream has no field or method numeric)
+ok  	gocolumn/physical	0.010s
+FAIL	gocolumn/lazy [build failed]
+ok  	gocolumn/expr	0.005s
+FAIL
