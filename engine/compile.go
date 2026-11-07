@@ -9,8 +9,8 @@ import (
 )
 
 func compileQuery(schema memory.Schema, q expr.Query) (CompiledQuery, error) {
-	if len(q.GroupBy) < 1 || len(q.GroupBy) > 2 {
-		return CompiledQuery{}, fmt.Errorf("phase-2.2 supports one or two group-by columns")
+	if len(q.GroupBy) > 2 {
+		return CompiledQuery{}, fmt.Errorf("aggregation supports zero, one or two group-by columns")
 	}
 	predicate := q.Filter
 	if predicate == nil {
@@ -101,7 +101,9 @@ func compileQuery(schema memory.Schema, q expr.Query) (CompiledQuery, error) {
 	}
 
 	shape := GroupShapeInvalid
-	if len(groups) == 1 {
+	if len(groups) == 0 {
+		shape = GroupShapeGlobal
+	} else if len(groups) == 1 {
 		g := groups[0]
 		switch g.Type {
 		case memory.TypeInt32:
@@ -134,6 +136,9 @@ func compileQuery(schema memory.Schema, q expr.Query) (CompiledQuery, error) {
 	}
 
 	card := q.Hints.Cardinality
+	if shape == GroupShapeGlobal {
+		card = 1
+	}
 	if card <= 0 {
 		card = 1 << 16
 	}

@@ -66,6 +66,8 @@ const (
 	GroupShapeDictionaryString
 	GroupShapeStringView
 	GroupShapePairFixed
+	// GroupShapeGlobal has no key and produces exactly one aggregate row.
+	GroupShapeGlobal
 )
 
 // CompiledGroupColumn records physical metadata for one group key.

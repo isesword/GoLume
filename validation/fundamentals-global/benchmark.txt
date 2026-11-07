@@ -1,0 +1,15 @@
+goos: linux
+goarch: amd64
+pkg: gocolumn/engine
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkGlobalAggregate/rows=1024         	   24084	     56488 ns/op	 145.02 MB/s	   12624 B/op	     116 allocs/op
+BenchmarkGlobalAggregate/rows=1024         	   23188	     58232 ns/op	 140.68 MB/s	   12624 B/op	     116 allocs/op
+BenchmarkGlobalAggregate/rows=1024         	   21651	     50254 ns/op	 163.01 MB/s	   12624 B/op	     116 allocs/op
+BenchmarkGlobalAggregate/rows=65536        	     510	   2148644 ns/op	 244.01 MB/s	   28762 B/op	     116 allocs/op
+BenchmarkGlobalAggregate/rows=65536        	     547	   2158964 ns/op	 242.84 MB/s	   28761 B/op	     116 allocs/op
+BenchmarkGlobalAggregate/rows=65536        	     576	   2119100 ns/op	 247.41 MB/s	   28762 B/op	     116 allocs/op
+BenchmarkGlobalAggregate/rows=1048576      	      34	  33365694 ns/op	 251.41 MB/s	   29737 B/op	     131 allocs/op
+BenchmarkGlobalAggregate/rows=1048576      	      34	  33817388 ns/op	 248.06 MB/s	   29737 B/op	     131 allocs/op
+BenchmarkGlobalAggregate/rows=1048576      	      36	  35939263 ns/op	 233.41 MB/s	   29736 B/op	     131 allocs/op
+PASS
+ok  	gocolumn/engine	16.069s

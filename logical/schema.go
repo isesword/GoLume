@@ -222,9 +222,6 @@ func InferSchema(plan Plan) (memory.Schema, error) {
 		if err != nil {
 			return memory.Schema{}, err
 		}
-		if len(n.GroupBy) == 0 {
-			return memory.Schema{}, fmt.Errorf("phase-2.3 aggregate requires at least one group key")
-		}
 		fields := make([]memory.Field, 0, len(n.GroupBy)+len(n.Aggregates))
 		for _, name := range n.GroupBy {
 			f, ok := in.Field(name)

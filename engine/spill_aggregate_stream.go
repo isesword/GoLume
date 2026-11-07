@@ -430,6 +430,8 @@ func aggregateValue(state aggregateRecord, kind expr.AggregateKind) (int64, floa
 
 func (s *spillableAggregateStream) setOutputRecord(dst *memory.Batch, row int, record aggregateRecord) error {
 	switch s.query.cq.GroupShape {
+	case GroupShapeGlobal:
+		// No key columns are emitted.
 	case GroupShapePairFixed:
 		if err := s.setOutputKey(dst, row, 0, record.a, nil, record.validMask&1 != 0); err != nil {
 			return err

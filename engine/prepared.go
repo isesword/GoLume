@@ -128,6 +128,12 @@ func (e *Engine) Prepare(ctx context.Context, src source.Source, q expr.Query, o
 	if workers > e.scheduler.MaxWorkers() {
 		workers = e.scheduler.MaxWorkers()
 	}
+	// With no keys every selected row belongs to the same group. The existing
+	// adjacent-key operator is bounded regardless of source ordering. Reject
+	// incompatible forced strategies rather than silently ignoring a hint.
+	if cq.GroupShape == GroupShapeGlobal && cq.ForceStrategy != "" && cq.ForceStrategy != "sorted" {
+		return nil, fmt.Errorf("global aggregation requires the single-state sorted strategy, got forced %q", cq.ForceStrategy)
+	}
 	strategy, err := e.opts.CostModel.Choose(planner.Input{
 		Rows: stats.Rows, Partitions: stats.Partitions, Workers: workers,
 		Selectivity: cq.SelectivityHint, Cardinality: cq.CardinalityHint,
@@ -135,11 +141,14 @@ func (e *Engine) Prepare(ctx context.Context, src source.Source, q expr.Query, o
 		ForceStrategy: cq.ForceStrategy,
 		FusedCapable:  cq.FusedCapable,
 		ComparisonID:  cq.ComparisonID, HasComparisonID: cq.HasComparisonID,
-		SortedCapable: source.OrderedByPrefix(src, q.GroupBy),
+		SortedCapable: cq.GroupShape == GroupShapeGlobal || source.OrderedByPrefix(src, q.GroupBy),
 		KeyWidthBytes: cq.KeyWidthBytes, PredicateComplexity: cq.Predicate.InstructionCount(),
 	})
 	if err != nil {
 		return nil, err
+	}
+	if cq.GroupShape == GroupShapeGlobal {
+		strategy = planner.Strategy{Kind: planner.StrategySorted, Workers: 1, Reason: "global aggregation uses one bounded state"}
 	}
 	if policy == ExecutionBounded && strategy.Kind != planner.StrategySorted && !e.SpillConfigured() {
 		return nil, &UnsupportedBoundedPlanError{

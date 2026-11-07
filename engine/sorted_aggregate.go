@@ -28,6 +28,9 @@ func (p *PreparedQuery) bindSortedBatch(batch *memory.Batch) (aggregateBatchBind
 			return binding, err
 		}
 	}
+	if p.cq.GroupShape == GroupShapeGlobal {
+		return binding, nil
+	}
 	if p.cq.GroupShape == GroupShapeStringView {
 		binding.strings, err = batch.String(p.cq.GroupBy[0].Name)
 		return binding, err
@@ -46,6 +49,8 @@ func (p *PreparedQuery) materializeRecord(record aggregateRecord) AggregateRow {
 	state := record.state
 	row := AggregateRow{Sum: state.Sum, Count: state.CountRows, Aggregates: p.materializeAggregates(state)}
 	switch p.cq.GroupShape {
+	case GroupShapeGlobal:
+		// A global aggregate has no materialized key.
 	case GroupShapePairFixed:
 		row.Keys = []KeyPart{
 			p.decodeFixedValid(p.cq.GroupBy[0], record.a, record.validMask&1 != 0),

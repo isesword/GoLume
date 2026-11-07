@@ -1020,6 +1020,8 @@ func (s *spillableAggregateStream) bindBatch(batch *memory.Batch) (aggregateBatc
 
 func (b aggregateBatchBinding) record(shape GroupShape, row int) aggregateRecord {
 	switch shape {
+	case GroupShapeGlobal:
+		return aggregateRecord{}
 	case GroupShapeStringView:
 		if !b.strings.IsValid(row) {
 			return aggregateRecord{}

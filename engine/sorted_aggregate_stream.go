@@ -71,6 +71,9 @@ func (p *PreparedQuery) newSortedAggregateStream(ctx context.Context, schema mem
 	if outputRows < 1 {
 		outputRows = p.e.opts.Pipeline.MaxMorselRows
 	}
+	if p.cq.GroupShape == GroupShapeGlobal {
+		outputRows = 1
+	}
 	rowBytes := pipeline.EstimateSchemaRowBytes(schema) + 64
 	budgetRows := budget.Limit() / 8 / rowBytes
 	if budgetRows < 1 {
@@ -98,6 +101,9 @@ func (p *PreparedQuery) newSortedAggregateStream(ctx context.Context, schema mem
 		stateLease: stateLease, outputRows: outputRows, inputBatch: memory.NewBatch(),
 		state: aggregate.NewInt64Vector(1, p.cq.AggregateLayout), started: time.Now(), active: acquirePrepared,
 	}
+	// Seed the empty global group without adding a row: COUNT(*) must remain
+	// zero and SUM/MIN/MAX/AVG retain their SQL NULL identity.
+	stream.haveGroup = p.cq.GroupShape == GroupShapeGlobal
 	stream.predicate.manager = budget.Operator("SortedAggregatePredicate", memory.MemoryWorkspace)
 	stream.predicate.operator = "SortedAggregatePredicate"
 

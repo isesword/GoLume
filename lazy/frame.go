@@ -521,9 +521,15 @@ func (f LazyFrame) WithHints(hints expr.Hints) LazyFrame {
 	return f
 }
 
-// GroupBy starts a grouped aggregation over one or two Phase 2.3 group keys.
+// GroupBy starts an aggregation over zero, one or two group keys.
+// With no keys, Agg produces one global aggregate row, even for empty input.
 func (f LazyFrame) GroupBy(columns ...string) GroupedFrame {
 	return GroupedFrame{frame: f, keys: append([]string(nil), columns...)}
+}
+
+// Agg computes global aggregates, producing one row even for empty input.
+func (f LazyFrame) Agg(aggregates ...expr.Aggregate) LazyFrame {
+	return f.GroupBy().Agg(aggregates...)
 }
 
 // Agg completes a grouped aggregation without executing it.
