@@ -199,6 +199,7 @@ type filterBatchStream struct {
 	rows                  []int
 	kernels               kernel.Set
 	query                 *memory.QueryBudget
+	selectedRows          int
 }
 
 func (s *filterBatchStream) clearBorrowed() {
@@ -272,6 +273,17 @@ func (s *filterBatchStream) selectRows(ctx context.Context, bv expr.BoolVector) 
 // context without a QueryBudget keeps the opening owner; it cannot rebind to
 // a different explicit owner.
 func (s *filterBatchStream) Next(ctx context.Context, dst *memory.Batch) (bool, error) {
+	return s.next(ctx, dst, false)
+}
+
+// nextSelection lends the uncompacted input and its ordered selection to the
+// adjacent projection. Both are valid until the next filter call or Close.
+// This private protocol never exposes sparse batches through source.BatchStream.
+func (s *filterBatchStream) nextSelection(ctx context.Context, dst *memory.Batch) (bool, error) {
+	return s.next(ctx, dst, true)
+}
+
+func (s *filterBatchStream) next(ctx context.Context, dst *memory.Batch, deferCompact bool) (bool, error) {
 	s.clearBorrowed()
 	if stop, err := s.state.before(ctx, dst); stop {
 		if err != nil && !s.state.closed && s.state.terminalErr == nil {
@@ -321,7 +333,7 @@ func (s *filterBatchStream) Next(ctx context.Context, dst *memory.Batch) (bool, 
 		borrowFilterOwners(s.view)
 		s.view.Rows = s.input.Rows
 		out := s.view
-		if selected != s.input.Rows {
+		if selected != s.input.Rows && !deferCompact {
 			out, err = s.output.compact(ctx, s.view, s.rows, s.selection, s.kernels)
 			if err != nil {
 				return false, s.state.fail(err)
@@ -330,6 +342,10 @@ func (s *filterBatchStream) Next(ctx context.Context, dst *memory.Batch) (bool, 
 		bindAll(dst, out)
 		borrowFilterOwners(dst)
 		dst.Rows = selected
+		s.selectedRows = selected
+		if deferCompact {
+			dst.Rows = s.input.Rows
+		}
 		s.borrowed = dst
 		return true, nil
 	}

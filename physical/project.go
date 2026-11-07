@@ -14,12 +14,13 @@ import (
 // source. All outputs share one expression program, including Boolean values,
 // so common subexpressions reuse the same evaluation domain.
 type ProjectSource struct {
-	input        source.Source
-	schema       memory.Schema
-	named        []expr.NamedExpr
-	program      expr.Program
-	includeInput bool
-	manager      memory.Manager
+	input            source.Source
+	schema           memory.Schema
+	named            []expr.NamedExpr
+	program          expr.Program
+	includeInput     bool
+	manager          memory.Manager
+	selectionEnabled bool
 }
 
 // DropColumnsSource removes internal columns without evaluating or copying the
@@ -218,13 +219,15 @@ func NewProjectSource(input source.Source, named []expr.NamedExpr, includeInput 
 	if len(managers) != 0 {
 		manager = managers[0]
 	}
+	selectionEnabled := supportsSelectedProject(input, named, includeInput, program)
 	return &ProjectSource{
-		input:        input,
-		schema:       memory.NewSchema(fields...),
-		named:        append([]expr.NamedExpr(nil), named...),
-		program:      program,
-		includeInput: includeInput,
-		manager:      manager,
+		selectionEnabled: selectionEnabled,
+		input:            input,
+		schema:           memory.NewSchema(fields...),
+		named:            append([]expr.NamedExpr(nil), named...),
+		program:          program,
+		includeInput:     includeInput,
+		manager:          manager,
 	}, nil
 }
 
@@ -280,6 +283,12 @@ func (s *ProjectSource) newBatchStream(ctx context.Context, opts source.ReadOpti
 		return nil, err
 	}
 	localOwner := *s
+	var selection *filterBatchStream
+	if s.selectionEnabled {
+		// The optimization is negotiated only between these concrete, internal
+		// operators. Public streams continue to produce ordinary dense batches.
+		selection, _ = child.(*filterBatchStream)
+	}
 	if query := memory.QueryBudgetFromContext(ctx); query != nil {
 		localOwner.manager = query.Operator("Project", memory.MemoryWorkspace)
 	} else if localOwner.manager == nil {
@@ -290,8 +299,13 @@ func (s *ProjectSource) newBatchStream(ctx context.Context, opts source.ReadOpti
 		return nil, errors.Join(err, child.Close())
 	}
 	stream := &projectBatchStream{owner: &localOwner, input: memory.NewBatch(), kernels: opts.Kernels, opts: opts.Normalize(), workspace: workspace, query: memory.QueryBudgetFromContext(ctx)}
+	stream.selection = selection
 	stream.state.child = child
 	stream.state.closeOwn = func() error {
+		stream.clearBorrowed()
+		stream.selected = nil
+		stream.selection = nil
+		stream.selectedCount = 0
 		stream.releaseInputView()
 		stream.input.ReleaseOwned()
 		return stream.workspace.Close()
@@ -300,7 +314,11 @@ func (s *ProjectSource) newBatchStream(ctx context.Context, opts source.ReadOpti
 }
 
 func applyProjectBatch(ctx context.Context, owner *ProjectSource, input, dst *memory.Batch, workspace *expr.Workspace, kernels kernel.Set) error {
-	values, err := workspace.Evaluate(ctx, input, kernels)
+	return applySelectedProjectBatch(ctx, owner, input, dst, workspace, kernels, nil)
+}
+
+func applySelectedProjectBatch(ctx context.Context, owner *ProjectSource, input, dst *memory.Batch, workspace *expr.Workspace, kernels kernel.Set, rows []int) error {
+	values, err := workspace.EvaluateSelected(ctx, input, rows, kernels)
 	if err != nil {
 		return err
 	}
@@ -321,28 +339,37 @@ func applyProjectBatch(ctx context.Context, owner *ProjectSource, input, dst *me
 	// Passthrough values may be backed by owned Arrow range slices in input.
 	// The stream retains their owner; output clearing must never release it.
 	borrowFilterOwners(dst)
-	dst.Reset(input.Rows)
+	n := input.Rows
+	if rows != nil {
+		n = len(rows)
+	}
+	dst.Reset(n)
 	return nil
 }
 
 type projectBatchStream struct {
-	opts        source.ReadOptions
-	inputOffset int
-	nextRows    int
-	inputView   *memory.Batch
-	viewLease   memory.Reservation
-	state       unaryStreamState
-	owner       *ProjectSource
-	input       *memory.Batch
-	workspace   *expr.Workspace
-	query       *memory.QueryBudget
-	kernels     kernel.Set
+	selection     *filterBatchStream
+	selected      []int
+	selectedCount int
+	borrowed      *memory.Batch
+	opts          source.ReadOptions
+	inputOffset   int
+	nextRows      int
+	inputView     *memory.Batch
+	viewLease     memory.Reservation
+	state         unaryStreamState
+	owner         *ProjectSource
+	input         *memory.Batch
+	workspace     *expr.Workspace
+	query         *memory.QueryBudget
+	kernels       kernel.Set
 }
 
 // Next evaluates bounded input ranges. Pure expression candidates that exceed
 // payload or allocation budgets are discarded before a smaller prefix is tried;
 // successful outputs retain their input view and workspace until the next call.
 func (s *projectBatchStream) Next(ctx context.Context, dst *memory.Batch) (bool, error) {
+	s.clearBorrowed()
 	if stop, err := s.state.before(ctx, dst); stop {
 		return false, err
 	}
@@ -353,8 +380,20 @@ func (s *projectBatchStream) Next(ctx context.Context, dst *memory.Batch) (bool,
 		ctx = memory.WithQueryBudget(ctx, s.query)
 	}
 	s.releaseInputView()
-	for s.inputOffset >= s.input.Rows {
-		ok, err := s.state.child.Next(ctx, s.input)
+	for s.inputOffset >= s.inputRows() {
+		var ok bool
+		var err error
+		if s.selection != nil {
+			// Drop the prior borrow before the filter replaces/releases rows.
+			s.selected = nil
+			ok, err = s.selection.nextSelection(ctx, s.input)
+			s.selectedCount = s.selection.selectedRows
+			if ok && s.selectedCount != s.input.Rows {
+				s.selected = s.selection.rows[:s.selectedCount]
+			}
+		} else {
+			ok, err = s.state.child.Next(ctx, s.input)
+		}
 		if err != nil {
 			return false, s.state.fail(err)
 		}
@@ -366,7 +405,7 @@ func (s *projectBatchStream) Next(ctx context.Context, dst *memory.Batch) (bool,
 			continue
 		}
 	}
-	rows := s.input.Rows - s.inputOffset
+	rows := s.inputRows() - s.inputOffset
 	if s.nextRows > 0 && rows > s.nextRows {
 		rows = s.nextRows
 	}
@@ -375,9 +414,14 @@ func (s *projectBatchStream) Next(ctx context.Context, dst *memory.Batch) (bool,
 		if err := ctx.Err(); err != nil {
 			return false, s.state.fail(err)
 		}
-		err := s.bindInputView(ctx, rows)
-		if err == nil {
-			err = applyProjectBatch(ctx, s.owner, s.inputView, dst, s.workspace, s.kernels)
+		var err error
+		if s.selected != nil {
+			err = applySelectedProjectBatch(ctx, s.owner, s.input, dst, s.workspace, s.kernels, s.selected[s.inputOffset:s.inputOffset+rows])
+		} else {
+			err = s.bindInputView(ctx, rows)
+			if err == nil {
+				err = applyProjectBatch(ctx, s.owner, s.inputView, dst, s.workspace, s.kernels)
+			}
 		}
 		nextRows := rows / 2
 		if err == nil {
@@ -389,6 +433,7 @@ func (s *projectBatchStream) Next(ctx context.Context, dst *memory.Batch) (bool,
 				if s.nextRows == 0 || rows < initialRows || rows > s.nextRows {
 					s.nextRows = rows
 				}
+				s.borrowed = dst
 				return true, nil
 			} else {
 				nextRows = selected
@@ -414,6 +459,19 @@ func (s *projectBatchStream) Next(ctx context.Context, dst *memory.Batch) (bool,
 			nextRows = rows - 1
 		}
 		rows = nextRows
+	}
+}
+
+func (s *projectBatchStream) inputRows() int {
+	if s.selection != nil {
+		return s.selectedCount
+	}
+	return s.input.Rows
+}
+func (s *projectBatchStream) clearBorrowed() {
+	if s.borrowed != nil {
+		s.borrowed.ClearColumns()
+		s.borrowed = nil
 	}
 }
 

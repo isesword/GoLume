@@ -1,0 +1,46 @@
+++ gofmt -l expr/selection.go expr/selection_test.go expr/unified.go physical/filter.go physical/project.go physical/selection_lifetime_review_test.go physical/selection_project.go physical/selection_project_benchmark_test.go physical/selection_project_test.go
++ test -z ''
++ GOEXPERIMENT=simd
++ go test ./physical -run '^$' -bench 'BenchmarkSelectionProject/width(2|32)/pct(1|99|100)/inputfalse/' -benchtime=250ms -count=3
+goos: linux
+goarch: amd64
+pkg: gocolumn/physical
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkSelectionProject/width2/pct1/inputfalse/materialized-9         	    6164	     46410 ns/op	     33208 peak_bytes	        81.00 projected_rows/op	      8192 source_rows/op	   46393 B/op	     235 allocs/op
+BenchmarkSelectionProject/width2/pct1/inputfalse/materialized-9         	    6045	     43448 ns/op	     33208 peak_bytes	        81.00 projected_rows/op	      8192 source_rows/op	   46392 B/op	     235 allocs/op
+BenchmarkSelectionProject/width2/pct1/inputfalse/materialized-9         	    6700	     42002 ns/op	     33208 peak_bytes	        81.00 projected_rows/op	      8192 source_rows/op	   46392 B/op	     235 allocs/op
+BenchmarkSelectionProject/width2/pct1/inputfalse/auto-9                 	    9176	     33346 ns/op	     33632 peak_bytes	        81.00 projected_rows/op	      8192 source_rows/op	   45656 B/op	     218 allocs/op
+BenchmarkSelectionProject/width2/pct1/inputfalse/auto-9                 	    9433	     30630 ns/op	     33632 peak_bytes	        81.00 projected_rows/op	      8192 source_rows/op	   45656 B/op	     218 allocs/op
+BenchmarkSelectionProject/width2/pct1/inputfalse/auto-9                 	    9471	     30715 ns/op	     33632 peak_bytes	        81.00 projected_rows/op	      8192 source_rows/op	   45656 B/op	     218 allocs/op
+BenchmarkSelectionProject/width2/pct99/inputfalse/materialized-9        	     946	    315811 ns/op	    620296 peak_bytes	      8110 projected_rows/op	      8192 source_rows/op	  638956 B/op	     235 allocs/op
+BenchmarkSelectionProject/width2/pct99/inputfalse/materialized-9        	     942	    332070 ns/op	    620296 peak_bytes	      8110 projected_rows/op	      8192 source_rows/op	  638955 B/op	     235 allocs/op
+BenchmarkSelectionProject/width2/pct99/inputfalse/materialized-9        	     930	    322340 ns/op	    620296 peak_bytes	      8110 projected_rows/op	      8192 source_rows/op	  638956 B/op	     235 allocs/op
+BenchmarkSelectionProject/width2/pct99/inputfalse/auto-9                	    1065	    291306 ns/op	    557488 peak_bytes	      8110 projected_rows/op	      8192 source_rows/op	  574395 B/op	     218 allocs/op
+BenchmarkSelectionProject/width2/pct99/inputfalse/auto-9                	     975	    298203 ns/op	    557488 peak_bytes	      8110 projected_rows/op	      8192 source_rows/op	  574396 B/op	     218 allocs/op
+BenchmarkSelectionProject/width2/pct99/inputfalse/auto-9                	     987	    289495 ns/op	    557488 peak_bytes	      8110 projected_rows/op	      8192 source_rows/op	  574395 B/op	     218 allocs/op
+BenchmarkSelectionProject/width2/pct100/inputfalse/materialized-9       	    1232	    248101 ns/op	    429664 peak_bytes	      8192 projected_rows/op	      8192 source_rows/op	  441114 B/op	     211 allocs/op
+BenchmarkSelectionProject/width2/pct100/inputfalse/materialized-9       	    1158	    266615 ns/op	    429664 peak_bytes	      8192 projected_rows/op	      8192 source_rows/op	  441119 B/op	     211 allocs/op
+BenchmarkSelectionProject/width2/pct100/inputfalse/materialized-9       	    1144	    276975 ns/op	    429664 peak_bytes	      8192 projected_rows/op	      8192 source_rows/op	  441114 B/op	     211 allocs/op
+BenchmarkSelectionProject/width2/pct100/inputfalse/auto-9               	    1021	    273516 ns/op	    429664 peak_bytes	      8192 projected_rows/op	      8192 source_rows/op	  441115 B/op	     211 allocs/op
+BenchmarkSelectionProject/width2/pct100/inputfalse/auto-9               	    1123	    272784 ns/op	    429664 peak_bytes	      8192 projected_rows/op	      8192 source_rows/op	  441115 B/op	     211 allocs/op
+BenchmarkSelectionProject/width2/pct100/inputfalse/auto-9               	    1191	    296461 ns/op	    429664 peak_bytes	      8192 projected_rows/op	      8192 source_rows/op	  441114 B/op	     211 allocs/op
+BenchmarkSelectionProject/width32/pct1/inputfalse/materialized-9        	    1131	    269267 ns/op	     52648 peak_bytes	        81.00 projected_rows/op	      8192 source_rows/op	   92520 B/op	     397 allocs/op
+BenchmarkSelectionProject/width32/pct1/inputfalse/materialized-9        	    1272	    261398 ns/op	     52648 peak_bytes	        81.00 projected_rows/op	      8192 source_rows/op	   92521 B/op	     397 allocs/op
+BenchmarkSelectionProject/width32/pct1/inputfalse/materialized-9        	    1134	    265384 ns/op	     52648 peak_bytes	        81.00 projected_rows/op	      8192 source_rows/op	   92520 B/op	     397 allocs/op
+BenchmarkSelectionProject/width32/pct1/inputfalse/auto-9                	    6573	     48983 ns/op	     33632 peak_bytes	        81.00 projected_rows/op	      8192 source_rows/op	   60408 B/op	     276 allocs/op
+BenchmarkSelectionProject/width32/pct1/inputfalse/auto-9                	    5722	     48171 ns/op	     33632 peak_bytes	        81.00 projected_rows/op	      8192 source_rows/op	   60408 B/op	     276 allocs/op
+BenchmarkSelectionProject/width32/pct1/inputfalse/auto-9                	    5397	     47535 ns/op	     33632 peak_bytes	        81.00 projected_rows/op	      8192 source_rows/op	   60408 B/op	     276 allocs/op
+BenchmarkSelectionProject/width32/pct99/inputfalse/materialized-9       	     336	    817721 ns/op	   2566696 peak_bytes	      8110 projected_rows/op	      8192 source_rows/op	 2630055 B/op	     397 allocs/op
+BenchmarkSelectionProject/width32/pct99/inputfalse/materialized-9       	     373	    826150 ns/op	   2566696 peak_bytes	      8110 projected_rows/op	      8192 source_rows/op	 2630056 B/op	     397 allocs/op
+BenchmarkSelectionProject/width32/pct99/inputfalse/materialized-9       	     391	    816184 ns/op	   2566696 peak_bytes	      8110 projected_rows/op	      8192 source_rows/op	 2630055 B/op	     397 allocs/op
+BenchmarkSelectionProject/width32/pct99/inputfalse/auto-9               	     994	    317152 ns/op	    557488 peak_bytes	      8110 projected_rows/op	      8192 source_rows/op	  589147 B/op	     276 allocs/op
+BenchmarkSelectionProject/width32/pct99/inputfalse/auto-9               	     912	    326457 ns/op	    557488 peak_bytes	      8110 projected_rows/op	      8192 source_rows/op	  589146 B/op	     276 allocs/op
+BenchmarkSelectionProject/width32/pct99/inputfalse/auto-9               	     949	    324558 ns/op	    557488 peak_bytes	      8110 projected_rows/op	      8192 source_rows/op	  589147 B/op	     276 allocs/op
+BenchmarkSelectionProject/width32/pct100/inputfalse/materialized-9      	     993	    286840 ns/op	    429664 peak_bytes	      8192 projected_rows/op	      8192 source_rows/op	  460994 B/op	     306 allocs/op
+BenchmarkSelectionProject/width32/pct100/inputfalse/materialized-9      	     992	    289185 ns/op	    429664 peak_bytes	      8192 projected_rows/op	      8192 source_rows/op	  460994 B/op	     306 allocs/op
+BenchmarkSelectionProject/width32/pct100/inputfalse/materialized-9      	    1050	    282347 ns/op	    429664 peak_bytes	      8192 projected_rows/op	      8192 source_rows/op	  460995 B/op	     306 allocs/op
+BenchmarkSelectionProject/width32/pct100/inputfalse/auto-9              	    1047	    282242 ns/op	    429664 peak_bytes	      8192 projected_rows/op	      8192 source_rows/op	  460995 B/op	     306 allocs/op
+BenchmarkSelectionProject/width32/pct100/inputfalse/auto-9              	    1003	    287902 ns/op	    429664 peak_bytes	      8192 projected_rows/op	      8192 source_rows/op	  460994 B/op	     306 allocs/op
+BenchmarkSelectionProject/width32/pct100/inputfalse/auto-9              	     874	    297679 ns/op	    429664 peak_bytes	      8192 projected_rows/op	      8192 source_rows/op	  460994 B/op	     306 allocs/op
+PASS
+ok  	gocolumn/physical	12.733s

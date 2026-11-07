@@ -1,0 +1,188 @@
++ export PATH=/tmp/golume-toolchain/go/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin/override:/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin:/opt/codex/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/home/agent/.local/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin/fallback
++ PATH=/tmp/golume-toolchain/go/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin/override:/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin:/opt/codex/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/home/agent/.local/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin/fallback
++ export GOCACHE=/tmp/golume-gocache GOPATH=/tmp/golume-gopath
++ GOCACHE=/tmp/golume-gocache
++ GOPATH=/tmp/golume-gopath
++ cd /tmp/golume-selection
+++ gofmt -l expr/selection.go expr/selection_test.go expr/unified.go physical/filter.go physical/project.go physical/selection_project.go physical/selection_project_benchmark_test.go physical/selection_project_test.go
++ test -z ''
++ go test ./...
+ok  	gocolumn/aggregate	(cached)
+?   	gocolumn/cmd/demo	[no test files]
+ok  	gocolumn/cmd/kernel-info	(cached)
+?   	gocolumn/cmd/lazy-demo	[no test files]
+?   	gocolumn/costmodel	[no test files]
+ok  	gocolumn/engine	1.819s
+ok  	gocolumn/expr	(cached)
+ok  	gocolumn/hashagg	(cached)
+ok  	gocolumn/internal/benchtrack	(cached)
+?   	gocolumn/internal/cmd/gensimd	[no test files]
+ok  	gocolumn/internal/fixturegen	(cached)
+?   	gocolumn/internal/hashmix	[no test files]
+ok  	gocolumn/internal/kernelgate	(cached)
+ok  	gocolumn/internal/oracle	15.734s
+?   	gocolumn/internal/platformcal	[no test files]
+ok  	gocolumn/internal/proptest	0.040s
+ok  	gocolumn/join	(cached)
+ok  	gocolumn/kernel	(cached)
+ok  	gocolumn/lazy	2.358s
+ok  	gocolumn/logical	(cached)
+ok  	gocolumn/memory	(cached)
+?   	gocolumn/observer	[no test files]
+ok  	gocolumn/optimizer	(cached)
+ok  	gocolumn/physical	0.646s
+ok  	gocolumn/pipeline	0.092s
+ok  	gocolumn/planner	(cached)
+ok  	gocolumn/radix	(cached)
+ok  	gocolumn/scheduler	(cached)
+ok  	gocolumn/source	(cached)
+ok  	gocolumn/source/arrowrecord	(cached)
+ok  	gocolumn/source/inmemory	(cached)
+?   	gocolumn/source/internal/batchview	[no test files]
+ok  	gocolumn/source/parquet	0.756s
+ok  	gocolumn/tools/benchtrack	(cached)
+?   	gocolumn/tools/checkgodoc	[no test files]
+ok  	gocolumn/tools/genfallbackfixture	(cached)
+ok  	gocolumn/tools/genfixture	(cached)
+ok  	gocolumn/tools/kernelgate	(cached)
+ok  	gocolumn/tuplesort	(cached)
++ GOEXPERIMENT=simd
++ go test ./...
+ok  	gocolumn/aggregate	2.025s
+?   	gocolumn/cmd/demo	[no test files]
+ok  	gocolumn/cmd/kernel-info	0.005s
+?   	gocolumn/cmd/lazy-demo	[no test files]
+?   	gocolumn/costmodel	[no test files]
+ok  	gocolumn/engine	2.365s
+ok  	gocolumn/expr	4.785s
+ok  	gocolumn/hashagg	4.922s
+ok  	gocolumn/internal/benchtrack	0.004s
+?   	gocolumn/internal/cmd/gensimd	[no test files]
+ok  	gocolumn/internal/fixturegen	0.140s
+?   	gocolumn/internal/hashmix	[no test files]
+ok  	gocolumn/internal/kernelgate	0.010s
+ok  	gocolumn/internal/oracle	15.103s
+?   	gocolumn/internal/platformcal	[no test files]
+ok  	gocolumn/internal/proptest	0.110s
+ok  	gocolumn/join	0.008s
+ok  	gocolumn/kernel	0.102s
+ok  	gocolumn/lazy	2.794s
+ok  	gocolumn/logical	0.004s
+ok  	gocolumn/memory	0.795s
+?   	gocolumn/observer	[no test files]
+ok  	gocolumn/optimizer	0.009s
+ok  	gocolumn/physical	0.799s
+ok  	gocolumn/pipeline	0.105s
+ok  	gocolumn/planner	0.010s
+ok  	gocolumn/radix	0.009s
+ok  	gocolumn/scheduler	0.002s
+ok  	gocolumn/source	0.006s
+ok  	gocolumn/source/arrowrecord	0.006s
+ok  	gocolumn/source/inmemory	0.007s
+?   	gocolumn/source/internal/batchview	[no test files]
+ok  	gocolumn/source/parquet	1.001s
+ok  	gocolumn/tools/benchtrack	0.005s
+?   	gocolumn/tools/checkgodoc	[no test files]
+ok  	gocolumn/tools/genfallbackfixture	0.174s
+ok  	gocolumn/tools/genfixture	0.033s
+ok  	gocolumn/tools/kernelgate	0.012s
+ok  	gocolumn/tuplesort	1.169s
++ GOEXPERIMENT=simd
++ go test -race ./expr ./physical ./lazy ./engine ./optimizer ./memory ./source/arrowrecord
+ok  	gocolumn/expr	20.419s
+ok  	gocolumn/physical	2.902s
+ok  	gocolumn/lazy	12.981s
+ok  	gocolumn/engine	15.193s
+ok  	gocolumn/optimizer	1.026s
+ok  	gocolumn/memory	4.796s
+ok  	gocolumn/source/arrowrecord	1.032s
++ for mode in 0 +128 +256 +512
++ GOEXPERIMENT=simd
++ GODEBUG=simd=0
++ go test ./expr ./physical ./lazy ./engine
+ok  	gocolumn/expr	4.241s
+ok  	gocolumn/physical	0.464s
+ok  	gocolumn/lazy	1.831s
+ok  	gocolumn/engine	1.501s
++ for mode in 0 +128 +256 +512
++ GOEXPERIMENT=simd
++ GODEBUG=simd=+128
++ go test ./expr ./physical ./lazy ./engine
+ok  	gocolumn/expr	3.374s
+ok  	gocolumn/physical	0.515s
+ok  	gocolumn/lazy	2.049s
+ok  	gocolumn/engine	1.636s
++ for mode in 0 +128 +256 +512
++ GOEXPERIMENT=simd
++ GODEBUG=simd=+256
++ go test ./expr ./physical ./lazy ./engine
+ok  	gocolumn/expr	3.232s
+ok  	gocolumn/physical	0.501s
+ok  	gocolumn/lazy	1.882s
+ok  	gocolumn/engine	1.537s
++ for mode in 0 +128 +256 +512
++ GOEXPERIMENT=simd
++ GODEBUG=simd=+512
++ go test ./expr ./physical ./lazy ./engine
+ok  	gocolumn/expr	3.234s
+ok  	gocolumn/physical	0.474s
+ok  	gocolumn/lazy	1.876s
+ok  	gocolumn/engine	1.494s
++ go vet ./...
++ go run ./tools/checkgodoc .
+GoDoc check: PASS (package docs and exported API comments follow naming conventions)
++ GOEXPERIMENT=simd
++ go run ./internal/cmd/gensimd -check
++ GOEXPERIMENT=simd
++ go run ./tools/kernelgate check
+kernel registry, gates file, and code are consistent
++ bash scripts/check_simd_structure.sh
+SIMD structure checks passed
++ GOOS=linux
++ GOARCH=amd64
++ GOEXPERIMENT=simd
++ go build ./...
+error obtaining VCS status: exit status 128
+	Use -buildvcs=false to disable VCS stamping.
+error obtaining VCS status: exit status 128
+	Use -buildvcs=false to disable VCS stamping.
+error obtaining VCS status: exit status 128
+	Use -buildvcs=false to disable VCS stamping.
+error obtaining VCS status: exit status 128
+	Use -buildvcs=false to disable VCS stamping.
+error obtaining VCS status: exit status 128
+	Use -buildvcs=false to disable VCS stamping.
+error obtaining VCS status: exit status 128
+	Use -buildvcs=false to disable VCS stamping.
+error obtaining VCS status: exit status 128
+	Use -buildvcs=false to disable VCS stamping.
+error obtaining VCS status: exit status 128
+	Use -buildvcs=false to disable VCS stamping.
+error obtaining VCS status: exit status 128
+	Use -buildvcs=false to disable VCS stamping.
++ for target in linux/amd64 linux/arm64 darwin/arm64
++ GOOS=linux
++ GOARCH=amd64
++ GOEXPERIMENT=simd
++ go build -buildvcs=false ./...
++ for target in linux/amd64 linux/arm64 darwin/arm64
++ GOOS=linux
++ GOARCH=arm64
++ GOEXPERIMENT=simd
++ go build -buildvcs=false ./...
++ for target in linux/amd64 linux/arm64 darwin/arm64
++ GOOS=darwin
++ GOARCH=arm64
++ GOEXPERIMENT=simd
++ go build -buildvcs=false ./...
++ go test ./expr ./physical
+ok  	gocolumn/expr	(cached)
+ok  	gocolumn/physical	0.341s
++ GOEXPERIMENT=simd
++ go test ./expr ./physical
+ok  	gocolumn/expr	(cached)
+ok  	gocolumn/physical	0.350s
++ GOEXPERIMENT=simd
++ go test -race ./expr ./physical
+ok  	gocolumn/expr	(cached)
+ok  	gocolumn/physical	2.525s

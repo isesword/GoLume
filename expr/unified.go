@@ -30,11 +30,12 @@ func Compile(schema memory.Schema, e Expr) (Program, error) {
 // Results are read-only borrowed views until the next evaluation or Close.
 // Admission failure is retryable; cancellation and semantic errors close it.
 type Workspace struct {
-	program Program
-	storage evaluationState
-	query   *memory.QueryBudget
-	manager memory.Manager
-	closed  bool
+	program  Program
+	storage  evaluationState
+	query    *memory.QueryBudget
+	manager  memory.Manager
+	closed   bool
+	selected selectedWorkspace
 }
 
 // NewWorkspace binds the program to one memory owner. A QueryBudget in ctx
@@ -149,7 +150,7 @@ func (w *Workspace) MemoryBytes() int64 {
 	if w == nil {
 		return 0
 	}
-	return w.storage.MemoryBytes()
+	return w.storage.MemoryBytes() + w.selected.bytes + w.selected.metadataBytes
 }
 
 // Close idempotently releases all owned buffers and execution references.
@@ -158,6 +159,7 @@ func (w *Workspace) Close() error {
 		return nil
 	}
 	_ = w.storage.Close()
+	w.selected.close()
 	w.storage = evaluationState{}
 	w.program = Program{}
 	w.query = nil
