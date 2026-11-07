@@ -1,0 +1,3 @@
+ok  	gocolumn/kernel	1.751s
+ok  	gocolumn/expr	29.708s
+ok  	gocolumn/physical	5.512s

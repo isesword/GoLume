@@ -1,0 +1,87 @@
+goos: linux
+goarch: amd64
+pkg: gocolumn/physical
+cpu: AMD EPYC 9V74 80-Core Processor                
+,scalar,,simd,,,
+,sec/op,CI,sec/op,CI,vs base,P
+Compare32FilterProjectKernelMode/type=int32/op=gt/pct=50/nullable=false,7.720900000000001e-05,1%,7.155750000000001e-05,4%,-7.32%,p=0.000 n=10
+Compare32FilterProjectKernelMode/type=int32/op=gt/pct=50/nullable=true,7.738000000000001e-05,5%,7.0963e-05,6%,-8.29%,p=0.002 n=10
+Compare32FilterProjectKernelMode/type=int32/op=eq/pct=50/nullable=false,7.869100000000001e-05,4%,7.199450000000001e-05,5%,-8.51%,p=0.000 n=10
+Compare32FilterProjectKernelMode/type=int32/op=eq/pct=50/nullable=true,8.01485e-05,4%,7.1195e-05,4%,-11.17%,p=0.000 n=10
+Compare32FilterProjectKernelMode/type=uint32/op=gt/pct=50/nullable=false,8.33455e-05,3%,7.18335e-05,8%,-13.81%,p=0.000 n=10
+Compare32FilterProjectKernelMode/type=uint32/op=gt/pct=50/nullable=true,8.14605e-05,6%,7.24035e-05,3%,-11.12%,p=0.000 n=10
+Compare32FilterProjectKernelMode/type=uint32/op=eq/pct=50/nullable=false,8.36055e-05,3%,7.22765e-05,4%,-13.55%,p=0.000 n=10
+Compare32FilterProjectKernelMode/type=uint32/op=eq/pct=50/nullable=true,8.612600000000001e-05,4%,7.607600000000001e-05,4%,-11.67%,p=0.000 n=10
+geomean,8.094022992240615e-05,,7.22721399196073e-05,,-10.71%,
+
+,scalar,,simd,,,
+,B/s,CI,B/s,CI,vs base,P
+Compare32FilterProjectKernelMode/type=int32/op=gt/pct=50/nullable=false,1.69911e+09,1%,1.83333e+09,4%,+7.90%,p=0.000 n=10
+Compare32FilterProjectKernelMode/type=int32/op=gt/pct=50/nullable=true,1.695335e+09,5%,1.848635e+09,5%,+9.04%,p=0.002 n=10
+Compare32FilterProjectKernelMode/type=int32/op=eq/pct=50/nullable=false,1.667125e+09,4%,1.82223e+09,5%,+9.30%,p=0.000 n=10
+Compare32FilterProjectKernelMode/type=int32/op=eq/pct=50/nullable=true,1.63677e+09,4%,1.842615e+09,4%,+12.58%,p=0.000 n=10
+Compare32FilterProjectKernelMode/type=uint32/op=gt/pct=50/nullable=false,1.57398e+09,4%,1.826225e+09,8%,+16.03%,p=0.000 n=10
+Compare32FilterProjectKernelMode/type=uint32/op=gt/pct=50/nullable=true,1.6104e+09,5%,1.811965e+09,3%,+12.52%,p=0.000 n=10
+Compare32FilterProjectKernelMode/type=uint32/op=eq/pct=50/nullable=false,1.569105e+09,3%,1.81505e+09,4%,+15.67%,p=0.000 n=10
+Compare32FilterProjectKernelMode/type=uint32/op=eq/pct=50/nullable=true,1.523615e+09,4%,1.724485e+09,5%,+13.18%,p=0.000 n=10
+geomean,1.6208268884886734e+09,,1.8151926075606906e+09,,+11.99%,
+
+,scalar,,simd,,,
+,peak_bytes,CI,peak_bytes,CI,vs base,P
+Compare32FilterProjectKernelMode/type=int32/op=gt/pct=50/nullable=false,99592,0%,99592,0%,~,p=1.000 n=10
+Compare32FilterProjectKernelMode/type=int32/op=gt/pct=50/nullable=true,99864,0%,99864,0%,~,p=1.000 n=10
+Compare32FilterProjectKernelMode/type=int32/op=eq/pct=50/nullable=false,99592,0%,99592,0%,~,p=1.000 n=10
+Compare32FilterProjectKernelMode/type=int32/op=eq/pct=50/nullable=true,99864,0%,99864,0%,~,p=1.000 n=10
+Compare32FilterProjectKernelMode/type=uint32/op=gt/pct=50/nullable=false,99592,0%,99592,0%,~,p=1.000 n=10
+Compare32FilterProjectKernelMode/type=uint32/op=gt/pct=50/nullable=true,99864,0%,99864,0%,~,p=1.000 n=10
+Compare32FilterProjectKernelMode/type=uint32/op=eq/pct=50/nullable=false,99592,0%,99592,0%,~,p=1.000 n=10
+Compare32FilterProjectKernelMode/type=uint32/op=eq/pct=50/nullable=true,99864,0%,99864,0%,~,p=1.000 n=10
+geomean,99727.90726772518,,99727.90726772518,,+0.00%,
+
+,scalar,,simd,,,
+,projected_rows/op,CI,projected_rows/op,CI,vs base,P
+Compare32FilterProjectKernelMode/type=int32/op=gt/pct=50/nullable=false,4100,0%,4100,0%,~,p=1.000 n=10
+Compare32FilterProjectKernelMode/type=int32/op=gt/pct=50/nullable=true,3438,0%,3438,0%,~,p=1.000 n=10
+Compare32FilterProjectKernelMode/type=int32/op=eq/pct=50/nullable=false,4100,0%,4100,0%,~,p=1.000 n=10
+Compare32FilterProjectKernelMode/type=int32/op=eq/pct=50/nullable=true,3438,0%,3438,0%,~,p=1.000 n=10
+Compare32FilterProjectKernelMode/type=uint32/op=gt/pct=50/nullable=false,4100,0%,4100,0%,~,p=1.000 n=10
+Compare32FilterProjectKernelMode/type=uint32/op=gt/pct=50/nullable=true,3438,0%,3438,0%,~,p=1.000 n=10
+Compare32FilterProjectKernelMode/type=uint32/op=eq/pct=50/nullable=false,4100,0%,4100,0%,~,p=1.000 n=10
+Compare32FilterProjectKernelMode/type=uint32/op=eq/pct=50/nullable=true,3438,0%,3438,0%,~,p=1.000 n=10
+geomean,3754.4373746275196,,3754.4373746275196,,+0.00%,
+
+,scalar,,simd,,,
+,source_rows/op,CI,source_rows/op,CI,vs base,P
+Compare32FilterProjectKernelMode/type=int32/op=gt/pct=50/nullable=false,8199,0%,8199,0%,~,p=1.000 n=10
+Compare32FilterProjectKernelMode/type=int32/op=gt/pct=50/nullable=true,8199,0%,8199,0%,~,p=1.000 n=10
+Compare32FilterProjectKernelMode/type=int32/op=eq/pct=50/nullable=false,8199,0%,8199,0%,~,p=1.000 n=10
+Compare32FilterProjectKernelMode/type=int32/op=eq/pct=50/nullable=true,8199,0%,8199,0%,~,p=1.000 n=10
+Compare32FilterProjectKernelMode/type=uint32/op=gt/pct=50/nullable=false,8199,0%,8199,0%,~,p=1.000 n=10
+Compare32FilterProjectKernelMode/type=uint32/op=gt/pct=50/nullable=true,8199,0%,8199,0%,~,p=1.000 n=10
+Compare32FilterProjectKernelMode/type=uint32/op=eq/pct=50/nullable=false,8199,0%,8199,0%,~,p=1.000 n=10
+Compare32FilterProjectKernelMode/type=uint32/op=eq/pct=50/nullable=true,8199,0%,8199,0%,~,p=1.000 n=10
+geomean,8199.000000000004,,8199.000000000004,,+0.00%,
+
+,scalar,,simd,,,
+,B/op,CI,B/op,CI,vs base,P
+Compare32FilterProjectKernelMode/type=int32/op=gt/pct=50/nullable=false,120976,0%,120976,0%,~,p=1.000 n=10
+Compare32FilterProjectKernelMode/type=int32/op=gt/pct=50/nullable=true,114664,0%,114664,0%,~,p=1.000 n=10
+Compare32FilterProjectKernelMode/type=int32/op=eq/pct=50/nullable=false,120976,0%,120976,0%,~,p=1.000 n=10
+Compare32FilterProjectKernelMode/type=int32/op=eq/pct=50/nullable=true,114664,0%,114664,0%,~,p=1.000 n=10
+Compare32FilterProjectKernelMode/type=uint32/op=gt/pct=50/nullable=false,120976,0%,120976,0%,~,p=1.000 n=10
+Compare32FilterProjectKernelMode/type=uint32/op=gt/pct=50/nullable=true,114664,0%,114664,0%,~,p=1.000 n=10
+Compare32FilterProjectKernelMode/type=uint32/op=eq/pct=50/nullable=false,120976,0%,120976,0%,~,p=1.000 n=10
+Compare32FilterProjectKernelMode/type=uint32/op=eq/pct=50/nullable=true,114664,0%,114664,0%,~,p=1.000 n=10
+geomean,117777.72312283849,,117777.72312283849,,+0.00%,
+
+,scalar,,simd,,,
+,allocs/op,CI,allocs/op,CI,vs base,P
+Compare32FilterProjectKernelMode/type=int32/op=gt/pct=50/nullable=false,175,0%,175,0%,~,p=1.000 n=10
+Compare32FilterProjectKernelMode/type=int32/op=gt/pct=50/nullable=true,178,0%,178,0%,~,p=1.000 n=10
+Compare32FilterProjectKernelMode/type=int32/op=eq/pct=50/nullable=false,175,0%,175,0%,~,p=1.000 n=10
+Compare32FilterProjectKernelMode/type=int32/op=eq/pct=50/nullable=true,178,0%,178,0%,~,p=1.000 n=10
+Compare32FilterProjectKernelMode/type=uint32/op=gt/pct=50/nullable=false,175,0%,175,0%,~,p=1.000 n=10
+Compare32FilterProjectKernelMode/type=uint32/op=gt/pct=50/nullable=true,178,0%,178,0%,~,p=1.000 n=10
+Compare32FilterProjectKernelMode/type=uint32/op=eq/pct=50/nullable=false,175,0%,175,0%,~,p=1.000 n=10
+Compare32FilterProjectKernelMode/type=uint32/op=eq/pct=50/nullable=true,178,0%,178,0%,~,p=1.000 n=10
+geomean,176.49362594722794,,176.49362594722794,,+0.00%,

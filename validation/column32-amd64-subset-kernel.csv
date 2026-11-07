@@ -1,0 +1,51 @@
+goos: linux
+goarch: amd64
+pkg: gocolumn/kernel
+cpu: AMD EPYC 9V74 80-Core Processor                
+,scalar,,simd,,,
+,sec/op,CI,sec/op,CI,vs base,P
+Column32ComparisonGate int32 stream gt,0.0024516525,20%,0.0012024790000000002,5%,-50.95%,p=0.000 n=10
+Column32ComparisonGate int32 stream eq,0.0027256765000000004,7%,0.0012025235000000002,6%,-55.88%,p=0.000 n=10
+Column32ComparisonGate int32 nullable-tail gt,0.00010175200000000001,7%,6.51225e-05,4%,-36.00%,p=0.000 n=10
+Column32ComparisonGate int32 nullable-tail eq,0.00010681900000000001,2%,6.6482e-05,6%,-37.76%,p=0.000 n=10
+Column32ComparisonGate uint32 stream gt,0.0018612855,3%,0.0010277335,4%,-44.78%,p=0.000 n=10
+Column32ComparisonGate uint32 stream eq,0.0024125475,8%,0.0010978230000000002,6%,-54.50%,p=0.000 n=10
+Column32ComparisonGate uint32 nullable-tail gt,8.985e-05,4%,6.3638e-05,2%,-29.17%,p=0.000 n=10
+Column32ComparisonGate uint32 nullable-tail eq,0.00010279700000000001,5%,6.560100000000001e-05,4%,-36.18%,p=0.000 n=10
+geomean,0.0004840207822555174,,0.0002714599433869561,,-43.92%,
+
+,scalar,,simd,,,
+,B/s,CI,B/s,CI,vs base,P
+Column32ComparisonGate int32 stream gt,3.421715e+09,17%,6.97632e+09,6%,+103.88%,p=0.000 n=10
+Column32ComparisonGate int32 stream eq,3.077625e+09,6%,6.976005e+09,6%,+126.67%,p=0.000 n=10
+Column32ComparisonGate int32 nullable-tail gt,5.15288e+09,6%,8.05116e+09,4%,+56.25%,p=0.000 n=10
+Column32ComparisonGate int32 nullable-tail eq,4.90848e+09,2%,7.88651e+09,5%,+60.67%,p=0.000 n=10
+Column32ComparisonGate uint32 stream gt,4.50701e+09,4%,8.162545e+09,4%,+81.11%,p=0.000 n=10
+Column32ComparisonGate uint32 stream eq,3.477125e+09,7%,7.641855e+09,6%,+119.78%,p=0.000 n=10
+Column32ComparisonGate uint32 nullable-tail gt,5.835535e+09,4%,8.2394e+09,2%,+41.19%,p=0.000 n=10
+Column32ComparisonGate uint32 nullable-tail eq,5.10049e+09,6%,7.992535e+09,4%,+56.70%,p=0.000 n=10
+geomean,4.332935748993715e+09,,7.725874087521776e+09,,+78.31%,
+
+,scalar,,simd,,,
+,B/op,CI,B/op,CI,vs base,P
+Column32ComparisonGate int32 stream gt,0,0%,0,0%,~,p=1.000 n=10
+Column32ComparisonGate int32 stream eq,0,0%,0,0%,~,p=1.000 n=10
+Column32ComparisonGate int32 nullable-tail gt,0,0%,0,0%,~,p=1.000 n=10
+Column32ComparisonGate int32 nullable-tail eq,0,0%,0,0%,~,p=1.000 n=10
+Column32ComparisonGate uint32 stream gt,0,0%,0,0%,~,p=1.000 n=10
+Column32ComparisonGate uint32 stream eq,0,0%,0,0%,~,p=1.000 n=10
+Column32ComparisonGate uint32 nullable-tail gt,0,0%,0,0%,~,p=1.000 n=10
+Column32ComparisonGate uint32 nullable-tail eq,0,0%,0,0%,~,p=1.000 n=10
+geomean,,,,,+0.00%,
+
+,scalar,,simd,,,
+,allocs/op,CI,allocs/op,CI,vs base,P
+Column32ComparisonGate int32 stream gt,0,0%,0,0%,~,p=1.000 n=10
+Column32ComparisonGate int32 stream eq,0,0%,0,0%,~,p=1.000 n=10
+Column32ComparisonGate int32 nullable-tail gt,0,0%,0,0%,~,p=1.000 n=10
+Column32ComparisonGate int32 nullable-tail eq,0,0%,0,0%,~,p=1.000 n=10
+Column32ComparisonGate uint32 stream gt,0,0%,0,0%,~,p=1.000 n=10
+Column32ComparisonGate uint32 stream eq,0,0%,0,0%,~,p=1.000 n=10
+Column32ComparisonGate uint32 nullable-tail gt,0,0%,0,0%,~,p=1.000 n=10
+Column32ComparisonGate uint32 nullable-tail eq,0,0%,0,0%,~,p=1.000 n=10
+geomean,,,,,+0.00%,

@@ -1,0 +1,10 @@
+Final script smoke: all 240 kernel and 48 query leaves pass (1x, not performance evidence).
+All 80 kernel and 16 query rows pair scalar/auto/simd in benchstat.
+Complete marker verified after success.
+Reusing the evidence prefix exits 1 without overwriting artifacts.
+Empty benchmark patterns exit 1 and do not write a completion marker.
+bash -n scripts/bench_column32.sh: pass.
+Independent review: no blocking issue; source enumeration now checked in ordinary pipeline.
+go vet ./...: pass (no output).
+SIMD Column32 gate at GODEBUG=simd=0,+128,+256,+512: pass.
+SIMD kernel test cross-compilation linux/arm64 and darwin/arm64: pass (not executed).

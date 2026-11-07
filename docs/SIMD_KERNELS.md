@@ -76,6 +76,12 @@ Hash, UTF-8, expression, DirectFused, BitmapDirect, and strategy reports. Use
 
 ## Deleted candidates
 
+The deletion list below describes the generated column-scalar/older kernel
+refactor. The later forced-only Int32/Uint32/Float32 column-column prototypes
+still use a runtime operator switch and a stored-mask lane scan. They are not
+Auto-admitted and must pass their own operation and query gates; the list is
+not a claim that every current candidate has the generated implementation shape.
+
 The following failed production implementations were deleted rather than
 retained behind forced or diagnostic dispatch:
 
@@ -97,10 +103,10 @@ were deleted. UTF-8 Length now uses the single-pass scalar `DecodeRune`
 semantics for ASCII, Unicode, and malformed input. Dictionary predicate caching
 remains the primary string optimization.
 
-amd64 retains only AVX-512 candidates that use native 64-bit multiply or
-Compress, and only in `ModeSIMD`. With no native linux/amd64 ten-sample evidence,
-its Auto allowlist remains entirely scalar. AVX2 simulated multiplication is
-not present.
+The amd64 Hash/compact candidates use AVX-512 native 64-bit multiply or Compress
+in `ModeSIMD`. Separate portable column-column prototypes also remain forced-only.
+The amd64 Auto allowlist remains entirely scalar until the relevant complete
+admission gates pass. AVX2 simulated multiplication is not present.
 
 Ordering, Top-K heap, window execution, substring matching, random hash probes,
 opaque Arrow values, and random low-density gathers remain scalar by design.

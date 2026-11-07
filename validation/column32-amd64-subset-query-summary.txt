@@ -1,0 +1,92 @@
+goos: linux
+goarch: amd64
+pkg: gocolumn/physical
+cpu: AMD EPYC 9V74 80-Core Processor                
+                                                                         │   scalar    │                simd                 │
+                                                                         │   sec/op    │   sec/op     vs base                │
+Compare32FilterProjectKernelMode/type=int32/op=gt/pct=50/nullable=false    77.21µ ± 1%   71.56µ ± 4%   -7.32% (p=0.000 n=10)
+Compare32FilterProjectKernelMode/type=int32/op=gt/pct=50/nullable=true     77.38µ ± 5%   70.96µ ± 6%   -8.29% (p=0.002 n=10)
+Compare32FilterProjectKernelMode/type=int32/op=eq/pct=50/nullable=false    78.69µ ± 4%   71.99µ ± 5%   -8.51% (p=0.000 n=10)
+Compare32FilterProjectKernelMode/type=int32/op=eq/pct=50/nullable=true     80.15µ ± 4%   71.20µ ± 4%  -11.17% (p=0.000 n=10)
+Compare32FilterProjectKernelMode/type=uint32/op=gt/pct=50/nullable=false   83.35µ ± 3%   71.83µ ± 8%  -13.81% (p=0.000 n=10)
+Compare32FilterProjectKernelMode/type=uint32/op=gt/pct=50/nullable=true    81.46µ ± 6%   72.40µ ± 3%  -11.12% (p=0.000 n=10)
+Compare32FilterProjectKernelMode/type=uint32/op=eq/pct=50/nullable=false   83.61µ ± 3%   72.28µ ± 4%  -13.55% (p=0.000 n=10)
+Compare32FilterProjectKernelMode/type=uint32/op=eq/pct=50/nullable=true    86.13µ ± 4%   76.08µ ± 4%  -11.67% (p=0.000 n=10)
+geomean                                                                    80.94µ        72.27µ       -10.71%
+
+                                                                         │    scalar    │                 simd                 │
+                                                                         │     B/s      │     B/s       vs base                │
+Compare32FilterProjectKernelMode/type=int32/op=gt/pct=50/nullable=false    1.582Gi ± 1%   1.707Gi ± 4%   +7.90% (p=0.000 n=10)
+Compare32FilterProjectKernelMode/type=int32/op=gt/pct=50/nullable=true     1.579Gi ± 5%   1.722Gi ± 5%   +9.04% (p=0.002 n=10)
+Compare32FilterProjectKernelMode/type=int32/op=eq/pct=50/nullable=false    1.553Gi ± 4%   1.697Gi ± 5%   +9.30% (p=0.000 n=10)
+Compare32FilterProjectKernelMode/type=int32/op=eq/pct=50/nullable=true     1.524Gi ± 4%   1.716Gi ± 4%  +12.58% (p=0.000 n=10)
+Compare32FilterProjectKernelMode/type=uint32/op=gt/pct=50/nullable=false   1.466Gi ± 4%   1.701Gi ± 8%  +16.03% (p=0.000 n=10)
+Compare32FilterProjectKernelMode/type=uint32/op=gt/pct=50/nullable=true    1.500Gi ± 5%   1.688Gi ± 3%  +12.52% (p=0.000 n=10)
+Compare32FilterProjectKernelMode/type=uint32/op=eq/pct=50/nullable=false   1.461Gi ± 3%   1.690Gi ± 4%  +15.67% (p=0.000 n=10)
+Compare32FilterProjectKernelMode/type=uint32/op=eq/pct=50/nullable=true    1.419Gi ± 4%   1.606Gi ± 5%  +13.18% (p=0.000 n=10)
+geomean                                                                    1.510Gi        1.691Gi       +11.99%
+
+                                                                         │   scalar    │                 simd                 │
+                                                                         │ peak_bytes  │ peak_bytes   vs base                 │
+Compare32FilterProjectKernelMode/type=int32/op=gt/pct=50/nullable=false    99.59k ± 0%   99.59k ± 0%       ~ (p=1.000 n=10) ¹
+Compare32FilterProjectKernelMode/type=int32/op=gt/pct=50/nullable=true     99.86k ± 0%   99.86k ± 0%       ~ (p=1.000 n=10) ¹
+Compare32FilterProjectKernelMode/type=int32/op=eq/pct=50/nullable=false    99.59k ± 0%   99.59k ± 0%       ~ (p=1.000 n=10) ¹
+Compare32FilterProjectKernelMode/type=int32/op=eq/pct=50/nullable=true     99.86k ± 0%   99.86k ± 0%       ~ (p=1.000 n=10) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=gt/pct=50/nullable=false   99.59k ± 0%   99.59k ± 0%       ~ (p=1.000 n=10) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=gt/pct=50/nullable=true    99.86k ± 0%   99.86k ± 0%       ~ (p=1.000 n=10) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=eq/pct=50/nullable=false   99.59k ± 0%   99.59k ± 0%       ~ (p=1.000 n=10) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=eq/pct=50/nullable=true    99.86k ± 0%   99.86k ± 0%       ~ (p=1.000 n=10) ¹
+geomean                                                                    99.73k        99.73k       +0.00%
+¹ all samples are equal
+
+                                                                         │      scalar       │                    simd                    │
+                                                                         │ projected_rows/op │ projected_rows/op  vs base                 │
+Compare32FilterProjectKernelMode/type=int32/op=gt/pct=50/nullable=false          4.100k ± 0%         4.100k ± 0%       ~ (p=1.000 n=10) ¹
+Compare32FilterProjectKernelMode/type=int32/op=gt/pct=50/nullable=true           3.438k ± 0%         3.438k ± 0%       ~ (p=1.000 n=10) ¹
+Compare32FilterProjectKernelMode/type=int32/op=eq/pct=50/nullable=false          4.100k ± 0%         4.100k ± 0%       ~ (p=1.000 n=10) ¹
+Compare32FilterProjectKernelMode/type=int32/op=eq/pct=50/nullable=true           3.438k ± 0%         3.438k ± 0%       ~ (p=1.000 n=10) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=gt/pct=50/nullable=false         4.100k ± 0%         4.100k ± 0%       ~ (p=1.000 n=10) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=gt/pct=50/nullable=true          3.438k ± 0%         3.438k ± 0%       ~ (p=1.000 n=10) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=eq/pct=50/nullable=false         4.100k ± 0%         4.100k ± 0%       ~ (p=1.000 n=10) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=eq/pct=50/nullable=true          3.438k ± 0%         3.438k ± 0%       ~ (p=1.000 n=10) ¹
+geomean                                                                          3.754k              3.754k       +0.00%
+¹ all samples are equal
+
+                                                                         │     scalar     │                  simd                   │
+                                                                         │ source_rows/op │ source_rows/op  vs base                 │
+Compare32FilterProjectKernelMode/type=int32/op=gt/pct=50/nullable=false       8.199k ± 0%      8.199k ± 0%       ~ (p=1.000 n=10) ¹
+Compare32FilterProjectKernelMode/type=int32/op=gt/pct=50/nullable=true        8.199k ± 0%      8.199k ± 0%       ~ (p=1.000 n=10) ¹
+Compare32FilterProjectKernelMode/type=int32/op=eq/pct=50/nullable=false       8.199k ± 0%      8.199k ± 0%       ~ (p=1.000 n=10) ¹
+Compare32FilterProjectKernelMode/type=int32/op=eq/pct=50/nullable=true        8.199k ± 0%      8.199k ± 0%       ~ (p=1.000 n=10) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=gt/pct=50/nullable=false      8.199k ± 0%      8.199k ± 0%       ~ (p=1.000 n=10) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=gt/pct=50/nullable=true       8.199k ± 0%      8.199k ± 0%       ~ (p=1.000 n=10) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=eq/pct=50/nullable=false      8.199k ± 0%      8.199k ± 0%       ~ (p=1.000 n=10) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=eq/pct=50/nullable=true       8.199k ± 0%      8.199k ± 0%       ~ (p=1.000 n=10) ¹
+geomean                                                                       8.199k           8.199k       +0.00%
+¹ all samples are equal
+
+                                                                         │    scalar    │                 simd                  │
+                                                                         │     B/op     │     B/op      vs base                 │
+Compare32FilterProjectKernelMode/type=int32/op=gt/pct=50/nullable=false    118.1Ki ± 0%   118.1Ki ± 0%       ~ (p=1.000 n=10) ¹
+Compare32FilterProjectKernelMode/type=int32/op=gt/pct=50/nullable=true     112.0Ki ± 0%   112.0Ki ± 0%       ~ (p=1.000 n=10) ¹
+Compare32FilterProjectKernelMode/type=int32/op=eq/pct=50/nullable=false    118.1Ki ± 0%   118.1Ki ± 0%       ~ (p=1.000 n=10) ¹
+Compare32FilterProjectKernelMode/type=int32/op=eq/pct=50/nullable=true     112.0Ki ± 0%   112.0Ki ± 0%       ~ (p=1.000 n=10) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=gt/pct=50/nullable=false   118.1Ki ± 0%   118.1Ki ± 0%       ~ (p=1.000 n=10) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=gt/pct=50/nullable=true    112.0Ki ± 0%   112.0Ki ± 0%       ~ (p=1.000 n=10) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=eq/pct=50/nullable=false   118.1Ki ± 0%   118.1Ki ± 0%       ~ (p=1.000 n=10) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=eq/pct=50/nullable=true    112.0Ki ± 0%   112.0Ki ± 0%       ~ (p=1.000 n=10) ¹
+geomean                                                                    115.0Ki        115.0Ki       +0.00%
+¹ all samples are equal
+
+                                                                         │   scalar   │                simd                 │
+                                                                         │ allocs/op  │ allocs/op   vs base                 │
+Compare32FilterProjectKernelMode/type=int32/op=gt/pct=50/nullable=false    175.0 ± 0%   175.0 ± 0%       ~ (p=1.000 n=10) ¹
+Compare32FilterProjectKernelMode/type=int32/op=gt/pct=50/nullable=true     178.0 ± 0%   178.0 ± 0%       ~ (p=1.000 n=10) ¹
+Compare32FilterProjectKernelMode/type=int32/op=eq/pct=50/nullable=false    175.0 ± 0%   175.0 ± 0%       ~ (p=1.000 n=10) ¹
+Compare32FilterProjectKernelMode/type=int32/op=eq/pct=50/nullable=true     178.0 ± 0%   178.0 ± 0%       ~ (p=1.000 n=10) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=gt/pct=50/nullable=false   175.0 ± 0%   175.0 ± 0%       ~ (p=1.000 n=10) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=gt/pct=50/nullable=true    178.0 ± 0%   178.0 ± 0%       ~ (p=1.000 n=10) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=eq/pct=50/nullable=false   175.0 ± 0%   175.0 ± 0%       ~ (p=1.000 n=10) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=eq/pct=50/nullable=true    178.0 ± 0%   178.0 ± 0%       ~ (p=1.000 n=10) ¹
+geomean                                                                    176.5        176.5       +0.00%
+¹ all samples are equal

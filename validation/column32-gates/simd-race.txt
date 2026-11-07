@@ -1,0 +1,1 @@
+ok  	gocolumn/kernel	1.535s

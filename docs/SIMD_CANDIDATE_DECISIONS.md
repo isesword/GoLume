@@ -74,6 +74,46 @@ silently reported as SIMD.
 
 ## Required evidence for new candidates
 
+### Reproducible Int32/Uint32 column-column gate
+
+`scripts/bench_column32.sh` runs the operation-specific kernel matrix and the
+complete Filter → computed Project lifecycle. It records native/emulated SIMD
+state and vector width, then compares forced `mode=simd` with `mode=scalar` in
+the same compiled test executable. `mode=auto` is a fallback control, not proof
+of a SIMD improvement. Column-column kernels do not currently have KernelIDs;
+the gate checks their actual dispatch functions instead of reporting unrelated
+column-scalar capability entries.
+
+The kernel matrix covers all five comparisons, streaming/bitmap/nullable-tail,
+sparse/dense/equal data, and short/tail inputs. The query matrix covers both
+types, GT/EQ, sparse/medium/dense matches and independent operand nulls. It
+measures allocations and managed workspace peak in addition to execution time.
+Its independent oracle checks every selected and projected value before timing.
+Correctness tests additionally cover every bitmap tail, signed/unsigned boundary
+values, 25 pairs of validity patterns, untouched input and output suffixes, and
+zero kernel allocations.
+
+Default runs use ten one-second samples per case and can take roughly an hour.
+`SIMD_BENCHTIME`, `SIMD_BENCHCOUNT`, `COLUMN32_KERNEL_PATTERN`, and
+`COLUMN32_QUERY_PATTERN` can narrow exploratory runs; such runs do not establish
+complete admission. `GODEBUG=simd=0` checks emulation, and supported native
+widths can be tested separately with `GODEBUG=simd=+128/+256/+512`. Each host
+and width needs its own evidence. Cross-compilation is not an arm64 measurement.
+
+Backend labels are excluded from benchstat row grouping, so scalar and candidate
+results really are compared. Do not average away a regressing operator, null
+profile or query. A successful script run produces evidence, not an admission
+decision or an Auto dispatch change.
+
+GT/EQ query measurements are not evidence for GE/LT/LE admission; add matching
+query cases before promoting those operations. Whole-query mode changes can
+also select other forced kernels, so they measure pipeline impact, not isolated
+attribution to column comparison. For final admission, repeat balanced mode
+orders on an idle native host to rule out time-correlated load. A completed run
+has a `-complete.txt` marker; failed partial output is not a completed gate.
+Existing evidence prefixes are never overwritten. Source hashes and frozen
+executable identities are saved with the environment record.
+
 - Same final build and architecture, at least ten one-second samples.
 - At least 10% kernel improvement with `p < 0.05`.
 - No related end-to-end regression over 3%.

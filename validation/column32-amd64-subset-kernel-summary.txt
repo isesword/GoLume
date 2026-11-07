@@ -1,0 +1,55 @@
+goos: linux
+goarch: amd64
+pkg: gocolumn/kernel
+cpu: AMD EPYC 9V74 80-Core Processor                
+                                               │    scalar     │                simd                 │
+                                               │    sec/op     │   sec/op     vs base                │
+Column32ComparisonGate int32 stream gt            2.452m ± 20%   1.202m ± 5%  -50.95% (p=0.000 n=10)
+Column32ComparisonGate int32 stream eq            2.726m ±  7%   1.203m ± 6%  -55.88% (p=0.000 n=10)
+Column32ComparisonGate int32 nullable-tail gt    101.75µ ±  7%   65.12µ ± 4%  -36.00% (p=0.000 n=10)
+Column32ComparisonGate int32 nullable-tail eq    106.82µ ±  2%   66.48µ ± 6%  -37.76% (p=0.000 n=10)
+Column32ComparisonGate uint32 stream gt           1.861m ±  3%   1.028m ± 4%  -44.78% (p=0.000 n=10)
+Column32ComparisonGate uint32 stream eq           2.413m ±  8%   1.098m ± 6%  -54.50% (p=0.000 n=10)
+Column32ComparisonGate uint32 nullable-tail gt    89.85µ ±  4%   63.64µ ± 2%  -29.17% (p=0.000 n=10)
+Column32ComparisonGate uint32 nullable-tail eq   102.80µ ±  5%   65.60µ ± 4%  -36.18% (p=0.000 n=10)
+geomean                                           484.0µ         271.5µ       -43.92%
+
+                                               │    scalar     │                 simd                  │
+                                               │      B/s      │     B/s       vs base                 │
+Column32ComparisonGate int32 stream gt           3.187Gi ± 17%   6.497Gi ± 6%  +103.88% (p=0.000 n=10)
+Column32ComparisonGate int32 stream eq           2.866Gi ±  6%   6.497Gi ± 6%  +126.67% (p=0.000 n=10)
+Column32ComparisonGate int32 nullable-tail gt    4.799Gi ±  6%   7.498Gi ± 4%   +56.25% (p=0.000 n=10)
+Column32ComparisonGate int32 nullable-tail eq    4.571Gi ±  2%   7.345Gi ± 5%   +60.67% (p=0.000 n=10)
+Column32ComparisonGate uint32 stream gt          4.197Gi ±  4%   7.602Gi ± 4%   +81.11% (p=0.000 n=10)
+Column32ComparisonGate uint32 stream eq          3.238Gi ±  7%   7.117Gi ± 6%  +119.78% (p=0.000 n=10)
+Column32ComparisonGate uint32 nullable-tail gt   5.435Gi ±  4%   7.674Gi ± 2%   +41.19% (p=0.000 n=10)
+Column32ComparisonGate uint32 nullable-tail eq   4.750Gi ±  6%   7.444Gi ± 4%   +56.70% (p=0.000 n=10)
+geomean                                          4.035Gi         7.195Gi        +78.31%
+
+                                               │    scalar    │                simd                 │
+                                               │     B/op     │    B/op     vs base                 │
+Column32ComparisonGate int32 stream gt           0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=10) ¹
+Column32ComparisonGate int32 stream eq           0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=10) ¹
+Column32ComparisonGate int32 nullable-tail gt    0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=10) ¹
+Column32ComparisonGate int32 nullable-tail eq    0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=10) ¹
+Column32ComparisonGate uint32 stream gt          0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=10) ¹
+Column32ComparisonGate uint32 stream eq          0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=10) ¹
+Column32ComparisonGate uint32 nullable-tail gt   0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=10) ¹
+Column32ComparisonGate uint32 nullable-tail eq   0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=10) ¹
+geomean                                                     ²               +0.00%                ²
+¹ all samples are equal
+² summaries must be >0 to compute geomean
+
+                                               │    scalar    │                simd                 │
+                                               │  allocs/op   │ allocs/op   vs base                 │
+Column32ComparisonGate int32 stream gt           0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=10) ¹
+Column32ComparisonGate int32 stream eq           0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=10) ¹
+Column32ComparisonGate int32 nullable-tail gt    0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=10) ¹
+Column32ComparisonGate int32 nullable-tail eq    0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=10) ¹
+Column32ComparisonGate uint32 stream gt          0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=10) ¹
+Column32ComparisonGate uint32 stream eq          0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=10) ¹
+Column32ComparisonGate uint32 nullable-tail gt   0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=10) ¹
+Column32ComparisonGate uint32 nullable-tail eq   0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=10) ¹
+geomean                                                     ²               +0.00%                ²
+¹ all samples are equal
+² summaries must be >0 to compute geomean
