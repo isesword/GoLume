@@ -1,0 +1,21 @@
+File: generic-legacy-before.test
+Build ID: 464e194ed01009619699f69200052d74440ddce5
+Type: cpu
+Time: 2026-11-07 05:29:14 CST
+Duration: 3.75s, Total samples = 3.73s (99.42%)
+Showing nodes accounting for 3.56s, 95.44% of 3.73s total
+Dropped 63 nodes (cum <= 0.02s)
+Showing top 12 nodes out of 78
+      flat  flat%   sum%        cum   cum%
+     1.18s 31.64% 31.64%      2.03s 54.42%  gocolumn/hashagg.lookupI32Slot (inline)
+     0.85s 22.79% 54.42%      3.45s 92.49%  gocolumn/hashagg.(*I32Table).aggregateSelectedSumCountNoGrow
+     0.74s 19.84% 74.26%      0.76s 20.38%  gocolumn/internal/hashmix.Mix64 (inline)
+     0.33s  8.85% 83.11%      0.34s  9.12%  gocolumn/aggregate.addSumCountValue (inline)
+     0.23s  6.17% 89.28%      0.57s 15.28%  gocolumn/aggregate.SumCountState.AddValue (inline)
+     0.07s  1.88% 91.15%      0.83s 22.25%  gocolumn/hashagg.Hash64 (inline)
+     0.06s  1.61% 92.76%      0.06s  1.61%  runtime.asyncPreempt
+     0.03s   0.8% 93.57%      0.03s   0.8%  runtime.tryDeferToSpanScan
+     0.02s  0.54% 94.10%      0.02s  0.54%  runtime.(*lfstack).pop
+     0.02s  0.54% 94.64%      0.02s  0.54%  runtime.memclrNoHeapPointers
+     0.02s  0.54% 95.17%      0.02s  0.54%  runtime.typePointers.nextFast
+     0.01s  0.27% 95.44%      0.02s  0.54%  gocolumn/aggregate.NewInt64Vector

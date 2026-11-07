@@ -18,6 +18,12 @@ const (
 	AggMax
 	// AggAvg computes SQL AVG over non-NULL int64 input values and finalizes to float64.
 	AggAvg
+	AggVar
+	AggStd
+	AggVarPopulation
+	AggStdPopulation
+	AggFirst
+	AggLast
 )
 
 // Aggregate describes one logical aggregate expression.

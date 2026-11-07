@@ -13,7 +13,7 @@ import (
 
 // TypedValue is an exact scalar with explicit dtype and SQL validity. Numeric
 // Bits contains two's-complement integer or IEEE floating bits, never a float
-// conversion of an unsigned integer. Text owns string data. DictionaryDomain
+// conversion of an unsigned integer. Text owns string or binary data. DictionaryDomain
 // denotes a dictionary code in Bits when the source supplied no dictionary;
 // AsString then returns false rather than inventing an empty string value.
 type TypedValue struct {
@@ -176,11 +176,20 @@ func (c *typedResultCollector) append(ctx context.Context, record aggregateRecor
 		rows = grown
 	}
 	bytes := int64(len(c.query.cq.GroupBy))*int64(unsafe.Sizeof(TypedGroupKey{})) + int64(len(c.query.cq.Aggregates))*int64(unsafe.Sizeof(TypedAggregateValue{}))
-	if c.query.cq.GroupShape == GroupShapeStringView {
+	if c.query.cq.GroupShape == GroupShapeGeneric {
+		size, err := genericGroupPayloadSize(record.stringKey, c.query.cq.GenericFields, -1)
+		if err != nil {
+			return err
+		}
+		if size > math.MaxInt64-bytes {
+			return fmt.Errorf("typed generic key size overflow")
+		}
+		bytes += size
+	} else if c.query.cq.GroupShape == GroupShapeStringView {
 		bytes += int64(len(record.stringKey))
 	}
 	for i, g := range c.query.cq.GroupBy {
-		if g.Type == memory.TypeString && g.Encoding == memory.EncodingDictionary && record.validMask&(1<<i) != 0 {
+		if c.query.cq.GroupShape != GroupShapeGeneric && g.Type == memory.TypeString && g.Encoding == memory.EncodingDictionary && record.validMask&(1<<i) != 0 {
 			bits := record.a
 			if i == 1 {
 				bits = record.b
@@ -194,26 +203,44 @@ func (c *typedResultCollector) append(ctx context.Context, record aggregateRecor
 		return err
 	}
 	row := TypedAggregateRow{Keys: make([]TypedGroupKey, len(c.query.cq.GroupBy)), Aggregates: make([]TypedAggregateValue, len(c.query.cq.Aggregates))}
-	for i, g := range c.query.cq.GroupBy {
-		bits := record.a
-		if i == 1 {
-			bits = record.b
-		}
-		v := TypedValue{Type: g.Type, Valid: record.validMask&(1<<i) != 0, Bits: bits}
-		if g.Type == memory.TypeString && v.Valid {
-			if g.Encoding == memory.EncodingDictionary {
-				if d, ok := c.query.dicts[g.Name]; ok {
-					v.Text = string(d.Value(uint32(bits)))
-				} else {
-					v.DictionaryDomain = g.DictionaryDomain
-				}
-			} else {
-				v.Text = string(record.stringKey)
+	if c.query.cq.GroupShape == GroupShapeGeneric {
+		if err := visitCanonicalGroupKey(record.stringKey, c.query.cq.GenericFields, func(i int, typ memory.DataType, valid bool, bits uint64, data []byte) error {
+			value := TypedValue{Type: typ, Valid: valid, Bits: bits}
+			if valid && (typ == memory.TypeString || typ == memory.TypeBinary) {
+				value.Text = string(data)
 			}
+			row.Keys[i] = TypedGroupKey{Name: c.query.cq.GenericFields[i].Name, Value: value}
+			return nil
+		}); err != nil {
+			return err
 		}
-		row.Keys[i] = TypedGroupKey{Name: g.Name, Value: v}
+	} else {
+		for i, g := range c.query.cq.GroupBy {
+			bits := record.a
+			if i == 1 {
+				bits = record.b
+			}
+			v := TypedValue{Type: g.Type, Valid: record.validMask&(1<<i) != 0, Bits: bits}
+			if g.Type == memory.TypeString && v.Valid {
+				if g.Encoding == memory.EncodingDictionary {
+					if d, ok := c.query.dicts[g.Name]; ok {
+						v.Text = string(d.Value(uint32(bits)))
+					} else {
+						v.DictionaryDomain = g.DictionaryDomain
+					}
+				} else {
+					v.Text = string(record.stringKey)
+				}
+			}
+			row.Keys[i] = TypedGroupKey{Name: g.Name, Value: v}
+		}
 	}
 	for i, a := range c.query.cq.Aggregates {
+		if expr.IsStatistics(a.Kind) {
+			typ, bits, valid := c.query.statisticsRecordValue(record, i)
+			row.Aggregates[i] = TypedAggregateValue{Alias: a.Alias, Kind: a.Kind, Value: TypedValue{Type: typ, Valid: valid, Bits: bits}}
+			continue
+		}
 		lane, typ, layout := 0, memory.TypeInt64, c.query.cq.AggregateLayout
 		if m := c.query.cq.MultiAggregate; m != nil {
 			lane = m.OutputLane[i]

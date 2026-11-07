@@ -171,7 +171,7 @@ func (e *Engine) Prepare(ctx context.Context, src source.Source, q expr.Query, o
 	pq := &PreparedQuery{e: e, cacheHandle: e.cache.newHandle(), src: src, cq: cq, stats: stats, parts: parts, strategy: strategy, dicts: make(map[string]source.Dictionary), feedbackKey: opts.FeedbackKey, feedbackSamples: feedbackSamples, executionPolicy: policy, executions: make(chan struct{}, maxConc)}
 	// Load source-level dictionaries once when available. Absence is allowed;
 	// materialized results will expose code+domain instead of decoded strings.
-	if dp, ok := src.(source.DictionaryProvider); ok {
+	if dp, ok := src.(source.DictionaryProvider); ok && cq.GroupShape != GroupShapeGeneric {
 		for _, g := range cq.GroupBy {
 			if g.Type == memory.TypeString && g.Encoding == memory.EncodingDictionary {
 				d, derr := dp.Dictionary(ctx, g.Name)

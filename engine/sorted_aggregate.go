@@ -12,7 +12,7 @@ func aggregateKeysEqual(shape GroupShape, left, right aggregateRecord) bool {
 	switch shape {
 	case GroupShapePairFixed:
 		return left.a == right.a && left.b == right.b
-	case GroupShapeStringView:
+	case GroupShapeStringView, GroupShapeGeneric:
 		return bytes.Equal(left.stringKey, right.stringKey)
 	default:
 		return left.a == right.a
@@ -33,6 +33,11 @@ func (p *PreparedQuery) bindSortedBatch(batch *memory.Batch) (aggregateBatchBind
 	}
 	if p.cq.GroupShape == GroupShapeGlobal {
 		return binding, nil
+	}
+	if p.cq.GroupShape == GroupShapeGeneric {
+		canonical, bindErr := bindCanonicalGroupKeys(p.cq.GenericFields, batch)
+		binding.canonical = &canonical
+		return binding, bindErr
 	}
 	if p.cq.GroupShape == GroupShapeStringView {
 		binding.strings, err = batch.String(p.cq.GroupBy[0].Name)
@@ -59,7 +64,7 @@ func (p *PreparedQuery) materializeRecord(record aggregateRecord) AggregateRow {
 			p.decodeFixedValid(p.cq.GroupBy[0], record.a, record.validMask&1 != 0),
 			p.decodeFixedValid(p.cq.GroupBy[1], record.b, record.validMask&2 != 0),
 		}
-	case GroupShapeStringView:
+	case GroupShapeStringView, GroupShapeGeneric:
 		row.Keys = []KeyPart{{Valid: record.validMask&1 != 0, Type: memory.TypeString}}
 		if row.Keys[0].Valid {
 			row.Keys[0].String = string(record.stringKey)
@@ -79,7 +84,7 @@ func aggregateKeyMatches(shape GroupShape, left *aggregateRecord, right aggregat
 	switch shape {
 	case GroupShapePairFixed:
 		return left.a == right.a && left.b == right.b
-	case GroupShapeStringView:
+	case GroupShapeStringView, GroupShapeGeneric:
 		return bytes.Equal(left.stringKey, right.stringKey)
 	default:
 		return left.a == right.a

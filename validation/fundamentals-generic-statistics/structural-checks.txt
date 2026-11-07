@@ -1,0 +1,9 @@
++ go run ./tools/checkgodoc
+GoDoc check: PASS (package docs and exported API comments follow naming conventions)
++ go run ./internal/cmd/gensimd -check
++ go run ./tools/kernelgate check
+kernel registry, gates file, and code are consistent
++ GOOS=linux
++ GOARCH=arm64
++ GOEXPERIMENT=simd
++ go build -buildvcs=false ./...

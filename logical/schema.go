@@ -231,6 +231,28 @@ func InferSchema(plan Plan) (memory.Schema, error) {
 			}
 			fields = append(fields, f)
 		}
+		genericKeys := len(n.GroupBy) > 2
+		for _, field := range fields {
+			switch field.Type {
+			case memory.TypeInt32, memory.TypeInt64, memory.TypeUint32:
+			case memory.TypeString:
+				if field.Encoding == memory.EncodingDictionary {
+					genericKeys = genericKeys || field.DictionaryDomain == ""
+				} else {
+					genericKeys = genericKeys || len(n.GroupBy) > 1
+				}
+			default:
+				genericKeys = true
+			}
+		}
+		if genericKeys {
+			for i := range fields {
+				if fields[i].Type == memory.TypeString || fields[i].Type == memory.TypeBinary {
+					fields[i].Encoding = memory.EncodingView
+					fields[i].DictionaryDomain = ""
+				}
+			}
+		}
 		if len(n.Aggregates) == 0 {
 			return memory.Schema{}, fmt.Errorf("aggregate requires at least one function")
 		}
@@ -258,10 +280,28 @@ func InferSchema(plan Plan) (memory.Schema, error) {
 				field.Type = typ
 				field.Nullable = agg.Kind != expr.AggCountValues
 
+			case expr.AggVar, expr.AggStd, expr.AggVarPopulation, expr.AggStdPopulation, expr.AggFirst, expr.AggLast:
+				input, ok := in.Field(agg.Column)
+				if !ok {
+					return memory.Schema{}, fmt.Errorf("aggregate column %q not found", agg.Column)
+				}
+				typ, err := expr.StatisticsType(input.Type, agg.Kind)
+				if err != nil {
+					return memory.Schema{}, err
+				}
+				field.Type = typ
+				field.Nullable = true
 			default:
 				return memory.Schema{}, fmt.Errorf("unsupported aggregate kind %d", agg.Kind)
 			}
 			fields = append(fields, field)
+		}
+		outputNames := make(map[string]struct{}, len(fields))
+		for _, field := range fields {
+			if _, duplicate := outputNames[field.Name]; duplicate {
+				return memory.Schema{}, fmt.Errorf("aggregate contains duplicate output %q", field.Name)
+			}
+			outputNames[field.Name] = struct{}{}
 		}
 		return memory.NewSchema(fields...), nil
 

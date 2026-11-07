@@ -68,6 +68,8 @@ const (
 	GroupShapePairFixed
 	// GroupShapeGlobal has no key and produces exactly one aggregate row.
 	GroupShapeGlobal
+	// GroupShapeGeneric stores canonical framed native/composite keys.
+	GroupShapeGeneric
 )
 
 // CompiledGroupColumn records physical metadata for one group key.
@@ -85,6 +87,7 @@ type CompiledQuery struct {
 	SimpleComparison *expr.SimpleComparison
 	GroupBy          []CompiledGroupColumn
 	GroupShape       GroupShape
+	GenericFields    []memory.Field
 	ValueColumn      string
 	ValueNullable    bool
 	Aggregates       []expr.Aggregate

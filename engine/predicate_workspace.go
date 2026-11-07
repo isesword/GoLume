@@ -11,6 +11,7 @@ import (
 // aggregatePredicateWorkspace delegates normal predicate ownership to the same
 // workspace used by physical filters, with one separately charged fused word.
 type aggregatePredicateWorkspace struct {
+	ordinal          uint64
 	fusedMask        memory.Bitmap
 	fusedReservation memory.Reservation
 	workspace        *expr.Workspace
@@ -80,4 +81,13 @@ func aggregateStreamContext(ctx context.Context, budget *memory.QueryBudget) (co
 		return ctx, nil
 	}
 	return memory.WithQueryBudget(ctx, budget), nil
+}
+
+func (w *aggregatePredicateWorkspace) nextOrdinal(rows int) (uint64, error) {
+	if rows < 0 || uint64(rows) > ^uint64(0)-w.ordinal {
+		return 0, fmt.Errorf("aggregate source ordinal overflow")
+	}
+	base := w.ordinal
+	w.ordinal += uint64(rows)
+	return base, nil
 }

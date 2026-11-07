@@ -11,6 +11,7 @@ import (
 	"gocolumn/source"
 	"math"
 	"time"
+	"unsafe"
 )
 
 func isAggregatePressure(err error) bool {
@@ -262,6 +263,16 @@ func checkedOutputBytes(total *int64, count int, width int64) error {
 
 func aggregateOutputBytes(schema memory.Schema, rows int, plainStringBytes int64) (int64, error) {
 	total := int64(0)
+	// Output owns a vector descriptor and a map entry per column in addition
+	// to backing buffers. Charge the largest supported descriptor and a
+	// conservative map slot/growth-overlap allowance; arbitrarily wide key
+	// schemas must not bypass admission merely by emitting one narrow row.
+	const mapEntryAndGrowthBytes = int64(128)
+	metadataPerColumn := int64(unsafe.Sizeof(memory.DictionaryStringVector{})) + mapEntryAndGrowthBytes
+	if err := checkedOutputBytes(&total, len(schema.Fields), metadataPerColumn); err != nil {
+		return 0, err
+	}
+
 	for _, field := range schema.Fields {
 		width := int64(0)
 		switch field.Type {
@@ -269,11 +280,11 @@ func aggregateOutputBytes(schema memory.Schema, rows int, plainStringBytes int64
 			width = 1
 		case memory.TypeInt16, memory.TypeUint16:
 			width = 2
-		case memory.TypeInt32, memory.TypeUint32, memory.TypeFloat32:
+		case memory.TypeInt32, memory.TypeUint32, memory.TypeFloat32, memory.TypeBool, memory.TypeDate32, memory.TypeTime32:
 			width = 4
-		case memory.TypeInt64, memory.TypeUint64, memory.TypeFloat64:
+		case memory.TypeInt64, memory.TypeUint64, memory.TypeFloat64, memory.TypeDate64, memory.TypeTimestamp, memory.TypeTime64, memory.TypeDuration:
 			width = 8
-		case memory.TypeString:
+		case memory.TypeString, memory.TypeBinary:
 			if field.Encoding == memory.EncodingDictionary {
 				width = 4
 			} else {
@@ -309,6 +320,12 @@ func (s *spillableAggregateStream) allocateOutputBatch(dst *memory.Batch, rows i
 		if !ok {
 			return fmt.Errorf("aggregate output schema is missing group %q", group.Name)
 		}
+		if s.query.cq.GroupShape == GroupShapeGeneric {
+			if err := allocateGenericGroupColumn(dst, field, rows, plainStringBytes); err != nil {
+				return err
+			}
+			continue
+		}
 		var validity memory.Bitmap
 		if field.Nullable {
 			validity = memory.EnsureBitmap(nil, rows)
@@ -320,7 +337,7 @@ func (s *spillableAggregateStream) allocateOutputBatch(dst *memory.Batch, rows i
 			dst.Int64s[field.Name] = &memory.Int64Vector{Values: make([]int64, rows), Validity: validity, Encoding: field.Encoding}
 		case memory.TypeUint32:
 			dst.Uint32s[field.Name] = &memory.Uint32Vector{Values: make([]uint32, rows), Validity: validity, Encoding: field.Encoding}
-		case memory.TypeString:
+		case memory.TypeString, memory.TypeBinary:
 			if field.Encoding == memory.EncodingDictionary {
 				dict := s.query.dicts[field.Name]
 				dst.DictStrings[field.Name] = &memory.DictionaryStringVector{Indices: make([]uint32, rows), Offsets: dict.Offsets, Data: dict.Data, Validity: validity, DictionaryDomain: field.DictionaryDomain, Encoding: memory.EncodingDictionary}
@@ -349,17 +366,17 @@ func (s *spillableAggregateStream) allocateOutputBatch(dst *memory.Batch, rows i
 			dst.Int8s[name] = &memory.Int8Vector{Values: make([]int8, rows), Validity: validity, Encoding: memory.EncodingPlain}
 		case memory.TypeInt16:
 			dst.Int16s[name] = &memory.Int16Vector{Values: make([]int16, rows), Validity: validity, Encoding: memory.EncodingPlain}
-		case memory.TypeInt32:
+		case memory.TypeInt32, memory.TypeDate32, memory.TypeTime32:
 			dst.Int32s[name] = &memory.Int32Vector{Values: make([]int32, rows), Validity: validity, Encoding: memory.EncodingPlain}
 		case memory.TypeUint8:
 			dst.Uint8s[name] = &memory.Uint8Vector{Values: make([]uint8, rows), Validity: validity, Encoding: memory.EncodingPlain}
 		case memory.TypeUint16:
 			dst.Uint16s[name] = &memory.Uint16Vector{Values: make([]uint16, rows), Validity: validity, Encoding: memory.EncodingPlain}
-		case memory.TypeUint32:
+		case memory.TypeUint32, memory.TypeBool:
 			dst.Uint32s[name] = &memory.Uint32Vector{Values: make([]uint32, rows), Validity: validity, Encoding: memory.EncodingPlain}
 		case memory.TypeFloat32:
 			dst.Float32s[name] = &memory.Float32Vector{Values: make([]float32, rows), Validity: validity, Encoding: memory.EncodingPlain}
-		case memory.TypeInt64:
+		case memory.TypeInt64, memory.TypeDate64, memory.TypeTimestamp, memory.TypeTime64, memory.TypeDuration:
 			dst.Int64s[name] = &memory.Int64Vector{Values: make([]int64, rows), Validity: validity, Encoding: memory.EncodingPlain}
 		case memory.TypeUint64:
 			dst.Uint64s[name] = &memory.Uint64Vector{Values: make([]uint64, rows), Validity: validity, Encoding: memory.EncodingPlain}
@@ -448,6 +465,10 @@ func aggregateValue(state aggregateRecord, kind expr.AggregateKind) (int64, floa
 
 func (s *spillableAggregateStream) setOutputRecord(dst *memory.Batch, row int, record aggregateRecord) error {
 	switch s.query.cq.GroupShape {
+	case GroupShapeGeneric:
+		if err := s.setGenericOutputKeys(dst, row, record.stringKey); err != nil {
+			return err
+		}
 	case GroupShapeGlobal:
 		// No key columns are emitted.
 	case GroupShapePairFixed:
@@ -534,8 +555,19 @@ func (s *spillableAggregateStream) materializeOutputRun(ctx context.Context, ref
 		return nil, fmt.Errorf("%w: aggregate output groups=%d want=%d max=%d", memory.ErrSpillCorrupt, preflight.groups, ref.groups, s.outputRows)
 	}
 	plainStringBytes := int64(0)
-	if s.query.cq.GroupShape == GroupShapeStringView {
+	if s.query.cq.GroupShape == GroupShapeStringView || s.query.cq.GroupShape == GroupShapeGeneric {
 		err = preflight.visit(func(record aggregateRecord) error {
+			if s.query.cq.GroupShape == GroupShapeGeneric {
+				return visitCanonicalGroupKey(record.stringKey, s.query.cq.GenericFields, func(_ int, typ memory.DataType, valid bool, _ uint64, data []byte) error {
+					if valid && (typ == memory.TypeString || typ == memory.TypeBinary) {
+						if int64(len(data)) > math.MaxInt64-plainStringBytes {
+							return fmt.Errorf("generic output payload overflow")
+						}
+						plainStringBytes += int64(len(data))
+					}
+					return nil
+				})
+			}
 			if int64(len(record.stringKey)) > math.MaxInt64-plainStringBytes {
 				return fmt.Errorf("aggregate output string bytes overflow")
 			}
@@ -546,7 +578,17 @@ func (s *spillableAggregateStream) materializeOutputRun(ctx context.Context, ref
 			return nil, err
 		}
 	}
-	bytes, err := aggregateOutputBytes(s.schema, ref.groups, plainStringBytes)
+	stringCapacity := plainStringBytes
+	if s.query.cq.GroupShape == GroupShapeGeneric {
+		stringCapacity = 0
+	}
+	bytes, err := aggregateOutputBytes(s.schema, ref.groups, stringCapacity)
+	if err == nil && s.query.cq.GroupShape == GroupShapeGeneric {
+		if plainStringBytes > math.MaxInt64-bytes {
+			return nil, fmt.Errorf("generic output size overflow")
+		}
+		bytes += plainStringBytes
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -558,10 +600,39 @@ func (s *spillableAggregateStream) materializeOutputRun(ctx context.Context, ref
 		lease.Release()
 		return nil, fmt.Errorf("aggregate output strings exceed addressable memory")
 	}
-	if err := s.allocateOutputBatch(dst, ref.groups, int(plainStringBytes)); err != nil {
+	if err := s.allocateOutputBatch(dst, ref.groups, int(stringCapacity)); err != nil {
 		dst.ClearColumns()
 		lease.Release()
 		return nil, err
+	}
+	if s.query.cq.GroupShape == GroupShapeGeneric {
+		// Count each string independently without unbudgeted per-column scratch.
+		for index, field := range s.query.cq.GenericFields {
+			if field.Type != memory.TypeString && field.Type != memory.TypeBinary {
+				continue
+			}
+			counter, countErr := s.query.newAggregateRunReader(restored.Object.Payload)
+			size := 0
+			if countErr == nil {
+				countErr = counter.visit(func(record aggregateRecord) error {
+					return visitCanonicalGroupKey(record.stringKey, s.query.cq.GenericFields, func(i int, _ memory.DataType, valid bool, _ uint64, data []byte) error {
+						if i == index && valid {
+							if len(data) > math.MaxInt-size {
+								return fmt.Errorf("generic payload size overflow")
+							}
+							size += len(data)
+						}
+						return nil
+					})
+				})
+			}
+			if countErr != nil {
+				dst.ClearColumns()
+				lease.Release()
+				return nil, countErr
+			}
+			dst.Strings[field.Name].Data = make([]byte, 0, size)
+		}
 	}
 	reader, err := s.query.newAggregateRunReader(restored.Object.Payload)
 	if err != nil {

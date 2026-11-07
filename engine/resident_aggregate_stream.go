@@ -79,7 +79,14 @@ func (p *PreparedQuery) newResidentAggregateStream(ctx context.Context, schema m
 		// native producers decode concurrently while borrowed batches remain
 		// pinned until this operator joins every reader of the current batch.
 		pipelineOpts.Workers = p.strategy.Workers
-		pipelineOpts.Ordering = pipeline.OrderingRelaxed
+		if !p.orderedStatistics() {
+			pipelineOpts.Ordering = pipeline.OrderingRelaxed
+		} else {
+			pipelineOpts.Ordering = pipeline.OrderingStable
+		}
+	}
+	if p.orderedStatistics() {
+		pipelineOpts.Ordering = pipeline.OrderingStable
 	}
 	input, err := pipeline.OpenBatchStream(ctx, p.src, readOpts, p.parts, exchange, pipelineOpts, p.e.opts.Observer)
 	if err != nil {
@@ -187,6 +194,10 @@ func (s *residentAggregateStream) consume(ctx context.Context) (err error) {
 			binding, bindErr := s.formatter.bindBatch(s.inputBatch)
 			if bindErr != nil {
 				return bindErr
+			}
+			binding.ordinalBase, err = s.predicate.nextOrdinal(s.inputBatch.Rows)
+			if err != nil {
+				return err
 			}
 			selection, evaluateErr := s.predicate.evaluate(ctx, s.query.cq.Predicate, s.inputBatch, s.query.e.kernels)
 			if evaluateErr != nil {
@@ -303,12 +314,33 @@ func (s *residentAggregateStream) Next(ctx context.Context, dst *memory.Batch) (
 	}
 	plainStringBytes := int64(0)
 	for _, record := range records {
+		if s.query.cq.GroupShape == GroupShapeGeneric {
+			size, err := genericGroupPayloadSize(record.stringKey, s.query.cq.GenericFields, -1)
+			if err != nil {
+				return false, s.abort(err)
+			}
+			if size > math.MaxInt64-plainStringBytes {
+				return false, s.abort(fmt.Errorf("generic output size overflow"))
+			}
+			plainStringBytes += size
+			continue
+		}
 		if int64(len(record.stringKey)) > math.MaxInt64-plainStringBytes {
 			return false, s.abort(fmt.Errorf("aggregate output string bytes overflow"))
 		}
 		plainStringBytes += int64(len(record.stringKey))
 	}
-	bytes, err := aggregateOutputBytes(s.schema, len(records), plainStringBytes)
+	stringCapacity := plainStringBytes
+	if s.query.cq.GroupShape == GroupShapeGeneric {
+		stringCapacity = 0
+	}
+	bytes, err := aggregateOutputBytes(s.schema, len(records), stringCapacity)
+	if err == nil && s.query.cq.GroupShape == GroupShapeGeneric {
+		if plainStringBytes > math.MaxInt64-bytes {
+			return false, s.abort(fmt.Errorf("generic output size overflow"))
+		}
+		bytes += plainStringBytes
+	}
 	if err != nil {
 		return false, s.abort(err)
 	}
@@ -321,8 +353,27 @@ func (s *residentAggregateStream) Next(ctx context.Context, dst *memory.Batch) (
 		return false, s.abort(fmt.Errorf("aggregate output strings exceed addressable memory"))
 	}
 	s.outputLease, s.outputDst = lease, dst
-	if err := s.formatter.allocateOutputBatch(dst, len(records), int(plainStringBytes)); err != nil {
+	if err := s.formatter.allocateOutputBatch(dst, len(records), int(stringCapacity)); err != nil {
 		return false, s.abort(err)
+	}
+	if s.query.cq.GroupShape == GroupShapeGeneric {
+		for index, field := range s.query.cq.GenericFields {
+			if field.Type != memory.TypeString && field.Type != memory.TypeBinary {
+				continue
+			}
+			size := int64(0)
+			for _, record := range records {
+				n, err := genericGroupPayloadSize(record.stringKey, s.query.cq.GenericFields, index)
+				if err != nil {
+					return false, s.abort(err)
+				}
+				if n > int64(math.MaxInt)-size {
+					return false, s.abort(fmt.Errorf("generic output capacity overflow"))
+				}
+				size += n
+			}
+			dst.Strings[field.Name].Data = make([]byte, 0, int(size))
+		}
 	}
 	for row, record := range records {
 		if err := s.formatter.setOutputRecord(dst, row, record); err != nil {

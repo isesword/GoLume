@@ -144,6 +144,9 @@ func nativeAggregateBits(b *memory.Batch, name string, typ memory.DataType, layo
 
 func (p *PreparedQuery) nativeRecordValue(record aggregateRecord, index int) (memory.DataType, uint64, bool) {
 	m := p.cq.MultiAggregate
+	if expr.IsStatistics(p.cq.Aggregates[index].Kind) {
+		return p.statisticsRecordValue(record, index)
+	}
 	lane := m.OutputLane[index]
 	state := numericAggregateRecordState(record, lane, m.Types[lane], m.Layouts[lane])
 	kind := aggregateStateKind(p.cq.Aggregates[index].Kind)
@@ -169,14 +172,14 @@ func setNativeAggregateOutput(dst *memory.Batch, name string, row int, typ memor
 		}
 		v.Values[row] = int16(bits)
 		validity = v.Validity
-	case memory.TypeInt32:
+	case memory.TypeInt32, memory.TypeDate32, memory.TypeTime32:
 		v := dst.Int32s[name]
 		if v == nil {
 			return fmt.Errorf("aggregate output %q missing Int32", name)
 		}
 		v.Values[row] = int32(bits)
 		validity = v.Validity
-	case memory.TypeInt64:
+	case memory.TypeInt64, memory.TypeDate64, memory.TypeTimestamp, memory.TypeTime64, memory.TypeDuration:
 		v := dst.Int64s[name]
 		if v == nil {
 			return fmt.Errorf("aggregate output %q missing Int64", name)
@@ -197,7 +200,7 @@ func setNativeAggregateOutput(dst *memory.Batch, name string, row int, typ memor
 		}
 		v.Values[row] = uint16(bits)
 		validity = v.Validity
-	case memory.TypeUint32:
+	case memory.TypeUint32, memory.TypeBool:
 		v := dst.Uint32s[name]
 		if v == nil {
 			return fmt.Errorf("aggregate output %q missing Uint32", name)

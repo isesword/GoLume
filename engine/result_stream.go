@@ -28,7 +28,7 @@ func (p *PreparedQuery) executeTyped(ctx context.Context, opts ExecuteOptions, a
 	if p == nil || ctx == nil {
 		return Result{}, fmt.Errorf("prepared execution requires a query and context")
 	}
-	if typed == nil && opts.Materialize && p.nativeAggregate() {
+	if typed == nil && opts.Materialize && (p.nativeAggregate() || p.cq.GroupShape == GroupShapeGeneric) {
 		return Result{}, fmt.Errorf("native aggregate materialization requires ExecuteTyped or a lazy DataFrame")
 	}
 	if err := ctx.Err(); err != nil {
@@ -118,8 +118,18 @@ func (p *PreparedQuery) executeTyped(ctx context.Context, opts ExecuteOptions, a
 
 func (p *PreparedQuery) resultSchema() memory.Schema {
 	fields := make([]memory.Field, 0, len(p.cq.GroupBy)+len(p.cq.Aggregates))
-	for _, group := range p.cq.GroupBy {
-		fields = append(fields, memory.Field{Name: group.Name, Type: group.Type, Encoding: group.Encoding, DictionaryDomain: group.DictionaryDomain, Nullable: group.Nullable})
+	if p.cq.GroupShape == GroupShapeGeneric {
+		for _, field := range p.cq.GenericFields {
+			if field.Type == memory.TypeString || field.Type == memory.TypeBinary {
+				field.Encoding = memory.EncodingView
+				field.DictionaryDomain = ""
+			}
+			fields = append(fields, field)
+		}
+	} else {
+		for _, group := range p.cq.GroupBy {
+			fields = append(fields, memory.Field{Name: group.Name, Type: group.Type, Encoding: group.Encoding, DictionaryDomain: group.DictionaryDomain, Nullable: group.Nullable})
+		}
 	}
 	for index, agg := range p.cq.Aggregates {
 		name := agg.Alias
@@ -133,7 +143,10 @@ func (p *PreparedQuery) resultSchema() memory.Schema {
 		case expr.AggAvg:
 			typ = memory.TypeFloat64
 		}
-		if p.nativeAggregate() {
+		if expr.IsStatistics(agg.Kind) {
+			s := p.statistics()
+			typ, _ = expr.StatisticsType(s.Types[s.OutputLane[index]], agg.Kind)
+		} else if p.nativeAggregate() {
 			lane := p.cq.MultiAggregate.OutputLane[index]
 			typ, _ = aggregate.NumericAggregateType(p.cq.MultiAggregate.Types[lane], aggregateStateKind(agg.Kind))
 		}

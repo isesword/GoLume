@@ -30,16 +30,21 @@ var aggregateRunMagic = [8]byte{'G', 'L', 'A', 'G', 'G', '0', '0', '1'}
 var errAggregateStateTarget = errors.New("aggregate retained-state target reached")
 
 type aggregateRecord struct {
-	a, b          uint64
-	validMask     uint8
-	stringKey     []byte
-	state         aggregate.Int64Result
-	states        []aggregate.Int64Result
-	rawStates     []byte
-	bundle        *aggregate.Int64Bundle
-	groupID       int
-	numericBundle *aggregate.NumericBundle
-	numericRaw    []byte
+	ordinal   aggregate.SourceOrdinal
+	canonical *canonicalGroupBinding
+
+	a, b             uint64
+	validMask        uint8
+	stringKey        []byte
+	state            aggregate.Int64Result
+	states           []aggregate.Int64Result
+	rawStates        []byte
+	bundle           *aggregate.Int64Bundle
+	groupID          int
+	numericBundle    *aggregate.NumericBundle
+	numericRaw       []byte
+	statisticsRaw    []byte
+	statisticsBundle *aggregate.StatisticsBundle
 }
 
 type aggregateRunRef struct {
@@ -350,6 +355,13 @@ func (t *aggregateStateTable) add(record aggregateRecord, value int64, valueVali
 }
 
 func aggregateRecordHash(shape GroupShape, record aggregateRecord) uint64 {
+	if shape == GroupShapeGeneric {
+		if record.canonical != nil {
+			hash, _ := record.canonical.HashRow(int(record.a))
+			return hash
+		}
+		return canonicalGroupKeyHash(record.stringKey)
+	}
 	if record.validMask == 0 {
 		return hashagg.Hash64(0x9e3779b97f4a7c15)
 	}
@@ -480,14 +492,15 @@ func encodeAggregateRecord(w *aggregateRunWriter, shape GroupShape, record aggre
 }
 
 type aggregateRunReader struct {
-	multi   *multiAggregateRunReader
-	numeric *numericAggregateRunReader
-	buf     []byte
-	pos     int
-	err     error
-	shape   GroupShape
-	layout  aggregate.Layout
-	groups  int
+	multi      *multiAggregateRunReader
+	numeric    *numericAggregateRunReader
+	statistics *statisticsAggregateRunReader
+	buf        []byte
+	pos        int
+	err        error
+	shape      GroupShape
+	layout     aggregate.Layout
+	groups     int
 }
 
 func newAggregateRunReader(payload []byte, shape GroupShape, layout aggregate.Layout) (*aggregateRunReader, error) {
@@ -550,6 +563,9 @@ func (r *aggregateRunReader) u64() uint64 {
 }
 
 func (r *aggregateRunReader) next() (aggregateRecord, bool, error) {
+	if r.statistics != nil {
+		return r.statistics.next()
+	}
 	if r.numeric != nil {
 		return r.numeric.next()
 	}
@@ -1030,6 +1046,9 @@ func (s *spillableAggregateStream) deleteRunRefs(ctx context.Context, refs []agg
 }
 
 type aggregateBatchBinding struct {
+	ordinalBase uint64
+	canonical   *canonicalGroupBinding
+
 	batch   *memory.Batch
 	first   fixedColumn
 	second  fixedColumn
@@ -1048,6 +1067,11 @@ func (s *spillableAggregateStream) bindBatch(batch *memory.Batch) (aggregateBatc
 		if err != nil {
 			return binding, err
 		}
+	}
+	if s.query.cq.GroupShape == GroupShapeGeneric {
+		canonical, bindErr := bindCanonicalGroupKeys(s.query.cq.GenericFields, batch)
+		binding.canonical = &canonical
+		return binding, bindErr
 	}
 	if s.query.cq.GroupShape == GroupShapeStringView {
 		binding.strings, err = batch.String(s.query.cq.GroupBy[0].Name)
@@ -1070,8 +1094,11 @@ type aggregateKey struct {
 }
 
 func (b aggregateBatchBinding) record(shape GroupShape, row int) aggregateRecord {
+	if shape == GroupShapeGeneric {
+		return aggregateRecord{a: uint64(row), validMask: 1, canonical: b.canonical, ordinal: aggregate.SourceOrdinal{Row: b.ordinalBase + uint64(row)}}
+	}
 	key := b.key(shape, row)
-	return aggregateRecord{a: key.a, b: key.b, validMask: key.validMask, stringKey: key.stringKey}
+	return aggregateRecord{a: key.a, b: key.b, validMask: key.validMask, stringKey: key.stringKey, ordinal: aggregate.SourceOrdinal{Row: b.ordinalBase + uint64(row)}}
 }
 
 func (b aggregateBatchBinding) key(shape GroupShape, row int) aggregateKey {
@@ -1156,6 +1183,10 @@ func (s *spillableAggregateStream) aggregateBatch(ctx context.Context, batch *me
 	if err != nil {
 		return err
 	}
+	binding.ordinalBase, err = workspace.nextOrdinal(batch.Rows)
+	if err != nil {
+		return err
+	}
 	selection, err := workspace.evaluate(ctx, s.query.cq.Predicate, batch, s.query.e.kernels)
 	if err != nil {
 		return err
@@ -1200,6 +1231,9 @@ func (s *spillableAggregateStream) aggregateBatch(ctx context.Context, batch *me
 			break
 		}
 		if pressureErr == nil || failedRow < 0 || retained == 0 {
+			if errors.Is(err, errAggregateStateTarget) {
+				return errors.Join(memory.ErrBudgetExceeded, err)
+			}
 			return err
 		}
 		released, spillErr := s.state.RequestHardSpill(ctx, retained)
@@ -1207,7 +1241,7 @@ func (s *spillableAggregateStream) aggregateBatch(ctx context.Context, batch *me
 			return errors.Join(pressureErr, spillErr)
 		}
 		if released == 0 {
-			return fmt.Errorf("aggregate cannot release state for row %d: %w", failedRow, pressureErr)
+			return fmt.Errorf("aggregate cannot release state for row %d: %w", failedRow, errors.Join(memory.ErrBudgetExceeded, pressureErr))
 		}
 		resume = failedRow
 	}
@@ -1217,7 +1251,11 @@ func (s *spillableAggregateStream) aggregateBatch(ctx context.Context, batch *me
 
 func (s *spillableAggregateStream) consumeInput(ctx context.Context) error {
 	exchange := s.budget.Operator("AggregateExchange", memory.MemoryInFlightBatch)
-	stream, err := pipeline.OpenBatchStream(ctx, s.query.src, s.readOpts, s.query.parts, exchange, s.query.e.opts.Pipeline, s.query.e.opts.Observer)
+	opts := s.query.e.opts.Pipeline
+	if s.query.orderedStatistics() {
+		opts.Ordering = pipeline.OrderingStable
+	}
+	stream, err := pipeline.OpenBatchStream(ctx, s.query.src, s.readOpts, s.query.parts, exchange, opts, s.query.e.opts.Observer)
 	if err != nil {
 		return err
 	}

@@ -9,9 +9,24 @@ import (
 )
 
 func compileQuery(schema memory.Schema, q expr.Query) (CompiledQuery, error) {
-	if len(q.GroupBy) > 2 {
-		return CompiledQuery{}, fmt.Errorf("aggregation supports zero, one or two group-by columns")
+	outputNames := make(map[string]struct{}, len(q.GroupBy)+len(q.Aggregates))
+	for _, name := range q.GroupBy {
+		if _, duplicate := outputNames[name]; duplicate {
+			return CompiledQuery{}, fmt.Errorf("aggregate contains duplicate output %q", name)
+		}
+		outputNames[name] = struct{}{}
 	}
+	for i, agg := range q.Aggregates {
+		name := agg.Alias
+		if name == "" {
+			name = fmt.Sprintf("agg_%d", i)
+		}
+		if _, duplicate := outputNames[name]; duplicate {
+			return CompiledQuery{}, fmt.Errorf("aggregate contains duplicate output %q", name)
+		}
+		outputNames[name] = struct{}{}
+	}
+
 	predicate := q.Filter
 	if predicate == nil {
 		predicate = expr.Bool(true)
@@ -45,6 +60,11 @@ func compileQuery(schema memory.Schema, q expr.Query) (CompiledQuery, error) {
 			layout.Max = true
 		case expr.AggAvg:
 			layout.Avg = true
+		case expr.AggVar, expr.AggStd, expr.AggVarPopulation, expr.AggStdPopulation, expr.AggFirst, expr.AggLast:
+			if a.Column == "" {
+				return CompiledQuery{}, fmt.Errorf("aggregate %q requires an input column", a.Alias)
+			}
+			continue
 		default:
 			return CompiledQuery{}, fmt.Errorf("unsupported aggregate kind %d", a.Kind)
 		}
@@ -71,46 +91,53 @@ func compileQuery(schema memory.Schema, q expr.Query) (CompiledQuery, error) {
 	}
 
 	groups := make([]CompiledGroupColumn, 0, len(q.GroupBy))
+	fields := make([]memory.Field, 0, len(q.GroupBy))
 	keyWidth := 0
+	generic := len(q.GroupBy) > 2
 	for _, name := range q.GroupBy {
 		f, ok := schema.Field(name)
 		if !ok {
 			return CompiledQuery{}, fmt.Errorf("group column %q not found", name)
 		}
-		g := CompiledGroupColumn{Name: name, Type: f.Type, Encoding: f.Encoding, DictionaryDomain: f.DictionaryDomain, Nullable: f.Nullable}
-		groups = append(groups, g)
-		switch f.Type {
-		case memory.TypeInt32, memory.TypeUint32:
-			keyWidth += 4
-		case memory.TypeInt64:
-			keyWidth += 8
-		case memory.TypeString:
-			if f.Encoding == memory.EncodingDictionary {
-				if f.DictionaryDomain == "" {
-					return CompiledQuery{}, fmt.Errorf("dictionary group column %q requires stable DictionaryDomain", name)
-				}
-				keyWidth += 4
-			} else {
-				if len(q.GroupBy) > 1 {
-					return CompiledQuery{}, fmt.Errorf("plain/view string is only supported as a single group key in phase-2.2")
-				}
-				if q.Hints.AverageKeyBytes > 0 {
-					keyWidth += q.Hints.AverageKeyBytes
-				} else {
-					keyWidth += 16
-				}
-			}
-		default:
+		width, supported := canonicalGroupWidth(f.Type)
+		if !supported {
 			return CompiledQuery{}, fmt.Errorf("unsupported group type %s for %q", f.Type, name)
 		}
+		fields = append(fields, f)
+		groups = append(groups, CompiledGroupColumn{Name: name, Type: f.Type, Encoding: f.Encoding, DictionaryDomain: f.DictionaryDomain, Nullable: f.Nullable})
+		if width == 0 {
+			width = q.Hints.AverageKeyBytes
+			if width <= 0 {
+				width = 16
+			}
+		}
+		keyWidth += width
+		switch f.Type {
+		case memory.TypeInt32, memory.TypeInt64, memory.TypeUint32:
+		case memory.TypeString:
+			if f.Encoding == memory.EncodingDictionary {
+				generic = generic || f.DictionaryDomain == ""
+			} else {
+				generic = generic || len(q.GroupBy) > 1
+			}
+		default:
+			generic = true
+		}
 	}
-
-	shape := GroupShapeInvalid
-	if len(groups) == 0 {
-		shape = GroupShapeGlobal
+	shape := GroupShapeGlobal
+	if generic {
+		shape = GroupShapeGeneric
+		keyWidth += canonicalGroupHeaderBytes * len(groups)
+		if multi == nil {
+			multi, err = compileMultiAggregate(schema, q.Aggregates, true)
+			if err != nil {
+				return CompiledQuery{}, err
+			}
+		}
+	} else if len(groups) == 2 {
+		shape = GroupShapePairFixed
 	} else if len(groups) == 1 {
-		g := groups[0]
-		switch g.Type {
+		switch groups[0].Type {
 		case memory.TypeInt32:
 			shape = GroupShapeI32
 		case memory.TypeInt64:
@@ -118,26 +145,26 @@ func compileQuery(schema memory.Schema, q expr.Query) (CompiledQuery, error) {
 		case memory.TypeUint32:
 			shape = GroupShapeU32
 		case memory.TypeString:
-			if g.Encoding == memory.EncodingDictionary {
+			if groups[0].Encoding == memory.EncodingDictionary {
 				shape = GroupShapeDictionaryString
 			} else {
 				shape = GroupShapeStringView
 			}
-		default:
-			return CompiledQuery{}, fmt.Errorf("single group type %s not yet supported", g.Type)
 		}
-	} else {
-		for _, g := range groups {
-			if g.Type == memory.TypeString && g.Encoding != memory.EncodingDictionary {
-				return CompiledQuery{}, fmt.Errorf("plain string cannot be embedded in fixed pair key")
-			}
-			switch g.Type {
-			case memory.TypeInt32, memory.TypeInt64, memory.TypeUint32, memory.TypeString:
-			default:
-				return CompiledQuery{}, fmt.Errorf("unsupported pair group type %s", g.Type)
+	}
+
+	// Preserve specialized dictionary cost estimates; generic dictionaries use
+	// decoded payload widths rather than four-byte domain-local codes.
+	if !generic {
+		for _, f := range fields {
+			if f.Type == memory.TypeString && f.Encoding == memory.EncodingDictionary {
+				width := q.Hints.AverageKeyBytes
+				if width <= 0 {
+					width = 16
+				}
+				keyWidth += 4 - width
 			}
 		}
-		shape = GroupShapePairFixed
 	}
 
 	card := q.Hints.Cardinality
@@ -157,7 +184,7 @@ func compileQuery(schema memory.Schema, q expr.Query) (CompiledQuery, error) {
 	}
 	comparisonID, hasComparisonID := simpleComparisonKernelID(simple)
 	return CompiledQuery{
-		MultiAggregate: multi, Predicate: prog, SimpleComparison: simple, GroupBy: groups, GroupShape: shape,
+		MultiAggregate: multi, Predicate: prog, SimpleComparison: simple, GroupBy: groups, GroupShape: shape, GenericFields: fields,
 		ValueColumn: value, ValueNullable: valueNullable, Aggregates: append([]expr.Aggregate(nil), q.Aggregates...), AggregateLayout: layout,
 		CardinalityHint: card, SelectivityHint: sel, AverageKeyBytes: avg,
 		ReuseSelection: q.Hints.ReuseSelection, ForceStrategy: q.Hints.ForceStrategy,

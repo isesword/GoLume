@@ -1,0 +1,117 @@
+{
+  "version": "1.35.2",
+  "cases": [
+    {
+      "id": "finite_variance_overflowing_m2",
+      "dtype": "Float64",
+      "input": [
+        -1e+154,
+        1e+154
+      ],
+      "results": {
+        "var_ddof0": "+Inf",
+        "std_ddof0": "+Inf",
+        "var_ddof1": "+Inf",
+        "std_ddof1": "+Inf",
+        "var_ddof2": null,
+        "std_ddof2": null
+      }
+    },
+    {
+      "id": "finite_std_overflowing_variance",
+      "dtype": "Float64",
+      "input": [
+        -1.7976931348623157e+308,
+        1.7976931348623157e+308
+      ],
+      "results": {
+        "var_ddof0": "+Inf",
+        "std_ddof0": "+Inf",
+        "var_ddof1": "+Inf",
+        "std_ddof1": "+Inf",
+        "var_ddof2": null,
+        "std_ddof2": null
+      }
+    },
+    {
+      "id": "int64_unit_differences",
+      "dtype": "Int64",
+      "input": [
+        9223372036854775805,
+        9223372036854775806,
+        9223372036854775807
+      ],
+      "results": {
+        "var_ddof0": 0.0,
+        "std_ddof0": 0.0,
+        "var_ddof1": 0.0,
+        "std_ddof1": 0.0,
+        "var_ddof2": 0.0,
+        "std_ddof2": 0.0
+      }
+    },
+    {
+      "id": "uint64_unit_differences",
+      "dtype": "UInt64",
+      "input": [
+        18446744073709551613,
+        18446744073709551614,
+        18446744073709551615
+      ],
+      "results": {
+        "var_ddof0": 0.0,
+        "std_ddof0": 0.0,
+        "var_ddof1": 0.0,
+        "std_ddof1": 0.0,
+        "var_ddof2": 0.0,
+        "std_ddof2": 0.0
+      }
+    },
+    {
+      "id": "singleton_nan",
+      "dtype": "Float64",
+      "input": [
+        "NaN"
+      ],
+      "results": {
+        "var_ddof0": "NaN",
+        "std_ddof0": "NaN",
+        "var_ddof1": null,
+        "std_ddof1": null,
+        "var_ddof2": null,
+        "std_ddof2": null
+      }
+    },
+    {
+      "id": "singleton_inf",
+      "dtype": "Float64",
+      "input": [
+        "+Inf"
+      ],
+      "results": {
+        "var_ddof0": "NaN",
+        "std_ddof0": "NaN",
+        "var_ddof1": null,
+        "std_ddof1": null,
+        "var_ddof2": null,
+        "std_ddof2": null
+      }
+    },
+    {
+      "id": "repeated_inf",
+      "dtype": "Float64",
+      "input": [
+        "+Inf",
+        "+Inf"
+      ],
+      "results": {
+        "var_ddof0": "NaN",
+        "std_ddof0": "NaN",
+        "var_ddof1": "NaN",
+        "std_ddof1": "NaN",
+        "var_ddof2": null,
+        "std_ddof2": null
+      }
+    }
+  ]
+}

@@ -216,7 +216,7 @@ func encodeNumericAggregateRun(ctx context.Context, shape GroupShape, types []me
 		case GroupShapePairFixed:
 			w.u64(record.a)
 			w.u64(record.b)
-		case GroupShapeStringView:
+		case GroupShapeStringView, GroupShapeGeneric:
 			w.u32(uint32(len(record.stringKey)))
 			w.bytes(record.stringKey)
 		}
@@ -303,7 +303,7 @@ func (reader *numericAggregateRunReader) next() (aggregateRecord, bool, error) {
 		record.a = r.u64()
 	case GroupShapePairFixed:
 		record.a, record.b = r.u64(), r.u64()
-	case GroupShapeStringView:
+	case GroupShapeStringView, GroupShapeGeneric:
 		length := r.u32()
 		if uint64(length) > uint64(math.MaxInt) {
 			r.err = fmt.Errorf("%w: numeric-aggregate string exceeds addressable memory", memory.ErrSpillCorrupt)

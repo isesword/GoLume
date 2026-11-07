@@ -104,7 +104,7 @@ func (p *PreparedQuery) newSortedAggregateStream(ctx context.Context, schema mem
 		stateLease: stateLease, outputRows: outputRows, inputBatch: memory.NewBatch(),
 		started: time.Now(), active: acquirePrepared,
 	}
-	if p.nativeAggregate() {
+	if p.nativeAggregate() && len(p.cq.MultiAggregate.Columns) > 0 {
 		stream.numeric, err = aggregate.NewNumericBundle(p.cq.MultiAggregate.Types, p.multiLayouts(), func(bytes int64) (memory.Reservation, error) { return stateBudget.ReserveGrowth(ctx, bytes) })
 		if err == nil {
 			err = stream.numeric.EnsureGroups(1)
@@ -116,7 +116,7 @@ func (p *PreparedQuery) newSortedAggregateStream(ctx context.Context, schema mem
 			stateLease.Release()
 			return nil, errors.Join(err, input.Close())
 		}
-	} else if p.cq.MultiAggregate != nil {
+	} else if p.cq.MultiAggregate != nil && !p.nativeAggregate() {
 		stream.bundle, err = aggregate.NewInt64Bundle(p.multiLayouts(), func(bytes int64) (memory.Reservation, error) { return stateBudget.ReserveGrowth(ctx, bytes) })
 		if err == nil {
 			err = stream.bundle.EnsureGroups(1)
@@ -128,8 +128,24 @@ func (p *PreparedQuery) newSortedAggregateStream(ctx context.Context, schema mem
 			stateLease.Release()
 			return nil, errors.Join(err, input.Close())
 		}
-	} else {
+	} else if p.cq.MultiAggregate == nil {
 		stream.state = aggregate.NewInt64Vector(1, p.cq.AggregateLayout)
+	}
+	if st := p.statistics(); st != nil {
+		stream.statistics, err = aggregate.NewStatisticsBundle(st.Types, st.Layouts, func(bytes int64) (memory.Reservation, error) { return stateBudget.ReserveGrowth(ctx, bytes) })
+		if err == nil {
+			err = stream.statistics.EnsureGroups(1)
+		}
+		if err != nil {
+			if stream.statistics != nil {
+				stream.statistics.Close()
+			}
+			if stream.numeric != nil {
+				stream.numeric.Close()
+			}
+			stateLease.Release()
+			return nil, errors.Join(err, input.Close())
+		}
 	}
 	// Seed the empty global group without adding a row: COUNT(*) must remain
 	// zero and SUM/MIN/MAX/AVG retain their SQL NULL identity.
@@ -142,6 +158,9 @@ func (p *PreparedQuery) newSortedAggregateStream(ctx context.Context, schema mem
 }
 
 type sortedAggregateStream struct {
+	canonicalScratch []byte
+	canonicalLease   memory.Reservation
+
 	outputDst         *memory.Batch
 	cleaned           bool
 	statsRecorded     bool
@@ -166,6 +185,7 @@ type sortedAggregateStream struct {
 	state      aggregate.Int64Vector
 	bundle     *aggregate.Int64Bundle
 	numeric    *aggregate.NumericBundle
+	statistics *aggregate.StatisticsBundle
 	current    aggregateRecord
 	haveGroup  bool
 	inputDone  bool
@@ -206,7 +226,7 @@ func (s *sortedAggregateStream) releaseKey() {
 func (s *sortedAggregateStream) startGroup(ctx context.Context, key aggregateKey, value int64, valid bool) error {
 	s.releaseKey()
 	s.current = aggregateRecord{a: key.a, b: key.b, validMask: key.validMask}
-	if s.query.cq.GroupShape == GroupShapeStringView && key.validMask&1 != 0 {
+	if (s.query.cq.GroupShape == GroupShapeStringView || s.query.cq.GroupShape == GroupShapeGeneric) && key.validMask&1 != 0 {
 		lease, err := s.stateBudget.ReserveGrowth(ctx, int64(len(key.stringKey)))
 		if err != nil {
 			return fmt.Errorf("reserve sorted aggregate string key: %w", err)
@@ -218,10 +238,19 @@ func (s *sortedAggregateStream) startGroup(ctx context.Context, key aggregateKey
 		if err := s.numeric.ClearGroup(0); err != nil {
 			return err
 		}
-		s.addBundleRow()
-	} else if s.bundle != nil {
+	}
+	if s.bundle != nil {
 		s.bundle.ClearGroup(0)
-		s.addBundleRow()
+	}
+	if s.statistics != nil {
+		if err := s.statistics.ClearGroup(0); err != nil {
+			return err
+		}
+	}
+	if s.query.cq.MultiAggregate != nil {
+		if err := s.addBundleRow(); err != nil {
+			return err
+		}
 	} else {
 		s.state.InitValue(0, value, valid)
 	}
@@ -230,6 +259,9 @@ func (s *sortedAggregateStream) startGroup(ctx context.Context, key aggregateKey
 }
 
 func (s *sortedAggregateStream) ensureOutputString(ctx context.Context, dst *memory.Batch, record aggregateRecord) error {
+	if s.query.cq.GroupShape == GroupShapeGeneric {
+		return s.ensureGenericOutputStrings(ctx, dst, record.stringKey)
+	}
 	if s.query.cq.GroupShape != GroupShapeStringView || record.validMask&1 == 0 {
 		return nil
 	}
@@ -274,9 +306,10 @@ func (s *sortedAggregateStream) flushGroup(ctx context.Context, dst *memory.Batc
 		s.current.state = s.bundle.Result(0, 0)
 		s.current.bundle = s.bundle
 		s.current.groupID = 0
-	} else {
+	} else if s.statistics == nil {
 		s.current.state = s.state.Result(0)
 	}
+	s.current.statisticsBundle = s.statistics
 	if dst == nil {
 		if s.recordSink != nil {
 			if err := s.recordSink(s.current); err != nil {
@@ -316,6 +349,10 @@ func (s *sortedAggregateStream) loadInput(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
+		binding.ordinalBase, err = s.predicate.nextOrdinal(s.inputBatch.Rows)
+		if err != nil {
+			return err
+		}
 		s.selection = selection.Truth
 		s.binding = binding
 		s.nextRow = 0
@@ -336,7 +373,16 @@ func (s *sortedAggregateStream) nextSelected(ctx context.Context) (aggregateKey,
 			if !memory.IsSet(s.selection, row) {
 				continue
 			}
-			key := s.binding.key(s.query.cq.GroupShape, row)
+			key := aggregateKey{}
+			if s.query.cq.GroupShape == GroupShapeGeneric {
+				encoded, err := s.canonicalRowKey(ctx, row)
+				if err != nil {
+					return aggregateKey{}, 0, false, false, err
+				}
+				key = aggregateKey{validMask: 1, stringKey: encoded}
+			} else {
+				key = s.binding.key(s.query.cq.GroupShape, row)
+			}
 			value, valid := s.binding.value(row)
 			return key, value, valid, true, nil
 		}
@@ -362,17 +408,17 @@ func shrinkAggregateOutput(dst *memory.Batch, schema memory.Schema, rows int) {
 			dst.Uint16s[field.Name].Values = dst.Uint16s[field.Name].Values[:rows]
 		case memory.TypeFloat32:
 			dst.Float32s[field.Name].Values = dst.Float32s[field.Name].Values[:rows]
-		case memory.TypeInt32:
+		case memory.TypeInt32, memory.TypeDate32, memory.TypeTime32:
 			dst.Int32s[field.Name].Values = dst.Int32s[field.Name].Values[:rows]
-		case memory.TypeInt64:
+		case memory.TypeInt64, memory.TypeDate64, memory.TypeTimestamp, memory.TypeTime64, memory.TypeDuration:
 			dst.Int64s[field.Name].Values = dst.Int64s[field.Name].Values[:rows]
-		case memory.TypeUint32:
+		case memory.TypeUint32, memory.TypeBool:
 			dst.Uint32s[field.Name].Values = dst.Uint32s[field.Name].Values[:rows]
 		case memory.TypeUint64:
 			dst.Uint64s[field.Name].Values = dst.Uint64s[field.Name].Values[:rows]
 		case memory.TypeFloat64:
 			dst.Float64s[field.Name].Values = dst.Float64s[field.Name].Values[:rows]
-		case memory.TypeString:
+		case memory.TypeString, memory.TypeBinary:
 			if field.Encoding == memory.EncodingDictionary {
 				dst.DictStrings[field.Name].Indices = dst.DictStrings[field.Name].Indices[:rows]
 			} else {
@@ -486,8 +532,11 @@ func (s *sortedAggregateStream) next(ctx context.Context, dst *memory.Batch) (bo
 				return false, s.fail(err)
 			}
 		} else if aggregateKeyMatches(s.query.cq.GroupShape, &s.current, key) {
-			if s.bundle != nil || s.numeric != nil {
-				s.addBundleRow()
+			if s.query.cq.MultiAggregate != nil {
+				if err := s.addBundleRow(); err != nil {
+					clearAggregateOutput(dst)
+					return false, s.fail(err)
+				}
 			} else {
 				s.state.AddValue(0, value, valid)
 			}
@@ -528,6 +577,12 @@ func (s *sortedAggregateStream) Close() error {
 }
 
 func (s *sortedAggregateStream) cleanup() error {
+	if s.canonicalLease != nil {
+		s.canonicalLease.Release()
+		s.canonicalLease = nil
+	}
+	s.canonicalScratch = nil
+
 	if s.cleaned {
 		return s.closeErr
 	}
@@ -537,6 +592,10 @@ func (s *sortedAggregateStream) cleanup() error {
 	s.predicate.close()
 	s.current = aggregateRecord{}
 	s.state = aggregate.Int64Vector{}
+	if s.statistics != nil {
+		s.statistics.Close()
+		s.statistics = nil
+	}
 	if s.numeric != nil {
 		s.numeric.Close()
 		s.numeric = nil

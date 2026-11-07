@@ -1,0 +1,90 @@
++ go test ./...
+ok  	gocolumn/aggregate	0.147s
+?   	gocolumn/cmd/demo	[no test files]
+ok  	gocolumn/cmd/kernel-info	0.008s
+?   	gocolumn/cmd/lazy-demo	[no test files]
+?   	gocolumn/costmodel	[no test files]
+ok  	gocolumn/engine	1.901s
+ok  	gocolumn/expr	4.489s
+ok  	gocolumn/hashagg	4.503s
+ok  	gocolumn/internal/benchtrack	0.003s
+?   	gocolumn/internal/cmd/gensimd	[no test files]
+ok  	gocolumn/internal/fixturegen	0.133s
+?   	gocolumn/internal/hashmix	[no test files]
+ok  	gocolumn/internal/kernelgate	0.012s
+ok  	gocolumn/internal/oracle	14.844s
+?   	gocolumn/internal/platformcal	[no test files]
+ok  	gocolumn/internal/proptest	0.089s
+ok  	gocolumn/join	0.008s
+ok  	gocolumn/kernel	0.065s
+ok  	gocolumn/lazy	2.497s
+?   	gocolumn/logical	[no test files]
+ok  	gocolumn/memory	0.847s
+?   	gocolumn/observer	[no test files]
+ok  	gocolumn/optimizer	0.008s
+ok  	gocolumn/physical	0.285s
+ok  	gocolumn/pipeline	0.094s
+ok  	gocolumn/planner	0.004s
+ok  	gocolumn/radix	0.009s
+ok  	gocolumn/scheduler	0.002s
+ok  	gocolumn/source	0.006s
+ok  	gocolumn/source/arrowrecord	0.006s
+ok  	gocolumn/source/inmemory	0.004s
+?   	gocolumn/source/internal/batchview	[no test files]
+ok  	gocolumn/source/parquet	0.871s
+ok  	gocolumn/tools/benchtrack	0.004s
+?   	gocolumn/tools/checkgodoc	[no test files]
+ok  	gocolumn/tools/genfallbackfixture	0.165s
+ok  	gocolumn/tools/genfixture	0.029s
+ok  	gocolumn/tools/kernelgate	0.004s
++ GOEXPERIMENT=simd
++ go test ./...
+ok  	gocolumn/aggregate	0.161s
+?   	gocolumn/cmd/demo	[no test files]
+ok  	gocolumn/cmd/kernel-info	0.010s
+?   	gocolumn/cmd/lazy-demo	[no test files]
+?   	gocolumn/costmodel	[no test files]
+ok  	gocolumn/engine	1.809s
+ok  	gocolumn/expr	4.207s
+ok  	gocolumn/hashagg	4.328s
+ok  	gocolumn/internal/benchtrack	0.008s
+?   	gocolumn/internal/cmd/gensimd	[no test files]
+ok  	gocolumn/internal/fixturegen	0.185s
+?   	gocolumn/internal/hashmix	[no test files]
+ok  	gocolumn/internal/kernelgate	0.010s
+ok  	gocolumn/internal/oracle	14.895s
+?   	gocolumn/internal/platformcal	[no test files]
+ok  	gocolumn/internal/proptest	0.094s
+ok  	gocolumn/join	0.011s
+ok  	gocolumn/kernel	0.078s
+ok  	gocolumn/lazy	2.302s
+?   	gocolumn/logical	[no test files]
+ok  	gocolumn/memory	0.780s
+?   	gocolumn/observer	[no test files]
+ok  	gocolumn/optimizer	0.006s
+ok  	gocolumn/physical	0.294s
+ok  	gocolumn/pipeline	0.093s
+ok  	gocolumn/planner	0.005s
+ok  	gocolumn/radix	0.006s
+ok  	gocolumn/scheduler	0.003s
+ok  	gocolumn/source	0.010s
+ok  	gocolumn/source/arrowrecord	0.007s
+ok  	gocolumn/source/inmemory	0.007s
+?   	gocolumn/source/internal/batchview	[no test files]
+ok  	gocolumn/source/parquet	0.879s
+ok  	gocolumn/tools/benchtrack	0.012s
+?   	gocolumn/tools/checkgodoc	[no test files]
+ok  	gocolumn/tools/genfallbackfixture	0.132s
+ok  	gocolumn/tools/genfixture	0.036s
+ok  	gocolumn/tools/kernelgate	0.003s
++ GOEXPERIMENT=simd
++ go test -race ./aggregate ./engine ./lazy ./hashagg ./physical ./optimizer
+ok  	gocolumn/aggregate	1.296s
+ok  	gocolumn/engine	15.702s
+ok  	gocolumn/lazy	13.750s
+ok  	gocolumn/hashagg	25.262s
+ok  	gocolumn/physical	2.046s
+ok  	gocolumn/optimizer	1.033s
++ go vet ./...
++ go run ./cmd/checkgodoc
+stat /tmp/golume-stage-generic-statistics/cmd/checkgodoc: directory not found

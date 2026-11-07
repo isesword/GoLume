@@ -1,0 +1,21 @@
+File: generic-legacy-after.test
+Build ID: 7d3b4fcd1a26a5d644c3a5912291ad31f51590f5
+Type: cpu
+Time: 2026-11-07 05:29:29 CST
+Duration: 3.43s, Total samples = 3.41s (99.54%)
+Showing nodes accounting for 3.21s, 94.13% of 3.41s total
+Dropped 54 nodes (cum <= 0.02s)
+Showing top 12 nodes out of 82
+      flat  flat%   sum%        cum   cum%
+     1.27s 37.24% 37.24%      1.92s 56.30%  gocolumn/hashagg.lookupI32Slot (inline)
+     0.60s 17.60% 54.84%      0.60s 17.60%  gocolumn/internal/hashmix.Mix64 (inline)
+     0.57s 16.72% 71.55%      3.11s 91.20%  gocolumn/hashagg.(*I32Table).aggregateSelectedSumCountNoGrow
+     0.47s 13.78% 85.34%      0.47s 13.78%  gocolumn/aggregate.addSumCountValue (inline)
+     0.15s  4.40% 89.74%      0.62s 18.18%  gocolumn/aggregate.SumCountState.AddValue (inline)
+     0.05s  1.47% 91.20%      0.65s 19.06%  gocolumn/hashagg.Hash64 (inline)
+     0.02s  0.59% 91.79%      0.03s  0.88%  gocolumn/aggregate.NewInt64Vector
+     0.02s  0.59% 92.38%      0.02s  0.59%  runtime.memclrNoHeapPointers
+     0.02s  0.59% 92.96%      0.02s  0.59%  runtime.nanotime
+     0.02s  0.59% 93.55%      0.02s  0.59%  runtime.scanblock
+     0.01s  0.29% 93.84%      0.03s  0.88%  gocolumn/pipeline.openWholeStream
+     0.01s  0.29% 94.13%      0.02s  0.59%  gocolumn/source/internal/batchview.(*View).bind
