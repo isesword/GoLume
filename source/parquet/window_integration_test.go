@@ -23,7 +23,7 @@ func TestLazyParquetWindowTimestampOrdering(t *testing.T) {
 		lazy.NewWindow(nil, lazy.OrderBy(lazy.Asc("event_time"))),
 		lazy.RowNumber("rn"),
 		lazy.RollingCountRows(lazy.RowsBetween(lazy.UnboundedPreceding, lazy.CurrentRow), "seen"),
-	).CollectFrame(context.Background())
+	).Collect(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}

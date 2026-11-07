@@ -1,0 +1,36 @@
+goos: linux
+goarch: amd64
+pkg: gocolumn/engine
+cpu: AMD EPYC 9V74 80-Core Processor                
+                                                              │ engine-frozen-gate-baseline-mapped.txt │ engine-frozen-gate-current-mapped.txt │
+                                                              │                          sec/op                          │             sec/op               vs base                │
+Int32ComparisonKernelMode/direct-fused/select=50/mode=scalar                                                7.964m ± 10%                      8.251m ±  3%        ~ (p=0.247 n=10)
+Int32ComparisonKernelMode/direct-fused/select=50/mode=simd                                                  7.896m ±  4%                      8.291m ±  5%   +5.01% (p=0.035 n=10)
+Int32ComparisonKernelMode/bitmap-direct/select=50/mode=scalar                                               7.180m ±  6%                      6.026m ±  7%  -16.08% (p=0.000 n=10)
+Int32ComparisonKernelMode/bitmap-direct/select=50/mode=simd                                                 7.040m ±  5%                      6.116m ±  4%  -13.13% (p=0.000 n=10)
+DirectFused                                                                                                 42.65m ± 28%                      40.32m ± 16%        ~ (p=0.075 n=10)
+BitmapDirect                                                                                                42.48m ± 10%                      34.25m ± 12%  -19.37% (p=0.000 n=10)
+PreparedParallelW4-4                                                                                        10.04m ±  6%                      16.78m ±  7%  +67.19% (p=0.000 n=10)
+geomean                                                                                                     12.85m                            12.87m         +0.15%
+
+                                                              │ engine-frozen-gate-baseline-mapped.txt │ engine-frozen-gate-current-mapped.txt │
+                                                              │                           B/op                           │             B/op              vs base                   │
+Int32ComparisonKernelMode/direct-fused/select=50/mode=scalar                                                  344.0 ± 0%                   46089.0 ± 0%  +13297.97% (p=0.000 n=10)
+Int32ComparisonKernelMode/direct-fused/select=50/mode=simd                                                    344.0 ± 0%                   46088.5 ± 0%  +13297.82% (p=0.000 n=10)
+Int32ComparisonKernelMode/bitmap-direct/select=50/mode=scalar                                                 336.0 ± 0%                   62728.0 ± 0%  +18569.05% (p=0.000 n=10)
+Int32ComparisonKernelMode/bitmap-direct/select=50/mode=simd                                                   336.0 ± 0%                   62728.0 ± 0%  +18569.05% (p=0.000 n=10)
+DirectFused                                                                                                 42.26Mi ± 0%                   39.42Mi ± 0%      -6.73% (p=0.000 n=10)
+BitmapDirect                                                                                                42.26Mi ± 0%                   39.43Mi ± 0%      -6.69% (p=0.000 n=10)
+PreparedParallelW4-4                                                                                        28.41Mi ± 0%                   51.22Mi ± 0%     +80.29% (p=0.000 n=10)
+geomean                                                                                                     48.83Ki                        940.3Ki        +1825.61%
+
+                                                              │ engine-frozen-gate-baseline-mapped.txt │ engine-frozen-gate-current-mapped.txt │
+                                                              │                        allocs/op                         │           allocs/op            vs base                  │
+Int32ComparisonKernelMode/direct-fused/select=50/mode=scalar                                                  3.000 ± 0%                    169.000 ± 0%  +5533.33% (p=0.000 n=10)
+Int32ComparisonKernelMode/direct-fused/select=50/mode=simd                                                    3.000 ± 0%                    169.000 ± 0%  +5533.33% (p=0.000 n=10)
+Int32ComparisonKernelMode/bitmap-direct/select=50/mode=scalar                                                 2.000 ± 0%                    162.000 ± 0%  +8000.00% (p=0.000 n=10)
+Int32ComparisonKernelMode/bitmap-direct/select=50/mode=simd                                                   2.000 ± 0%                    162.000 ± 0%  +8000.00% (p=0.000 n=10)
+DirectFused                                                                                                  2.749k ± 0%                     2.851k ± 0%     +3.71% (p=0.000 n=10)
+BitmapDirect                                                                                                 2.732k ± 0%                     2.843k ± 0%     +4.06% (p=0.000 n=10)
+PreparedParallelW4-4                                                                                         1.864k ± 0%                    11.712k ± 0%   +528.33% (p=0.000 n=10)
+geomean                                                                                                       46.96                           685.5       +1359.68%

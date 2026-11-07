@@ -74,13 +74,6 @@ func (s *SortSource) NewBatchStream(ctx context.Context, opts source.ReadOptions
 	return newExternalSortStream(ctx, s, opts)
 }
 
-// NewBatchStreamWithPartitions preserves the native stream path for prepared
-// queries. Sort owns one global output partition, so child partitions are
-// intentionally resolved by the child source rather than reusing output parts.
-func (s *SortSource) NewBatchStreamWithPartitions(ctx context.Context, opts source.ReadOptions, _ []source.Partition) (source.BatchStream, error) {
-	return s.NewBatchStream(ctx, opts)
-}
-
 type residentSortStream struct {
 	reader *sortReader
 	done   bool
@@ -704,9 +697,8 @@ func (s *externalSortStream) StreamDiagnostics() map[string]string {
 		"strategy": "external-stable", "input_rows": fmt.Sprint(s.inputRows), "output_rows": fmt.Sprint(s.outputRows),
 		"spill_runs": fmt.Sprint(s.spillRuns), "spill_bytes": fmt.Sprint(s.spillBytes),
 		"merge_levels": fmt.Sprint(s.mergeLevels), "merge_fan_in": fmt.Sprint(externalSortFanIn),
-		"peak_memory_bytes": fmt.Sprint(snapshot.PeakBytes),
+		"peak_memory_scope": "query", "peak_memory_bytes": fmt.Sprint(snapshot.PeakBytes),
 	}
 }
 
-var _ source.PreparedBatchStreamProvider = (*SortSource)(nil)
 var _ source.BatchStreamDiagnostics = (*externalSortStream)(nil)

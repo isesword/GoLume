@@ -1,0 +1,45 @@
+import json,sys,statistics,collections
+def ms(ns):return ns/1e6
+def dur(e):return e['End']-e['Start']
+def union(es):
+ a=sorted((e['Start'],e['End']) for e in es);out=[]
+ for x,y in a:
+  if out and x<=out[-1][1]:out[-1][1]=max(y,out[-1][1])
+  else:out.append([x,y])
+ return out
+def overlap(a,b):
+ return sum(max(0,min(x2,y2)-max(x1,y1)) for x1,x2 in union(a) for y1,y2 in union(b))
+records=[]
+for p in sys.argv[1:]:records+=json.load(open(p))
+by=collections.defaultdict(list)
+for r in records:by[r['Mode']].append(r)
+for mode,rs in by.items():
+ durations=sorted(r['DurationNS'] for r in rs);q1,q3=statistics.quantiles(durations,n=4)[::2];sel=[r for r in rs if q1<=r['DurationNS']<=q3]
+ print('\nMODE',mode,'N',len(rs),'median_ms',ms(statistics.median(durations)),'IQR_ms',ms(q1),ms(q3),'middle50_count',len(sel))
+ values=collections.defaultdict(list)
+ for r in sel:
+  es=r['Events'];groups=collections.defaultdict(list)
+  for e in es:groups[e['Name']].append(e)
+  v={k:sum(dur(e) for e in g) for k,g in groups.items()};v['total']=r['DurationNS'];
+  if mode!='old':
+   v['append_exclusive']=v.get('append_outer',0)-overlap(groups['append_outer'],groups['flush'])
+   for i,e in enumerate(sorted(groups['flush'],key=lambda e:e['Start'])):
+    v[f'wave{i+1}_total']=dur(e)
+    for name in ['classify','scatter','hash','ensure_scratch']:
+     v[f'wave{i+1}_{name}']=sum(dur(x) for x in groups[name] if e['Start']<=x['Start'] and x['End']<=e['End'])
+   v['consumer_accounted']=sum(v.get(k,0) for k in ['native_setup','retained_reset','consumer_next','consumer_predicate','append_exclusive','flush'])
+   v['unattributed']=v['total']-v['consumer_accounted']
+   v['producer_next_union']=sum(b-a for a,b in union(groups['producer_next']))
+   v['producer_next_overlap_flush']=overlap(groups['producer_next'],groups['flush'])
+   v['producer_next_overlap_append_outer']=overlap(groups['producer_next'],groups['append_outer'])
+   v['producer_hold_union']=sum(b-a for a,b in union(groups['producer_hold']))
+   v['flush_other']=v['flush']-sum(v[k] for k in ['classify','scatter','hash','ensure_scratch'])
+  else:
+   v['unattributed']=v['total']-sum(v.get(k,0) for k in ['old_scancompact','old_consolidate','classify','scatter','hash'])
+  for k,x in v.items():values[k].append(x)
+ for k in sorted(values):print('%-36s mean_ms %8.3f median_ms %8.3f'%(k,ms(statistics.mean(values[k])),ms(statistics.median(values[k]))))
+ r=min(rs,key=lambda r:abs(r['DurationNS']-statistics.median(durations)))
+ print('Representative iteration',r['Iteration'],'duration',ms(r['DurationNS']))
+ for e in sorted(r['Events'],key=lambda x:x['Start']):
+  if not e['Name'].endswith('_worker') and e['Name'] not in ['producer_hold','producer_next','producer_open','old_read','old_predicate','old_compact']:
+   print('  %-24s %7.3f - %7.3f (%7.3f) rows=%d'%(e['Name'],ms(e['Start']),ms(e['End']),ms(dur(e)),e['Rows']))

@@ -20,7 +20,7 @@ func TestStringTransformsProjectionUsesUnicodeAndPropagatesNull(t *testing.T) {
 	batch.Reset(5)
 
 	trimmed := Trim(Col("s"))
-	program, err := CompileProjection(schema, []NamedExpr{
+	program, err := CompileExpressions(schema, []NamedExpr{
 		Named(trimmed, "trim"),
 		Named(TrimStart(Col("s")), "trim_start"),
 		Named(TrimEnd(Col("s")), "trim_end"),
@@ -37,7 +37,7 @@ func TestStringTransformsProjectionUsesUnicodeAndPropagatesNull(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	values, err := program.Evaluate(batch, &ScalarWorkspace{}, testKernelSet())
+	values, err := evaluateProjectionTest(program, batch, &evaluationState{}, testKernelSet())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -73,7 +73,7 @@ func TestStringTransformsMaterializeDictionaryInput(t *testing.T) {
 	}
 	batch.Reset(4)
 
-	program, err := CompileProjection(schema, []NamedExpr{
+	program, err := CompileExpressions(schema, []NamedExpr{
 		Named(Trim(Col("s")), "trim"),
 		Named(ReplaceAll(Col("s"), Str("-"), Str("_")), "replace"),
 		Named(Slice(Trim(Col("s")), I64(-2), I64(2)), "suffix"),
@@ -83,7 +83,7 @@ func TestStringTransformsMaterializeDictionaryInput(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	values, err := program.Evaluate(batch, &ScalarWorkspace{}, testKernelSet())
+	values, err := evaluateProjectionTest(program, batch, &evaluationState{}, testKernelSet())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -115,14 +115,14 @@ func TestDictionaryPredicateWorkspaceReusesStableDomainWithoutAllocations(t *tes
 	if err != nil {
 		t.Fatal(err)
 	}
-	var workspace EvalWorkspace
+	var workspace evaluationState
 	kernels := testKernelSet()
-	if _, err := program.Evaluate(batch, &workspace, kernels); err != nil {
+	if _, err := evaluateBoolTest(program, batch, &workspace, kernels); err != nil {
 		t.Fatal(err)
 	}
 	var evaluateErr error
 	if got := testing.AllocsPerRun(100, func() {
-		_, evaluateErr = program.Evaluate(batch, &workspace, kernels)
+		_, evaluateErr = evaluateBoolTest(program, batch, &workspace, kernels)
 	}); got != 0 {
 		t.Fatalf("repeated dictionary predicate allocations=%v", got)
 	}
@@ -131,7 +131,7 @@ func TestDictionaryPredicateWorkspaceReusesStableDomainWithoutAllocations(t *tes
 	}
 	batch.DictStrings["s"].DictionaryDomain = "changed"
 	batch.DictStrings["s"].Data = []byte("xxxxxbetaxxxxx")
-	result, err := program.Evaluate(batch, &workspace, kernels)
+	result, err := evaluateBoolTest(program, batch, &workspace, kernels)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -154,7 +154,7 @@ func TestByteLengthAndFindPredicateFastPathsPreserveThreeValuedLogic(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err := program.Evaluate(batch, &EvalWorkspace{}, testKernelSet())
+	result, err := evaluateBoolTest(program, batch, &evaluationState{}, testKernelSet())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -178,7 +178,7 @@ func TestStringTransformTypeAndSliceErrors(t *testing.T) {
 		Slice(Col("s"), F64(1), I64(1)),
 		Str(string([]byte{0xff})),
 	} {
-		if _, err := CompileScalar(schema, bad); err == nil {
+		if _, err := Compile(schema, bad); err == nil {
 			t.Fatalf("%s should fail type validation", bad)
 		}
 	}
@@ -186,11 +186,11 @@ func TestStringTransformTypeAndSliceErrors(t *testing.T) {
 	batch := memory.NewBatch()
 	batch.Strings["s"] = phase33StringVector([]string{"Go语言"}, nil)
 	batch.Reset(1)
-	program, err := CompileScalar(schema, Slice(Col("s"), I64(0), I64(-1)))
+	program, err := Compile(schema, Slice(Col("s"), I64(0), I64(-1)))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := program.Evaluate(batch, &ScalarWorkspace{}, testKernelSet()); err == nil || !strings.Contains(err.Error(), "row 0") {
+	if _, err := evaluateValueTest(program, batch, &evaluationState{}, testKernelSet()); err == nil || !strings.Contains(err.Error(), "row 0") {
 		t.Fatalf("negative slice length error=%v", err)
 	}
 }

@@ -3,12 +3,12 @@ package expr
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"gocolumn/kernel"
 	"gocolumn/memory"
 	"math"
 	"math/bits"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -16,11 +16,8 @@ import (
 	"unicode/utf8"
 )
 
-// ScalarOpcode identifies one physical scalar-expression instruction.
-type ScalarOpcode uint8
-
 const (
-	scalarColumn ScalarOpcode = iota + 1
+	scalarColumn opcode = codeCmpExtract + 1 + iota
 	scalarLiteralI64
 	scalarLiteralF64
 	scalarLiteralString
@@ -29,53 +26,37 @@ const (
 	scalarUnary
 	scalarTernary
 	scalarJSONDecode
+	scalarLiteralBool
+	scalarLiteralNull
+	scalarCompare
+	scalarBoolean
+	scalarStringMatch
+	scalarConditional
 )
 
-// ScalarInstruction is one operation in a compiled scalar-expression program.
-// Type is the logical result type; SourceType is populated for explicit casts.
-type ScalarInstruction struct {
-	Code         ScalarOpcode
-	Op           Op
-	Type         memory.DataType
-	SourceType   memory.DataType
-	Column       string
-	I64          int64
-	F64          float64
-	String       string
-	Regex        *regexp.Regexp
-	RegexGroup   int
-	StructFields []memory.Field
-	A, B, C      int
-}
-
-// ScalarProgram is a compact reusable typed scalar-expression program. It is
-// kept as the single-expression API while ProjectionProgram shares one fused
-// instruction DAG across multiple projection outputs.
-type ScalarProgram struct {
-	Instructions []ScalarInstruction
-	Root         int
-	Type         memory.DataType
-	Nullable     bool
-}
-
 // ProjectionOutput maps one compiled root register to a named output column.
-type ProjectionOutput struct {
+type programOutput struct {
+	Field    memory.Field
 	Name     string
-	Root     int
+	root     int
 	Type     memory.DataType
 	Nullable bool
 }
 
-// ProjectionProgram is a fused scalar program for multiple named projection
-// expressions. Common subexpressions compile to one shared register.
-type ProjectionProgram struct {
-	Instructions []ScalarInstruction
-	Outputs      []ProjectionOutput
-}
-
 type scalarRegister struct {
-	typ      memory.DataType
-	validity memory.Bitmap
+	exportBatch       *memory.Batch
+	exportReservation memory.Reservation
+	opaque            *memory.OpaqueVector
+	regions           []*evaluationState
+	regionReservation memory.Reservation
+	choices           []int
+	BoolVector
+	dictionary dictionaryPredicateCache
+	literal    []byte
+	literalKey string
+	active     memory.Bitmap
+	typ        memory.DataType
+	validity   memory.Bitmap
 
 	i8  []int8
 	i16 []int16
@@ -95,119 +76,128 @@ type scalarRegister struct {
 	offsets []uint32
 	data    []byte
 
-	constant bool
-	i64lit   int64
-	f64lit   float64
-	strlit   string
-	charged  int64
-	reserve  func(int64) error
+	constant        bool
+	i64lit          int64
+	f64lit          float64
+	strlit          string
+	charged         int64
+	reserve         func(int64) error
+	acquire         func(int64) (memory.Reservation, error)
+	checkContext    func() error
+	jsonReservation memory.Reservation
+	buffers         [17]memory.Reservation
+	ownedValidity   memory.Bitmap
+	listValidity    memory.Bitmap
 }
 
-// ScalarWorkspace retains typed scalar registers across source reads. Column
+// evaluationState retains typed scalar registers across source reads. Column
 // registers borrow input slices; computed registers retain their own buffers.
-type ScalarWorkspace struct {
-	regs         []scalarRegister
-	ctx          context.Context
-	manager      memory.Manager
-	reservations []memory.Reservation
+type evaluationState struct {
+	activeRows        memory.Bitmap
+	program           []instruction
+	fixedRows         int
+	staticReservation memory.Reservation
+	reserveHook       func(int64) (memory.Reservation, error)
+	regs              []scalarRegister
+	owned             []scalarRegister
+	outputs           []ScalarValue
+	storage           [3]memory.Reservation
+	ensureErr         error
+	ctx               context.Context
+	manager           memory.Manager
+	reservations      []memory.Reservation
 }
 
-// SetMemoryManager configures memory accounting for subsequently grown
-// computed registers. Existing reservations remain charged until Close.
-func (w *ScalarWorkspace) SetMemoryManager(ctx context.Context, manager memory.Manager) {
+// SetMemoryManager refreshes the evaluation context. Comparable unchanged
+// managers retain buffers; changing manager (or using a non-comparable manager)
+// resets results and releases prior reservations before future evaluations.
+func (w *evaluationState) SetMemoryManager(ctx context.Context, manager memory.Manager) {
+	if !sameScalarManager(w.manager, manager) {
+		_ = w.Close()
+	}
 	w.ctx = ctx
 	w.manager = manager
 }
 
-// Close releases every memory reservation retained by the workspace.
-func (w *ScalarWorkspace) Close() error {
-	for i := len(w.reservations) - 1; i >= 0; i-- {
-		w.reservations[i].Release()
-	}
-	w.reservations = nil
-	for i := range w.regs {
-		w.regs[i].charged = 0
-		w.regs[i].reserve = nil
-	}
-	return nil
-}
-
-func (w *ScalarWorkspace) reserve(bytes int64) error {
-	if bytes <= 0 || w.manager == nil {
+// Close drops all retained and borrowed buffers and releases their reservations.
+// The configured memory manager is kept so the workspace can be reused safely.
+func (w *evaluationState) Close() error {
+	if w == nil {
 		return nil
 	}
-	ctx := w.ctx
-	if ctx == nil {
-		ctx = context.Background()
+	for i := range w.owned[:cap(w.owned)] {
+		releaseRegisterExport(&w.owned[:cap(w.owned)][i])
+		for _, region := range w.owned[:cap(w.owned)][i].regions {
+			_ = region.Close()
+		}
+		if r := w.owned[:cap(w.owned)][i].dictionary.reservation; r != nil {
+			r.Release()
+		}
 	}
-	r, err := w.manager.Reserve(ctx, bytes)
-	if err != nil {
-		return err
+	if w.staticReservation != nil {
+		w.staticReservation.Release()
+		w.staticReservation = nil
 	}
-	w.reservations = append(w.reservations, r)
+	w.activeRows = nil
+	w.program = nil
+	w.fixedRows = 0
+	w.regs, w.owned, w.outputs = nil, nil, nil
+	w.storage = [3]memory.Reservation{}
+	w.ensureErr = nil
+	for len(w.reservations) > 0 {
+		w.reservations[len(w.reservations)-1].Release()
+	}
+	w.reservations = nil
 	return nil
 }
 
-// Ensure sizes scalar registers for one execution while retaining computed
-// backing allocations from prior batches.
-func (w *ScalarWorkspace) Ensure(_ int, regs int) {
-	if cap(w.regs) < regs {
-		w.regs = make([]scalarRegister, regs)
-	} else {
-		w.regs = w.regs[:regs]
-	}
-	for i := range w.regs {
-		r := &w.regs[i]
-		r.typ = memory.TypeInvalid
-		r.strView = nil
-		r.strDict = nil
-		r.constant = false
-		r.strlit = ""
-		r.reserve = w.reserve
-	}
+func (w *evaluationState) reserve(bytes int64) error {
+	_, err := w.acquire(bytes)
+	return err
+}
+
+// Ensure prepares register metadata. Allocation failures are reported by the
+// next Evaluate call; callers need not call Ensure before evaluating a program.
+func (w *evaluationState) Ensure(_ int, regs int) {
+	w.ensureErr = w.ensureRegisters(regs)
 }
 
 type scalarCompiler struct {
 	schema       memory.Schema
-	instructions []ScalarInstruction
+	instructions []instruction
 	memo         map[string]int
 }
 
-// CompileScalar validates and lowers one typed scalar expression.
-func CompileScalar(schema memory.Schema, e Expr) (ScalarProgram, error) {
-	c := newScalarCompiler(schema)
-	root, info, err := c.compile(e)
-	if err != nil {
-		return ScalarProgram{}, err
-	}
-	return ScalarProgram{Instructions: c.instructions, Root: root, Type: info.Type, Nullable: info.Nullable}, nil
-}
-
-// CompileProjection compiles several named scalar expressions into one DAG and
-// performs compile-time common-subexpression elimination across output columns.
-func CompileProjection(schema memory.Schema, named []NamedExpr) (ProjectionProgram, error) {
+// CompileExpressions compiles named outputs into one shared typed program.
+func CompileExpressions(schema memory.Schema, named []NamedExpr) (Program, error) {
 	if len(named) == 0 {
-		return ProjectionProgram{}, fmt.Errorf("projection requires expressions")
+		return Program{}, fmt.Errorf("projection requires expressions")
 	}
 	c := newScalarCompiler(schema)
-	out := ProjectionProgram{}
+	out := Program{}
 	seen := make(map[string]struct{}, len(named))
 	for _, n := range named {
 		name, err := n.Name()
 		if err != nil {
-			return ProjectionProgram{}, err
+			return Program{}, err
 		}
 		if _, dup := seen[name]; dup {
-			return ProjectionProgram{}, fmt.Errorf("projection contains duplicate output %q", name)
+			return Program{}, fmt.Errorf("projection contains duplicate output %q", name)
 		}
 		seen[name] = struct{}{}
-		root, info, err := c.compile(n.Expr)
+		bound, err := Bind(schema, n.Expr)
 		if err != nil {
-			return ProjectionProgram{}, fmt.Errorf("projection %q: %w", name, err)
+			return Program{}, fmt.Errorf("projection %q: %w", name, err)
 		}
-		out.Outputs = append(out.Outputs, ProjectionOutput{Name: name, Root: root, Type: info.Type, Nullable: info.Nullable})
+		root, info, err := c.compileBound(bound)
+		if err != nil {
+			return Program{}, fmt.Errorf("projection %q: %w", name, err)
+		}
+		out.outputs = append(out.outputs, programOutput{Name: name, root: root, Type: info.Type, Nullable: info.Nullable, Field: bound.OutputField(name)})
 	}
-	out.Instructions = c.instructions
+	out.instructions = c.instructions
+	out.complexity = len(c.instructions)
+	out.root = -1
 	return out, nil
 }
 
@@ -216,93 +206,138 @@ func newScalarCompiler(schema memory.Schema) *scalarCompiler {
 }
 
 func (c *scalarCompiler) compile(e Expr) (int, TypeInfo, error) {
-	if e == nil {
-		return 0, TypeInfo{}, fmt.Errorf("scalar expression is nil")
-	}
-	info, err := InferScalarType(c.schema, e)
+	bound, err := Bind(c.schema, e)
 	if err != nil {
 		return 0, TypeInfo{}, err
 	}
+	return c.compileBound(bound)
+}
+func (c *scalarCompiler) compileBound(bound *BoundExpr) (int, TypeInfo, error) {
+	e := bound.Expr
+	info := TypeInfo{Type: bound.Field.Type, Nullable: bound.Field.Nullable}
 	key := scalarExprKey(e)
 	if reg, ok := c.memo[key]; ok {
 		return reg, info, nil
 	}
-	var in ScalarInstruction
-	switch n := e.(type) {
-	case Column:
-		in = ScalarInstruction{Code: scalarColumn, Type: info.Type, Column: n.Name}
-	case Int64Literal:
-		in = ScalarInstruction{Code: scalarLiteralI64, Type: memory.TypeInt64, I64: n.Value}
-	case Float64Literal:
-		in = ScalarInstruction{Code: scalarLiteralF64, Type: memory.TypeFloat64, F64: n.Value}
-	case StringLiteral:
-		in = ScalarInstruction{Code: scalarLiteralString, Type: memory.TypeString, String: n.Value}
-	case Date32Literal:
-		in = ScalarInstruction{Code: scalarLiteralI64, Type: memory.TypeDate32, I64: int64(n.Days)}
-	case TimestampLiteral:
-		in = ScalarInstruction{Code: scalarLiteralI64, Type: memory.TypeTimestamp, I64: n.Value}
-	case DurationLiteral:
-		in = ScalarInstruction{Code: scalarLiteralI64, Type: memory.TypeDuration, I64: int64(n.Value)}
-	case TimestampUnitLiteral:
-		nanos, err := n.Nanoseconds()
-		if err != nil {
-			return 0, TypeInfo{}, err
-		}
-		in = ScalarInstruction{Code: scalarLiteralI64, Type: memory.TypeTimestamp, I64: nanos}
-	case Cast:
-		a, ai, err := c.compile(n.Value)
-		if err != nil {
-			return 0, TypeInfo{}, err
-		}
-		in = ScalarInstruction{Code: scalarCast, Type: n.Target, SourceType: ai.Type, A: a}
-	case Unary:
-		a, ai, err := c.compile(n.Value)
-		if err != nil {
-			return 0, TypeInfo{}, err
-		}
-		in = ScalarInstruction{Code: scalarUnary, Op: n.Op, Type: info.Type, SourceType: ai.Type, A: a}
-	case Ternary:
-		a, _, err := c.compile(n.Value)
-		if err != nil {
-			return 0, TypeInfo{}, err
-		}
-		if n.Op == OpRegexExtract || n.Op == OpRegexExtractAll {
-			pattern := n.First.(StringLiteral)
-			group := n.Second.(Int64Literal)
-			in = ScalarInstruction{Code: scalarTernary, Op: n.Op, Type: info.Type, A: a, B: -1, C: -1}
-			in.Regex, in.RegexGroup, err = compileRegexExtract(pattern.Value, group.Value)
-			if err != nil {
-				return 0, TypeInfo{}, err
+	var in instruction
+	// All acceptance/type rules belong to Bind. These matches only select fast kernels.
+	if binary, ok := e.(Binary); ok {
+		switch binary.Op {
+		case OpGT, OpGE, OpLT, OpLE, OpEQ:
+			if specialized, err := specializeComparisonKernel(c.schema, binary); err == nil {
+				in = specialized
 			}
-			break
+		case OpContains, OpStartsWith, OpEndsWith, OpRegexMatch:
+			if specialized, err := specializeStringMatchKernel(c.schema, binary); err == nil {
+				in = specialized
+			}
 		}
-		b, _, err := c.compile(n.First)
-		if err != nil {
-			return 0, TypeInfo{}, err
+	}
+	if in.Code == 0 {
+		switch bound.Expr.(type) {
+		case IfExpr, CaseExpr, CoalesceExpr, InExpr:
+			var err error
+			in, err = c.compileConditional(bound)
+			if err != nil {
+				return 0, info, err
+			}
 		}
-		cReg, _, err := c.compile(n.Second)
-		if err != nil {
-			return 0, TypeInfo{}, err
+	}
+	if in.Code == 0 {
+		boundChildren := bound.Children
+		if ternary, ok := e.(Ternary); ok && (ternary.Op == OpRegexExtract || ternary.Op == OpRegexExtractAll) {
+			boundChildren = boundChildren[:1]
 		}
-		in = ScalarInstruction{Code: scalarTernary, Op: n.Op, Type: info.Type, A: a, B: b, C: cReg}
-	case Binary:
-		a, _, err := c.compile(n.Left)
-		if err != nil {
-			return 0, TypeInfo{}, err
+		children := make([]int, len(boundChildren))
+		for i, child := range boundChildren {
+			reg, _, err := c.compileBound(child)
+			if err != nil {
+				return 0, info, err
+			}
+			children[i] = reg
 		}
-		b, _, err := c.compile(n.Right)
-		if err != nil {
-			return 0, TypeInfo{}, err
+		in = instruction{Type: info.Type, A: -1, B: -1, C: -1}
+		if len(children) > 0 {
+			in.A = children[0]
 		}
-		in = ScalarInstruction{Code: scalarBinary, Op: n.Op, Type: info.Type, A: a, B: b}
-	case JSONDecodeExpr:
-		a, _, err := c.compile(n.Value)
-		if err != nil {
-			return 0, TypeInfo{}, err
+		if len(children) > 1 {
+			in.B = children[1]
 		}
-		in = ScalarInstruction{Code: scalarJSONDecode, Type: memory.TypeStruct, A: a, StructFields: append([]memory.Field(nil), n.Schema.Fields...)}
-	default:
-		return 0, TypeInfo{}, fmt.Errorf("unsupported scalar expression node %T", e)
+		if len(children) > 2 {
+			in.C = children[2]
+		}
+		switch n := e.(type) {
+		case Column:
+			in.Code = scalarColumn
+			in.Column = n.Name
+		case Int64Literal:
+			in.Code = scalarLiteralI64
+			in.I64 = n.Value
+		case Float64Literal:
+			in.Code = scalarLiteralF64
+			in.F64 = n.Value
+		case StringLiteral:
+			in.Code = scalarLiteralString
+			in.String = n.Value
+		case BoolLiteral:
+			in.Code = scalarLiteralBool
+			if n.Value {
+				in.I64 = 1
+			}
+		case NullLiteral:
+			in.Code = scalarLiteralNull
+		case Date32Literal:
+			in.Code = scalarLiteralI64
+			in.I64 = int64(n.Days)
+		case TimestampLiteral:
+			in.Code = scalarLiteralI64
+			in.I64 = n.Value
+		case DurationLiteral:
+			in.Code = scalarLiteralI64
+			in.I64 = int64(n.Value)
+		case TimestampUnitLiteral:
+			in.Code = scalarLiteralI64
+			in.I64, _ = n.Nanoseconds()
+		case Cast:
+			in.Code = scalarCast
+			in.SourceType = bound.Children[0].Field.Type
+		case Unary:
+			in.Code = scalarUnary
+			in.Op = n.Op
+			in.SourceType = bound.Children[0].Field.Type
+			if n.Op == OpNot || n.Op == OpIsNull || n.Op == OpIsNotNull {
+				in.Code = scalarBoolean
+			}
+		case Binary:
+			in.Code = scalarBinary
+			in.Op = n.Op
+			switch n.Op {
+			case OpGT, OpGE, OpLT, OpLE, OpEQ:
+				in.Code = scalarCompare
+			case OpAnd, OpOr:
+				in.Code = scalarBoolean
+			case OpContains, OpStartsWith, OpEndsWith, OpRegexMatch:
+				in.Code = scalarStringMatch
+			}
+			if n.Op == OpRegexMatch {
+				in.Regex, _ = compileRegex(n.Right.(StringLiteral).Value)
+			}
+		case Ternary:
+			in.Code = scalarTernary
+			in.Op = n.Op
+			if n.Op == OpRegexExtract || n.Op == OpRegexExtractAll {
+				in.Regex, in.RegexGroup, _ = compileRegexExtract(n.First.(StringLiteral).Value, n.Second.(Int64Literal).Value)
+				in.B = -1
+				in.C = -1
+			}
+		case JSONDecodeExpr:
+			in.Code = scalarJSONDecode
+			in.StructFields = bound.Field.Children
+		case IfExpr, CaseExpr, CoalesceExpr, InExpr:
+			return 0, info, fmt.Errorf("conditional lowering is not implemented")
+		default:
+			return 0, info, fmt.Errorf("unsupported bound expression %T", e)
+		}
 	}
 	c.instructions = append(c.instructions, in)
 	reg := len(c.instructions) - 1
@@ -310,90 +345,98 @@ func (c *scalarCompiler) compile(e Expr) (int, TypeInfo, error) {
 	return reg, info, nil
 }
 
+// scalarKey frames every component so arbitrary names and nested expressions
+// cannot be mistaken for delimiters or neighboring nodes.
+func scalarKey(parts ...string) string {
+	var b strings.Builder
+	for _, part := range parts {
+		b.WriteString(strconv.Itoa(len(part)))
+		b.WriteByte(':')
+		b.WriteString(part)
+	}
+	return b.String()
+}
+
+func scalarFieldKey(field memory.Field) string {
+	parts := []string{
+		field.Name, strconv.Itoa(int(field.Type)), strconv.FormatBool(field.Nullable),
+		strconv.Itoa(int(field.Encoding)), field.DictionaryDomain, field.ArrowType,
+	}
+	for _, child := range field.Children {
+		parts = append(parts, scalarFieldKey(child))
+	}
+	return scalarKey(parts...)
+}
+
 func scalarExprKey(e Expr) string {
 	switch n := e.(type) {
+	case BoolLiteral:
+		return scalarKey("bool", strconv.FormatBool(n.Value))
+	case NullLiteral:
+		return scalarKey("null", strconv.Itoa(int(n.Type)))
+	case IfExpr:
+		return scalarKey("if", scalarExprKey(n.Condition), scalarExprKey(n.Then), scalarExprKey(n.Else))
+	case CaseExpr:
+		parts := []string{"case"}
+		for _, arm := range n.Whens {
+			parts = append(parts, scalarExprKey(arm.When), scalarExprKey(arm.Then))
+		}
+		if n.Else != nil {
+			parts = append(parts, scalarExprKey(n.Else))
+		}
+		return scalarKey(parts...)
+	case CoalesceExpr:
+		parts := []string{"coalesce"}
+		for _, v := range n.Values {
+			parts = append(parts, scalarExprKey(v))
+		}
+		return scalarKey(parts...)
+	case InExpr:
+		parts := []string{"in", scalarExprKey(n.Value)}
+		for _, v := range n.Values {
+			parts = append(parts, scalarExprKey(v))
+		}
+		return scalarKey(parts...)
 	case Column:
-		return "c:" + n.Name
+		return scalarKey("column", n.Name)
 	case Int64Literal:
-		return "i:" + strconv.FormatInt(n.Value, 10)
+		return scalarKey("int64", strconv.FormatInt(n.Value, 10))
 	case Float64Literal:
-		return "f:" + strconv.FormatFloat(n.Value, 'g', -1, 64)
+		// Preserve signed zero and distinct NaN payloads in literal outputs.
+		return scalarKey("float64", strconv.FormatUint(math.Float64bits(n.Value), 16))
 	case StringLiteral:
-		return "s:" + strconv.Quote(n.Value)
+		return scalarKey("string", n.Value)
 	case Date32Literal:
-		return "d32:" + strconv.FormatInt(int64(n.Days), 10)
+		return scalarKey("date32", strconv.FormatInt(int64(n.Days), 10))
 	case TimestampLiteral:
-		return "ts:" + strconv.FormatInt(n.Value, 10)
+		return scalarKey("timestamp", strconv.FormatInt(n.Value, 10))
 	case DurationLiteral:
-		return "duration:" + strconv.FormatInt(int64(n.Value), 10)
+		return scalarKey("duration", strconv.FormatInt(int64(n.Value), 10))
 	case TimestampUnitLiteral:
-		return "tsunit:" + strconv.FormatUint(uint64(n.Unit), 10) + ":" + strconv.FormatInt(n.Value, 10)
+		return scalarKey("timestamp-unit", strconv.FormatUint(uint64(n.Unit), 10), strconv.FormatInt(n.Value, 10))
 	case Cast:
-		return "cast:" + n.Target.String() + ":" + scalarExprKey(n.Value)
+		return scalarKey("cast", strconv.Itoa(int(n.Target)), scalarExprKey(n.Value))
 	case Binary:
-		return "b:" + n.Op.String() + ":" + scalarExprKey(n.Left) + ":" + scalarExprKey(n.Right)
+		return scalarKey("binary", strconv.Itoa(int(n.Op)), scalarExprKey(n.Left), scalarExprKey(n.Right))
 	case Unary:
-		return "u:" + n.Op.String() + ":" + scalarExprKey(n.Value)
+		return scalarKey("unary", strconv.Itoa(int(n.Op)), scalarExprKey(n.Value))
 	case Ternary:
-		return "t:" + n.Op.String() + ":" + scalarExprKey(n.Value) + ":" + scalarExprKey(n.First) + ":" + scalarExprKey(n.Second)
+		return scalarKey("ternary", strconv.Itoa(int(n.Op)), scalarExprKey(n.Value), scalarExprKey(n.First), scalarExprKey(n.Second))
 	case JSONDecodeExpr:
-		var b strings.Builder
-		b.WriteString("json:")
-		b.WriteString(scalarExprKey(n.Value))
+		parts := []string{"json", scalarExprKey(n.Value)}
 		for _, field := range n.Schema.Fields {
-			fmt.Fprintf(&b, ":%s:%s:%t", field.Name, field.Type, field.Nullable)
+			parts = append(parts, scalarFieldKey(field))
 		}
-		return b.String()
+		return scalarKey(parts...)
 	default:
-		return fmt.Sprintf("%T:%s", e, e.String())
+		return scalarKey(fmt.Sprintf("%T", e), e.String())
 	}
-}
-
-// Evaluate executes one scalar program over batch and returns a typed register
-// owned by workspace. The register remains valid until the next evaluation with
-// the same workspace.
-func (p ScalarProgram) Evaluate(batch *memory.Batch, w *ScalarWorkspace, kernels kernel.Set) (ScalarValue, error) {
-	if p.Root < 0 || p.Root >= len(p.Instructions) {
-		return ScalarValue{}, fmt.Errorf("invalid scalar program root")
-	}
-	if err := evaluateInstructions(p.Instructions, batch, w, kernels); err != nil {
-		return ScalarValue{}, err
-	}
-	return scalarValue(&w.regs[p.Root], batch.Rows), nil
-}
-
-// EvaluateInt64 executes p and returns an int64 physical vector. Semantic
-// date/timestamp results must use Evaluate so their logical type is preserved.
-func (p ScalarProgram) EvaluateInt64(batch *memory.Batch, w *ScalarWorkspace, kernels kernel.Set) (*memory.Int64Vector, error) {
-	v, err := p.Evaluate(batch, w, kernels)
-	if err != nil {
-		return nil, err
-	}
-	if v.Type != memory.TypeInt64 {
-		return nil, fmt.Errorf("scalar program result type %s is not int64", v.Type)
-	}
-	return v.Int64, nil
-}
-
-// Evaluate executes a fused projection program and returns values in output
-// order. Returned vector views alias workspace or input memory.
-func (p ProjectionProgram) Evaluate(batch *memory.Batch, w *ScalarWorkspace, kernels kernel.Set) ([]ScalarValue, error) {
-	if err := evaluateInstructions(p.Instructions, batch, w, kernels); err != nil {
-		return nil, err
-	}
-	out := make([]ScalarValue, len(p.Outputs))
-	for i, o := range p.Outputs {
-		if o.Root < 0 || o.Root >= len(w.regs) {
-			return nil, fmt.Errorf("projection output %q has invalid root", o.Name)
-		}
-		out[i] = scalarValue(&w.regs[o.Root], batch.Rows)
-	}
-	return out, nil
 }
 
 // ScalarValue is one typed vector view produced by a scalar program. Exactly
 // one specialized vector field is non-nil according to Type.
 type ScalarValue struct {
+	Opaque           *memory.OpaqueVector
 	Type             memory.DataType
 	Int8             *memory.Int8Vector
 	Int16            *memory.Int16Vector
@@ -452,6 +495,10 @@ func scalarValue(r *scalarRegister, rows int) ScalarValue {
 	case familyListString:
 		v.StringList = r.strList
 	case familyInvalid:
+		if r.opaque != nil {
+			v.Opaque = r.opaque
+			return v
+		}
 		if r.typ == memory.TypeStruct {
 			v.Struct = r.strct
 		}
@@ -493,14 +540,102 @@ func familyOf(t memory.DataType) physicalFamily {
 	}
 }
 
-func evaluateInstructions(instructions []ScalarInstruction, batch *memory.Batch, w *ScalarWorkspace, kernels kernel.Set) error {
-	w.Ensure(batch.Rows, len(instructions))
+func evaluateInstructions(instructions []instruction, batch *memory.Batch, w *evaluationState, kernels kernel.Set) error {
+	return evaluateInstructionsActive(instructions, batch, w, kernels, nil)
+}
+func evaluateInstructionsActive(instructions []instruction, batch *memory.Batch, w *evaluationState, kernels kernel.Set, active memory.Bitmap) (err error) {
+	defer func() {
+		if w != nil && err != nil && !errors.Is(err, memory.ErrBudgetExceeded) {
+			_ = w.Close()
+		}
+	}()
+	if batch == nil || w == nil {
+		return fmt.Errorf("expression evaluation requires batch and workspace")
+	}
+	if !kernels.Valid() {
+		return fmt.Errorf("expression evaluation requires valid kernels")
+	}
+	if err := w.checkContext(); err != nil {
+		return err
+	}
+	if w.ensureErr != nil {
+		err := w.ensureErr
+		_ = w.Close()
+		return err
+	}
+	if err := w.prepareProgram(instructions, batch.Rows); err != nil {
+		return err
+	}
+	for i := range w.owned {
+		releaseRegisterExport(&w.owned[i])
+	}
+	w.activeRows = active
+	clear(w.regs[:cap(w.regs)])
+	clear(w.outputs[:cap(w.outputs)])
 	for i, in := range instructions {
+		if err := w.checkContext(); err != nil {
+			return err
+		}
 		r := &w.regs[i]
-		r.typ = in.Type
+		if in.Code != scalarColumn {
+			r = &w.owned[i]
+		}
+		if r.acquire == nil && in.Code != scalarColumn {
+			r.acquire, r.reserve, r.checkContext = w.acquire, w.reserve, w.checkContext
+		}
+		r.typ = instructionResultType(in)
+		if in.Code != scalarColumn {
+			if err := prepareScalarBuffers(r, batch.Rows); err != nil {
+				return err
+			}
+		}
 		switch in.Code {
 		case scalarColumn:
+			if err := validateBoundColumn(batch, in.Column, in.Type); err != nil {
+				return err
+			}
 			if err := bindScalarColumn(r, batch, in.Column, in.Type); err != nil {
+				return err
+			}
+			if in.Type == memory.TypeBool {
+				owned := &w.owned[i]
+				owned.Truth = owned.Truth[:memory.WordsFor(batch.Rows)]
+				owned.ownedValidity = owned.ownedValidity[:memory.WordsFor(batch.Rows)]
+				fillValidity(owned.ownedValidity, r.validity, batch.Rows)
+				r.validity = owned.ownedValidity
+				clear(owned.Truth)
+				for row := 0; row < batch.Rows; row++ {
+					if isValidRegister(r, row) && r.u32[row] != 0 {
+						memory.Set(owned.Truth, row)
+					}
+				}
+				r.Truth = owned.Truth
+			}
+		case codeConstTrue, codeCmpScalar, codeStringMatch, codeCmpExtract, codeIsNull, codeIsNotNull, codeAnd, codeOr, codeNot:
+			if err := evalSpecializedBoolean(r, in, batch, w, kernels); err != nil {
+				return err
+			}
+		case scalarLiteralBool:
+			fillAll(r.validity, batch.Rows)
+			clear(r.Truth)
+			if in.I64 != 0 {
+				fillAll(r.Truth, batch.Rows)
+			}
+		case scalarLiteralNull:
+			if familyOf(r.typ) == familyString {
+				clear(r.offsets)
+				r.data = r.data[:0]
+			}
+			clear(r.validity)
+			if r.typ == memory.TypeBool {
+				clear(r.Truth)
+			}
+		case scalarConditional:
+			if err := w.evaluateConditional(r, in, batch, kernels); err != nil {
+				return err
+			}
+		case scalarCompare, scalarBoolean, scalarStringMatch:
+			if err := evalBooleanInstruction(r, in, batch.Rows, w, kernels); err != nil {
 				return err
 			}
 		case scalarLiteralI64:
@@ -531,10 +666,16 @@ func evaluateInstructions(instructions []ScalarInstruction, batch *memory.Batch,
 			offsets[0] = 0
 			r.data = r.data[:0]
 			for row := 0; row < batch.Rows; row++ {
+				if active != nil && !memory.IsSet(active, row) {
+					offsets[row+1] = uint32(len(r.data))
+					continue
+				}
 				if uint64(len(r.data))+uint64(len(in.String)) > math.MaxUint32 {
 					return fmt.Errorf("string literal result exceeds 4 GiB at row %d", row)
 				}
-				r.data = append(r.data, in.String...)
+				if err := appendScalarString(r, in.String); err != nil {
+					return err
+				}
 				offsets[row+1] = uint32(len(r.data))
 			}
 		case scalarCast:
@@ -564,8 +705,14 @@ func evaluateInstructions(instructions []ScalarInstruction, batch *memory.Batch,
 		default:
 			return fmt.Errorf("unsupported scalar opcode %d", in.Code)
 		}
+		if err := w.applyActive(i, r, batch.Rows); err != nil {
+			return err
+		}
+		if in.Code != scalarColumn {
+			w.regs[i] = *r
+		}
 	}
-	return nil
+	return w.checkContext()
 }
 
 func bindScalarColumn(r *scalarRegister, batch *memory.Batch, name string, typ memory.DataType) error {
@@ -664,13 +811,18 @@ func bindScalarColumn(r *scalarRegister, batch *memory.Batch, name string, typ m
 			r.strct, r.validity = v, v.Validity
 			return nil
 		}
+		if v, ok := batch.Opaque[name]; ok {
+			r.opaque = v
+			r.validity = v.Validity
+			return nil
+		}
 		return fmt.Errorf("scalar column %q type %s has no specialized vector", name, typ)
 	}
 	return nil
 }
 
 func ensureValidity(r *scalarRegister, rows int) memory.Bitmap {
-	r.validity = memory.EnsureBitmap(r.validity, rows)
+	r.validity = r.ownedValidity[:memory.WordsFor(rows)]
 	return r.validity
 }
 
@@ -986,10 +1138,10 @@ func evalBinary(out, a, b *scalarRegister, op Op, result memory.DataType, rows i
 				if err != nil {
 					return err
 				}
-				if err := appendStringResult(&out.data, av, op, row); err != nil {
+				if err := appendScalarResult(out, av, op, row); err != nil {
 					return err
 				}
-				if err := appendStringResult(&out.data, bv, op, row); err != nil {
+				if err := appendScalarResult(out, bv, op, row); err != nil {
 					return err
 				}
 			}
@@ -1060,6 +1212,11 @@ func evalTemporalBinary(out, a, b *scalarRegister, op Op, result memory.DataType
 		return nil
 	}
 	for row := 0; row < rows; row++ {
+		if out.checkContext != nil {
+			if err := out.checkContext(); err != nil {
+				return err
+			}
+		}
 		if !isValidRegister(out, row) {
 			values[row] = 0
 			continue
@@ -1172,6 +1329,11 @@ func evalUnary(out, in *scalarRegister, op Op, source memory.DataType, rows int)
 	}
 	values := ensureI64(out, rows)
 	for row := 0; row < rows; row++ {
+		if out.checkContext != nil {
+			if err := out.checkContext(); err != nil {
+				return err
+			}
+		}
 		if !isValidRegister(out, row) {
 			values[row] = 0
 			continue
@@ -1215,11 +1377,18 @@ func evalStringUnary(out, in *scalarRegister, op Op, rows int) error {
 			if err != nil {
 				return err
 			}
+			scratch, err := scratchReservation(out, int64(len(text))*8+64)
+			if err != nil {
+				return err
+			}
 			value, err := transformString(text, op)
 			if err != nil {
+				scratch.Release()
 				return fmt.Errorf("%s at row %d: %w", op, row, err)
 			}
-			if err := appendStringResult(&out.data, value, op, row); err != nil {
+			err = appendScalarResult(out, value, op, row)
+			scratch.Release()
+			if err != nil {
 				return err
 			}
 		}
@@ -1231,11 +1400,11 @@ func evalStringUnary(out, in *scalarRegister, op Op, rows int) error {
 func transformString(value []byte, op Op) ([]byte, error) {
 	switch op {
 	case OpTrim:
-		return []byte(strings.TrimSpace(string(value))), nil
+		return bytes.TrimSpace(value), nil
 	case OpTrimStart:
-		return []byte(strings.TrimLeftFunc(string(value), unicodeWhitespace)), nil
+		return bytes.TrimLeftFunc(value, unicodeWhitespace), nil
 	case OpTrimEnd:
-		return []byte(strings.TrimRightFunc(string(value), unicodeWhitespace)), nil
+		return bytes.TrimRightFunc(value, unicodeWhitespace), nil
 	case OpLower:
 		return []byte(strings.ToLower(string(value))), nil
 	case OpUpper:
@@ -1253,6 +1422,11 @@ func evalStringFind(out, value, needle *scalarRegister, rows int) error {
 	}
 	values := ensureI64(out, rows)
 	for row := 0; row < rows; row++ {
+		if out.checkContext != nil {
+			if err := out.checkContext(); err != nil {
+				return err
+			}
+		}
 		if !isValidRegister(out, row) {
 			values[row] = 0
 			continue
@@ -1265,7 +1439,7 @@ func evalStringFind(out, value, needle *scalarRegister, rows int) error {
 		if err != nil {
 			return err
 		}
-		byteIndex := strings.Index(string(text), string(query))
+		byteIndex := bytes.Index(text, query)
 		if byteIndex < 0 {
 			values[row] = -1
 			continue
@@ -1275,7 +1449,7 @@ func evalStringFind(out, value, needle *scalarRegister, rows int) error {
 	return nil
 }
 
-func evalTernary(out, value, first, second *scalarRegister, in ScalarInstruction, rows int) error {
+func evalTernary(out, value, first, second *scalarRegister, in instruction, rows int) error {
 	op := in.Op
 	if op == OpRegexExtractAll {
 		return evalRegexExtractAll(out, value, in, rows)
@@ -1307,6 +1481,7 @@ func evalTernary(out, value, first, second *scalarRegister, in ScalarInstruction
 				return err
 			}
 			var result []byte
+			var temporary memory.Reservation = scalarNoopReservation{}
 			switch op {
 			case OpReplace, OpReplaceAll:
 				old, err := registerString(first, row)
@@ -1320,6 +1495,23 @@ func evalTernary(out, value, first, second *scalarRegister, in ScalarInstruction
 				count := 1
 				if op == OpReplaceAll {
 					count = -1
+				}
+				matches := bytes.Count(input, old)
+				if count == 1 && matches > 1 {
+					matches = 1
+				}
+				outputBytes := int64(len(input)) - int64(matches)*int64(len(old))
+				if outputBytes < 0 || outputBytes > math.MaxUint32 || (matches > 0 && int64(len(newValue)) > (math.MaxUint32-outputBytes)/int64(matches)) {
+					return fmt.Errorf("replacement result exceeds 4 GiB")
+				}
+				outputBytes += int64(matches) * int64(len(newValue))
+				bytesNeeded, err := checkedScalarScratch(outputBytes*2, int64(len(input))*2, int64(len(old))*2, int64(len(newValue))*2, 64)
+				if err != nil {
+					return err
+				}
+				temporary, err = scratchReservation(out, bytesNeeded)
+				if err != nil {
+					return err
 				}
 				result = []byte(strings.Replace(string(input), string(old), string(newValue), count))
 			case OpSlice:
@@ -1339,6 +1531,10 @@ func evalTernary(out, value, first, second *scalarRegister, in ScalarInstruction
 				if in.Regex == nil {
 					return fmt.Errorf("REGEX_EXTRACT has no compiled pattern")
 				}
+				temporary, err = regexScratch(out, input, in, false)
+				if err != nil {
+					return err
+				}
 				matches := in.Regex.FindSubmatchIndex(input)
 				start := in.RegexGroup * 2
 				if matches == nil || start+1 >= len(matches) || matches[start] < 0 {
@@ -1350,7 +1546,10 @@ func evalTernary(out, value, first, second *scalarRegister, in ScalarInstruction
 			default:
 				return fmt.Errorf("operator %s does not produce string", op)
 			}
-			if err := appendStringResult(&out.data, result, op, row); err != nil {
+			err = appendScalarResult(out, result, op, row)
+			result = nil
+			temporary.Release()
+			if err != nil {
 				return err
 			}
 		}
@@ -1360,84 +1559,69 @@ func evalTernary(out, value, first, second *scalarRegister, in ScalarInstruction
 }
 
 func resetStringListResult(out *scalarRegister, rows, children, dataBytes int, childNullable bool) (*memory.StringListVector, error) {
-	bytesNeeded := int64(rows+1)*4 + int64(children+1)*4 + int64(dataBytes)
-	bytesNeeded += int64(memory.WordsFor(rows)) * 8
-	if childNullable {
-		bytesNeeded += int64(memory.WordsFor(children)) * 8
+	if rows < 0 || children < 0 || dataBytes < 0 || uint64(children) >= math.MaxUint32 || uint64(dataBytes) > math.MaxUint32 {
+		return nil, fmt.Errorf("list allocation size overflow")
 	}
-	if bytesNeeded > out.charged && out.reserve != nil {
-		if err := out.reserve(bytesNeeded - out.charged); err != nil {
-			return nil, err
-		}
-		out.charged = bytesNeeded
+	words := 0
+	if childNullable {
+		words = memory.WordsFor(children)
 	}
 	list := out.strList
-	if list == nil {
-		list = &memory.StringListVector{}
-		out.strList = list
+	if list == nil || list.Values == nil || cap(list.Offsets) < rows+1 || cap(list.Values.Offsets) < children+1 || cap(list.Values.Data) < dataBytes || cap(out.listValidity) < words {
+		bytesNeeded := int64(rows+1)*4 + int64(children+1)*4 + int64(dataBytes) + int64(words)*8 + 256
+		reservation, err := out.acquire(bytesNeeded)
+		if err != nil {
+			return nil, err
+		}
+		list = &memory.StringListVector{Offsets: make([]uint32, rows+1), Values: &memory.StringViewVector{Offsets: make([]uint32, 1, children+1), Data: make([]byte, 0, dataBytes), Validity: make(memory.Bitmap, words)}}
+		old := out.buffers[13]
+		out.strList, out.buffers[13] = list, reservation
+		out.listValidity = list.Values.Validity
+		if old != nil {
+			old.Release()
+		}
 	}
-	if cap(list.Offsets) < rows+1 {
-		list.Offsets = make([]uint32, rows+1)
-	} else {
-		list.Offsets = list.Offsets[:rows+1]
-		clear(list.Offsets)
-	}
+	list.Offsets = list.Offsets[:rows+1]
+	clear(list.Offsets)
 	list.Validity = out.validity
 	list.Encoding = memory.EncodingView
-	if list.Values == nil {
-		list.Values = &memory.StringViewVector{}
-	}
 	child := list.Values
-	if cap(child.Offsets) == 0 {
-		child.Offsets = make([]uint32, 1, children+1)
+	child.Offsets = child.Offsets[:1]
+	child.Offsets[0] = 0
+	child.Data = child.Data[:0]
+	if words == 0 {
+		child.Validity = nil
 	} else {
-		if cap(child.Offsets) < children+1 {
-			child.Offsets = make([]uint32, 1, children+1)
-		} else {
-			child.Offsets = child.Offsets[:1]
-		}
-		child.Offsets[0] = 0
-	}
-	if cap(child.Data) < dataBytes {
-		child.Data = make([]byte, 0, dataBytes)
-	} else {
-		child.Data = child.Data[:0]
-	}
-	if childNullable {
-		child.Validity = memory.EnsureBitmap(child.Validity, children)
-	} else {
-		child.Validity = child.Validity[:0]
+		child.Validity = out.listValidity[:words]
+		clear(child.Validity)
 	}
 	child.Encoding = memory.EncodingView
 	return list, nil
 }
 
-func appendStringListElement(list *memory.StringListVector, value []byte, valid bool, op Op, row int) error {
+func appendStringListElement(out *scalarRegister, list *memory.StringListVector, value []byte, valid bool, op Op, row int) error {
+	if out.checkContext != nil {
+		if err := out.checkContext(); err != nil {
+			return err
+		}
+	}
 	child := list.Values
 	childRow := len(child.Offsets) - 1
-	if childRow >= math.MaxUint32 {
-		return fmt.Errorf("%s list result exceeds uint32 elements at row %d", op, row)
+	if childRow >= math.MaxUint32 || len(child.Offsets) == cap(child.Offsets) || len(value) > cap(child.Data)-len(child.Data) {
+		return fmt.Errorf("%s list sizing mismatch at row %d", op, row)
 	}
-	if !valid {
-		if len(child.Validity) == 0 {
-			child.Validity = memory.EnsureBitmap(child.Validity, childRow+1)
-			for i := 0; i < childRow; i++ {
-				memory.Set(child.Validity, i)
-			}
-		} else if memory.WordsFor(childRow+1) > len(child.Validity) {
-			grown := make(memory.Bitmap, memory.WordsFor(childRow+1))
-			copy(grown, child.Validity)
-			child.Validity = grown
+	if !valid && len(child.Validity) == 0 {
+		return fmt.Errorf("%s list validity sizing mismatch", op)
+	}
+	if len(child.Validity) != 0 {
+		if memory.WordsFor(childRow+1) > len(child.Validity) {
+			return fmt.Errorf("%s list validity sizing mismatch", op)
 		}
-	} else {
-		if len(child.Validity) != 0 {
-			if memory.WordsFor(childRow+1) > len(child.Validity) {
-				grown := make(memory.Bitmap, memory.WordsFor(childRow+1))
-				copy(grown, child.Validity)
-				child.Validity = grown
-			}
+		if valid {
 			memory.Set(child.Validity, childRow)
 		}
+	}
+	if valid {
 		if err := appendStringResult(&child.Data, value, op, row); err != nil {
 			return err
 		}
@@ -1452,6 +1636,11 @@ func evalStringSplit(out, value, delimiter *scalarRegister, rows int) error {
 	}
 	children, dataBytes := 0, 0
 	for row := 0; row < rows; row++ {
+		if out.checkContext != nil {
+			if err := out.checkContext(); err != nil {
+				return err
+			}
+		}
 		if !isValidRegister(out, row) {
 			continue
 		}
@@ -1482,6 +1671,11 @@ func evalStringSplit(out, value, delimiter *scalarRegister, rows int) error {
 		return err
 	}
 	for row := 0; row < rows; row++ {
+		if out.checkContext != nil {
+			if err := out.checkContext(); err != nil {
+				return err
+			}
+		}
 		if !isValidRegister(out, row) {
 			list.Offsets[row+1] = uint32(list.Values.Len())
 			continue
@@ -1497,7 +1691,7 @@ func evalStringSplit(out, value, delimiter *scalarRegister, rows int) error {
 		if len(sep) == 0 {
 			for len(input) > 0 {
 				_, width := utf8.DecodeRune(input)
-				if err := appendStringListElement(list, input[:width], true, OpSplit, row); err != nil {
+				if err := appendStringListElement(out, list, input[:width], true, OpSplit, row); err != nil {
 					return err
 				}
 				input = input[width:]
@@ -1506,12 +1700,12 @@ func evalStringSplit(out, value, delimiter *scalarRegister, rows int) error {
 			for {
 				at := indexSplitDelimiter(input, sep)
 				if at < 0 {
-					if err := appendStringListElement(list, input, true, OpSplit, row); err != nil {
+					if err := appendStringListElement(out, list, input, true, OpSplit, row); err != nil {
 						return err
 					}
 					break
 				}
-				if err := appendStringListElement(list, input[:at], true, OpSplit, row); err != nil {
+				if err := appendStringListElement(out, list, input[:at], true, OpSplit, row); err != nil {
 					return err
 				}
 				input = input[at+len(sep):]
@@ -1529,7 +1723,7 @@ func indexSplitDelimiter(value, delimiter []byte) int {
 	return bytes.Index(value, delimiter)
 }
 
-func evalRegexExtractAll(out, value *scalarRegister, in ScalarInstruction, rows int) error {
+func evalRegexExtractAll(out, value *scalarRegister, in instruction, rows int) error {
 	if out.typ != memory.TypeList || in.Regex == nil {
 		return fmt.Errorf("REGEX_EXTRACT_ALL has invalid compiled result")
 	}
@@ -1537,6 +1731,11 @@ func evalRegexExtractAll(out, value *scalarRegister, in ScalarInstruction, rows 
 	children, dataBytes := 0, 0
 	childNullable := false
 	for row := 0; row < rows; row++ {
+		if out.checkContext != nil {
+			if err := out.checkContext(); err != nil {
+				return err
+			}
+		}
 		if !isValidRegister(out, row) {
 			continue
 		}
@@ -1545,7 +1744,12 @@ func evalRegexExtractAll(out, value *scalarRegister, in ScalarInstruction, rows 
 			return err
 		}
 		capture := in.RegexGroup * 2
-		for _, match := range in.Regex.FindAllSubmatchIndex(input, -1) {
+		scratch, err := regexScratch(out, input, in, true)
+		if err != nil {
+			return err
+		}
+		matches := in.Regex.FindAllSubmatchIndex(input, -1)
+		for _, match := range matches {
 			children++
 			if capture+1 >= len(match) || match[capture] < 0 {
 				childNullable = true
@@ -1553,6 +1757,8 @@ func evalRegexExtractAll(out, value *scalarRegister, in ScalarInstruction, rows 
 			}
 			dataBytes += match[capture+1] - match[capture]
 		}
+		matches = nil
+		scratch.Release()
 		if uint64(children) > math.MaxUint32 || uint64(dataBytes) > math.MaxUint32 {
 			return fmt.Errorf("REGEX_EXTRACT_ALL result exceeds uint32 bounds at row %d", row)
 		}
@@ -1562,11 +1768,20 @@ func evalRegexExtractAll(out, value *scalarRegister, in ScalarInstruction, rows 
 		return err
 	}
 	for row := 0; row < rows; row++ {
+		if out.checkContext != nil {
+			if err := out.checkContext(); err != nil {
+				return err
+			}
+		}
 		if !isValidRegister(out, row) {
 			list.Offsets[row+1] = uint32(list.Values.Len())
 			continue
 		}
 		input, err := registerString(value, row)
+		if err != nil {
+			return err
+		}
+		scratch, err := regexScratch(out, input, in, true)
 		if err != nil {
 			return err
 		}
@@ -1578,11 +1793,13 @@ func evalRegexExtractAll(out, value *scalarRegister, in ScalarInstruction, rows 
 			if valid {
 				captured = input[match[capture]:match[capture+1]]
 			}
-			if err := appendStringListElement(list, captured, valid, OpRegexExtractAll, row); err != nil {
+			if err := appendStringListElement(out, list, captured, valid, OpRegexExtractAll, row); err != nil {
 				return err
 			}
 		}
 		list.Offsets[row+1] = uint32(list.Values.Len())
+		matches = nil
+		scratch.Release()
 	}
 	return nil
 }
@@ -1666,6 +1883,11 @@ func utcCalendarTime(source memory.DataType, value int64) (time.Time, error) {
 }
 
 func evalCast(out, in *scalarRegister, from, to memory.DataType, rows int) error {
+	if from == memory.TypeBool && to == memory.TypeBool {
+		copyRegisterValidity(out, in, rows)
+		copy(out.Truth, in.Truth)
+		return nil
+	}
 	if !CanCast(from, to) {
 		return fmt.Errorf("cannot cast %s to %s", from, to)
 	}
@@ -1730,7 +1952,7 @@ func evalCast(out, in *scalarRegister, from, to memory.DataType, rows int) error
 			if err != nil {
 				return err
 			}
-			if math.IsInf(v, 0) || math.Abs(v) > math.MaxFloat32 {
+			if from != memory.TypeFloat32 && (math.IsInf(v, 0) || math.Abs(v) > math.MaxFloat32) {
 				return fmt.Errorf("cast %s to %s overflows at row %d", from, to, row)
 			}
 			values[row] = float32(v)
@@ -1763,14 +1985,7 @@ func evalCast(out, in *scalarRegister, from, to memory.DataType, rows int) error
 			}
 			v, err := registerInt64(in, row)
 			if err != nil {
-				if familyOf(from) == familyF64 {
-					fv, ferr := registerFloat64(in, row)
-					if ferr != nil || fv < math.MinInt64 || fv > math.MaxInt64 {
-						return fmt.Errorf("cast %s to %s overflows at row %d", from, to, row)
-					}
-					values[row] = int64(fv)
-					continue
-				}
+
 				return err
 			}
 			values[row] = v
@@ -1821,7 +2036,16 @@ func evalCast(out, in *scalarRegister, from, to memory.DataType, rows int) error
 		for row := 0; row < rows; row++ {
 			if isValidRegister(out, row) {
 				var err error
-				out.data, err = appendScalarText(out.data, in, row)
+				var text []byte
+				var scratch [64]byte
+				if familyOf(in.typ) == familyString {
+					text, err = registerString(in, row)
+				} else {
+					text, err = appendScalarText(scratch[:0], in, row)
+				}
+				if err == nil {
+					err = appendScalarBytes(out, text)
+				}
 				if err != nil {
 					return err
 				}
@@ -1837,6 +2061,11 @@ func evalCast(out, in *scalarRegister, from, to memory.DataType, rows int) error
 func evalStringTemporalCast(out, in *scalarRegister, to memory.DataType, rows int) error {
 	values := ensureI64(out, rows)
 	for row := 0; row < rows; row++ {
+		if out.checkContext != nil {
+			if err := out.checkContext(); err != nil {
+				return err
+			}
+		}
 		if !isValidRegister(out, row) {
 			values[row] = 0
 			continue
@@ -1844,6 +2073,14 @@ func evalStringTemporalCast(out, in *scalarRegister, to memory.DataType, rows in
 		text, err := registerString(in, row)
 		if err != nil {
 			return err
+		}
+		size, reserveErr := checkedScalarScratch(int64(len(text)), int64(len(text)), int64(len(text)), int64(len(text)), 1024)
+		if reserveErr != nil {
+			return reserveErr
+		}
+		scratch, reserveErr := scratchReservation(out, size)
+		if reserveErr != nil {
+			return reserveErr
 		}
 		switch to {
 		case memory.TypeTimestamp:
@@ -1853,8 +2090,10 @@ func evalStringTemporalCast(out, in *scalarRegister, to memory.DataType, rows in
 			duration, err = time.ParseDuration(string(text))
 			values[row] = int64(duration)
 		default:
+			scratch.Release()
 			return fmt.Errorf("cannot parse string as %s", to)
 		}
+		scratch.Release()
 		if err != nil {
 			return fmt.Errorf("cast string to %s at row %d: %w", to, row, err)
 		}
@@ -1880,6 +2119,12 @@ func parseTimestampText(text string) (int64, error) {
 }
 
 func registerInt64(r *scalarRegister, row int) (int64, error) {
+	if r.typ == memory.TypeBool && r.Truth != nil {
+		if memory.IsSet(r.Truth, row) {
+			return 1, nil
+		}
+		return 0, nil
+	}
 	if r.constant {
 		switch familyOf(r.typ) {
 		case familyI32, familyI64:
@@ -1890,7 +2135,7 @@ func registerInt64(r *scalarRegister, row int) (int64, error) {
 			}
 			return r.i64lit, nil
 		case familyF64:
-			return int64(r.f64lit), nil
+			return checkedFloatInt64(r.f64lit, row)
 		}
 	}
 	switch familyOf(r.typ) {
@@ -1920,25 +2165,29 @@ func registerInt64(r *scalarRegister, row int) (int64, error) {
 		}
 		return int64(r.u64[row]), nil
 	case familyF64:
-		if r.f64[row] < math.MinInt64 || r.f64[row] > math.MaxInt64 {
-			return 0, fmt.Errorf("float64 value overflows int64 at row %d", row)
+		fv, err := registerFloat64(r, row)
+		if err != nil {
+			return 0, err
 		}
-		return int64(r.f64[row]), nil
+		return checkedFloatInt64(fv, row)
 	default:
 		return 0, fmt.Errorf("type %s cannot be converted to int64", r.typ)
 	}
 }
 
 func registerUint64(r *scalarRegister, row int) (uint64, error) {
+	if r.typ == memory.TypeBool && r.Truth != nil {
+		if memory.IsSet(r.Truth, row) {
+			return 1, nil
+		}
+		return 0, nil
+	}
 	if r.constant {
 		if r.i64lit < 0 {
 			return 0, fmt.Errorf("negative value cannot convert to uint64")
 		}
 		if familyOf(r.typ) == familyF64 {
-			if r.f64lit < 0 || r.f64lit > math.MaxUint64 {
-				return 0, fmt.Errorf("float64 value overflows uint64")
-			}
-			return uint64(r.f64lit), nil
+			return checkedFloatUint64(r.f64lit, row)
 		}
 		return uint64(r.i64lit), nil
 	}
@@ -1966,10 +2215,11 @@ func registerUint64(r *scalarRegister, row int) (uint64, error) {
 	case familyU64:
 		return r.u64[row], nil
 	case familyF64:
-		if r.f64[row] < 0 || r.f64[row] > math.MaxUint64 {
-			return 0, fmt.Errorf("float64 value overflows uint64 at row %d", row)
+		fv, err := registerFloat64(r, row)
+		if err != nil {
+			return 0, err
 		}
-		return uint64(r.f64[row]), nil
+		return checkedFloatUint64(fv, row)
 	default:
 		return 0, fmt.Errorf("type %s cannot be converted to uint64", r.typ)
 	}

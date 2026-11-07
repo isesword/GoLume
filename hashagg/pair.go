@@ -33,6 +33,7 @@ func Hash128Nullable(k Key128, validMask uint8) uint64 {
 // PairTable is an adaptive open-addressing aggregation table for two fixed
 // 64-bit key parts, including independent SQL NULL validity for each part.
 type PairTable struct {
+	slotLease  memory.Reservation
 	a, b       []uint64
 	validMask  []uint8
 	state      aggregate.Int64Vector
@@ -46,18 +47,53 @@ type PairTable struct {
 
 // NewPairTable creates a pair aggregation table using default growth policy.
 func NewPairTable(cardinalityHint int) *PairTable {
-	return NewPairTableWithOptions(cardinalityHint, TableOptions{})
+	table, err := NewPairTableWithOptions(cardinalityHint, TableOptions{})
+	if err != nil {
+		panic(err)
+	}
+	return table
 }
 
 // NewPairTableWithOptions creates an adaptive pair aggregation table.
-func NewPairTableWithOptions(cardinalityHint int, opts TableOptions) *PairTable {
+// All backing allocations are reserved before construction. On failure,
+// successfully acquired reservations are released and no table is returned.
+func NewPairTableWithOptions(cardinalityHint int, opts TableOptions) (*PairTable, error) {
 	opts = normalizeTableOptions(opts)
-	n := tableCapacity(cardinalityHint)
-	return &PairTable{
+	n, err := checkedTableCapacity(cardinalityHint, pairTableBytesForCapacity(1, opts.Aggregates))
+	if err != nil {
+		return nil, err
+	}
+	t := &PairTable{opts: opts}
+	committed := false
+	defer func() {
+		if !committed {
+			t.Close()
+		}
+	}()
+	t.slotLease, err = reserveAllocation(opts.Reserve, pairTableBytesForCapacity(n, opts.Aggregates))
+	if err != nil {
+		return nil, err
+	}
+	*t = PairTable{slotLease: t.slotLease,
 		a: make([]uint64, n), b: make([]uint64, n), validMask: make([]uint8, n),
 		state: aggregate.NewInt64Vector(n, opts.Aggregates), epoch: make([]uint32, n),
 		mask: uint64(n - 1), maxEntries: loadLimit(n, opts.MaxLoadFactor), opts: opts,
 	}
+	// Epoch zero belongs to freshly allocated, unoccupied slots.
+	t.gen = 1
+	committed = true
+	return t, nil
+}
+
+// Close releases all table-owned buffers and reservations. It is idempotent.
+// The table must not be used afterward, except for Close and size inspection.
+func (t *PairTable) Close() {
+	if t == nil {
+		return
+	}
+	slots := t.slotLease
+	*t = PairTable{}
+	releaseAllocation(slots)
 }
 
 // Reset clears logical table contents while retaining allocated capacity.
@@ -72,10 +108,20 @@ func (t *PairTable) Reset() {
 
 func (t *PairTable) grow() error {
 	oldCap := len(t.a)
-	newCap := oldCap << 1
-	if err := reserveGrowth(t.opts.Reserve, pairTableBytesForCapacity(oldCap, t.opts.Aggregates), pairTableBytesForCapacity(newCap, t.opts.Aggregates)); err != nil {
+	newCap, err := checkedGrowCapacity(oldCap, pairTableBytesForCapacity(1, t.opts.Aggregates))
+	if err != nil {
 		return err
 	}
+	lease, err := reserveAllocation(t.opts.Reserve, pairTableBytesForCapacity(newCap, t.opts.Aggregates))
+	if err != nil {
+		return err
+	}
+	committed := false
+	defer func() {
+		if !committed {
+			releaseAllocation(lease)
+		}
+	}()
 	a := make([]uint64, newCap)
 	b := make([]uint64, newCap)
 	validMask := make([]uint8, newCap)
@@ -99,6 +145,10 @@ func (t *PairTable) grow() error {
 	t.a, t.b, t.validMask, t.state, t.epoch = a, b, validMask, state, epoch
 	t.mask = mask
 	t.maxEntries = loadLimit(newCap, t.opts.MaxLoadFactor)
+	oldLease := t.slotLease
+	t.slotLease = lease
+	committed = true
+	releaseAllocation(oldLease)
 	return nil
 }
 
@@ -328,6 +378,9 @@ func (t *PairTable) Len() int { return t.size }
 
 // RetainedBytes returns the table-owned key, validity, epoch, and state bytes.
 func (t *PairTable) RetainedBytes() int64 {
+	if t == nil || t.Capacity() == 0 {
+		return 0
+	}
 	return pairTableBytesForCapacity(len(t.a), t.opts.Aggregates)
 }
 

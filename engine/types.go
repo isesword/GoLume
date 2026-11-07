@@ -38,6 +38,8 @@ type AggregateRow struct {
 }
 
 // Result contains summary counters and optional materialized aggregate rows.
+// Rows and their key/value data are caller-owned after Execute returns and do
+// not retain source buffers or query-budget reservations.
 type Result struct {
 	Rows         []AggregateRow
 	GroupCount   int
@@ -48,6 +50,8 @@ type Result struct {
 }
 
 // ExecuteOptions controls per-execution result materialization.
+// Materialize must fit the execution budget while rows are collected. Returned
+// rows remain ordinary caller-owned Go allocations after the query completes.
 type ExecuteOptions struct{ Materialize bool }
 
 // GroupShape identifies the specialized physical group-key representation.
@@ -88,10 +92,8 @@ type CompiledQuery struct {
 	AverageKeyBytes  int
 	ReuseSelection   bool
 	ForceStrategy    string
-	ForceRadixBits   uint
 	FusedCapable     bool
 	ComparisonID     kernel.KernelID
 	HasComparisonID  bool
-	RadixCapable     bool
 	KeyWidthBytes    int
 }

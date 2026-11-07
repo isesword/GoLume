@@ -37,7 +37,7 @@ func TestLazyStringTransformsProjectAndFilter(t *testing.T) {
 			Col("position").Alias("position"),
 			Col("bytes").Alias("bytes"),
 		).
-		CollectFrame(context.Background())
+		Collect(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}

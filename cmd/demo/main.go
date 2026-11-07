@@ -16,7 +16,7 @@ func main() {
 	path := flag.String("parquet", "testdata/bench-1m.parquet", "input parquet file")
 	workers := flag.Int("workers", 4, "max workers")
 	materialize := flag.Bool("materialize", false, "materialize grouped rows")
-	force := flag.String("strategy", "", "force: direct-fused|bitmap-direct|radix")
+	force := flag.String("strategy", "", "force: direct-fused|bitmap-direct|partitioned-hash|sorted")
 	repeat := flag.Int("repeat", 1, "execute the prepared query N times")
 	concurrency := flag.Int("prepare-concurrency", 1, "max simultaneous executions of this prepared query")
 	flag.Parse()

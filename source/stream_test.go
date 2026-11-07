@@ -3,7 +3,6 @@ package source_test
 import (
 	"context"
 	"errors"
-	"fmt"
 	"gocolumn/kernel"
 	"gocolumn/memory"
 	"gocolumn/source"
@@ -11,7 +10,7 @@ import (
 	"testing"
 )
 
-func TestPartitionBatchStreamPreservesEmptyPartitionAndDrains(t *testing.T) {
+func TestInMemoryBatchStreamPreservesEmptyPartitionAndDrains(t *testing.T) {
 	schema := memory.NewSchema(memory.Field{Name: "x", Type: memory.TypeInt64})
 	empty := memory.NewBatch()
 	empty.Int64s["x"] = &memory.Int64Vector{}
@@ -35,7 +34,7 @@ func TestPartitionBatchStreamPreservesEmptyPartitionAndDrains(t *testing.T) {
 	}
 }
 
-func TestPartitionBatchStreamCloseIsIdempotentAndStopsNext(t *testing.T) {
+func TestInMemoryBatchStreamCloseIsIdempotentAndStopsNext(t *testing.T) {
 	schema := memory.NewSchema(memory.Field{Name: "x", Type: memory.TypeInt64})
 	batch := memory.NewBatch()
 	batch.Int64s["x"] = &memory.Int64Vector{Values: []int64{1}}
@@ -60,7 +59,7 @@ func TestPartitionBatchStreamCloseIsIdempotentAndStopsNext(t *testing.T) {
 	}
 }
 
-func TestPartitionBatchStreamCancellationClearsDestination(t *testing.T) {
+func TestInMemoryBatchStreamCancellationClearsDestination(t *testing.T) {
 	schema := memory.NewSchema(memory.Field{Name: "x", Type: memory.TypeInt64})
 	batch := memory.NewBatch()
 	batch.Int64s["x"] = &memory.Int64Vector{Values: []int64{1}}
@@ -120,164 +119,86 @@ func TestStreamClassExplainLabels(t *testing.T) {
 	}
 }
 
-func TestPartitionParallelCapabilityIsConservativeForNativeSources(t *testing.T) {
-	legacy := newFaultSource(2)
-	if plan := source.StreamPlanOf(legacy); !plan.PartitionParallel || !source.CanParallelizePartitions(plan) {
-		t.Fatalf("legacy partition source plan=%+v", plan)
-	}
-	native := &nilNativeStreamSource{Source: legacy}
+func TestPartitionParallelCapabilityRequiresPreparedProvider(t *testing.T) {
+	native := &nilNativeStreamSource{}
 	if plan := source.StreamPlanOf(native); plan.PartitionParallel || source.CanParallelizePartitions(plan) {
-		t.Fatalf("native stream without prepared partitions plan=%+v", plan)
+		t.Fatalf("unprepared source plan=%+v", plan)
 	}
-}
-
-func TestPartitionBatchStreamReadAndCloseErrorsAreSticky(t *testing.T) {
-	readErr := errors.New("injected read failure")
-	closeErr := errors.New("injected close failure")
-	src := newFaultSource(2)
-	src.reader.readErrAt = 0
-	src.reader.readErr = readErr
-	src.reader.closeErr = closeErr
-	stream, err := source.OpenBatchStream(context.Background(), src, source.ReadOptions{Kernels: kernel.New(kernel.ModeScalar)})
-	if err != nil {
-		t.Fatal(err)
-	}
-	out := memory.NewBatch()
-	out.Int64s["stale"] = &memory.Int64Vector{Values: []int64{9}}
-	out.Reset(1)
-	if ok, err := stream.Next(context.Background(), out); ok || !errors.Is(err, readErr) || !errors.Is(err, closeErr) {
-		t.Fatalf("first next ok=%v err=%v", ok, err)
-	}
-	if out.Rows != 0 || len(out.Int64s) != 0 {
-		t.Fatalf("failed read retained destination rows=%d columns=%d", out.Rows, len(out.Int64s))
-	}
-	if ok, err := stream.Next(context.Background(), out); ok || !errors.Is(err, readErr) || !errors.Is(err, closeErr) {
-		t.Fatalf("sticky next ok=%v err=%v", ok, err)
-	}
-	if err := stream.Close(); !errors.Is(err, closeErr) {
-		t.Fatalf("close error=%v", err)
-	}
-	if src.reader.readCalls != 1 || src.reader.closeCalls != 1 {
-		t.Fatalf("read calls=%d close calls=%d", src.reader.readCalls, src.reader.closeCalls)
-	}
-}
-
-func TestPartitionBatchStreamNaturalEOFCloseError(t *testing.T) {
-	closeErr := errors.New("injected close failure")
-	src := newFaultSource(1)
-	src.reader.closeErr = closeErr
-	stream, err := source.OpenBatchStream(context.Background(), src, source.ReadOptions{Kernels: kernel.New(kernel.ModeScalar)})
-	if err != nil {
-		t.Fatal(err)
-	}
-	out := memory.NewBatch()
-	if ok, err := stream.Next(context.Background(), out); !ok || err != nil {
-		t.Fatalf("data next ok=%v err=%v", ok, err)
-	}
-	if ok, err := stream.Next(context.Background(), out); ok || !errors.Is(err, closeErr) {
-		t.Fatalf("eof next ok=%v err=%v", ok, err)
-	}
-	if err := stream.Close(); !errors.Is(err, closeErr) {
-		t.Fatalf("close error=%v", err)
-	}
-	if src.reader.closeCalls != 1 {
-		t.Fatalf("close calls=%d", src.reader.closeCalls)
-	}
-}
-
-func TestPartitionBatchStreamDownstreamEarlyStopClosesWithoutReadingAhead(t *testing.T) {
-	src := newFaultSource(3)
-	stream, err := source.OpenBatchStream(context.Background(), src, source.ReadOptions{Kernels: kernel.New(kernel.ModeScalar)})
-	if err != nil {
-		t.Fatal(err)
-	}
-	out := memory.NewBatch()
-	if ok, err := stream.Next(context.Background(), out); !ok || err != nil {
-		t.Fatalf("first next ok=%v err=%v", ok, err)
-	}
-	if err := stream.Close(); err != nil {
-		t.Fatal(err)
-	}
-	if err := stream.Close(); err != nil {
-		t.Fatal(err)
-	}
-	if src.reader.readCalls != 1 || src.reader.closeCalls != 1 {
-		t.Fatalf("read calls=%d close calls=%d", src.reader.readCalls, src.reader.closeCalls)
+	prepared := &preparedNativeStreamSource{}
+	if plan := source.StreamPlanOf(prepared); !plan.PartitionParallel || !source.CanParallelizePartitions(plan) {
+		t.Fatalf("prepared source plan=%+v", plan)
 	}
 }
 
 func TestOpenBatchStreamRejectsNilNativeStream(t *testing.T) {
-	base := newFaultSource(1)
-	src := &nilNativeStreamSource{Source: base}
-	stream, err := source.OpenBatchStream(context.Background(), src, source.ReadOptions{Kernels: kernel.New(kernel.ModeScalar)})
+	stream, err := source.OpenBatchStream(context.Background(), &nilNativeStreamSource{}, source.ReadOptions{Kernels: kernel.New(kernel.ModeScalar)})
 	if err == nil || stream != nil {
 		t.Fatalf("stream=%v err=%v", stream, err)
 	}
-	if base.reader.readCalls != 0 || base.reader.closeCalls != 0 {
-		t.Fatalf("adapter reader unexpectedly used: read=%d close=%d", base.reader.readCalls, base.reader.closeCalls)
+}
+
+func TestOpenPreparedStreamNeverIgnoresPartitions(t *testing.T) {
+	opts := source.ReadOptions{Kernels: kernel.New(kernel.ModeScalar)}
+	if stream, err := source.OpenBatchStreamWithPartitions(context.Background(), &nilNativeStreamSource{}, opts, nil); err == nil || stream != nil {
+		t.Fatalf("unprepared provider stream=%v err=%v", stream, err)
 	}
-}
-
-type faultSource struct {
-	parts  []source.Partition
-	reader *faultReader
-}
-
-func newFaultSource(partitions int) *faultSource {
-	parts := make([]source.Partition, partitions)
-	for i := range parts {
-		parts[i] = source.Partition{ID: i, Rows: 1}
-	}
-	return &faultSource{parts: parts, reader: &faultReader{readErrAt: -1}}
-}
-
-func (*faultSource) Schema() memory.Schema {
-	return memory.NewSchema(memory.Field{Name: "x", Type: memory.TypeInt64})
-}
-func (s *faultSource) Stats(context.Context) (source.Stats, error) {
-	return source.Stats{Rows: int64(len(s.parts)), Partitions: len(s.parts)}, nil
-}
-func (s *faultSource) Partitions(context.Context) ([]source.Partition, error) {
-	return append([]source.Partition(nil), s.parts...), nil
-}
-func (s *faultSource) NewReader(context.Context, source.ReadOptions) (source.Reader, error) {
-	return s.reader, nil
-}
-
-type faultReader struct {
-	readCalls  int
-	closeCalls int
-	readErrAt  int
-	readErr    error
-	closeErr   error
-}
-
-func (r *faultReader) ReadPartition(_ context.Context, part source.Partition, dst *memory.Batch) error {
-	call := r.readCalls
-	r.readCalls++
-	if call == r.readErrAt {
-		if r.readErr == nil {
-			return fmt.Errorf("injected read failure at call %d", call)
+	src := &preparedNativeStreamSource{}
+	for _, parts := range [][]source.Partition{nil, {}, {{ID: 3}, {ID: 1}, {ID: 3}}} {
+		stream, err := source.OpenBatchStreamWithPartitions(context.Background(), src, opts, parts)
+		if err != nil {
+			t.Fatal(err)
 		}
-		return r.readErr
+		stream.Close()
+		if len(src.parts) != len(parts) {
+			t.Fatalf("parts=%v want=%v", src.parts, parts)
+		}
+		for i := range parts {
+			if src.parts[i] != parts[i] {
+				t.Fatalf("parts=%v want=%v", src.parts, parts)
+			}
+		}
 	}
-	dst.ClearColumns()
-	dst.Int64s["x"] = &memory.Int64Vector{Values: []int64{int64(part.ID)}}
-	dst.Reset(1)
-	return nil
 }
 
-func (r *faultReader) Close() error {
-	r.closeCalls++
-	return r.closeErr
+func TestDrainBatchStreamClosesOnError(t *testing.T) {
+	nextErr := errors.New("next failed")
+	closeErr := errors.New("close failed")
+	stream := &failingStream{nextErr: nextErr, closeErr: closeErr}
+	if _, err := source.DrainBatchStream(context.Background(), stream); !errors.Is(err, nextErr) || !errors.Is(err, closeErr) {
+		t.Fatalf("drain err=%v", err)
+	}
+	if stream.closes != 1 {
+		t.Fatalf("closes=%d", stream.closes)
+	}
 }
 
-type nilNativeStreamSource struct{ source.Source }
+type nilNativeStreamSource struct{}
 
+func (*nilNativeStreamSource) Schema() memory.Schema { return memory.Schema{} }
+func (*nilNativeStreamSource) Stats(context.Context) (source.Stats, error) {
+	return source.Stats{}, nil
+}
+func (*nilNativeStreamSource) Partitions(context.Context) ([]source.Partition, error) {
+	return nil, nil
+}
 func (*nilNativeStreamSource) NewBatchStream(context.Context, source.ReadOptions) (source.BatchStream, error) {
 	return nil, nil
 }
 
-var _ source.Source = (*faultSource)(nil)
-var _ source.Reader = (*faultReader)(nil)
-var _ source.BatchStreamProvider = (*nilNativeStreamSource)(nil)
+type preparedNativeStreamSource struct {
+	nilNativeStreamSource
+	parts []source.Partition
+}
+
+func (s *preparedNativeStreamSource) NewBatchStreamWithPartitions(_ context.Context, _ source.ReadOptions, parts []source.Partition) (source.BatchStream, error) {
+	s.parts = parts
+	return emptyReadOptionsStream{}, nil
+}
+
+type failingStream struct {
+	nextErr, closeErr error
+	closes            int
+}
+
+func (s *failingStream) Next(context.Context, *memory.Batch) (bool, error) { return false, s.nextErr }
+func (s *failingStream) Close() error                                      { s.closes++; return s.closeErr }

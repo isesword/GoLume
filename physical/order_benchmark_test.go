@@ -63,24 +63,32 @@ func benchmarkOrderSource(b *testing.B, topK bool, sortOpts SortSourceOptions) {
 		if len(parts) != 1 {
 			b.Fatalf("ordered source partitions=%d, want 1", len(parts))
 		}
-		r, err := openTestReader(ctx, s, testReadOptions())
+		r, err := source.OpenBatchStream(ctx, s, testReadOptions())
 		if err != nil {
 			b.Fatal(err)
 		}
 		dst := memory.NewBatch()
-		if err := r.ReadPartition(ctx, parts[0], dst); err != nil {
-			_ = r.Close()
-			b.Fatal(err)
+		rowsRead := 0
+		for {
+			ok, err := r.Next(ctx, dst)
+			if err != nil {
+				_ = r.Close()
+				b.Fatal(err)
+			}
+			if !ok {
+				break
+			}
+			rowsRead += dst.Rows
+			dst.ReleaseOwned()
 		}
 		want := rows
 		if topK {
 			want = 100
 		}
-		if dst.Rows != want {
+		if rowsRead != want {
 			_ = r.Close()
-			b.Fatalf("ordered rows=%d, want %d", dst.Rows, want)
+			b.Fatalf("ordered rows=%d, want %d", rowsRead, want)
 		}
-		dst.ReleaseOwned()
 		if err := r.Close(); err != nil {
 			b.Fatal(err)
 		}

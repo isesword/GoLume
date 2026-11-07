@@ -4,6 +4,7 @@ package engine
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"gocolumn/expr"
 	"gocolumn/kernel"
@@ -12,6 +13,7 @@ import (
 	"gocolumn/pipeline"
 	"gocolumn/scheduler"
 	"gocolumn/source"
+	"sync"
 )
 
 // Engine owns shared execution resources such as the worker scheduler, kernel
@@ -22,17 +24,68 @@ type Engine struct {
 	scheduler scheduler.Scheduler
 	memory    *memory.EngineBudget
 	feedback  *feedbackStore
+	cache     *residentExecutionCache
+	lifeMu    sync.Mutex
+	active    sync.WaitGroup
+	closed    bool
+	closeDone chan struct{}
+	closeErr  error
 }
 
 // New constructs an Engine using normalized execution options.
 func New(opts Options) *Engine {
 	opts.normalize()
-	return &Engine{opts: opts, kernels: kernel.New(opts.KernelMode), scheduler: scheduler.NewPool(opts.Workers), memory: newMemoryManager(opts.MemoryLimitBytes), feedback: newFeedbackStore()}
+	e := &Engine{opts: opts, kernels: kernel.New(opts.KernelMode), scheduler: scheduler.NewPool(opts.Workers), memory: newMemoryManager(opts.MemoryLimitBytes), feedback: newFeedbackStore()}
+	e.cache = newResidentExecutionCache(e.memory, opts.PreparedCacheBytes)
+	return e
 }
 
-// Close releases shared scheduler resources. Prepared queries should be closed
-// before closing their owning engine.
-func (e *Engine) Close() error { return e.scheduler.Close() }
+// ErrEngineClosed reports new work submitted after Engine.Close begins.
+var ErrEngineClosed = errors.New("engine closed")
+
+func (e *Engine) begin() error {
+	e.lifeMu.Lock()
+	defer e.lifeMu.Unlock()
+	if e.closed {
+		return ErrEngineClosed
+	}
+	e.active.Add(1)
+	return nil
+}
+func (e *Engine) end() { e.active.Done() }
+func (e *Engine) checkOpen() error {
+	e.lifeMu.Lock()
+	defer e.lifeMu.Unlock()
+	if e.closed {
+		return ErrEngineClosed
+	}
+	return nil
+}
+
+// Close rejects new executions, waits for accepted consumers, purges idle
+// resident buffers, and closes the scheduler. Concurrent callers wait for the
+// same cleanup. Caller-owned outputs are not invalidated.
+func (e *Engine) Close() error {
+	if e == nil {
+		return nil
+	}
+	e.lifeMu.Lock()
+	if e.closed {
+		done := e.closeDone
+		e.lifeMu.Unlock()
+		<-done
+		return e.closeErr
+	}
+	e.closed = true
+	e.closeDone = make(chan struct{})
+	done := e.closeDone
+	e.lifeMu.Unlock()
+	e.active.Wait()
+	e.cache.close()
+	e.closeErr = e.scheduler.Close()
+	close(done)
+	return e.closeErr
+}
 
 // KernelCapabilities reports the active scalar/SIMD kernel backend.
 func (e *Engine) KernelCapabilities() kernel.Capabilities { return e.kernels.Capabilities() }
@@ -49,6 +102,41 @@ func (e *Engine) BeginQueryMemory() (*memory.QueryBudget, error) {
 	if e == nil || e.memory == nil {
 		return nil, fmt.Errorf("engine memory budget is nil")
 	}
+	if err := e.checkOpen(); err != nil {
+		return nil, err
+	}
+	return e.beginQueryMemory()
+}
+
+// AcquireQueryMemory uses a caller-supplied query budget when present, otherwise
+// creates an execution-owned budget. The returned ownership flag is true only
+// for a new budget: callers must never close a borrowed budget. An external
+// budget supplies the query's accounting root and limits, as for PreparedQuery
+// execution. Closed engines and closed external budgets reject new work.
+func (e *Engine) AcquireQueryMemory(ctx context.Context) (*memory.QueryBudget, bool, error) {
+	if ctx == nil {
+		return nil, false, fmt.Errorf("query memory context is nil")
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, false, err
+	}
+	if e == nil || e.memory == nil {
+		return nil, false, fmt.Errorf("engine memory budget is nil")
+	}
+	if err := e.checkOpen(); err != nil {
+		return nil, false, err
+	}
+	if budget := memory.QueryBudgetFromContext(ctx); budget != nil {
+		if budget.Snapshot().Closed {
+			return nil, false, memory.ErrQueryBudgetClosed
+		}
+		return budget, false, nil
+	}
+	budget, err := e.beginQueryMemory()
+	return budget, err == nil, err
+}
+
+func (e *Engine) beginQueryMemory() (*memory.QueryBudget, error) {
 	return e.memory.BeginQuery(memory.BudgetOptions{SoftLimitBytes: e.opts.QueryMemorySoftLimitBytes, HardLimitBytes: e.opts.MemoryLimitBytes, Spill: e.opts.Spill})
 }
 
@@ -90,15 +178,15 @@ func (e *Engine) Observer() observer.Observer {
 }
 
 // Execute is the convenience one-shot API. Repeated workloads should call
-// Prepare once and reuse PreparedQuery.Execute so readers, hash tables,
-// selection buffers, and radix workspaces are retained under the memory budget.
+// Prepare once and reuse the compiled plan. Each Execute opens native streams
+// with query-scoped memory and releases all execution state before returning.
 func (e *Engine) Execute(ctx context.Context, src source.Source, q expr.Query, execOpts ExecuteOptions) (Result, error) {
 	p, err := e.Prepare(ctx, src, q, PrepareOptions{MaxConcurrency: 1})
 	if err != nil {
 		return Result{}, err
 	}
 	defer p.Close()
-	return p.Execute(ctx, execOpts)
+	return p.execute(ctx, execOpts, false)
 }
 
 // MaxWorkers returns the maximum scheduler parallelism owned by the engine.

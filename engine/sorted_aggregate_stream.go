@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"gocolumn/aggregate"
-	"gocolumn/expr"
 	"gocolumn/memory"
 	"gocolumn/observer"
 	"gocolumn/pipeline"
@@ -22,8 +21,31 @@ func (p *PreparedQuery) IsSortedAggregate() bool {
 // NewSortedAggregateStream creates a one-group-state stream over proven
 // globally ordered input. It does not require a spill store.
 func (p *PreparedQuery) NewSortedAggregateStream(ctx context.Context, schema memory.Schema, outputRows int) (source.BatchStream, error) {
+	var readOpts source.ReadOptions
+	if p != nil && p.e != nil {
+		readOpts.Kernels = p.e.kernels
+		readOpts.BatchRows = p.e.opts.Pipeline.MaxMorselRows
+		readOpts.BatchBytes = p.e.opts.Pipeline.MaxMorselBytes
+	}
+	return p.NewSortedAggregateStreamWithReadOptions(ctx, schema, outputRows, readOpts)
+}
+
+// NewSortedAggregateStreamWithReadOptions preserves scan limits and memory ownership
+// through the aggregate child graph. Kernels must match the prepared query.
+func (p *PreparedQuery) NewSortedAggregateStreamWithReadOptions(ctx context.Context, schema memory.Schema, outputRows int, readOpts source.ReadOptions) (source.BatchStream, error) {
+	return p.newSortedAggregateStream(ctx, schema, outputRows, readOpts, true)
+}
+
+// acquirePrepared is false only when Execute already owns the plan lifecycle.
+func (p *PreparedQuery) newSortedAggregateStream(ctx context.Context, schema memory.Schema, outputRows int, readOpts source.ReadOptions, acquirePrepared bool) (source.BatchStream, error) {
 	if p == nil || p.e == nil || !p.IsSortedAggregate() {
 		return nil, fmt.Errorf("sorted aggregate stream requires a prepared sorted strategy")
+	}
+	if err := readOpts.Validate(); err != nil {
+		return nil, err
+	}
+	if readOpts.Kernels != p.e.kernels {
+		return nil, fmt.Errorf("aggregate stream kernel set differs from prepared query")
 	}
 	if ctx == nil {
 		return nil, fmt.Errorf("sorted aggregate stream context is nil")
@@ -32,10 +54,15 @@ func (p *PreparedQuery) NewSortedAggregateStream(ctx context.Context, schema mem
 	if budget == nil {
 		return nil, fmt.Errorf("sorted aggregate stream requires a query memory budget")
 	}
-	if err := p.begin(); err != nil {
-		return nil, err
+	if p.executionPolicy == ExecutionBounded && budget.Limit() <= 0 {
+		return nil, ErrBoundedMemoryLimitRequired
 	}
-	active := true
+	if acquirePrepared {
+		if err := p.begin(); err != nil {
+			return nil, err
+		}
+	}
+	active := acquirePrepared
 	defer func() {
 		if active {
 			p.end()
@@ -53,7 +80,9 @@ func (p *PreparedQuery) NewSortedAggregateStream(ctx context.Context, schema mem
 		outputRows = int(budgetRows)
 	}
 	exchange := budget.Operator("SortedAggregateExchange", memory.MemoryInFlightBatch)
-	input, err := pipeline.OpenBatchStream(ctx, p.src, source.ReadOptions{Kernels: p.e.kernels}, p.parts, exchange, p.e.opts.Pipeline, p.e.opts.Observer)
+	pipelineOpts := p.e.opts.Pipeline
+	pipelineOpts.Ordering = pipeline.OrderingStable
+	input, err := pipeline.OpenBatchStream(ctx, p.src, readOpts, p.parts, exchange, pipelineOpts, p.e.opts.Observer)
 	if err != nil {
 		return nil, err
 	}
@@ -61,48 +90,47 @@ func (p *PreparedQuery) NewSortedAggregateStream(ctx context.Context, schema mem
 	stateBytes := aggregate.Int64VectorBytesForSlots(1, p.cq.AggregateLayout) + 128
 	stateLease, err := stateBudget.ReserveGrowth(ctx, stateBytes)
 	if err != nil {
-		_ = input.Close()
-		return nil, err
+		return nil, errors.Join(err, input.Close())
 	}
 	stream := &sortedAggregateStream{
 		query: p, schema: schema, budget: budget, input: input,
 		stateBudget: stateBudget, outputBudget: budget.Operator("SortedAggregateOutput", memory.MemoryWorkspace),
 		stateLease: stateLease, outputRows: outputRows, inputBatch: memory.NewBatch(),
-		state: aggregate.NewInt64Vector(1, p.cq.AggregateLayout), started: time.Now(), active: true,
+		state: aggregate.NewInt64Vector(1, p.cq.AggregateLayout), started: time.Now(), active: acquirePrepared,
 	}
-	stream.workspace.SetReserveHook(func(n int64) error {
-		r, err := budget.Reserve(context.Background(), n)
-		if err == nil {
-			stream.dynamicReservations = append(stream.dynamicReservations, r)
-		}
-		return err
-	})
+	stream.predicate.manager = budget.Operator("SortedAggregatePredicate", memory.MemoryWorkspace)
+	stream.predicate.operator = "SortedAggregatePredicate"
+
 	active = false
 	return stream, nil
 }
 
 type sortedAggregateStream struct {
-	query        *PreparedQuery
-	schema       memory.Schema
-	budget       *memory.QueryBudget
-	input        source.BatchStream
-	stateBudget  *memory.OperatorBudget
-	outputBudget *memory.OperatorBudget
-	stateLease   memory.Reservation
-	keyLease     memory.Reservation
-	outputLeases []memory.Reservation
-	outputRows   int
+	outputDst         *memory.Batch
+	cleaned           bool
+	statsRecorded     bool
+	recordSink        func(aggregateRecord) error
+	query             *PreparedQuery
+	schema            memory.Schema
+	budget            *memory.QueryBudget
+	input             source.BatchStream
+	stateBudget       *memory.OperatorBudget
+	outputBudget      *memory.OperatorBudget
+	stateLease        memory.Reservation
+	keyLease          memory.Reservation
+	outputLease       memory.Reservation
+	outputStringLease memory.Reservation
+	outputRows        int
 
-	inputBatch          *memory.Batch
-	binding             aggregateBatchBinding
-	selection           memory.Bitmap
-	nextRow             int
-	workspace           expr.EvalWorkspace
-	dynamicReservations []memory.Reservation
-	state               aggregate.Int64Vector
-	current             aggregateRecord
-	haveGroup           bool
-	inputDone           bool
+	inputBatch *memory.Batch
+	binding    aggregateBatchBinding
+	selection  memory.Bitmap
+	nextRow    int
+	predicate  aggregatePredicateWorkspace
+	state      aggregate.Int64Vector
+	current    aggregateRecord
+	haveGroup  bool
+	inputDone  bool
 
 	selectedRows int
 	groups       int
@@ -116,10 +144,18 @@ type sortedAggregateStream struct {
 }
 
 func (s *sortedAggregateStream) releaseOutput() {
-	for index := len(s.outputLeases) - 1; index >= 0; index-- {
-		s.outputLeases[index].Release()
+	if s.outputDst != nil {
+		s.outputDst.ClearColumns()
+		s.outputDst = nil
 	}
-	s.outputLeases = nil
+	if s.outputStringLease != nil {
+		s.outputStringLease.Release()
+		s.outputStringLease = nil
+	}
+	if s.outputLease != nil {
+		s.outputLease.Release()
+		s.outputLease = nil
+	}
 }
 
 func (s *sortedAggregateStream) releaseKey() {
@@ -155,6 +191,9 @@ func (s *sortedAggregateStream) ensureOutputString(ctx context.Context, dst *mem
 	if need <= cap(vector.Data) {
 		return nil
 	}
+	if cap(vector.Data) > int(^uint(0)>>1)/2 {
+		return fmt.Errorf("aggregate output string capacity exceeds addressable memory")
+	}
 	newCapacity := cap(vector.Data) * 2
 	if newCapacity < 64 {
 		newCapacity = 64
@@ -162,14 +201,17 @@ func (s *sortedAggregateStream) ensureOutputString(ctx context.Context, dst *mem
 	if newCapacity < need {
 		newCapacity = need
 	}
-	lease, err := s.outputBudget.ReserveGrowth(ctx, int64(newCapacity-cap(vector.Data)))
+	lease, err := s.outputBudget.ReserveGrowth(ctx, int64(newCapacity))
 	if err != nil {
 		return fmt.Errorf("reserve sorted aggregate output strings: %w", err)
 	}
 	data := make([]byte, len(vector.Data), newCapacity)
 	copy(data, vector.Data)
 	vector.Data = data
-	s.outputLeases = append(s.outputLeases, lease)
+	if s.outputStringLease != nil {
+		s.outputStringLease.Release()
+	}
+	s.outputStringLease = lease
 	return nil
 }
 
@@ -178,11 +220,19 @@ func (s *sortedAggregateStream) flushGroup(ctx context.Context, dst *memory.Batc
 		return nil
 	}
 	s.current.state = s.state.Result(0)
-	if err := s.ensureOutputString(ctx, dst, s.current); err != nil {
-		return err
-	}
-	if err := formatter.setOutputRecord(dst, row, s.current); err != nil {
-		return err
+	if dst == nil {
+		if s.recordSink != nil {
+			if err := s.recordSink(s.current); err != nil {
+				return err
+			}
+		}
+	} else {
+		if err := s.ensureOutputString(ctx, dst, s.current); err != nil {
+			return err
+		}
+		if err := formatter.setOutputRecord(dst, row, s.current); err != nil {
+			return err
+		}
 	}
 	s.groups++
 	s.haveGroup = false
@@ -200,7 +250,8 @@ func (s *sortedAggregateStream) loadInput(ctx context.Context) error {
 			s.inputDone = true
 			return nil
 		}
-		selection, err := s.query.cq.Predicate.Evaluate(s.inputBatch, &s.workspace, s.query.e.kernels)
+		s.selection = nil
+		selection, err := s.predicate.evaluate(ctx, s.query.cq.Predicate, s.inputBatch, s.query.e.kernels)
 		if err != nil {
 			return err
 		}
@@ -266,32 +317,26 @@ func shrinkAggregateOutput(dst *memory.Batch, schema memory.Schema, rows int) {
 }
 
 func (s *sortedAggregateStream) finishActive(success bool) {
-	if !s.active {
-		return
-	}
-	s.active = false
-	if success {
+	if success && !s.statsRecorded {
+		s.statsRecorded = true
 		elapsed := time.Since(s.started)
 		if s.query.feedbackKey != "" {
 			s.query.e.feedback.observe(s.query.feedbackKey, s.query.stats.Rows, s.selectedRows, s.groups)
 		}
-		s.query.e.opts.Observer.Observe(observer.Event{Stage: "sorted-aggregate", Duration: elapsed, Rows: s.query.stats.Rows, Attributes: map[string]string{"groups": fmt.Sprint(s.groups)}})
+		s.query.e.opts.Observer.Observe(observer.Event{Stage: "sorted-aggregate", Duration: elapsed, Rows: s.query.stats.Rows, Workers: 1, Attributes: s.StreamDiagnostics()})
 	}
-	s.query.end()
+	if s.active {
+		s.active = false
+		s.query.end()
+	}
 }
 
 func (s *sortedAggregateStream) fail(err error) error {
 	if s.terminalErr == nil {
 		s.terminalErr = err
 	}
-	s.releaseOutput()
-	s.releaseKey()
-	if s.input != nil {
-		err = errors.Join(err, s.input.Close())
-		s.input = nil
-	}
-	s.finishActive(false)
-	return err
+	s.terminalErr = errors.Join(s.terminalErr, s.cleanup())
+	return s.terminalErr
 }
 
 // Next emits up to outputRows completed adjacent-key groups.
@@ -299,7 +344,13 @@ func (s *sortedAggregateStream) Next(ctx context.Context, dst *memory.Batch) (bo
 	if dst == nil {
 		return false, fmt.Errorf("sorted aggregate stream destination is nil")
 	}
-	dst.ClearColumns()
+	return s.next(ctx, dst)
+}
+
+// next advances the same one-group-state machine for columnar and record sinks.
+// A nil destination selects the terminal record consumer without output vectors.
+func (s *sortedAggregateStream) next(ctx context.Context, dst *memory.Batch) (bool, error) {
+	clearAggregateOutput(dst)
 	s.releaseOutput()
 	if s.closed {
 		return false, source.ErrBatchStreamClosed
@@ -308,38 +359,46 @@ func (s *sortedAggregateStream) Next(ctx context.Context, dst *memory.Batch) (bo
 		return false, s.terminalErr
 	}
 	if s.exhausted {
-		return false, nil
+		return false, s.cleanup()
 	}
 	if ctx == nil {
 		return false, s.fail(fmt.Errorf("sorted aggregate stream context is nil"))
 	}
+	var ownershipErr error
+	ctx, ownershipErr = aggregateStreamContext(ctx, s.budget)
+	if ownershipErr != nil {
+		return false, s.fail(ownershipErr)
+	}
 	if err := ctx.Err(); err != nil {
 		return false, s.fail(err)
 	}
-	baseBytes, err := aggregateOutputBytes(s.schema, s.outputRows, 0)
-	if err != nil {
-		return false, s.fail(err)
-	}
-	lease, err := s.outputBudget.ReserveGrowth(ctx, baseBytes)
-	if err != nil {
-		return false, s.fail(err)
-	}
-	s.outputLeases = append(s.outputLeases, lease)
 	formatter := &spillableAggregateStream{query: s.query, schema: s.schema}
-	if err := formatter.allocateOutputBatch(dst, s.outputRows, 0); err != nil {
-		return false, s.fail(err)
+	if dst != nil {
+		baseBytes, err := aggregateOutputBytes(s.schema, s.outputRows, 0)
+		if err != nil {
+			return false, s.fail(err)
+		}
+		lease, err := s.outputBudget.ReserveGrowth(ctx, baseBytes)
+		if err != nil {
+			return false, s.fail(err)
+		}
+		s.outputLease = lease
+		s.outputDst = dst
+		if err := formatter.allocateOutputBatch(dst, s.outputRows, 0); err != nil {
+			return false, s.fail(err)
+		}
 	}
 	output := 0
 	for output < s.outputRows {
 		key, value, valid, ok, err := s.nextSelected(ctx)
 		if err != nil {
-			dst.ClearColumns()
+			clearAggregateOutput(dst)
 			return false, s.fail(err)
 		}
 		if !ok {
 			if s.haveGroup {
 				if err := s.flushGroup(ctx, dst, output, formatter); err != nil {
-					dst.ClearColumns()
+					clearAggregateOutput(dst)
 					return false, s.fail(err)
 				}
 				output++
@@ -347,29 +406,28 @@ func (s *sortedAggregateStream) Next(ctx context.Context, dst *memory.Batch) (bo
 			s.exhausted = true
 			if s.input != nil {
 				if err := s.input.Close(); err != nil {
-					dst.ClearColumns()
+					clearAggregateOutput(dst)
 					return false, s.fail(err)
 				}
 				s.input = nil
 			}
-			s.finishActive(true)
 			break
 		}
 		if !s.haveGroup {
 			if err := s.startGroup(ctx, key, value, valid); err != nil {
-				dst.ClearColumns()
+				clearAggregateOutput(dst)
 				return false, s.fail(err)
 			}
 		} else if aggregateKeysEqual(s.query.cq.GroupShape, s.current, key) {
 			s.state.AddValue(0, value, valid)
 		} else {
 			if err := s.flushGroup(ctx, dst, output, formatter); err != nil {
-				dst.ClearColumns()
+				clearAggregateOutput(dst)
 				return false, s.fail(err)
 			}
 			output++
 			if err := s.startGroup(ctx, key, value, valid); err != nil {
-				dst.ClearColumns()
+				clearAggregateOutput(dst)
 				return false, s.fail(err)
 			}
 		}
@@ -379,35 +437,70 @@ func (s *sortedAggregateStream) Next(ctx context.Context, dst *memory.Batch) (bo
 		}
 	}
 	if output == 0 {
-		dst.ClearColumns()
+		clearAggregateOutput(dst)
 		s.releaseOutput()
-		return false, nil
+		return false, s.cleanup()
 	}
-	shrinkAggregateOutput(dst, s.schema, output)
+	if dst != nil {
+		shrinkAggregateOutput(dst, s.schema, output)
+	}
 	return true, nil
 }
 
 // Close releases input, one-group state and output reservations exactly once.
 func (s *sortedAggregateStream) Close() error {
-	if s == nil || s.closed {
-		return s.closeErr
+	if s == nil {
+		return nil
 	}
 	s.closed = true
-	for _, r := range s.dynamicReservations {
-		r.Release()
+	return s.cleanup()
+}
+
+func (s *sortedAggregateStream) cleanup() error {
+	if s.cleaned {
+		return s.closeErr
 	}
-	s.dynamicReservations = nil
+	s.cleaned = true
+	s.binding = aggregateBatchBinding{}
+	s.selection = nil
+	s.predicate.close()
+	s.current = aggregateRecord{}
+	s.state = aggregate.Int64Vector{}
+	s.recordSink = nil
 	s.releaseOutput()
 	s.releaseKey()
 	if s.stateLease != nil {
 		s.stateLease.Release()
 		s.stateLease = nil
 	}
+	if s.inputBatch != nil {
+		s.inputBatch.ClearColumns()
+		s.inputBatch = nil
+	}
 	if s.input != nil {
 		s.closeErr = s.input.Close()
 		s.input = nil
 	}
-	s.inputBatch.ReleaseOwned()
 	s.finishActive(s.exhausted && s.terminalErr == nil)
 	return s.closeErr
 }
+
+// Stats returns execution diagnostics for the shared aggregate consumer.
+func (s *sortedAggregateStream) Stats() AggregateStreamStats {
+	return AggregateStreamStats{SelectedRows: s.selectedRows, Groups: s.groups, Checksum: s.checksum, Elapsed: time.Since(s.started)}
+}
+
+// StreamDiagnostics reports the actual adjacent-key state operator.
+func (s *sortedAggregateStream) StreamDiagnostics() map[string]string {
+	peak := int64(0)
+	if s.budget != nil {
+		peak = s.budget.Snapshot().PeakBytes
+	}
+	return map[string]string{
+		"strategy": planner.StrategySorted.String(), "workers": "1", "groups": fmt.Sprint(s.groups),
+		"selected_rows": fmt.Sprint(s.selectedRows), "checksum": fmt.Sprint(s.checksum), "peak_memory_scope": "query", "peak_memory_bytes": fmt.Sprint(peak), "spill_runs": "0",
+		"kernel_mode": s.query.e.kernels.Capabilities().Mode().String(), "kernel_arch": s.query.e.kernels.Capabilities().Arch(),
+	}
+}
+
+var _ source.BatchStreamDiagnostics = (*sortedAggregateStream)(nil)

@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"gocolumn/aggregate"
-	"gocolumn/expr"
 	"gocolumn/hashagg"
 	"gocolumn/memory"
 	"gocolumn/pipeline"
@@ -48,7 +47,7 @@ type aggregateStateTable struct {
 	layout      aggregate.Layout
 	maxRetained int64
 	retained    int64
-	reserve     func(int64) error
+	reserve     hashagg.ReserveFunc
 
 	i32  *hashagg.I32Table
 	u64  *hashagg.U64Table
@@ -57,7 +56,7 @@ type aggregateStateTable struct {
 	str  *hashagg.StringTable
 }
 
-func newAggregateStateTable(shape GroupShape, layout aggregate.Layout, cardinalityHint, averageKeyBytes int, maxRetained int64, reserve func(int64) error) (*aggregateStateTable, error) {
+func newAggregateStateTable(shape GroupShape, layout aggregate.Layout, cardinalityHint, averageKeyBytes int, maxRetained int64, reserve hashagg.ReserveFunc) (*aggregateStateTable, error) {
 	if reserve == nil {
 		return nil, fmt.Errorf("aggregate state table requires a reservation callback")
 	}
@@ -65,68 +64,116 @@ func newAggregateStateTable(shape GroupShape, layout aggregate.Layout, cardinali
 	if cardinalityHint < 8 {
 		cardinalityHint = 8
 	}
-	arenaHint := averageKeyBytes * cardinalityHint
-	if arenaHint < 64 {
-		arenaHint = 64
-	}
-	if arenaHint > 4096 {
-		arenaHint = 4096
+	arenaHint := 64
+	if averageKeyBytes > 0 {
+		if averageKeyBytes > 4096 || cardinalityHint > 4096/averageKeyBytes {
+			arenaHint = 4096
+		} else {
+			arenaHint = max(64, averageKeyBytes*cardinalityHint)
+		}
 	}
 	opts := hashagg.TableOptions{Aggregates: layout, Reserve: t.reserveGrowth}
-	var initial int64
+	var err error
 	switch shape {
 	case GroupShapeI32:
-		initial = hashagg.EstimateI32TableBytesWithOptions(cardinalityHint, opts)
+		t.i32, err = hashagg.NewI32TableWithOptions(cardinalityHint, opts)
+		if err == nil {
+			t.i32.Reset()
+		}
 	case GroupShapeI64:
-		initial = hashagg.EstimateU64TableBytesWithOptions(cardinalityHint, opts)
+		t.u64, err = hashagg.NewU64TableWithOptions(cardinalityHint, opts)
+		if err == nil {
+			t.u64.Reset()
+		}
 	case GroupShapeU32, GroupShapeDictionaryString:
-		initial = hashagg.EstimateU32TableBytesWithOptions(cardinalityHint, opts)
+		t.u32, err = hashagg.NewU32TableWithOptions(cardinalityHint, opts)
+		if err == nil {
+			t.u32.Reset()
+		}
 	case GroupShapePairFixed:
-		initial = hashagg.EstimatePairTableBytesWithOptions(cardinalityHint, opts)
+		t.pair, err = hashagg.NewPairTableWithOptions(cardinalityHint, opts)
+		if err == nil {
+			t.pair.Reset()
+		}
 	case GroupShapeStringView:
-		initial = hashagg.EstimateStringTableBytesWithOptions(cardinalityHint, arenaHint, opts)
+		t.str, err = hashagg.NewStringTableWithOptions(cardinalityHint, arenaHint, opts)
+		if err == nil {
+			t.str.Reset()
+		}
 	default:
 		return nil, fmt.Errorf("spillable aggregate does not support group shape %d", shape)
 	}
-	if maxRetained > 0 && initial > maxRetained {
-		return nil, fmt.Errorf("%w: initial aggregate state requires %d bytes, target=%d", errAggregateStateTarget, initial, maxRetained)
-	}
-	if err := reserve(initial); err != nil {
+	if err != nil {
 		return nil, err
-	}
-	t.retained = initial
-	switch shape {
-	case GroupShapeI32:
-		t.i32 = hashagg.NewI32TableWithOptions(cardinalityHint, opts)
-		t.i32.Reset()
-	case GroupShapeI64:
-		t.u64 = hashagg.NewU64TableWithOptions(cardinalityHint, opts)
-		t.u64.Reset()
-	case GroupShapeU32, GroupShapeDictionaryString:
-		t.u32 = hashagg.NewU32TableWithOptions(cardinalityHint, opts)
-		t.u32.Reset()
-	case GroupShapePairFixed:
-		t.pair = hashagg.NewPairTableWithOptions(cardinalityHint, opts)
-		t.pair.Reset()
-	case GroupShapeStringView:
-		t.str = hashagg.NewStringTableWithOptions(cardinalityHint, arenaHint, opts)
-		t.str.Reset()
 	}
 	return t, nil
 }
 
-func (t *aggregateStateTable) reserveGrowth(bytes int64) error {
-	if bytes <= 0 {
-		return nil
+// Each physical component owns its reservation. Replacement is charged at its
+// full new size while the old component remains live; releasing the old token
+// after replacement reduces the tracked state exactly once.
+type aggregateStateReservation struct {
+	lease memory.Reservation
+	table *aggregateStateTable
+	bytes int64
+}
+
+// Bytes returns the physical component capacity charged by this token.
+func (r *aggregateStateReservation) Bytes() int64 { return r.bytes }
+
+// Release relinquishes this component exactly once and updates live state bytes.
+func (r *aggregateStateReservation) Release() {
+	if r.lease == nil {
+		return
 	}
+	r.lease.Release()
+	r.lease = nil
+	r.table.retained -= r.bytes
+}
+
+func (t *aggregateStateTable) reserveGrowth(bytes int64) (memory.Reservation, error) {
 	if t.maxRetained > 0 && (bytes > t.maxRetained || t.retained > t.maxRetained-bytes) {
-		return errAggregateStateTarget
+		return nil, errAggregateStateTarget
 	}
-	if err := t.reserve(bytes); err != nil {
-		return err
+	lease, err := t.reserve(bytes)
+	if err != nil {
+		if lease != nil {
+			lease.Release()
+		}
+		return nil, err
+	}
+	if lease == nil {
+		return nil, fmt.Errorf("aggregate state reservation is nil for %d bytes", bytes)
+	}
+	if lease.Bytes() != bytes {
+		lease.Release()
+		return nil, fmt.Errorf("aggregate state reservation size differs from %d bytes", bytes)
 	}
 	t.retained += bytes
-	return nil
+	return &aggregateStateReservation{lease: lease, table: t, bytes: bytes}, nil
+}
+
+func (t *aggregateStateTable) close() {
+	if t.i32 != nil {
+		t.i32.Close()
+		t.i32 = nil
+	}
+	if t.u64 != nil {
+		t.u64.Close()
+		t.u64 = nil
+	}
+	if t.u32 != nil {
+		t.u32.Close()
+		t.u32 = nil
+	}
+	if t.pair != nil {
+		t.pair.Close()
+		t.pair = nil
+	}
+	if t.str != nil {
+		t.str.Close()
+		t.str = nil
+	}
 }
 
 func (t *aggregateStateTable) len() int {
@@ -632,42 +679,33 @@ func encodeAggregateRun(ctx context.Context, shape GroupShape, layout aggregate.
 }
 
 type aggregateTableOwner struct {
-	table        *aggregateStateTable
-	reservations []memory.Reservation
-	retained     int64
+	table *aggregateStateTable
 }
 
 func newAggregateTableOwner(ctx context.Context, p *PreparedQuery, operator *memory.OperatorBudget, maxRetained int64) (*aggregateTableOwner, error) {
-	owner := &aggregateTableOwner{}
-	reserve := func(bytes int64) error {
-		reservation, err := operator.ReserveGrowth(ctx, bytes)
-		if err != nil {
-			return err
-		}
-		owner.reservations = append(owner.reservations, reservation)
-		owner.retained += bytes
-		return nil
-	}
-	table, err := newAggregateStateTable(p.cq.GroupShape, p.cq.AggregateLayout, 8, p.cq.AverageKeyBytes, maxRetained, reserve)
+	table, err := newAggregateStateTable(p.cq.GroupShape, p.cq.AggregateLayout, 8, p.cq.AverageKeyBytes, maxRetained, func(bytes int64) (memory.Reservation, error) {
+		return operator.ReserveGrowth(ctx, bytes)
+	})
 	if err != nil {
-		owner.close()
 		return nil, err
 	}
-	owner.table = table
-	return owner, nil
+	return &aggregateTableOwner{table: table}, nil
+}
+
+func (o *aggregateTableOwner) retainedBytes() int64 {
+	if o == nil || o.table == nil {
+		return 0
+	}
+	return o.table.retained
 }
 
 func (o *aggregateTableOwner) close() int64 {
-	if o == nil {
+	if o == nil || o.table == nil {
 		return 0
 	}
-	released := o.retained
+	released := o.table.retained
+	o.table.close()
 	o.table = nil
-	for i := len(o.reservations) - 1; i >= 0; i-- {
-		o.reservations[i].Release()
-	}
-	o.reservations = nil
-	o.retained = 0
 	return released
 }
 
@@ -675,8 +713,31 @@ func (o *aggregateTableOwner) close() int64 {
 // aggregation stream. The caller must bind a QueryBudget to ctx and configure
 // a finite memory limit and spill quota.
 func (p *PreparedQuery) NewSpillableAggregateStream(ctx context.Context, schema memory.Schema, outputRows int) (source.BatchStream, error) {
+	var readOpts source.ReadOptions
+	if p != nil && p.e != nil {
+		readOpts.Kernels = p.e.kernels
+		readOpts.BatchRows = p.e.opts.Pipeline.MaxMorselRows
+		readOpts.BatchBytes = p.e.opts.Pipeline.MaxMorselBytes
+	}
+	return p.NewSpillableAggregateStreamWithReadOptions(ctx, schema, outputRows, readOpts)
+}
+
+// NewSpillableAggregateStreamWithReadOptions preserves scan limits and memory ownership
+// through the aggregate child graph. Kernels must match the prepared query.
+func (p *PreparedQuery) NewSpillableAggregateStreamWithReadOptions(ctx context.Context, schema memory.Schema, outputRows int, readOpts source.ReadOptions) (source.BatchStream, error) {
+	return p.newSpillableAggregateStream(ctx, schema, outputRows, readOpts, true)
+}
+
+// acquirePrepared is false only when Execute already owns the plan lifecycle.
+func (p *PreparedQuery) newSpillableAggregateStream(ctx context.Context, schema memory.Schema, outputRows int, readOpts source.ReadOptions, acquirePrepared bool) (source.BatchStream, error) {
 	if p == nil || p.e == nil {
 		return nil, fmt.Errorf("nil prepared aggregate query")
+	}
+	if err := readOpts.Validate(); err != nil {
+		return nil, err
+	}
+	if readOpts.Kernels != p.e.kernels {
+		return nil, fmt.Errorf("aggregate stream kernel set differs from prepared query")
 	}
 	if ctx == nil {
 		return nil, fmt.Errorf("aggregate stream context is nil")
@@ -691,10 +752,12 @@ func (p *PreparedQuery) NewSpillableAggregateStream(ctx context.Context, schema 
 	if !query.SpillConfigured() {
 		return nil, fmt.Errorf("spillable aggregate requires an explicit spill quota")
 	}
-	if err := p.begin(); err != nil {
-		return nil, err
+	if acquirePrepared {
+		if err := p.begin(); err != nil {
+			return nil, err
+		}
 	}
-	begun := true
+	begun := acquirePrepared
 	defer func() {
 		if begun {
 			p.end()
@@ -724,6 +787,7 @@ func (p *PreparedQuery) NewSpillableAggregateStream(ctx context.Context, schema 
 	}
 	s := &spillableAggregateStream{
 		query:       p,
+		readOpts:    readOpts,
 		schema:      schema,
 		budget:      query,
 		store:       store,
@@ -742,13 +806,14 @@ func (p *PreparedQuery) NewSpillableAggregateStream(ctx context.Context, schema 
 		return nil, err
 	}
 	s.unregister = unregister
-	s.active = true
+	s.active = acquirePrepared
 	begun = false
 	return s, nil
 }
 
 type spillableAggregateStream struct {
 	query       *PreparedQuery
+	readOpts    source.ReadOptions
 	schema      memory.Schema
 	budget      *memory.QueryBudget
 	store       memory.SpillManager
@@ -765,6 +830,7 @@ type spillableAggregateStream struct {
 	partitions  [][]aggregateRunRef
 	outputRuns  []aggregateRunRef
 	unregister  func()
+	outputDst   *memory.Batch
 	outputLease memory.Reservation
 
 	selectedRows       int
@@ -792,7 +858,7 @@ func (s *spillableAggregateStream) SpillableBytes() int64 {
 	if s.table == nil {
 		return 0
 	}
-	return s.table.retained
+	return s.table.retainedBytes()
 }
 
 // Spill partitions and persists the current aggregate state under memory pressure.
@@ -1027,12 +1093,12 @@ func bitsTrailingZeros64(value uint64) int {
 	return bits.TrailingZeros64(value)
 }
 
-func (s *spillableAggregateStream) aggregateBatch(ctx context.Context, batch *memory.Batch, workspace *expr.EvalWorkspace) error {
+func (s *spillableAggregateStream) aggregateBatch(ctx context.Context, batch *memory.Batch, workspace *aggregatePredicateWorkspace) error {
 	binding, err := s.bindBatch(batch)
 	if err != nil {
 		return err
 	}
-	selection, err := s.query.cq.Predicate.Evaluate(batch, workspace, s.query.e.kernels)
+	selection, err := workspace.evaluate(ctx, s.query.cq.Predicate, batch, s.query.e.kernels)
 	if err != nil {
 		return err
 	}
@@ -1064,7 +1130,7 @@ func (s *spillableAggregateStream) aggregateBatch(ctx context.Context, batch *me
 		}
 		retained := int64(0)
 		if s.table != nil {
-			retained = s.table.retained
+			retained = s.table.retainedBytes()
 		}
 		s.mu.Unlock()
 		if err == nil {
@@ -1088,26 +1154,15 @@ func (s *spillableAggregateStream) aggregateBatch(ctx context.Context, batch *me
 
 func (s *spillableAggregateStream) consumeInput(ctx context.Context) error {
 	exchange := s.budget.Operator("AggregateExchange", memory.MemoryInFlightBatch)
-	stream, err := pipeline.OpenBatchStream(ctx, s.query.src, source.ReadOptions{Kernels: s.query.e.kernels}, s.query.parts, exchange, s.query.e.opts.Pipeline, s.query.e.opts.Observer)
+	stream, err := pipeline.OpenBatchStream(ctx, s.query.src, s.readOpts, s.query.parts, exchange, s.query.e.opts.Pipeline, s.query.e.opts.Observer)
 	if err != nil {
 		return err
 	}
 	batch := memory.NewBatch()
 	defer batch.ReleaseOwned()
-	var workspace expr.EvalWorkspace
-	var workspaceReservations []memory.Reservation
-	defer func() {
-		for _, reservation := range workspaceReservations {
-			reservation.Release()
-		}
-	}()
-	workspace.SetReserveHook(func(n int64) error {
-		reservation, err := s.budget.Reserve(ctx, n)
-		if err == nil {
-			workspaceReservations = append(workspaceReservations, reservation)
-		}
-		return err
-	})
+	workspace := aggregatePredicateWorkspace{manager: s.budget.Operator("SpillAggregatePredicate", memory.MemoryWorkspace), operator: "SpillAggregatePredicate"}
+	defer workspace.close()
+
 	for {
 		ok, nextErr := stream.Next(ctx, batch)
 		if nextErr != nil {
@@ -1126,7 +1181,7 @@ func (s *spillableAggregateStream) consumeInput(ctx context.Context) error {
 	s.mu.Lock()
 	retained := int64(0)
 	if s.table != nil {
-		retained = s.table.retained
+		retained = s.table.retainedBytes()
 	}
 	s.mu.Unlock()
 	if retained > 0 {

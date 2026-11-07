@@ -1,0 +1,63 @@
+pair=1 mode=baseline
+goos: linux
+goarch: amd64
+pkg: gocolumn/engine
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkPreparedRadixW4-4   	     130	  10081790 ns/op	29789796 B/op	    1864 allocs/op
+PASS
+pair=1 mode=fresh
+goos: linux
+goarch: amd64
+pkg: gocolumn/engine
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkPreparedStreamW4-4   	      61	  16673025 ns/op	53707047 B/op	   11713 allocs/op
+PASS
+pair=1 mode=retained
+goos: linux
+goarch: amd64
+pkg: gocolumn/engine
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkDiagnosticRetainedNativeW4-4   	      75	  14917635 ns/op	  20885808 retained-B	32408631 B/op	    6212 allocs/op
+PASS
+pair=2 mode=baseline
+goos: linux
+goarch: amd64
+pkg: gocolumn/engine
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkPreparedRadixW4-4   	     129	  10594793 ns/op	29789795 B/op	    1864 allocs/op
+PASS
+pair=2 mode=fresh
+goos: linux
+goarch: amd64
+pkg: gocolumn/engine
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkPreparedStreamW4-4   	      75	  17011912 ns/op	53709093 B/op	   11712 allocs/op
+PASS
+pair=2 mode=retained
+goos: linux
+goarch: amd64
+pkg: gocolumn/engine
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkDiagnosticRetainedNativeW4-4   	      85	  15073111 ns/op	  20885808 retained-B	32406205 B/op	    6210 allocs/op
+PASS
+pair=3 mode=baseline
+goos: linux
+goarch: amd64
+pkg: gocolumn/engine
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkPreparedRadixW4-4   	     100	  10079556 ns/op	29789876 B/op	    1864 allocs/op
+PASS
+pair=3 mode=fresh
+goos: linux
+goarch: amd64
+pkg: gocolumn/engine
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkPreparedStreamW4-4   	      56	  18695883 ns/op	53711009 B/op	   11713 allocs/op
+PASS
+pair=3 mode=retained
+goos: linux
+goarch: amd64
+pkg: gocolumn/engine
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkDiagnosticRetainedNativeW4-4   	      72	  15080292 ns/op	  20885808 retained-B	32413190 B/op	    6213 allocs/op
+PASS

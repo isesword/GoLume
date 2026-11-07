@@ -11,6 +11,12 @@ import (
 // contiguous row range. It performs no allocation and is used to reserve an
 // Exchange slot before CloneBatchRange allocates.
 func EstimateBatchRangeBytes(src *Batch, offset, length int) (int64, error) {
+	return estimateBatchRangeBytes(src, offset, length, false)
+}
+
+// inheritedNulls accounts for validity materialized by canonical struct clone
+// when an ancestor is NULL, even if the original child has no validity buffer.
+func estimateBatchRangeBytes(src *Batch, offset, length int, inheritedNulls bool) (int64, error) {
 	if src == nil {
 		return 0, fmt.Errorf("cannot estimate range from nil batch")
 	}
@@ -27,10 +33,50 @@ func EstimateBatchRangeBytes(src *Batch, offset, length int) (int64, error) {
 		return nil
 	}
 	validityBytes := func(validity Bitmap) int64 {
-		if validity == nil || length == 0 {
+		if (validity == nil && !inheritedNulls) || length == 0 {
 			return 0
 		}
 		return int64(WordsFor(length)) * 8
+	}
+	for name, v := range src.Int8s {
+		if v == nil || len(v.Values) < end {
+			return 0, fmt.Errorf("int8 column %q is shorter than range", name)
+		}
+		if err := add(int64(length)*1 + validityBytes(v.Validity)); err != nil {
+			return 0, err
+		}
+	}
+	for name, v := range src.Int16s {
+		if v == nil || len(v.Values) < end {
+			return 0, fmt.Errorf("int16 column %q is shorter than range", name)
+		}
+		if err := add(int64(length)*2 + validityBytes(v.Validity)); err != nil {
+			return 0, err
+		}
+	}
+	for name, v := range src.Uint8s {
+		if v == nil || len(v.Values) < end {
+			return 0, fmt.Errorf("uint8 column %q is shorter than range", name)
+		}
+		if err := add(int64(length)*1 + validityBytes(v.Validity)); err != nil {
+			return 0, err
+		}
+	}
+	for name, v := range src.Uint16s {
+		if v == nil || len(v.Values) < end {
+			return 0, fmt.Errorf("uint16 column %q is shorter than range", name)
+		}
+		if err := add(int64(length)*2 + validityBytes(v.Validity)); err != nil {
+			return 0, err
+		}
+	}
+	for name, v := range src.Float32s {
+		if v == nil || len(v.Values) < end {
+			return 0, fmt.Errorf("float32 column %q is shorter than range", name)
+		}
+		if err := add(int64(length)*4 + validityBytes(v.Validity)); err != nil {
+			return 0, err
+		}
 	}
 	for name, v := range src.Int64s {
 		if v == nil || len(v.Values) < end {
@@ -118,7 +164,18 @@ func EstimateBatchRangeBytes(src *Batch, offset, length int) (int64, error) {
 		if v == nil || v.Values == nil || v.Rows < end {
 			return 0, fmt.Errorf("struct column %q is shorter than range", name)
 		}
-		childBytes, err := EstimateBatchRangeBytes(v.Values, offset, length)
+		childNulls := inheritedNulls
+		if v.Validity != nil {
+			if len(v.Validity) < WordsFor(end) {
+				return 0, fmt.Errorf("struct column %q validity is shorter than range", name)
+			}
+			for row := offset; row < end && !childNulls; row++ {
+				if !IsSet(v.Validity, row) {
+					childNulls = true
+				}
+			}
+		}
+		childBytes, err := estimateBatchRangeBytes(v.Values, offset, length, childNulls)
 		if err != nil {
 			return 0, fmt.Errorf("struct column %q: %w", name, err)
 		}
@@ -161,6 +218,36 @@ func CloneBatchRange(src *Batch, offset, length int) (*Batch, error) {
 	fail := func(column string, err error) (*Batch, error) {
 		dst.ReleaseOwned()
 		return nil, fmt.Errorf("clone range column %q: %w", column, err)
+	}
+	for name, v := range src.Int8s {
+		if v == nil || len(v.Values) < end {
+			return fail(name, fmt.Errorf("int8 vector shorter than range"))
+		}
+		dst.Int8s[name] = &Int8Vector{Values: append([]int8(nil), v.Values[offset:end]...), Validity: cloneValidityRange(v.Validity, offset, length), Encoding: v.Encoding}
+	}
+	for name, v := range src.Int16s {
+		if v == nil || len(v.Values) < end {
+			return fail(name, fmt.Errorf("int16 vector shorter than range"))
+		}
+		dst.Int16s[name] = &Int16Vector{Values: append([]int16(nil), v.Values[offset:end]...), Validity: cloneValidityRange(v.Validity, offset, length), Encoding: v.Encoding}
+	}
+	for name, v := range src.Uint8s {
+		if v == nil || len(v.Values) < end {
+			return fail(name, fmt.Errorf("uint8 vector shorter than range"))
+		}
+		dst.Uint8s[name] = &Uint8Vector{Values: append([]uint8(nil), v.Values[offset:end]...), Validity: cloneValidityRange(v.Validity, offset, length), Encoding: v.Encoding}
+	}
+	for name, v := range src.Uint16s {
+		if v == nil || len(v.Values) < end {
+			return fail(name, fmt.Errorf("uint16 vector shorter than range"))
+		}
+		dst.Uint16s[name] = &Uint16Vector{Values: append([]uint16(nil), v.Values[offset:end]...), Validity: cloneValidityRange(v.Validity, offset, length), Encoding: v.Encoding}
+	}
+	for name, v := range src.Float32s {
+		if v == nil || len(v.Values) < end {
+			return fail(name, fmt.Errorf("float32 vector shorter than range"))
+		}
+		dst.Float32s[name] = &Float32Vector{Values: append([]float32(nil), v.Values[offset:end]...), Validity: cloneValidityRange(v.Validity, offset, length), Encoding: v.Encoding}
 	}
 	for name, v := range src.Int64s {
 		if v == nil || len(v.Values) < end {

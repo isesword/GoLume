@@ -100,7 +100,7 @@ func TestLazyParallelRadixJoinExecutes(t *testing.T) {
 	lf := s.FromSource(left).
 		Join(s.FromSource(right), JoinOptions{Type: InnerJoin, LeftOn: []string{"id"}, RightOn: []string{"id"}, RadixBits: 2, Workers: 4}).
 		SelectExprs(Col("id").Alias("id"), Col("bonus").Alias("bonus"))
-	frame, err := lf.CollectFrame(context.Background())
+	frame, err := lf.Collect(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}

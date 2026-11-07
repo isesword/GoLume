@@ -94,9 +94,12 @@ func (p ExecutionPolicy) Validate() error {
 
 // Options configures shared engine resources and physical planning defaults.
 type Options struct {
-	Workers                   int
-	KernelMode                kernel.Mode
-	MemoryLimitBytes          int64
+	Workers          int
+	KernelMode       kernel.Mode
+	MemoryLimitBytes int64
+	// PreparedCacheBytes bounds continuously charged idle resident state across
+	// prepared executions. Zero disables reuse. DefaultOptions uses 64 MiB.
+	PreparedCacheBytes        int64
 	QueryMemorySoftLimitBytes int64
 	Spill                     SpillOptions
 	ExecutionPolicy           ExecutionPolicy
@@ -116,7 +119,7 @@ func DefaultOptions() Options {
 	if pipelineWorkers > maxDefaultPipelineWorkers {
 		pipelineWorkers = maxDefaultPipelineWorkers
 	}
-	return Options{Workers: workers, KernelMode: kernel.ModeAuto, MemoryLimitBytes: 0, ExecutionPolicy: ExecutionAuto, Pipeline: (pipeline.Options{Workers: pipelineWorkers}).Normalize(workers), CostModel: planner.Heuristic{}, Observer: observer.Nop{}}
+	return Options{Workers: workers, KernelMode: kernel.ModeAuto, MemoryLimitBytes: 0, PreparedCacheBytes: 64 << 20, ExecutionPolicy: ExecutionAuto, Pipeline: (pipeline.Options{Workers: pipelineWorkers}).Normalize(workers), CostModel: planner.Heuristic{}, Observer: observer.Nop{}}
 }
 
 func (o *Options) normalize() {

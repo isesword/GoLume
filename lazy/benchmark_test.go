@@ -13,7 +13,7 @@ import (
 )
 
 func BenchmarkPreparedLazyParquet(b *testing.B) {
-	benchmarkPreparedLazyParquet(b, kernel.ModeAuto)
+	b.Run("strategy=bitmap-direct", func(b *testing.B) { benchmarkPreparedLazyParquet(b, kernel.ModeAuto) })
 }
 
 func BenchmarkPreparedLazyParquetKernelMode(b *testing.B) {
@@ -21,7 +21,7 @@ func BenchmarkPreparedLazyParquetKernelMode(b *testing.B) {
 		name string
 		mode kernel.Mode
 	}{{"mode=scalar", kernel.ModeScalar}, {"mode=auto", kernel.ModeAuto}} {
-		b.Run(choice.name, func(b *testing.B) { benchmarkPreparedLazyParquet(b, choice.mode) })
+		b.Run("strategy=bitmap-direct/"+choice.name, func(b *testing.B) { benchmarkPreparedLazyParquet(b, choice.mode) })
 	}
 }
 
@@ -38,7 +38,7 @@ func benchmarkPreparedLazyParquet(b *testing.B, mode kernel.Mode) {
 	frame = frame.
 		Filter(Col("pred").Gt(Lit(32767))).
 		Select("key", "value").
-		WithHints(expr.Hints{Selectivity: .451, Cardinality: 1 << 18, ForceStrategy: "radix", ForceWorkerCount: 4}).
+		WithHints(expr.Hints{Selectivity: .451, Cardinality: 1 << 18, ForceStrategy: "bitmap-direct"}).
 		GroupBy("key").
 		Agg(Sum("value", "sum"), Count("count"))
 	prepared, err := frame.PrepareResult(context.Background(), engine.PrepareOptions{MaxConcurrency: 1})
@@ -95,7 +95,7 @@ func BenchmarkPreparedRadixJoinKernelMode(b *testing.B) {
 			session := NewSession(opts)
 			defer session.Close()
 			frame := session.FromSource(left).Join(session.FromSource(right), JoinOptions{Type: InnerJoin, LeftOn: []string{"key"}, RightOn: []string{"key"}, Suffix: "_right", RadixBits: 8, Workers: 4})
-			prepared, err := frame.PrepareFrame(context.Background())
+			prepared, err := frame.Prepare(context.Background())
 			if err != nil {
 				b.Fatal(err)
 			}
@@ -127,10 +127,10 @@ func BenchmarkPreparedExecutionLayerComparison(b *testing.B) {
 		Filter:     expr.GT(expr.Col("pred"), expr.Lit(32767)),
 		GroupBy:    []string{"key"},
 		Aggregates: []expr.Aggregate{expr.Sum("value", "sum"), expr.Count("count")},
-		Hints:      expr.Hints{Selectivity: .451, Cardinality: 1 << 18, ForceStrategy: "radix", ForceWorkerCount: 4},
+		Hints:      expr.Hints{Selectivity: .451, Cardinality: 1 << 18, ForceStrategy: "bitmap-direct"},
 	}
 
-	b.Run("direct-engine-prepared", func(b *testing.B) {
+	b.Run("engine-stream-bitmap-direct", func(b *testing.B) {
 		src, err := parquetsource.OpenFile("../testdata/bench-1m.parquet")
 		if err != nil {
 			b.Fatal(err)
@@ -164,7 +164,7 @@ func BenchmarkPreparedExecutionLayerComparison(b *testing.B) {
 		}
 	})
 
-	b.Run("lazy-prepared", func(b *testing.B) {
+	b.Run("lazy-stream-bitmap-direct", func(b *testing.B) {
 		opts := engine.DefaultOptions()
 		opts.Workers = 4
 		session := NewSession(opts)
@@ -246,7 +246,7 @@ func BenchmarkJoinFramePreparationComparison(b *testing.B) {
 	b.Run("one-shot-collect-frame", func(b *testing.B) {
 		b.ReportAllocs()
 		for i := 0; i < b.N; i++ {
-			frame, err := lf.CollectFrame(context.Background())
+			frame, err := lf.Collect(context.Background())
 			if err != nil {
 				b.Fatal(err)
 			}
@@ -257,7 +257,7 @@ func BenchmarkJoinFramePreparationComparison(b *testing.B) {
 	})
 
 	b.Run("prepared-frame", func(b *testing.B) {
-		prepared, err := lf.PrepareFrame(context.Background())
+		prepared, err := lf.Prepare(context.Background())
 		if err != nil {
 			b.Fatal(err)
 		}

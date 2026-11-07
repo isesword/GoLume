@@ -29,7 +29,7 @@ func TestLazyWithColumnsComputedFilterAggregate(t *testing.T) {
 	}
 }
 
-func TestLazySelectExprsCollectFrame(t *testing.T) {
+func TestLazySelectExprsCollect(t *testing.T) {
 	b := memory.NewBatch()
 	b.Int64s["a"] = &memory.Int64Vector{Values: []int64{1, 2, 3}}
 	b.Int64s["b"] = &memory.Int64Vector{Values: []int64{10, 20, 30}}
@@ -37,7 +37,7 @@ func TestLazySelectExprsCollectFrame(t *testing.T) {
 	src, _ := inmemory.New(memory.NewSchema(memory.Field{Name: "a", Type: memory.TypeInt64}, memory.Field{Name: "b", Type: memory.TypeInt64}), b)
 	s := NewSession(engine.DefaultOptions())
 	defer s.Close()
-	frame, err := s.FromSource(src).SelectExprs(Col("a").Alias("a"), Col("a").Add(Col("b")).Alias("total")).CollectFrame(context.Background())
+	frame, err := s.FromSource(src).SelectExprs(Col("a").Alias("a"), Col("a").Add(Col("b")).Alias("total")).Collect(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -76,12 +76,12 @@ func TestLazyJoinThenFilterProjectionAggregate(t *testing.T) {
 	}
 }
 
-func TestLazyJoinCollectFrame(t *testing.T) {
+func TestLazyJoinCollect(t *testing.T) {
 	left := makeI32Source(t, []int32{1, 2, 3})
 	right := makeI32Source(t, []int32{2, 3})
 	s := NewSession(engine.DefaultOptions())
 	defer s.Close()
-	frame, err := s.FromSource(left).Join(s.FromSource(right), JoinOptions{Type: InnerJoin, LeftOn: []string{"key"}, RightOn: []string{"key"}}).SelectExprs(Col("key").Alias("key")).CollectFrame(context.Background())
+	frame, err := s.FromSource(left).Join(s.FromSource(right), JoinOptions{Type: InnerJoin, LeftOn: []string{"key"}, RightOn: []string{"key"}}).SelectExprs(Col("key").Alias("key")).Collect(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -102,7 +102,7 @@ func TestPreparedFrameReusesJoinBuildAndReleasesMemory(t *testing.T) {
 		Join(s.FromSource(right), JoinOptions{Type: InnerJoin, LeftOn: []string{"key"}, RightOn: []string{"key"}}).
 		SelectExprs(Col("key").Alias("key"))
 
-	prepared, err := lf.PrepareFrame(context.Background())
+	prepared, err := lf.Prepare(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -141,7 +141,7 @@ func TestPreparedFrameConcurrentExecute(t *testing.T) {
 	prepared, err := s.FromSource(left).
 		Join(s.FromSource(right), JoinOptions{Type: InnerJoin, LeftOn: []string{"key"}, RightOn: []string{"key"}}).
 		SelectExprs(Col("key").Alias("key")).
-		PrepareFrame(context.Background())
+		Prepare(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -192,7 +192,7 @@ func TestPhysicalScanProjectionFallbackForGenericSource(t *testing.T) {
 	), b)
 	s := NewSession(engine.DefaultOptions())
 	defer s.Close()
-	prepared, err := s.FromSource(src).Select("a").PrepareFrame(context.Background())
+	prepared, err := s.FromSource(src).Select("a").Prepare(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -234,7 +234,7 @@ func TestLazyTypedExpressionsFloatStringDateTimestamp(t *testing.T) {
 		).
 		Filter(Col("f2").Gt(F64(2.0))).
 		SelectExprs(Col("f2").Alias("f2"), Col("label").Alias("label"), Col("day_text").Alias("day_text"), Col("ts").Alias("ts")).
-		CollectFrame(context.Background())
+		Collect(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -288,7 +288,7 @@ func TestExplainAnalyzeAggregateAndFrame(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if rowReport.OutputRows != 3 || rowReport.MaterializedRows != 3 {
+	if rowReport.OutputRows != 3 || rowReport.OutputBatches != 1 {
 		t.Fatalf("row analyze=%+v", rowReport)
 	}
 	if len(rowReport.ExecuteOperators) < 2 {

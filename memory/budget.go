@@ -119,6 +119,9 @@ type BudgetSnapshot struct {
 // Its hard limit is shared by concurrent QueryBudget children.
 type EngineBudget struct {
 	root *BudgetManager
+
+	reclaimMu  sync.Mutex
+	reclaimers map[*rootReclaimer]struct{}
 }
 
 // NewEngineBudget creates a shared engine budget. A non-positive hard limit is
@@ -139,7 +142,7 @@ func (e *EngineBudget) BeginQuery(opts BudgetOptions) (*QueryBudget, error) {
 		opts.HardLimitBytes = e.Limit()
 	}
 	if opts.SoftLimitBytes == 0 && opts.HardLimitBytes > 0 {
-		opts.SoftLimitBytes = opts.HardLimitBytes * 8 / 10
+		opts.SoftLimitBytes = opts.HardLimitBytes/10*8 + opts.HardLimitBytes%10*8/10
 	}
 	if opts.SoftLimitBytes > 0 && opts.HardLimitBytes > 0 && opts.SoftLimitBytes > opts.HardLimitBytes {
 		opts.SoftLimitBytes = opts.HardLimitBytes
@@ -156,7 +159,12 @@ func (e *EngineBudget) Reserve(ctx context.Context, bytes int64) (Reservation, e
 	if q := QueryBudgetFromContext(ctx); q != nil && q.engine == e {
 		return q.reserve(ctx, "unclassified", MemoryWorkspace, nil, bytes)
 	}
-	return e.reserveRoot(ctx, bytes)
+	reservation, err := e.reserveRoot(ctx, bytes)
+	if errors.Is(err, ErrBudgetExceeded) {
+		e.reclaim(ctx, bytes)
+		return e.reserveRoot(ctx, bytes)
+	}
+	return reservation, err
 }
 
 func (e *EngineBudget) reserveRoot(ctx context.Context, bytes int64) (Reservation, error) {
@@ -184,6 +192,7 @@ func (e *EngineBudget) Limit() int64 {
 
 type queryBudgetContextKey struct{}
 type spillArbitrationContextKey struct{}
+type spillCallbackContextKey struct{}
 
 // WithQueryBudget binds budget to ctx for existing Manager call sites.
 func WithQueryBudget(ctx context.Context, budget *QueryBudget) context.Context {
@@ -204,6 +213,13 @@ func QueryBudgetFromContext(ctx context.Context) *QueryBudget {
 
 func withSpillArbitration(ctx context.Context) context.Context {
 	return context.WithValue(ctx, spillArbitrationContextKey{}, true)
+}
+
+// withSpillCallback distinguishes callbacks holding arbiter.mu from standalone
+// growth reservations, which suppress recursive spill but may reclaim idle root
+// state. Root reclaim callbacks must never inherit a held spill arbiter lock.
+func withSpillCallback(ctx context.Context) context.Context {
+	return context.WithValue(withSpillArbitration(ctx), spillCallbackContextKey{}, true)
 }
 
 func spillArbitrationActive(ctx context.Context) bool {
@@ -337,7 +353,9 @@ func (q *QueryBudget) Close() error {
 		return nil
 	}
 	q.closeOnce.Do(func() {
+		q.reserveMu.Lock()
 		q.closed.Store(true)
+		q.reserveMu.Unlock()
 		q.spillMu.Lock()
 		defer q.spillMu.Unlock()
 		if q.spillStore != nil {
@@ -377,6 +395,9 @@ func (q *QueryBudget) reserve(ctx context.Context, operator string, class Memory
 	if ctx == nil {
 		return nil, fmt.Errorf("memory reservation context is nil")
 	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	if class >= memoryClassCount {
 		return nil, fmt.Errorf("invalid memory class %d", class)
 	}
@@ -387,11 +408,11 @@ func (q *QueryBudget) reserve(ctx context.Context, operator string, class Memory
 		return nil, ErrQueryBudgetClosed
 	}
 	inSpill := spillArbitrationActive(ctx)
-	if !inSpill && q.soft > 0 && q.Used()+bytes > q.soft {
+	if !inSpill && q.soft > 0 && bytes > q.soft-q.Used() {
 		_, _ = q.arbiter.spillTo(ctx, maxInt64(0, q.soft-bytes), SpillForSoftLimit, operator, class)
 	}
 	for attempt := 0; attempt < 2; attempt++ {
-		if !inSpill && q.hard > 0 && q.Used()+bytes > q.hard {
+		if !inSpill && q.hard > 0 && bytes > q.hard-q.Used() {
 			_, spillErr := q.arbiter.spillTo(ctx, maxInt64(0, q.hard-bytes), SpillForHardLimit, operator, class)
 			if spillErr != nil {
 				return nil, spillErr
@@ -403,7 +424,7 @@ func (q *QueryBudget) reserve(ctx context.Context, operator string, class Memory
 			q.reserveMu.Unlock()
 			return nil, ErrQueryBudgetClosed
 		}
-		if q.hard > 0 && used+bytes > q.hard {
+		if q.hard > 0 && bytes > q.hard-used {
 			q.reserveMu.Unlock()
 			return nil, newMemoryResourceError("query", operator, class, bytes, used, q.hard, nil)
 		}
@@ -420,11 +441,19 @@ func (q *QueryBudget) reserve(ctx context.Context, operator string, class Memory
 			return &hierarchicalReservation{bytes: bytes, root: rootReservation, query: q, operator: op, class: class}, nil
 		}
 		q.reserveMu.Unlock()
-		if !errors.Is(err, ErrBudgetExceeded) || attempt == 1 || inSpill {
+		if !errors.Is(err, ErrBudgetExceeded) || attempt == 1 {
 			return nil, newMemoryResourceError("engine", operator, class, bytes, q.engine.Used(), q.engine.Limit(), err)
 		}
-		if _, spillErr := q.arbiter.spillTo(ctx, maxInt64(0, q.Used()-bytes), SpillForEngineLimit, operator, class); spillErr != nil {
-			return nil, spillErr
+		// Root reclamation must never run under reserveMu: a cache callback
+		// may detach or release state owned by any query on this root.
+		q.engine.reclaim(ctx, bytes)
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		if !inSpill && q.engine.rootShortfall(bytes) > 0 {
+			if _, spillErr := q.arbiter.spillTo(ctx, maxInt64(0, q.Used()-bytes), SpillForEngineLimit, operator, class); spillErr != nil {
+				return nil, spillErr
+			}
 		}
 	}
 	panic("unreachable query reservation retry")
@@ -700,7 +729,7 @@ func (a *spillArbiter) spillTo(ctx context.Context, targetUsed int64, reason Spi
 			break
 		}
 		request := SpillRequest{Reason: reason, Operator: item.name, Class: class, TargetBytes: current - targetUsed, UsedBytes: current, SoftLimit: a.query.soft, HardLimit: a.query.hard}
-		if _, err := item.spiller.Spill(withSpillArbitration(ctx), request); err != nil {
+		if _, err := item.spiller.Spill(withSpillCallback(ctx), request); err != nil {
 			return before - a.query.Used(), fmt.Errorf("spill operator %s: %w", item.name, err)
 		}
 	}

@@ -59,7 +59,7 @@ func (s *aggregateResultSource) StreamPlan() source.StreamPlanNode {
 	}
 	return source.StreamPlanNode{
 		Operator: "Aggregate", Class: class,
-		Detail: fmt.Sprintf("groups=%d aggregates=%d strategy=%s", len(s.groupBy), len(s.aggs), mode),
+		Detail: fmt.Sprintf("groups=%d aggregates=%d mode=%s strategy=%s workers=%d", len(s.groupBy), len(s.aggs), mode, s.query.Plan().Strategy.Kind, s.query.Plan().Strategy.Workers),
 	}
 }
 
@@ -86,17 +86,12 @@ func (s *aggregateResultSource) NewBatchStream(ctx context.Context, opts source.
 		return nil, err
 	}
 	if s.spillable {
-		return s.query.NewSpillableAggregateStream(ctx, s.schema, 0)
+		return s.query.NewSpillableAggregateStreamWithReadOptions(ctx, s.schema, 0, opts)
 	}
 	if s.query.IsSortedAggregate() {
-		return s.query.NewSortedAggregateStream(ctx, s.schema, 0)
+		return s.query.NewSortedAggregateStreamWithReadOptions(ctx, s.schema, 0, opts)
 	}
-	return s.query.NewResidentAggregateStream(ctx, s.schema, 0)
-}
-
-// NewBatchStreamWithPartitions opens the aggregate stream for the requested output partitions.
-func (s *aggregateResultSource) NewBatchStreamWithPartitions(ctx context.Context, opts source.ReadOptions, _ []source.Partition) (source.BatchStream, error) {
-	return s.NewBatchStream(ctx, opts)
+	return s.query.NewResidentAggregateStreamWithReadOptions(ctx, s.schema, 0, opts)
 }
 
 // Dictionary returns stable dictionary metadata for a grouped string column.
@@ -110,4 +105,3 @@ func (s *aggregateResultSource) Dictionary(_ context.Context, column string) (so
 
 var _ source.Source = (*aggregateResultSource)(nil)
 var _ source.BatchStreamProvider = (*aggregateResultSource)(nil)
-var _ source.PreparedBatchStreamProvider = (*aggregateResultSource)(nil)

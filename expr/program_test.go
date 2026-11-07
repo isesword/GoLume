@@ -26,8 +26,8 @@ func TestProgramThreeValuedLogic(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var w EvalWorkspace
-	v, err := p.Evaluate(b, &w, testKernelSet())
+	var w evaluationState
+	v, err := evaluateBoolTest(p, b, &w, testKernelSet())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -41,7 +41,7 @@ func TestProgramThreeValuedLogic(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	v2, err := p2.Evaluate(b, &w, testKernelSet())
+	v2, err := evaluateBoolTest(p2, b, &w, testKernelSet())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -65,7 +65,7 @@ func TestProgramNativeFloat32Predicate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	out, err := p.Evaluate(b, &EvalWorkspace{}, testKernelSet())
+	out, err := evaluateBoolTest(p, b, &evaluationState{}, testKernelSet())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -93,7 +93,7 @@ func TestProgramFloat32ColumnComparisonUsesBothValidityBitmaps(t *testing.T) {
 	if simple != nil {
 		t.Fatal("column-column comparison must not be exposed as a literal fast path")
 	}
-	out, err := p.Evaluate(b, &EvalWorkspace{}, kernel.New(kernel.ModeScalar))
+	out, err := evaluateBoolTest(p, b, &evaluationState{}, kernel.New(kernel.ModeScalar))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -118,7 +118,7 @@ func TestProgramFloat32ColumnComparisonForcedMode(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	out, err := p.Evaluate(b, &EvalWorkspace{}, kernel.New(kernel.ModeSIMD))
+	out, err := evaluateBoolTest(p, b, &evaluationState{}, kernel.New(kernel.ModeSIMD))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -140,7 +140,7 @@ func TestProgramInt32ColumnComparison(t *testing.T) {
 	if simple != nil {
 		t.Fatal("column-column comparison must not be a literal fast path")
 	}
-	out, err := p.Evaluate(b, &EvalWorkspace{}, kernel.New(kernel.ModeSIMD))
+	out, err := evaluateBoolTest(p, b, &evaluationState{}, kernel.New(kernel.ModeSIMD))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -165,7 +165,7 @@ func TestProgramUint32ColumnComparisonKeepsUnsignedOrdering(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	out, err := p.Evaluate(b, &EvalWorkspace{}, kernel.New(kernel.ModeSIMD))
+	out, err := evaluateBoolTest(p, b, &evaluationState{}, kernel.New(kernel.ModeSIMD))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -184,7 +184,7 @@ func TestProgramInt64ColumnComparison(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	out, err := p.Evaluate(b, &EvalWorkspace{}, kernel.New(kernel.ModeSIMD))
+	out, err := evaluateBoolTest(p, b, &evaluationState{}, kernel.New(kernel.ModeSIMD))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -203,7 +203,7 @@ func TestProgramFloat64ColumnComparisonSpecialValues(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	out, err := p.Evaluate(b, &EvalWorkspace{}, kernel.New(kernel.ModeSIMD))
+	out, err := evaluateBoolTest(p, b, &evaluationState{}, kernel.New(kernel.ModeSIMD))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -222,7 +222,7 @@ func TestProgramUint64ColumnComparisonKeepsUnsignedOrdering(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	out, err := p.Evaluate(b, &EvalWorkspace{}, kernel.New(kernel.ModeScalar))
+	out, err := evaluateBoolTest(p, b, &evaluationState{}, kernel.New(kernel.ModeScalar))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -263,7 +263,7 @@ func TestProgramNarrowColumnComparisons(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			out, err := p.Evaluate(b, &EvalWorkspace{}, kernel.New(kernel.ModeScalar))
+			out, err := evaluateBoolTest(p, b, &evaluationState{}, kernel.New(kernel.ModeScalar))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -295,7 +295,7 @@ func TestProgramNativeNarrowPredicates(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			got, err := p.Evaluate(b, &EvalWorkspace{}, testKernelSet())
+			got, err := evaluateBoolTest(p, b, &evaluationState{}, testKernelSet())
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -312,14 +312,14 @@ func TestCompilePredicateNilMeansAllRows(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if simple != nil || program.Complexity != 1 {
+	if simple != nil || program.complexity != 1 {
 		t.Fatalf("program=%+v simple=%+v", program, simple)
 	}
 	batch := memory.NewBatch()
 	batch.Rows = 3
 	batch.Int64s["x"] = &memory.Int64Vector{Values: []int64{1, 2, 3}}
-	var workspace EvalWorkspace
-	out, err := program.Evaluate(batch, &workspace, testKernelSet())
+	var workspace evaluationState
+	out, err := evaluateBoolTest(program, batch, &workspace, testKernelSet())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -340,8 +340,8 @@ func TestOpaqueColumnNullPredicate(t *testing.T) {
 	b := memory.NewBatch()
 	b.Rows = 3
 	b.Opaque["nested"] = &memory.OpaqueVector{Rows: 3, Type: memory.TypeArrow, Validity: valid, Value: struct{}{}}
-	var ws EvalWorkspace
-	got, err := program.Evaluate(b, &ws, testKernelSet())
+	var ws evaluationState
+	got, err := evaluateBoolTest(program, b, &ws, testKernelSet())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -361,15 +361,15 @@ func TestProgramStringLiteralWorkspaceCacheInvalidates(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var w EvalWorkspace
-	got, err := p1.Evaluate(batch, &w, kernel.New(kernel.ModeScalar))
+	var w evaluationState
+	got, err := evaluateBoolTest(p1, batch, &w, kernel.New(kernel.ModeScalar))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if got.Truth[0]&1 == 0 || got.Truth[0]&2 != 0 {
 		t.Fatalf("p1 result=%v", got.Truth)
 	}
-	got, err = p2.Evaluate(batch, &w, kernel.New(kernel.ModeScalar))
+	got, err = evaluateBoolTest(p2, batch, &w, kernel.New(kernel.ModeScalar))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -391,8 +391,8 @@ func TestProgramStringLiteralWorkspaceConcurrentIsolation(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			var w EvalWorkspace
-			got, err := p.Evaluate(batch, &w, ks)
+			var w evaluationState
+			got, err := evaluateBoolTest(p, batch, &w, ks)
 			if err != nil || got.Truth[0]&1 == 0 || got.Truth[0]&2 != 0 {
 				t.Errorf("concurrent result=%v err=%v", got.Truth, err)
 			}
@@ -401,17 +401,17 @@ func TestProgramStringLiteralWorkspaceConcurrentIsolation(t *testing.T) {
 	wg.Wait()
 }
 
-func TestEvalWorkspaceMemoryBytesTracksRetainedCapacity(t *testing.T) {
+func TestEvaluationStateMemoryBytesTracksRetainedCapacity(t *testing.T) {
 	literal := make([]byte, 0, 6)
 	literal = append(literal, "needle"...)
-	w := &EvalWorkspace{regs: []BoolVector{{Truth: memory.Bitmap{1, 2}, Validity: memory.Bitmap{3}}}, literals: [][]byte{literal}, literalKey: []string{"needle"}, dictionary: []dictionaryPredicateCache{{domain: "d", matches: make([]bool, 2, 2)}}}
-	want := int64(32 + unsafe.Sizeof(BoolVector{}) + unsafe.Sizeof(dictionaryPredicateCache{}) + unsafe.Sizeof([]byte(nil)) + unsafe.Sizeof(""))
+	w := &evaluationState{owned: []scalarRegister{{BoolVector: BoolVector{Truth: memory.Bitmap{1, 2}}, ownedValidity: memory.Bitmap{3}, literal: literal, literalKey: "needle", dictionary: dictionaryPredicateCache{domain: "d", matches: make([]bool, 2)}}}}
+	want := int64(32 + unsafe.Sizeof(scalarRegister{}))
 	if got := w.MemoryBytes(); got != want {
 		t.Fatalf("workspace memory bytes=%d want=%d", got, want)
 	}
 	// These strings are borrowed. Longer contents must not change owned bytes.
-	w.literalKey[0] = "a much longer instruction literal"
-	w.dictionary[0].domain = "a much longer dictionary domain"
+	w.owned[0].literalKey = "a much longer instruction literal"
+	w.owned[0].dictionary.domain = "a much longer dictionary domain"
 	if got := w.MemoryBytes(); got != want {
 		t.Fatalf("borrowed strings changed accounting: got=%d want=%d", got, want)
 	}
@@ -422,11 +422,11 @@ func TestEvalWorkspaceMemoryBytesTracksRetainedCapacity(t *testing.T) {
 	if allocs := testing.AllocsPerRun(100, func() { _ = w.MemoryBytes() }); allocs != 0 {
 		t.Fatalf("accounting allocated: %v", allocs)
 	}
-	*w = EvalWorkspace{}
+	*w = evaluationState{}
 	if got := w.MemoryBytes(); got != 0 {
 		t.Fatalf("reset workspace retains %d bytes", got)
 	}
-	if (*EvalWorkspace)(nil).MemoryBytes() != 0 {
+	if (*evaluationState)(nil).MemoryBytes() != 0 {
 		t.Fatal("nil workspace must report zero bytes")
 	}
 }
@@ -434,8 +434,8 @@ func TestEvalWorkspaceMemoryBytesTracksRetainedCapacity(t *testing.T) {
 func TestDictionaryPredicateReserveHookPropagatesFailure(t *testing.T) {
 	v := &memory.DictionaryStringVector{Indices: []uint32{0}, Offsets: []uint32{0, 3, 6}, Data: []byte("abcdef"), DictionaryDomain: "d"}
 	out := make(memory.Bitmap, memory.WordsFor(1))
-	cache := &dictionaryPredicateCache{reserve: func(int64) error { return fmt.Errorf("budget exceeded") }}
-	selectDictionary(v, out, Instruction{Column: "s"}, cache, func([]byte) bool { return true })
+	cache := &dictionaryPredicateCache{reserve: func(int64) (memory.Reservation, error) { return nil, fmt.Errorf("budget exceeded") }}
+	selectDictionary(v, 1, out, instruction{Column: "s"}, cache, func([]byte) bool { return true })
 	if cache.reserveErr == nil || cache.reserveErr.Error() != "budget exceeded" {
 		t.Fatalf("reserveErr=%v", cache.reserveErr)
 	}

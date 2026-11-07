@@ -1,0 +1,84 @@
+{
+  "wip": {
+    "n": 120,
+    "medians_ms": {
+      "total": 17.203328,
+      "startup": 0.3054285,
+      "fill_sum": 7.5253435,
+      "compute_sum": 8.80158,
+      "tail": 0.076079,
+      "pipeline": 14.187345,
+      "saved": 2.9549925,
+      "initial_fill": 4.629532,
+      "final_compute": 3.33742,
+      "compute_chain_floor": 14.08342,
+      "stage_unlimited_buffer_floor": 9.696995,
+      "F1": 4.629532,
+      "C1": 5.100658,
+      "fillstart1": 0.3054285,
+      "computestart1": 5.0222195,
+      "F1_consumer_next": 1.546027,
+      "F1_consumer_predicate": 1.4327705,
+      "F1_append_outer": 1.4487695,
+      "F1_other": 0.018642,
+      "F2": 2.9549925,
+      "C2": 3.33742,
+      "fillstart2": 5.0222195,
+      "computestart2": 10.187857,
+      "F2_consumer_next": 0.470466,
+      "F2_consumer_predicate": 1.096572,
+      "F2_append_outer": 1.122409,
+      "F2_other": 0.0146085,
+      "zero_exposed_next": 12.3636785
+    },
+    "IQR_pipeline_ms": [
+      12.68940075,
+      16.4824395
+    ],
+    "IQR_zero_next_ms": [
+      11.344473,
+      14.52208275
+    ]
+  },
+  "combined": {
+    "n": 120,
+    "medians_ms": {
+      "total": 12.9092415,
+      "startup": 0.053861,
+      "fill_sum": 6.5686345,
+      "compute_sum": 6.2395635,
+      "tail": 0.041227,
+      "pipeline": 10.6652225,
+      "saved": 2.2514035,
+      "initial_fill": 4.276687,
+      "final_compute": 2.7619685,
+      "compute_chain_floor": 10.6652225,
+      "stage_unlimited_buffer_floor": 6.9554235,
+      "F1": 4.276687,
+      "C1": 3.431237,
+      "fillstart1": 0.053861,
+      "computestart1": 4.327894,
+      "F1_consumer_next": 1.435799,
+      "F1_consumer_predicate": 1.3327735,
+      "F1_append_outer": 1.376981,
+      "F1_other": 0.0171175,
+      "F2": 2.2514035,
+      "C2": 2.7619685,
+      "fillstart2": 4.327894,
+      "computestart2": 7.8763225,
+      "F2_consumer_next": 0.265129,
+      "F2_consumer_predicate": 0.93287,
+      "F2_append_outer": 0.970858,
+      "F2_other": 0.014012,
+      "zero_exposed_next": 9.133059
+    },
+    "IQR_pipeline_ms": [
+      10.25443875,
+      12.28157925
+    ],
+    "IQR_zero_next_ms": [
+      8.784406,
+      10.454986
+    ]
+  }
+}

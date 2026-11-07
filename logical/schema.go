@@ -43,8 +43,12 @@ func InferSchema(plan Plan) (memory.Schema, error) {
 		if err != nil {
 			return memory.Schema{}, err
 		}
-		if _, _, err := expr.CompilePredicate(schema, n.Predicate); err != nil {
+		bound, err := expr.Bind(schema, n.Predicate)
+		if err != nil {
 			return memory.Schema{}, fmt.Errorf("filter predicate: %w", err)
+		}
+		if bound.Field.Type != memory.TypeBool {
+			return memory.Schema{}, fmt.Errorf("filter predicate must be bool, got %s", bound.Field.Type)
 		}
 		return schema, nil
 
@@ -97,7 +101,7 @@ func InferSchema(plan Plan) (memory.Schema, error) {
 				return memory.Schema{}, fmt.Errorf("expression projection contains duplicate output %q", name)
 			}
 			produced[name] = struct{}{}
-			field, err := inferScalarField(in, named.Expr, name)
+			field, err := boundOutputField(in, named.Expr, name)
 			if err != nil {
 				return memory.Schema{}, err
 			}
@@ -179,7 +183,7 @@ func InferSchema(plan Plan) (memory.Schema, error) {
 			if err != nil {
 				return memory.Schema{}, fmt.Errorf("sort key %d: %w", i, err)
 			}
-			if _, err := expr.InferScalarType(in, value); err != nil {
+			if _, err := expr.Bind(in, value); err != nil {
 				return memory.Schema{}, fmt.Errorf("sort key %d: %w", i, err)
 			}
 		}
@@ -198,7 +202,7 @@ func InferSchema(plan Plan) (memory.Schema, error) {
 			if err != nil {
 				return memory.Schema{}, fmt.Errorf("top-k key %d: %w", i, err)
 			}
-			if _, err := expr.InferScalarType(in, value); err != nil {
+			if _, err := expr.Bind(in, value); err != nil {
 				return memory.Schema{}, fmt.Errorf("top-k key %d: %w", i, err)
 			}
 		}
@@ -299,12 +303,12 @@ func InferSchema(plan Plan) (memory.Schema, error) {
 			if err != nil {
 				return memory.Schema{}, fmt.Errorf("window order key %d: %w", i, err)
 			}
-			info, err := expr.InferScalarType(in, value)
+			info, err := expr.Bind(in, value)
 			if err != nil {
 				return memory.Schema{}, fmt.Errorf("window order key %d: %w", i, err)
 			}
-			if !windowOrderable(info.Type) {
-				return memory.Schema{}, fmt.Errorf("window order key %d type %s is not orderable", i, info.Type)
+			if !windowOrderable(info.Field.Type) {
+				return memory.Schema{}, fmt.Errorf("window order key %d type %s is not orderable", i, info.Field.Type)
 			}
 		}
 		fields := append([]memory.Field(nil), in.Fields...)
@@ -467,29 +471,10 @@ func windowOrderable(typ memory.DataType) bool {
 	}
 }
 
-func inferScalarField(schema memory.Schema, e expr.Expr, name string) (memory.Field, error) {
-	if c, ok := e.(expr.Column); ok {
-		f, exists := schema.Field(c.Name)
-		if !exists {
-			return memory.Field{}, fmt.Errorf("projection column %q not found", c.Name)
-		}
-		f.Name = name
-		return f, nil
-	}
-	if decoded, ok := e.(expr.JSONDecodeExpr); ok {
-		field := memory.StructField(name, true, decoded.Schema.Fields...)
-		if err := field.ValidateStruct(); err != nil {
-			return memory.Field{}, fmt.Errorf("projection %q: %w", name, err)
-		}
-		return field, nil
-	}
-	info, err := expr.InferScalarType(schema, e)
+func boundOutputField(schema memory.Schema, e expr.Expr, name string) (memory.Field, error) {
+	bound, err := expr.Bind(schema, e)
 	if err != nil {
 		return memory.Field{}, fmt.Errorf("projection %q: %w", name, err)
 	}
-	field := memory.Field{Name: name, Type: info.Type, Nullable: info.Nullable, Encoding: memory.EncodingPlain}
-	if info.Type == memory.TypeString || info.Type == memory.TypeBinary {
-		field.Encoding = memory.EncodingView
-	}
-	return field, nil
+	return bound.OutputField(name), nil
 }

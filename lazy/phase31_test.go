@@ -20,7 +20,7 @@ func TestLazySortByExpressionsIsStableAndHidesTemporaryKeys(t *testing.T) {
 	frame, err := session.FromSource(src).
 		SortBy(DescExpr(Length(Col("s"))), AscExpr(Year(Col("ts")))).
 		Select("id").
-		CollectFrame(context.Background())
+		Collect(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -44,12 +44,12 @@ func TestLazyExpressionSortLimitAndTopKAgreeWithNullPlacement(t *testing.T) {
 	defer session.Close()
 	keys := []SortExpr{DescExpr(Length(Col("s"))), AscExpr(Year(Col("ts")))}
 
-	sorted, err := session.FromSource(src).SortBy(keys...).Limit(4).Select("id").CollectFrame(context.Background())
+	sorted, err := session.FromSource(src).SortBy(keys...).Limit(4).Select("id").Collect(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer sorted.Close()
-	top, err := session.FromSource(src).TopKBy(4, keys...).Select("id").CollectFrame(context.Background())
+	top, err := session.FromSource(src).TopKBy(4, keys...).Select("id").Collect(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -65,7 +65,7 @@ func TestLazyExpressionSortLimitAndTopKAgreeWithNullPlacement(t *testing.T) {
 	nullsFirst, err := session.FromSource(src).
 		SortBy(DescExprNullsFirst(Length(Col("s")))).
 		Select("id").
-		CollectFrame(context.Background())
+		Collect(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -95,7 +95,7 @@ func TestLazyExpressionTopKFirstPassReadsOnlyDependencies(t *testing.T) {
 	frame, err := session.FromSource(src).
 		TopKBy(2, DescExpr(Col("score").Add(Lit(1)))).
 		Select("payload").
-		CollectFrame(context.Background())
+		Collect(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -114,12 +114,17 @@ func TestLazyExpressionTopKFirstPassReadsOnlyDependencies(t *testing.T) {
 	}
 }
 
-func TestLazySortByRejectsPredicateAndAmbiguousKeys(t *testing.T) {
+func TestLazySortByAcceptsBooleanValuesAndRejectsEmptyKeys(t *testing.T) {
 	src := expressionOrderSource(t)
 	session := NewSession(engine.DefaultOptions())
 	defer session.Close()
-	if _, err := session.FromSource(src).SortBy(DescExpr(expr.Contains(Col("s"), Str("x")))).Schema(); err == nil {
-		t.Fatal("predicate expression must not be accepted as a sort key")
+	frame, err := session.FromSource(src).SortBy(DescExpr(expr.Contains(Col("s"), Str("x")))).Collect(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer frame.Close()
+	if got, want := frameInt64Column(t, frame, "id"), []int64{4, 1, 2, 5, 6, 3}; !equalI64(got, want) {
+		t.Fatalf("Boolean sort IDs=%v want=%v", got, want)
 	}
 	if _, err := session.FromSource(src).SortBy(SortExpr{}).Schema(); err == nil {
 		t.Fatal("empty sort expression must be rejected")
@@ -144,7 +149,7 @@ func TestLazyExpressionSortAvoidsInternalKeyNameCollision(t *testing.T) {
 	}
 	session := NewSession(engine.DefaultOptions())
 	defer session.Close()
-	frame, err := session.FromSource(src).SortBy(DescExpr(Col("score").Add(Lit(1)))).CollectFrame(context.Background())
+	frame, err := session.FromSource(src).SortBy(DescExpr(Col("score").Add(Lit(1)))).Collect(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -185,7 +190,7 @@ func TestLazyParallelExpressionSortKeepsStableOrderAcrossSourcePartitions(t *tes
 	frame, err := session.FromSource(src).
 		SortBy(AscExpr(Col("score").Add(Lit(1)))).
 		Select("id").
-		CollectFrame(context.Background())
+		Collect(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}

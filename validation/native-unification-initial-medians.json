@@ -1,0 +1,79 @@
+[
+  {
+    "name": "BenchmarkInt32ComparisonKernelMode/direct-fused/select=50/mode=scalar",
+    "n": 10,
+    "baseline_ms": 8.2154745,
+    "stream_ms": 8.1224035,
+    "change_pct": -1.1328743093293014,
+    "baseline_B_op": 344.0,
+    "stream_B_op": 45376.0,
+    "baseline_allocs": 3.0,
+    "stream_allocs": 161.0
+  },
+  {
+    "name": "BenchmarkInt32ComparisonKernelMode/direct-fused/select=50/mode=simd",
+    "n": 10,
+    "baseline_ms": 8.059669,
+    "stream_ms": 8.304575,
+    "change_pct": 3.0386607688231315,
+    "baseline_B_op": 344.0,
+    "stream_B_op": 45376.0,
+    "baseline_allocs": 3.0,
+    "stream_allocs": 161.0
+  },
+  {
+    "name": "BenchmarkInt32ComparisonKernelMode/bitmap-direct/select=50/mode=scalar",
+    "n": 10,
+    "baseline_ms": 7.0801795,
+    "stream_ms": 7.71693,
+    "change_pct": 8.993423118721777,
+    "baseline_B_op": 336.0,
+    "stream_B_op": 61912.0,
+    "baseline_allocs": 2.0,
+    "stream_allocs": 151.0
+  },
+  {
+    "name": "BenchmarkInt32ComparisonKernelMode/bitmap-direct/select=50/mode=simd",
+    "n": 10,
+    "baseline_ms": 7.145004,
+    "stream_ms": 7.6538045,
+    "change_pct": 7.121066692194988,
+    "baseline_B_op": 336.0,
+    "stream_B_op": 61912.0,
+    "baseline_allocs": 2.0,
+    "stream_allocs": 151.0
+  },
+  {
+    "name": "BenchmarkDirectFused",
+    "n": 10,
+    "baseline_ms": 44.330527,
+    "stream_ms": 44.420417,
+    "change_pct": 0.2027722341311211,
+    "baseline_B_op": 44311275.0,
+    "stream_B_op": 41330048.0,
+    "baseline_allocs": 2749.0,
+    "stream_allocs": 2842.0
+  },
+  {
+    "name": "BenchmarkBitmapDirect",
+    "n": 10,
+    "baseline_ms": 41.9478005,
+    "stream_ms": 43.865636,
+    "change_pct": 4.571957235278634,
+    "baseline_B_op": 44311393.0,
+    "stream_B_op": 41346821.0,
+    "baseline_allocs": 2732.0,
+    "stream_allocs": 2831.5
+  },
+  {
+    "name": "BenchmarkPreparedParallelW4-4",
+    "n": 10,
+    "baseline_ms": 9.9431655,
+    "stream_ms": 37.5576785,
+    "change_pct": 277.72355795546196,
+    "baseline_B_op": 29789802.5,
+    "stream_B_op": 66998785.5,
+    "baseline_allocs": 1864.0,
+    "stream_allocs": 6421.0
+  }
+]

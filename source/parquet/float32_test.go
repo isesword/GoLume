@@ -52,15 +52,14 @@ func TestOpenFileReadsNativeFloat32(t *testing.T) {
 	if got := src.Schema().Fields[0].Type; got != memory.TypeFloat32 {
 		t.Fatalf("schema type=%s", got)
 	}
-	r, err := src.NewReader(context.Background(), testReadOptions())
+	r, err := src.NewBatchStream(context.Background(), testReadOptions())
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer r.Close()
-	parts, _ := src.Partitions(context.Background())
 	b := memory.NewBatch()
-	if err := r.ReadPartition(context.Background(), parts[0], b); err != nil {
-		t.Fatal(err)
+	if ok, err := r.Next(context.Background(), b); !ok || err != nil {
+		t.Fatalf("first batch: ok=%v err=%v", ok, err)
 	}
 	v, err := b.Float32("f")
 	if err != nil {

@@ -39,16 +39,14 @@ func TestSourceProjectionOpaqueAndDictionaryNormalization(t *testing.T) {
 	if len(report.Projection) != 2 || report.Projection[0] != "pred" || report.Projection[1] != "dict" {
 		t.Fatalf("projection=%v", report.Projection)
 	}
-	legacy := pushed.(source.LegacyReaderSource)
-	r, err := legacy.NewReader(context.Background(), testReadOptions())
+	r, err := pushed.NewBatchStream(context.Background(), testReadOptions())
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer r.Close()
-	parts, _ := pushed.Partitions(context.Background())
 	b := memory.NewBatch()
-	if err := r.ReadPartition(context.Background(), parts[0], b); err != nil {
-		t.Fatal(err)
+	if ok, err := r.Next(context.Background(), b); err != nil || !ok {
+		t.Fatalf("next ok=%v err=%v", ok, err)
 	}
 	if _, ok := b.Opaque["list"]; ok {
 		t.Fatal("unprojected opaque list was bound")
@@ -60,8 +58,8 @@ func TestSourceProjectionOpaqueAndDictionaryNormalization(t *testing.T) {
 	if d1.Indices[0] != 0 || d1.Indices[1] != 1 {
 		t.Fatalf("record1 codes=%v", d1.Indices)
 	}
-	if err := r.ReadPartition(context.Background(), parts[1], b); err != nil {
-		t.Fatal(err)
+	if ok, err := r.Next(context.Background(), b); err != nil || !ok {
+		t.Fatalf("next ok=%v err=%v", ok, err)
 	}
 	d2, err := b.DictionaryString("dict")
 	if err != nil {
@@ -112,14 +110,14 @@ func TestArrowListStringUsesSpecializedNestedVector(t *testing.T) {
 	if field.Type != memory.TypeList || len(field.Children) != 1 || field.Children[0].Type != memory.TypeString || !field.Children[0].Nullable {
 		t.Fatalf("list field=%+v", field)
 	}
-	reader, err := src.NewReader(context.Background(), testReadOptions())
+	reader, err := src.NewBatchStream(context.Background(), testReadOptions())
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer reader.Close()
 	batch := memory.NewBatch()
-	if err := reader.ReadPartition(context.Background(), source.Partition{ID: 0, Rows: 4}, batch); err != nil {
-		t.Fatal(err)
+	if ok, err := reader.Next(context.Background(), batch); err != nil || !ok {
+		t.Fatalf("next ok=%v err=%v", ok, err)
 	}
 	if _, opaque := batch.Opaque["tags"]; opaque {
 		t.Fatal("list<string> should not remain opaque")
@@ -178,14 +176,14 @@ func TestArrowStructUsesSpecializedNestedVector(t *testing.T) {
 	if field.Type != memory.TypeStruct || len(field.Children) != 3 || field.Children[2].Type != memory.TypeList {
 		t.Fatalf("struct field=%+v", field)
 	}
-	reader, err := src.NewReader(context.Background(), testReadOptions())
+	reader, err := src.NewBatchStream(context.Background(), testReadOptions())
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer reader.Close()
 	batch := memory.NewBatch()
-	if err := reader.ReadPartition(context.Background(), source.Partition{ID: 0, Rows: 3}, batch); err != nil {
-		t.Fatal(err)
+	if ok, err := reader.Next(context.Background(), batch); err != nil || !ok {
+		t.Fatalf("next ok=%v err=%v", ok, err)
 	}
 	if _, opaque := batch.Opaque["payload"]; opaque {
 		t.Fatal("supported Struct must not remain opaque")
@@ -333,15 +331,14 @@ func TestSourceTypedFloatDateTimestampBindings(t *testing.T) {
 		t.Fatalf("timestamp field=%+v", got)
 	}
 
-	r, err := src.NewReader(context.Background(), testReadOptions())
+	r, err := src.NewBatchStream(context.Background(), testReadOptions())
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer r.Close()
-	parts, _ := src.Partitions(context.Background())
 	batch := memory.NewBatch()
-	if err := r.ReadPartition(context.Background(), parts[0], batch); err != nil {
-		t.Fatal(err)
+	if ok, err := r.Next(context.Background(), batch); err != nil || !ok {
+		t.Fatalf("next ok=%v err=%v", ok, err)
 	}
 	if len(batch.Opaque) != 0 {
 		t.Fatalf("typed columns should not retain opaque bindings: %v", batch.Opaque)
@@ -395,15 +392,14 @@ func TestSourcePreservesNativeArrowWidths(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer src.Close()
-	r, err := src.NewReader(context.Background(), testReadOptions())
+	r, err := src.NewBatchStream(context.Background(), testReadOptions())
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer r.Close()
-	parts, _ := src.Partitions(context.Background())
 	b := memory.NewBatch()
-	if err := r.ReadPartition(context.Background(), parts[0], b); err != nil {
-		t.Fatal(err)
+	if ok, err := r.Next(context.Background(), b); err != nil || !ok {
+		t.Fatalf("next ok=%v err=%v", ok, err)
 	}
 	if got, _ := b.Int8("i8"); got.Values[0] != -1 {
 		t.Fatalf("i8=%v", got.Values)
@@ -451,15 +447,14 @@ func TestSourceNormalizesTimestampUnitsAndRejectsTimezone(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer src.Close()
-			r, err := src.NewReader(context.Background(), testReadOptions())
+			r, err := src.NewBatchStream(context.Background(), testReadOptions())
 			if err != nil {
 				t.Fatal(err)
 			}
 			defer r.Close()
-			parts, _ := src.Partitions(context.Background())
 			batch := memory.NewBatch()
-			if err := r.ReadPartition(context.Background(), parts[0], batch); err != nil {
-				t.Fatal(err)
+			if ok, err := r.Next(context.Background(), batch); err != nil || !ok {
+				t.Fatalf("next ok=%v err=%v", ok, err)
 			}
 			got, _ := batch.Int64("ts")
 			if got.Values[0] != tt.want {
@@ -509,15 +504,14 @@ func TestSourceNormalizesDurationUnitsAndRejectsOverflow(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer src.Close()
-			reader, err := src.NewReader(context.Background(), testReadOptions())
+			reader, err := src.NewBatchStream(context.Background(), testReadOptions())
 			if err != nil {
 				t.Fatal(err)
 			}
 			defer reader.Close()
-			parts, _ := src.Partitions(context.Background())
 			batch := memory.NewBatch()
-			if err := reader.ReadPartition(context.Background(), parts[0], batch); err != nil {
-				t.Fatal(err)
+			if ok, err := reader.Next(context.Background(), batch); err != nil || !ok {
+				t.Fatalf("next ok=%v err=%v", ok, err)
 			}
 			got, err := batch.Int64("duration")
 			if err != nil {

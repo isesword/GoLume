@@ -51,11 +51,11 @@ func TestProjectionNativeNumericColumnsAliasInput(t *testing.T) {
 			b := memory.NewBatch()
 			tc.fill(b)
 			b.Rows = 2
-			p, err := CompileProjection(schema, []NamedExpr{Named(Col("v"), "alias")})
+			p, err := CompileExpressions(schema, []NamedExpr{Named(Col("v"), "alias")})
 			if err != nil {
 				t.Fatal(err)
 			}
-			got, err := p.Evaluate(b, &ScalarWorkspace{}, testKernelSet())
+			got, err := evaluateProjectionTest(p, b, &evaluationState{}, testKernelSet())
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -69,11 +69,11 @@ func TestProjectionFloat32CastRetainsNativeType(t *testing.T) {
 	b := memory.NewBatch()
 	b.Float64s["v"] = &memory.Float64Vector{Values: []float64{1.25, -2.5}}
 	b.Rows = 2
-	p, err := CompileProjection(schema, []NamedExpr{Named(CastTo(Col("v"), memory.TypeFloat32), "f32")})
+	p, err := CompileExpressions(schema, []NamedExpr{Named(CastTo(Col("v"), memory.TypeFloat32), "f32")})
 	if err != nil {
 		t.Fatal(err)
 	}
-	got, err := p.Evaluate(b, &ScalarWorkspace{}, testKernelSet())
+	got, err := evaluateProjectionTest(p, b, &evaluationState{}, testKernelSet())
 	if err != nil {
 		t.Fatal(err)
 	}

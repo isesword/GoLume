@@ -12,10 +12,18 @@ func compileQuery(schema memory.Schema, q expr.Query) (CompiledQuery, error) {
 	if len(q.GroupBy) < 1 || len(q.GroupBy) > 2 {
 		return CompiledQuery{}, fmt.Errorf("phase-2.2 supports one or two group-by columns")
 	}
-	prog, simple, err := expr.CompilePredicate(schema, q.Filter)
+	predicate := q.Filter
+	if predicate == nil {
+		predicate = expr.Bool(true)
+	}
+	prog, err := expr.Compile(schema, predicate)
 	if err != nil {
 		return CompiledQuery{}, err
 	}
+	if prog.Type() != memory.TypeBool {
+		return CompiledQuery{}, fmt.Errorf("query predicate must be bool, got %s", prog.Type())
+	}
+	simple := prog.SimpleComparison()
 	if len(q.Aggregates) == 0 {
 		return CompiledQuery{}, fmt.Errorf("query requires at least one aggregate")
 	}
@@ -93,7 +101,6 @@ func compileQuery(schema memory.Schema, q expr.Query) (CompiledQuery, error) {
 	}
 
 	shape := GroupShapeInvalid
-	radixCapable := layout.IsSumCountOnly() && value != "" && !valueNullable
 	if len(groups) == 1 {
 		g := groups[0]
 		switch g.Type {
@@ -108,7 +115,6 @@ func compileQuery(schema memory.Schema, q expr.Query) (CompiledQuery, error) {
 				shape = GroupShapeDictionaryString
 			} else {
 				shape = GroupShapeStringView
-				radixCapable = false
 			}
 		default:
 			return CompiledQuery{}, fmt.Errorf("single group type %s not yet supported", g.Type)
@@ -125,7 +131,6 @@ func compileQuery(schema memory.Schema, q expr.Query) (CompiledQuery, error) {
 			}
 		}
 		shape = GroupShapePairFixed
-		// Nullable pair radix carries a validity mask alongside the physical key.
 	}
 
 	card := q.Hints.Cardinality
@@ -146,8 +151,7 @@ func compileQuery(schema memory.Schema, q expr.Query) (CompiledQuery, error) {
 		ValueColumn: value, ValueNullable: valueNullable, Aggregates: append([]expr.Aggregate(nil), q.Aggregates...), AggregateLayout: layout,
 		CardinalityHint: card, SelectivityHint: sel, AverageKeyBytes: avg,
 		ReuseSelection: q.Hints.ReuseSelection, ForceStrategy: q.Hints.ForceStrategy,
-		ForceRadixBits: q.Hints.ForceRadixBits, FusedCapable: simple != nil, ComparisonID: comparisonID, HasComparisonID: hasComparisonID,
-		RadixCapable: radixCapable, KeyWidthBytes: keyWidth,
+		FusedCapable: simple != nil, ComparisonID: comparisonID, HasComparisonID: hasComparisonID, KeyWidthBytes: keyWidth,
 	}, nil
 }
 

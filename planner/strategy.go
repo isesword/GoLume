@@ -14,8 +14,10 @@ const (
 	StrategyDirectFused Kind = iota
 	// StrategyBitmapDirect materializes a reusable selection bitmap before direct aggregation.
 	StrategyBitmapDirect
-	// StrategyRadix partitions selected keys and executes partition-owned aggregation in parallel.
-	StrategyRadix
+	// StrategyPartitionedHash assigns native hash-state shards to independent workers.
+	StrategyPartitionedHash
+	// StrategySpillHash uses the query-budgeted partitioned hash aggregate stream.
+	StrategySpillHash
 	// StrategySorted aggregates adjacent equal keys with O(1) group state when
 	// the source proves a compatible global ordering prefix.
 	StrategySorted
@@ -28,8 +30,10 @@ func (k Kind) String() string {
 		return "direct-fused"
 	case StrategyBitmapDirect:
 		return "bitmap-direct"
-	case StrategyRadix:
-		return "radix"
+	case StrategyPartitionedHash:
+		return "partitioned-hash"
+	case StrategySpillHash:
+		return "spill-hash"
 	case StrategySorted:
 		return "sorted"
 	default:
@@ -39,10 +43,9 @@ func (k Kind) String() string {
 
 // Strategy is the physical aggregation decision produced by a CostModel.
 type Strategy struct {
-	Kind      Kind
-	Workers   int
-	RadixBits uint
-	Reason    string
+	Kind    Kind
+	Workers int
+	Reason  string
 }
 
 // Input contains runtime statistics and capabilities used to choose a physical strategy.
@@ -55,9 +58,7 @@ type Input struct {
 	ReuseSelection      bool
 	Kernel              kernel.Capabilities
 	ForceStrategy       string
-	ForceRadixBits      uint
 	FusedCapable        bool
-	RadixCapable        bool
 	KeyWidthBytes       int
 	PredicateComplexity int
 	ComparisonID        kernel.KernelID
@@ -73,21 +74,10 @@ type Heuristic struct{}
 
 // Choose selects a physical strategy while honoring explicit strategy hints.
 func (Heuristic) Choose(in Input) (Strategy, error) {
-	fusedCapable := in.FusedCapable || in.PredicateComplexity == 0
-	radixCapable := in.RadixCapable || in.KeyWidthBytes == 0
+	fusedCapable := in.FusedCapable
 	workers := in.Workers
 	if workers < 1 {
 		workers = 1
-	}
-	if in.Partitions > 0 && workers > in.Partitions {
-		workers = in.Partitions
-	}
-	if workers < 1 {
-		workers = 1
-	}
-	bits := in.ForceRadixBits
-	if bits == 0 {
-		bits = 8
 	}
 	if in.ForceStrategy != "" {
 		switch in.ForceStrategy {
@@ -98,11 +88,10 @@ func (Heuristic) Choose(in Input) (Strategy, error) {
 			return Strategy{Kind: StrategyDirectFused, Workers: 1, Reason: "forced"}, nil
 		case "bitmap-direct":
 			return Strategy{Kind: StrategyBitmapDirect, Workers: 1, Reason: "forced"}, nil
+		case "partitioned-hash":
+			return Strategy{Kind: StrategyPartitionedHash, Workers: workers, Reason: "forced native partition ownership"}, nil
 		case "radix":
-			if !radixCapable {
-				return Strategy{}, fmt.Errorf("radix is not available for this key representation")
-			}
-			return Strategy{Kind: StrategyRadix, Workers: workers, RadixBits: bits, Reason: "forced"}, nil
+			return Strategy{}, fmt.Errorf("radix aggregation execution was removed; use native direct/bitmap/partitioned-hash or bounded spill aggregation")
 		case "sorted":
 			if !in.SortedCapable {
 				return Strategy{}, fmt.Errorf("sorted aggregation requires a proven group-key ordering prefix")
@@ -115,19 +104,18 @@ func (Heuristic) Choose(in Input) (Strategy, error) {
 	if in.SortedCapable {
 		return Strategy{Kind: StrategySorted, Workers: 1, Reason: "input ordering matches group keys"}, nil
 	}
+	// Hash ownership is divided within each bounded batch, independently of
+	// source partitions. One row group can therefore use multiple workers.
 	selected := float64(in.Rows) * in.Selectivity
 	if in.Selectivity <= 0 {
 		selected = float64(in.Rows) * .5
 	}
-	// Wider keys become cache-unfriendly earlier, so lower the radix threshold.
-	rowThreshold := 128000.0
-	cardThreshold := 32000
+	rowThreshold, cardThreshold := 128000.0, 32000
 	if in.KeyWidthBytes >= 16 {
-		rowThreshold = 96000
-		cardThreshold = 24000
+		rowThreshold, cardThreshold = 96000, 24000
 	}
-	if radixCapable && workers > 1 && selected >= rowThreshold && in.Cardinality >= cardThreshold {
-		return Strategy{Kind: StrategyRadix, Workers: workers, RadixBits: bits, Reason: "parallel high-cardinality aggregation"}, nil
+	if workers > 1 && selected >= rowThreshold && in.Cardinality >= cardThreshold {
+		return Strategy{Kind: StrategyPartitionedHash, Workers: workers, Reason: "native parallel high-cardinality hash ownership"}, nil
 	}
 	if !fusedCapable {
 		return Strategy{Kind: StrategyBitmapDirect, Workers: 1, Reason: "predicate requires expression program"}, nil

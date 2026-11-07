@@ -1,17 +1,70 @@
-# Phase 3：流式物理执行引擎改造 TODO
+# 原生流执行：近期计划与历史 Phase 3 清单
 
-状态：Phase 3.0–3.7 已完成（2026-08-31）。机器可读验收记录见
+## 当前开发顺序
+
+当前架构和资源边界以 [CURRENT_STATUS.md](CURRENT_STATUS.md) 与
+[STREAM_MIGRATION.md](STREAM_MIGRATION.md) 为准。本轮顺序如下，勾选表示该阶段已
+收口；代码已实现、完整验收和发布分别记录：
+
+- [x] **分支文档收口，第一阶段本地检查通过。** 已对齐 README、迁移说明与阶段
+  状态，记录最终检查结果；保留原始历史报告，不继承其 PASS 或自动宣布可合并。
+- [x] **流式 Analyze 与失败诊断，第一阶段本地完整验收通过。** 使用与
+  `ExecuteBatches` 相同的入口 drain，不保留完整 DataFrame；删除
+  `AnalyzeReport.MaterializedRows`，增加非空 `OutputBatches`、`FirstBatchDuration`
+  和部分失败诊断。`Termination` / `FailurePhase` / `Error` / `CleanupError`
+  按公共 prepare/open/Next/Close 边界报告，嵌套 Close 错误可能从 Next 返回。
+  共同入口采纳 caller-owned external QueryBudget，bounded 拒绝无限额外部 budget；
+  `peak_memory_scope=query` 是共享高水位，不是独占值，不可跨算子求和。
+  定向测试、独立最终 review 与补充/race 检查、完整本地 validate 已通过。
+- [x] **统一表达式架构，第二阶段本地完整验收通过、待发布。** 单一 `Bind` /
+  `Compile` / `CompileExpressions` → 私有不可变 Program → 单一 Workspace；
+  删除旧 scalar/projection/predicate workspace 和 mutable program 字段，用 getter
+  读取 metadata。BOOL 可投影再过滤，导出 bool/nil；条件/IN active-mask 求值和
+  region CSE、lazy 薄构造与 Alias 已实现。普通 AND/OR 不是错误 guard；MayError
+  保留已需求行上的错误，但允许未使用输出裁剪。条件结果类型与数值 promotion
+  限制、预算借用语义见 [表达式边界](EXPRESSION_EVALUATION.md) 与迁移说明。
+
+旧 prepared W4 性能目标已接受延期，不再阻塞上述开发顺序。原 10.04 ms 参考、
+10.341 ms 门槛和未达标结果保持不变；13.338 ms 的组合诊断只是改善证据，不是正式
+PASS。见 [charged-reuse 历史报告](../validation/charged-reuse/README.md)。后续功能的
+正确性、资源生命周期和受影响性能仍须验证，原始 fixture 与 CI 也不能由历史本地
+检查替代。
+
+第一阶段验证状态：本地完整 `scripts/validate.sh` exit 0，覆盖普通/SIMD、宿主
+支持的强制宽度、SIMD-disabled fallback、Linux build、race、vet、GoDoc、结构/
+生成器检查和 demo。见 [验收记录](../validation/analyze-stream-review.md) 与
+[完整日志](../validation/analyze-stream-full-validation.txt)。仍使用合成替代 fixture，
+未核验 CI，未改变旧 W4 未达标结论；该历史验收不覆盖第二阶段表达式改动。
+
+第二阶段最终验证状态：本地完整 `scripts/validate.sh` exit 0，定向/独立检查通过，
+普通/SIMD、宿主支持强制宽度、disabled fallback、race、vet、GoDoc、结构/生成器、
+Linux build 和 demo 均通过。见 [表达式验收记录](../validation/unified-expression-review.md)
+与 [完整日志](../validation/unified-expression-full-validation.txt)。合成 fixture、
+未核 CI、旧 W4 延期和无 RSS 保证的边界不变；待发布，不表示可合并。
+
+## 历史记录的阅读方式
+
+以下第 1–10 节是 Phase 3 的历史设计、阶段清单和验收目标，保留当时的勾选状态与
+测量数字。它们不是当前提交的实时任务列表；“当前”“完成”“候选”“下一阶段”均须
+按原阶段理解。概念原型与已删除的迁移接口不能用于新实现。
+
+历史阶段状态：Phase 3.0–3.7 已完成（2026-08-31）。该阶段的机器可读验收记录见
 [`validation/phase37-single-engine-gate.json`](../validation/phase37-single-engine-gate.json)。
+这是历史记录，不是后来 native-only 重构、W4 门槛或本轮 Analyze 的通过声明。
 
 执行策略、默认行为、资源错误和用户 API 已由
-[ADR_PHASE3_EXECUTION_UX.md](ADR_PHASE3_EXECUTION_UX.md) 决定；本文件保留实施清单。
+[ADR_PHASE3_EXECUTION_UX.md](ADR_PHASE3_EXECUTION_UX.md) 决定；旧提案中的命名与
+迁移办法若和当前代码不同，以当前迁移说明为准。
 
-本文定义 GoLume 在 Phase 3 的执行引擎改造路线。目标是获得类似
+以下记录定义了 GoLume 在 Phase 3 的执行引擎改造路线。目标是获得类似
 Polars 的批式流处理、有限内存执行和流式 Sink 能力，但不照搬其内部实现，
 也不新建一套与现有 LazyPlan、优化器、`memory.Batch`、`kernel.Set` 和
 DataFrame 语义分叉的引擎。
 
-## 1. 目标与边界
+## 1. 历史目标与边界
+
+历史“峰值内存”目标不能外推为全进程 RSS 硬上限。当前保证针对纳入 managed
+reservation 的分配，decoder/runtime/GC 等边界见当前状态文档。
 
 ### 1.1 必须达到的结果
 
@@ -36,13 +89,13 @@ Batch。`Collect` 最终仍需把完整结果保存在 DataFrame 中，因此只
 - 不承诺任意递归嵌套、Map 或运行时 Schema 演化；先保证现有类型可 Spill、可恢复。
 - 不以“代码中出现了 SIMD 指令”为验收标准，性能证据才是准入标准。
 
-## 2. 当前基线与缺口
+## 2. 历史起点与缺口（不是当前实现）
 
-当前 `source.Reader.ReadPartition` 能逐分区读取，Filter、Projection、Limit 也能逐
+Phase 3 启动时的 `source.Reader.ReadPartition` 能逐分区读取，Filter、Projection、Limit 也能逐
 Batch 处理；Top-K 使用有界候选集合，Probe 侧 Join 可以逐分区读取。这些都是可复用
 基础，但还不是端到端流式引擎。
 
-| 能力 | 当前状态 | Phase 3 目标 |
+| 能力 | 当时状态 | Phase 3 目标 |
 | --- | --- | --- |
 | Source 分区读取 | 已有 | 统一成可取消、可重放的 morsel stream |
 | Filter / Projection / Limit | 批内增量 | 同一 pipeline 内融合或直接拉取 |
@@ -56,11 +109,14 @@ Batch 处理；Top-K 使用有界候选集合，Probe 侧 Join 可以逐分区�
 | Sink | `Collect` 保留全部结果 | Collect、Batch、Parquet/IPC Sink 共享图 |
 | Explain | 逻辑/物理与 Analyze 已有 | 展示 pipeline、阻塞边界、峰值内存和 Spill |
 
-旧 `source.Source + Reader` 可以作为首批 Source Adapter 使用，但不能长期成为所有
-物理算子的共同协议。当前一个输入分区只对应一个输出 Batch 的隐含假设，无法自然表达
+当时允许旧 `source.Source + Reader` 作为首批 Source Adapter 使用，但不能长期成为所有
+物理算子的共同协议。一个输入分区只对应一个输出 Batch 的旧假设，无法自然表达
 Filter 的零输出、Join 的多 Batch 输出、外排 Sort 的合并流和下游提前停止。
 
-## 3. 总体架构
+**当前该 Reader/Adapter 路径已删除。** 新 Source 必须实现 `NewBatchStream`，
+不得重新增加 Reader fallback；下节协议片段仅保留作为历史方案比较。
+
+## 3. 历史总体架构与候选协议
 
 ```text
 LazyPlan
@@ -90,7 +146,7 @@ Physical lowering + stream capability analysis
 - Exchange 同时限制 Batch 数和已预留字节；只限制队列长度不能约束宽表或大字符串。
 - 每个 pipeline 有明确的 owner、取消树和关闭顺序，不允许后台 worker 脱离查询生命周期。
 
-候选内部协议：
+当时的候选内部协议（未采用为当前 public Source 接口）：
 
 ```go
 type BatchStream interface {
@@ -104,7 +160,8 @@ type BatchLease interface {
 }
 ```
 
-这不是预先冻结的 public API。Phase 3.0 必须通过原型比较以下方案后再定：
+当前采用 `source.BatchStream.Next(ctx, dst) (bool, error)`；上面的 BatchLease
+原型不是当前接口。Phase 3.0 当时要求通过原型比较以下方案后再定：
 
 - `Next(ctx, dst) (bool, error)`：复用直接、分配少，但跨 Exchange 的 ownership 较难表达；
 - 返回 `BatchLease`：ownership 清楚，但要证明接口分派和 lease 对象没有热路径分配；
@@ -158,9 +215,10 @@ const (
 超限错误必须建议用户改用 Batch 或文件 Sink。普通调用仍是 `Collect(ctx)`，执行策略
 通过 Session 默认值或不可变 LazyFrame override 提供，不增加常用方法参数。
 
-## 4. 分阶段 TODO
+## 4. 历史分阶段 TODO
 
-每个子阶段独立提交。前一阶段的完整验收和生成器漂移检查通过后，才进入下一阶段。
+当时要求每个子阶段独立提交，前一阶段的完整验收和生成器漂移检查通过后，才进入
+下一阶段。以下完成状态不改变顶部已接受延期的 W4 决定，也不替代新改动的验证。
 
 ### Phase 3.0：执行契约与基线
 
@@ -174,7 +232,7 @@ const (
 - [x] 补充内部 Batch ownership、replay、cancel 和错误传播 ADR。
 - [x] 为物理节点增加 stream capability；Explain 标出 `PIPELINE`、`BOUNDED`、`SPILLABLE`、`MEMORY SINK`。
 - [x] 实现两种 `BatchStream` 原型，用基准决定最终内部协议。
-- [x] 以 Adapter 包装现有 Source/Reader，保持 Parquet、Arrow RecordBatch 和 InMemory Source 可用。
+- [x] 当时以 Adapter 包装 Source/Reader，保持 Parquet、Arrow RecordBatch 和 InMemory Source 可用（迁移阶段方案，当前已删除）。
 - [x] 将 Scan → Filter → Projection → Limit → Collect 纵向切片迁移到新协议。
 - [x] 增加只消费并释放 Batch 的内部 `DrainSink`，让早期阶段能验证真正的有界执行；public Sink API 留到 Phase 3.6。
 - [x] 允许一个输入 morsel 产生 0..N 个输出；删除物理层对“一分区一 Batch”的依赖。
@@ -358,16 +416,17 @@ _, err := lf.SinkParquet(ctx, path, ParquetSinkOptions{})
 
 - [x] Lazy 查询全部 lowering 到新 physical graph；不保留两套优化或表达式语义。
 - [x] 删除物理算子内部的旧 Reader 兼容分支和静默全量物化 fallback。
-- [x] 外部 Source 兼容只允许停留在 Source Adapter 边界；`LegacyReaderSource` 迁移期为当前版本至 v0.8，之后删除。
+- [x] 外部 Source Adapter 迁移层已彻底删除；`Source.NewBatchStream` 为必需接口，见 `STREAM_MIGRATION.md`。
 - [x] Prepared 查询复用编译产物，但每次执行创建独立 QueryBudget、pipeline 状态和 Spill 目录。
 - [x] 更新 Extension Points、性能文档、迁移文档、examples 和 CHANGELOG。
 - [x] 将全套流式 fault/race/benchmark gate 纳入 `scripts/validate.sh` 或独立 CI job。
 
 完成标准：同一 LazyPlan 只有一个物理执行语义；`MemoryOnly` 和 `ExecutionBounded`
-只改变物理策略和资源边界，不改变结果。`CollectResult`/`PrepareResult` 仅保留为
-deprecated 结果统计外观，内部转发同一 DataFrame BatchStream，不再触发旧物理执行。
+只改变物理策略和资源边界，不改变结果。`CollectResult`/`PrepareResult` 要求根节点为 Aggregate，
+直接复用同一物理聚合的 record collector；不物化模式只返回统计，物化模式返回独立结果记录。
+聚合后的排序、过滤等操作使用 `Prepare`/`Collect`，不再触发旧物理执行。
 
-## 5. SIMD 策略
+## 5. 历史 SIMD 策略
 
 Polars 将 SIMD、列式内存、多线程、lazy 优化和 streaming 组合使用。GoLume 也应组合，
 但必须保持分层：streaming 决定**数据何时流动、状态何时释放**，SIMD 决定**一个
@@ -427,7 +486,7 @@ Phase 3 必须继续执行“失败候选直接删除”的规则。
 不要假定“更宽 SIMD = 整体更快”。当查询受内存带宽、Hash 随机访问、磁盘或调度限制
 时，应优先减少复制、改善布局、融合 kernel 和释放状态。
 
-## 6. Planner 与可观测性
+## 6. 历史 Planner 与可观测性目标
 
 - [ ] `ExplainPhysical` 展示 pipeline id、Exchange、stream class、ordering 和预计常驻字节。
 - [ ] 明确标红 Memory Sink、不可 Spill blocking 节点和需要不可重放缓存的 multiplexer。
@@ -438,7 +497,7 @@ Phase 3 必须继续执行“失败候选直接删除”的规则。
 - [ ] planner 反馈增加 row width、cardinality、skew、Join multiplicity、Spill 和 Source replayability。
 - [ ] Observer 事件按 query/stage/morsel 聚合，禁止逐行回调。
 
-## 7. 性能与正确性验收矩阵
+## 7. 历史性能与正确性验收矩阵
 
 ### 7.1 正确性
 
@@ -468,7 +527,7 @@ Phase 3 必须继续执行“失败候选直接删除”的规则。
 - [ ] `git diff --check`
 - [ ] 新增可复现 benchmark 脚本和 `validation/streaming-*.json` 决策记录
 
-## 8. 风险清单
+## 8. 历史风险清单
 
 - [ ] goroutine/channel 图发生环形等待，取消后无法退出。
 - [ ] Batch ownership 不清导致 use-after-release、Arrow ref 泄漏或重复释放。
@@ -483,7 +542,7 @@ Phase 3 必须继续执行“失败候选直接删除”的规则。
 - [ ] SIMD 微基准变快但 morsel 端到端因尾部、复制或调度回退。
 - [ ] 临时文件错误路径、进程崩溃和测试 panic 留下孤儿数据。
 
-## 9. 已决定的设计选择
+## 9. 历史设计决定
 
 1. **调度模型**：pull-first，只有并行/分支边界使用有界 Exchange。
 2. **执行策略**：`Auto` 默认，另有 `MemoryOnly` 和 `Bounded`；不存在不受预算的静默回退。
@@ -493,10 +552,10 @@ Phase 3 必须继续执行“失败候选直接删除”的规则。
 6. **Source 重放**：显式声明 `Replayable` 和 snapshot identity，不能根据类型名称猜测。
 7. **顺序语义**：只维护逻辑计划已经承诺的顺序；无显式 Sort 的 GroupBy/Join 不承诺偶然行序。
 8. **首个纵向切片**：Scan → Filter → Projection → Spillable GroupBy → 内部 DrainSink；稳定后再公开 Batch Sink。
-9. **兼容策略**：public Lazy/DataFrame API 延续，内部物理接口直接重构；Source Adapter 只设有限迁移期。
+9. **兼容策略**：当时计划 public Lazy/DataFrame API 延续，内部物理接口直接重构；Source Adapter 只设有限迁移期。当前 Adapter 已删除，已发生的破坏性 API 变更以 `STREAM_MIGRATION.md` 为准。
 10. **默认 morsel**：不照搬固定 chunk size，按 GoLume Schema 字节宽度与目标机基准校准。
 
-## 10. Polars 参考边界
+## 10. 历史 Polars 参考边界
 
 参考 Polars 的是可验证的架构原则，而不是承诺 GoLume 与某个 Polars 版本内部实现一致：
 

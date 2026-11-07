@@ -17,20 +17,48 @@ import (
 
 type recordOwner struct {
 	records []arrow.RecordBatch
-	once    sync.Once
+	mu      sync.Mutex
+	closed  bool
+	streams int
 	statsMu sync.Mutex
 	stats   map[int]map[string]int64Stats
 }
 
 func (o *recordOwner) close() {
-	o.once.Do(func() {
-		for _, rec := range o.records {
-			if rec != nil {
-				rec.Release()
-			}
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	o.closed = true
+	if o.streams == 0 {
+		o.releaseRecords()
+	}
+}
+
+func (o *recordOwner) acquire() error {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	if o.closed {
+		return fmt.Errorf("arrowrecord: source closed")
+	}
+	o.streams++
+	return nil
+}
+
+func (o *recordOwner) release() {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	o.streams--
+	if o.closed && o.streams == 0 {
+		o.releaseRecords()
+	}
+}
+
+func (o *recordOwner) releaseRecords() {
+	for _, rec := range o.records {
+		if rec != nil {
+			rec.Release()
 		}
-		o.records = nil
-	})
+	}
+	o.records = nil
 }
 
 type dictionaryInfo struct {
@@ -76,6 +104,9 @@ type Source struct {
 func NewSource(records ...arrow.RecordBatch) (*Source, error) {
 	if len(records) == 0 {
 		return nil, fmt.Errorf("arrowrecord: at least one RecordBatch is required")
+	}
+	if records[0] == nil {
+		return nil, fmt.Errorf("arrowrecord: record 0 is nil")
 	}
 	schema := records[0].Schema()
 	if schema == nil {
@@ -215,18 +246,40 @@ func (s *Source) Partitions(context.Context) ([]source.Partition, error) {
 	return out, nil
 }
 
-// NewReader creates an Arrow RecordBatch reader over the source's projected
-// bindings. Primitive value buffers and string byte buffers are referenced
-// directly; validity bitmaps, string offsets, and normalized dictionary codes
-// are cached once when the Source is constructed.
-func (s *Source) NewReader(_ context.Context, opts source.ReadOptions) (source.Reader, error) {
-	if err := opts.Validate(); err != nil {
-		return nil, err
+// NewBatchStream creates an independent bounded stream over the source's
+// projected Arrow bindings. Immutable Arrow values and dictionaries are shared.
+func (s *Source) NewBatchStream(ctx context.Context, opts source.ReadOptions) (source.BatchStream, error) {
+	if s == nil {
+		return nil, fmt.Errorf("arrowrecord: nil source")
 	}
+	return s.NewBatchStreamWithPartitions(ctx, opts, s.parts)
+}
+
+// NewBatchStreamWithPartitions borrows exactly parts, including an empty list.
+// The stream keeps the shared source buffers alive until Close, EOF, or error.
+func (s *Source) NewBatchStreamWithPartitions(ctx context.Context, opts source.ReadOptions, parts []source.Partition) (source.BatchStream, error) {
 	if s == nil || s.owner == nil {
 		return nil, fmt.Errorf("arrowrecord: nil source")
 	}
-	return &reader{owner: s.owner, bindings: append([]binding(nil), s.bindings...)}, nil
+	if ctx == nil {
+		return nil, fmt.Errorf("arrowrecord: nil context")
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	if err := opts.Validate(); err != nil {
+		return nil, err
+	}
+	if err := s.owner.acquire(); err != nil {
+		return nil, err
+	}
+	for _, part := range parts {
+		if part.ID < 0 || part.ID >= len(s.owner.records) {
+			s.owner.release()
+			return nil, fmt.Errorf("arrowrecord: partition %d out of range", part.ID)
+		}
+	}
+	return &batchStream{owner: s.owner, bindings: s.bindings, parts: parts, opts: opts.Normalize(), batch: memory.NewBatch()}, nil
 }
 
 // Dictionary returns the normalized source-wide dictionary for column.
@@ -251,6 +304,23 @@ func (s *Source) ApplyPushdown(_ context.Context, req source.PushdownRequest) (s
 	if s == nil {
 		return nil, source.PushdownReport{}, fmt.Errorf("arrowrecord: nil source")
 	}
+	// A no-TRUE result is not enough to prune when evaluation can raise a
+	// demanded row error. The residual executor owns mask/order semantics.
+	pruningPredicate := req.Predicate
+	var predicateColumns []string
+	if req.Predicate != nil {
+		bound, err := expr.Bind(s.baseSchema, req.Predicate)
+		if err != nil {
+			return nil, source.PushdownReport{}, fmt.Errorf("arrowrecord: pushdown predicate: %w", err)
+		}
+		if bound.Field.Type != memory.TypeBool {
+			return nil, source.PushdownReport{}, fmt.Errorf("arrowrecord: pushdown predicate must be bool, got %s", bound.Field.Type)
+		}
+		predicateColumns = bound.Columns
+		if bound.MayError {
+			pruningPredicate = nil
+		}
+	}
 	projection := append([]string(nil), req.Projection...)
 	if len(projection) == 0 {
 		projection = schemaNames(s.baseSchema)
@@ -259,7 +329,7 @@ func (s *Source) ApplyPushdown(_ context.Context, req source.PushdownRequest) (s
 	for _, name := range projection {
 		need[name] = struct{}{}
 	}
-	for _, name := range expr.Columns(req.Predicate) {
+	for _, name := range predicateColumns {
 		need[name] = struct{}{}
 	}
 	projection = orderedNames(s.baseSchema, need)
@@ -281,7 +351,7 @@ func (s *Source) ApplyPushdown(_ context.Context, req source.PushdownRequest) (s
 	parts := make([]source.Partition, 0, len(s.allParts))
 	for _, part := range s.allParts {
 		totalRows += part.Rows
-		keep, err := s.recordMayMatch(part.ID, req.Predicate)
+		keep, err := s.recordMayMatch(part.ID, pruningPredicate)
 		if err != nil {
 			return nil, source.PushdownReport{}, err
 		}

@@ -205,13 +205,31 @@ func TestGateErrors(t *testing.T) {
 	if _, err := p.Gate(context.Background(), "no-such-kernel", GateOptions{}); err == nil {
 		t.Error("unknown kernel: expected error")
 	}
-	// Approved kernels refuse re-gating without -force.
+	// The shared fixture is approved only on darwin/arm64. Establish the
+	// prerequisite on the executing platform without changing that fixture's
+	// architecture-specific evidence or the production approval rules.
+	res, err := p.Gate(context.Background(), "compare-int32-gt", GateOptions{Force: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Arch != LocalArch() || res.NewState != StateApproved {
+		t.Fatalf("local approval prerequisite: arch=%s state=%s", res.Arch, res.NewState)
+	}
+	runs := runner.benchRuns
+	// Approved kernels refuse re-gating without -force, before benchmarking.
 	if _, err := p.Gate(context.Background(), "compare-int32-gt", GateOptions{}); err == nil ||
 		!strings.Contains(err.Error(), "-force") {
 		t.Errorf("re-gate without force: %v", err)
 	}
-	if _, err := p.Gate(context.Background(), "compare-int32-gt", GateOptions{Force: true}); err != nil {
-		t.Errorf("re-gate with force: %v", err)
+	if runner.benchRuns != runs {
+		t.Fatalf("rejected re-gate ran benchmark: got %d runs, want %d", runner.benchRuns, runs)
+	}
+	res, err = p.Gate(context.Background(), "compare-int32-gt", GateOptions{Force: true})
+	if err != nil {
+		t.Fatalf("re-gate with force: %v", err)
+	}
+	if res.PrevState != StateApproved || res.NewState != StateApproved || runner.benchRuns != runs+1 {
+		t.Errorf("forced re-gate: states %s -> %s, benchmark runs=%d want=%d", res.PrevState, res.NewState, runner.benchRuns, runs+1)
 	}
 }
 

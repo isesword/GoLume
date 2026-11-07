@@ -5,49 +5,117 @@ import (
 	"fmt"
 	"gocolumn/memory"
 	"gocolumn/source"
+	"gocolumn/source/internal/batchview"
 
 	"github.com/apache/arrow-go/v18/arrow"
 	"github.com/apache/arrow-go/v18/arrow/array"
 )
 
-type reader struct {
-	owner    *recordOwner
-	bindings []binding
+type batchStream struct {
+	owner                       *recordOwner
+	bindings                    []binding
+	parts                       []source.Partition
+	opts                        source.ReadOptions
+	next, offset                int
+	batch                       *memory.Batch
+	view                        batchview.View
+	closed, exhausted, released bool
+	terminalErr                 error
 }
 
-// Close releases reader-local resources. Arrow buffers remain owned by the
-// shared Source until Source.Close is called.
-func (r *reader) Close() error { return nil }
+func (s *batchStream) release() {
+	s.view.Release()
+	s.batch.ClearColumns()
+	if !s.released {
+		s.owner.release()
+		s.released = true
+	}
+}
 
-// ReadPartition binds one retained Arrow RecordBatch into dst using typed fast
-// paths where available and OpaqueVector bindings for all other Arrow types.
-func (r *reader) ReadPartition(ctx context.Context, p source.Partition, dst *memory.Batch) error {
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	default:
+// Close releases the stream views and owned resources exactly once.
+func (s *batchStream) Close() error {
+	if s == nil || s.closed {
+		return nil
 	}
-	if p.ID < 0 || p.ID >= len(r.owner.records) {
-		return fmt.Errorf("arrowrecord: partition %d out of range", p.ID)
+	s.closed = true
+	s.release()
+	return nil
+}
+
+func (s *batchStream) fail(err error) (bool, error) {
+	s.release()
+	s.terminalErr = err
+	return false, err
+}
+
+// Next binds the next bounded view or returns the terminal stream result.
+func (s *batchStream) Next(ctx context.Context, dst *memory.Batch) (bool, error) {
+	if dst == nil {
+		return false, fmt.Errorf("arrowrecord: nil destination")
 	}
-	rec := r.owner.records[p.ID]
-	rows := int(rec.NumRows())
 	dst.ClearColumns()
-	for _, b := range r.bindings {
+	s.view.Release()
+	if s.closed {
+		return false, source.ErrBatchStreamClosed
+	}
+	if s.terminalErr != nil {
+		return false, s.terminalErr
+	}
+	if s.exhausted {
+		return false, nil
+	}
+	if ctx == nil {
+		return s.fail(fmt.Errorf("arrowrecord: nil context"))
+	}
+	if err := ctx.Err(); err != nil {
+		return s.fail(err)
+	}
+	if s.next == len(s.parts) {
+		s.exhausted = true
+		s.release()
+		return false, nil
+	}
+	if s.offset == 0 {
+		if err := s.bindRecord(s.parts[s.next].ID); err != nil {
+			return s.fail(err)
+		}
+	}
+	rows, err := s.view.Bind(ctx, dst, s.batch, s.offset, s.opts)
+	if err != nil {
+		return s.fail(err)
+	}
+	s.offset += rows
+	if s.offset == s.batch.Rows {
+		s.next++
+		s.offset = 0
+	}
+	return true, nil
+}
+
+// bindRecord constructs only vector headers over retained source buffers.
+// Row slicing and bounded validity/offset normalization happen in Next.
+func (s *batchStream) bindRecord(partition int) error {
+	rec := s.owner.records[partition]
+	rows := int(rec.NumRows())
+	dst := s.batch
+	dst.ClearColumns()
+	for _, b := range s.bindings {
 		arr := rec.Column(b.index)
-		validity := cachedValidity(b, p.ID)
-		dst.Opaque[b.name] = &memory.OpaqueVector{Rows: rows, Type: b.field.Type, ArrowType: b.field.ArrowType, Encoding: b.field.Encoding, Validity: validity, Value: arr}
-		bound, err := bindTyped(dst, b, arr, p.ID, validity)
+		valid := cachedValidity(b, partition)
+		bound, err := bindTyped(dst, b, arr, partition, valid)
 		if err != nil {
 			return err
 		}
-		if bound {
-			delete(dst.Opaque, b.name)
+		if !bound {
+			dst.Opaque[b.name] = &memory.OpaqueVector{Rows: rows, Type: b.field.Type, ArrowType: b.field.ArrowType, Encoding: b.field.Encoding, Validity: valid, Value: arr}
 		}
 	}
 	dst.Reset(rows)
 	return nil
 }
+
+var _ source.Source = (*Source)(nil)
+var _ source.PreparedBatchStreamProvider = (*Source)(nil)
 
 func bindTyped(dst *memory.Batch, b binding, arr arrow.Array, partition int, validity memory.Bitmap) (bool, error) {
 	switch a := arr.(type) {

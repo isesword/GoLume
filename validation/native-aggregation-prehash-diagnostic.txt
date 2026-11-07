@@ -1,0 +1,42 @@
+pair=1 mode=before
+goos: linux
+goarch: amd64
+pkg: gocolumn/engine
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkDiagnosticRetainedNativeW4-4   	      66	  16082672 ns/op	  20885808 retained-B	32421349 B/op	    6215 allocs/op
+PASS
+pair=1 mode=after
+goos: linux
+goarch: amd64
+pkg: gocolumn/engine
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkDiagnosticRetainedNativeW4-4   	      76	  15292900 ns/op	  25209136 retained-B	32412671 B/op	    6211 allocs/op
+PASS
+pair=2 mode=before
+goos: linux
+goarch: amd64
+pkg: gocolumn/engine
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkDiagnosticRetainedNativeW4-4   	      84	  14648826 ns/op	  20885808 retained-B	32407538 B/op	    6211 allocs/op
+PASS
+pair=2 mode=after
+goos: linux
+goarch: amd64
+pkg: gocolumn/engine
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkDiagnosticRetainedNativeW4-4   	      75	  14606302 ns/op	  25209136 retained-B	32413522 B/op	    6213 allocs/op
+PASS
+pair=3 mode=before
+goos: linux
+goarch: amd64
+pkg: gocolumn/engine
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkDiagnosticRetainedNativeW4-4   	      84	  14905935 ns/op	  20885808 retained-B	32404266 B/op	    6211 allocs/op
+PASS
+pair=3 mode=after
+goos: linux
+goarch: amd64
+pkg: gocolumn/engine
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkDiagnosticRetainedNativeW4-4   	      84	  15219248 ns/op	  25209136 retained-B	32409552 B/op	    6211 allocs/op
+PASS

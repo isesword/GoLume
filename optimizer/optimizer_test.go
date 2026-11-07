@@ -15,7 +15,7 @@ type testSource struct{ schema memory.Schema }
 func (s *testSource) Schema() memory.Schema                                { return s.schema }
 func (*testSource) Stats(context.Context) (source.Stats, error)            { return source.Stats{}, nil }
 func (*testSource) Partitions(context.Context) ([]source.Partition, error) { return nil, nil }
-func (*testSource) NewReader(context.Context, source.ReadOptions) (source.Reader, error) {
+func (*testSource) NewBatchStream(context.Context, source.ReadOptions) (source.BatchStream, error) {
 	return nil, nil
 }
 

@@ -1,0 +1,90 @@
+goos: linux
+goarch: amd64
+pkg: gocolumn/source/parquet
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkParquetBatchStream/RowGroupRows=65536/Native/FirstBatch         	    1855	    551414 ns/op	 233.45 MB/s	    546658 first-batch-ns	    217686 managed-peak-B	      1024 rows/op	   1857045 rows/s	  855535 B/op	     722 allocs/op
+BenchmarkParquetBatchStream/RowGroupRows=65536/Native/FullScan           	      55	  23830310 ns/op	 691.91 MB/s	    233862 managed-peak-B	    131072 rows/op	   5500222 rows/s	 2762613 B/op	   16989 allocs/op
+BenchmarkParquetBatchStreamNumeric/RowGroupRows=65536/Native/FirstBatch  	    5368	    223676 ns/op	 167.67 MB/s	    220616 first-batch-ns	     65152 managed-peak-B	      1024 rows/op	   4578054 rows/s	  390359 B/op	     632 allocs/op
+BenchmarkParquetBatchStreamNumeric/RowGroupRows=65536/Native/FullScan    	     214	   5649916 ns/op	 849.66 MB/s	     65152 managed-peak-B	    131072 rows/op	  23198930 rows/s	 1341262 B/op	   13034 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/source/parquet
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkParquetBatchStream/RowGroupRows=65536/Native/FirstBatch         	    2138	    540721 ns/op	 238.07 MB/s	    536376 first-batch-ns	    217686 managed-peak-B	      1024 rows/op	   1893769 rows/s	  855535 B/op	     722 allocs/op
+BenchmarkParquetBatchStream/RowGroupRows=65536/Native/FullScan           	      52	  22838135 ns/op	 721.97 MB/s	    233862 managed-peak-B	    131072 rows/op	   5739173 rows/s	 2761123 B/op	   16988 allocs/op
+BenchmarkParquetBatchStreamNumeric/RowGroupRows=65536/Native/FirstBatch  	    5188	    232737 ns/op	 161.14 MB/s	    229666 first-batch-ns	     65152 managed-peak-B	      1024 rows/op	   4399814 rows/s	  390360 B/op	     632 allocs/op
+BenchmarkParquetBatchStreamNumeric/RowGroupRows=65536/Native/FullScan    	     216	   5571340 ns/op	 861.64 MB/s	     65152 managed-peak-B	    131072 rows/op	  23526117 rows/s	 1341164 B/op	   13034 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/source/parquet
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkParquetBatchStream/RowGroupRows=65536/Native/FirstBatch         	    2158	    634738 ns/op	 202.81 MB/s	    629323 first-batch-ns	    217686 managed-peak-B	      1024 rows/op	   1613265 rows/s	  855554 B/op	     722 allocs/op
+BenchmarkParquetBatchStream/RowGroupRows=65536/Native/FullScan           	      49	  25330763 ns/op	 650.92 MB/s	    233862 managed-peak-B	    131072 rows/op	   5174420 rows/s	 2763523 B/op	   16989 allocs/op
+BenchmarkParquetBatchStreamNumeric/RowGroupRows=65536/Native/FirstBatch  	    4569	    270660 ns/op	 138.57 MB/s	    266807 first-batch-ns	     65152 managed-peak-B	      1024 rows/op	   3783351 rows/s	  390360 B/op	     632 allocs/op
+BenchmarkParquetBatchStreamNumeric/RowGroupRows=65536/Native/FullScan    	     187	   6335276 ns/op	 757.74 MB/s	     65152 managed-peak-B	    131072 rows/op	  20689234 rows/s	 1340593 B/op	   13034 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/source/parquet
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkParquetBatchStream/RowGroupRows=65536/Native/FirstBatch         	    2215	    593935 ns/op	 216.74 MB/s	    589033 first-batch-ns	    217686 managed-peak-B	      1024 rows/op	   1724094 rows/s	  855534 B/op	     722 allocs/op
+BenchmarkParquetBatchStream/RowGroupRows=65536/Native/FullScan           	      49	  25712673 ns/op	 641.26 MB/s	    233862 managed-peak-B	    131072 rows/op	   5097564 rows/s	 2763720 B/op	   16990 allocs/op
+BenchmarkParquetBatchStreamNumeric/RowGroupRows=65536/Native/FirstBatch  	    4590	    245686 ns/op	 152.65 MB/s	    242262 first-batch-ns	     65152 managed-peak-B	      1024 rows/op	   4167928 rows/s	  390360 B/op	     632 allocs/op
+BenchmarkParquetBatchStreamNumeric/RowGroupRows=65536/Native/FullScan    	     198	   6530745 ns/op	 735.06 MB/s	     65152 managed-peak-B	    131072 rows/op	  20069993 rows/s	 1341326 B/op	   13035 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/source/parquet
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkParquetBatchStream/RowGroupRows=65536/Native/FirstBatch         	    1890	    588662 ns/op	 218.68 MB/s	    583253 first-batch-ns	    217686 managed-peak-B	      1024 rows/op	   1739537 rows/s	  855557 B/op	     722 allocs/op
+BenchmarkParquetBatchStream/RowGroupRows=65536/Native/FullScan           	      57	  24325438 ns/op	 677.83 MB/s	    233862 managed-peak-B	    131072 rows/op	   5388269 rows/s	 2763749 B/op	   16989 allocs/op
+BenchmarkParquetBatchStreamNumeric/RowGroupRows=65536/Native/FirstBatch  	    4688	    251161 ns/op	 149.32 MB/s	    247605 first-batch-ns	     65152 managed-peak-B	      1024 rows/op	   4077073 rows/s	  390360 B/op	     632 allocs/op
+BenchmarkParquetBatchStreamNumeric/RowGroupRows=65536/Native/FullScan    	     200	   6267112 ns/op	 765.98 MB/s	     65152 managed-peak-B	    131072 rows/op	  20914259 rows/s	 1341079 B/op	   13035 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/source/parquet
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkParquetBatchStream/RowGroupRows=65536/Native/FirstBatch         	    1896	    578542 ns/op	 222.50 MB/s	    573839 first-batch-ns	    217686 managed-peak-B	      1024 rows/op	   1769967 rows/s	  855536 B/op	     722 allocs/op
+BenchmarkParquetBatchStream/RowGroupRows=65536/Native/FullScan           	      55	  24172110 ns/op	 682.13 MB/s	    233862 managed-peak-B	    131072 rows/op	   5422448 rows/s	 2762934 B/op	   16989 allocs/op
+BenchmarkParquetBatchStreamNumeric/RowGroupRows=65536/Native/FirstBatch  	    5080	    243454 ns/op	 154.05 MB/s	    240256 first-batch-ns	     65152 managed-peak-B	      1024 rows/op	   4206135 rows/s	  390360 B/op	     632 allocs/op
+BenchmarkParquetBatchStreamNumeric/RowGroupRows=65536/Native/FullScan    	     212	   6121787 ns/op	 784.17 MB/s	     65152 managed-peak-B	    131072 rows/op	  21410743 rows/s	 1341105 B/op	   13035 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/source/parquet
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkParquetBatchStream/RowGroupRows=65536/Native/FirstBatch         	    2400	    561388 ns/op	 229.30 MB/s	    556518 first-batch-ns	    217686 managed-peak-B	      1024 rows/op	   1824051 rows/s	  855548 B/op	     722 allocs/op
+BenchmarkParquetBatchStream/RowGroupRows=65536/Native/FullScan           	      52	  21405955 ns/op	 770.27 MB/s	    233862 managed-peak-B	    131072 rows/op	   6123156 rows/s	 2759114 B/op	   16987 allocs/op
+BenchmarkParquetBatchStreamNumeric/RowGroupRows=65536/Native/FirstBatch  	    5433	    233252 ns/op	 160.79 MB/s	    230118 first-batch-ns	     65152 managed-peak-B	      1024 rows/op	   4390100 rows/s	  390360 B/op	     632 allocs/op
+BenchmarkParquetBatchStreamNumeric/RowGroupRows=65536/Native/FullScan    	     217	   5796565 ns/op	 828.16 MB/s	     65152 managed-peak-B	    131072 rows/op	  22612012 rows/s	 1341539 B/op	   13035 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/source/parquet
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkParquetBatchStream/RowGroupRows=65536/Native/FirstBatch         	    2122	    544572 ns/op	 236.38 MB/s	    540050 first-batch-ns	    217686 managed-peak-B	      1024 rows/op	   1880377 rows/s	  855536 B/op	     722 allocs/op
+BenchmarkParquetBatchStream/RowGroupRows=65536/Native/FullScan           	      55	  23122423 ns/op	 713.09 MB/s	    233862 managed-peak-B	    131072 rows/op	   5668610 rows/s	 2761199 B/op	   16988 allocs/op
+BenchmarkParquetBatchStreamNumeric/RowGroupRows=65536/Native/FirstBatch  	    4748	    246152 ns/op	 152.36 MB/s	    242770 first-batch-ns	     65152 managed-peak-B	      1024 rows/op	   4160039 rows/s	  390360 B/op	     632 allocs/op
+BenchmarkParquetBatchStreamNumeric/RowGroupRows=65536/Native/FullScan    	     201	   5842557 ns/op	 821.65 MB/s	     65152 managed-peak-B	    131072 rows/op	  22434015 rows/s	 1341201 B/op	   13034 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/source/parquet
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkParquetBatchStream/RowGroupRows=65536/Native/FirstBatch         	    1814	    613176 ns/op	 209.94 MB/s	    607631 first-batch-ns	    217686 managed-peak-B	      1024 rows/op	   1669993 rows/s	  855556 B/op	     722 allocs/op
+BenchmarkParquetBatchStream/RowGroupRows=65536/Native/FullScan           	      49	  23104974 ns/op	 713.63 MB/s	    233862 managed-peak-B	    131072 rows/op	   5672891 rows/s	 2762717 B/op	   16988 allocs/op
+BenchmarkParquetBatchStreamNumeric/RowGroupRows=65536/Native/FirstBatch  	    4334	    248206 ns/op	 151.10 MB/s	    244883 first-batch-ns	     65152 managed-peak-B	      1024 rows/op	   4125597 rows/s	  390361 B/op	     632 allocs/op
+BenchmarkParquetBatchStreamNumeric/RowGroupRows=65536/Native/FullScan    	     207	   6099711 ns/op	 787.01 MB/s	     65152 managed-peak-B	    131072 rows/op	  21488230 rows/s	 1340621 B/op	   13035 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/source/parquet
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkParquetBatchStream/RowGroupRows=65536/Native/FirstBatch         	    2256	    557470 ns/op	 230.91 MB/s	    552944 first-batch-ns	    217686 managed-peak-B	      1024 rows/op	   1836869 rows/s	  855551 B/op	     722 allocs/op
+BenchmarkParquetBatchStream/RowGroupRows=65536/Native/FullScan           	      43	  24540723 ns/op	 671.88 MB/s	    233862 managed-peak-B	    131072 rows/op	   5341000 rows/s	 2760934 B/op	   16988 allocs/op
+BenchmarkParquetBatchStreamNumeric/RowGroupRows=65536/Native/FirstBatch  	    4683	    247733 ns/op	 151.39 MB/s	    244547 first-batch-ns	     65152 managed-peak-B	      1024 rows/op	   4133488 rows/s	  390360 B/op	     632 allocs/op
+BenchmarkParquetBatchStreamNumeric/RowGroupRows=65536/Native/FullScan    	     205	   6097125 ns/op	 787.34 MB/s	     65152 managed-peak-B	    131072 rows/op	  21497344 rows/s	 1341286 B/op	   13034 allocs/op
+PASS

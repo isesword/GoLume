@@ -24,14 +24,14 @@ func TestStringTemporalCastsNormalizeOffsetsAndPropagateNulls(t *testing.T) {
 	batch.Strings["span"] = phase32StringVector([]string{"1h30m", "-250ms", "3ns", "not evaluated"}, []bool{true, true, true, false})
 	batch.Reset(4)
 
-	program, err := CompileProjection(schema, []NamedExpr{
+	program, err := CompileExpressions(schema, []NamedExpr{
 		Named(CastTo(Col("stamp"), memory.TypeTimestamp), "ts"),
 		Named(CastTo(Col("span"), memory.TypeDuration), "duration"),
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	values, err := program.Evaluate(batch, &ScalarWorkspace{}, testKernelSet())
+	values, err := evaluateProjectionTest(program, batch, &evaluationState{}, testKernelSet())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -72,11 +72,11 @@ func TestStringTemporalCastsRejectInvalidAndOutOfRangeValues(t *testing.T) {
 			batch := memory.NewBatch()
 			batch.Strings["text"] = phase32StringVector([]string{tt.value}, nil)
 			batch.Reset(1)
-			program, err := CompileScalar(schema, CastTo(Col("text"), tt.target))
+			program, err := Compile(schema, CastTo(Col("text"), tt.target))
 			if err != nil {
 				t.Fatal(err)
 			}
-			if _, err := program.Evaluate(batch, &ScalarWorkspace{}, testKernelSet()); err == nil || !strings.Contains(err.Error(), "row 0") {
+			if _, err := evaluateValueTest(program, batch, &evaluationState{}, testKernelSet()); err == nil || !strings.Contains(err.Error(), "row 0") {
 				t.Fatalf("cast error=%v, want row-specific parse error", err)
 			}
 		})
@@ -97,7 +97,7 @@ func TestDurationArithmeticPreservesTypesNullsAndOverflowChecks(t *testing.T) {
 	batch.Int64s["duration"] = &memory.Int64Vector{Values: []int64{1500 * int64(time.Millisecond), math.MaxInt64}, Validity: valid}
 	batch.Reset(2)
 
-	program, err := CompileProjection(schema, []NamedExpr{
+	program, err := CompileExpressions(schema, []NamedExpr{
 		Named(Add(Col("ts"), Col("duration")), "end"),
 		Named(Sub(Col("ts"), Col("baseline")), "elapsed"),
 		Named(Add(Col("duration"), Duration(2*time.Second)), "total"),
@@ -106,7 +106,7 @@ func TestDurationArithmeticPreservesTypesNullsAndOverflowChecks(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	values, err := program.Evaluate(batch, &ScalarWorkspace{}, testKernelSet())
+	values, err := evaluateProjectionTest(program, batch, &evaluationState{}, testKernelSet())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -142,11 +142,11 @@ func TestDurationArithmeticPreservesTypesNullsAndOverflowChecks(t *testing.T) {
 	overflowBatch.Int64s["ts"] = &memory.Int64Vector{Values: []int64{math.MaxInt64}}
 	overflowBatch.Int64s["d"] = &memory.Int64Vector{Values: []int64{1}}
 	overflowBatch.Reset(1)
-	overflow, err := CompileScalar(overflowSchema, Add(Col("ts"), Col("d")))
+	overflow, err := Compile(overflowSchema, Add(Col("ts"), Col("d")))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := overflow.Evaluate(overflowBatch, &ScalarWorkspace{}, testKernelSet()); err == nil || !strings.Contains(err.Error(), "overflows at row 0") {
+	if _, err := evaluateValueTest(overflow, overflowBatch, &evaluationState{}, testKernelSet()); err == nil || !strings.Contains(err.Error(), "overflows at row 0") {
 		t.Fatalf("timestamp + duration overflow=%v", err)
 	}
 
@@ -156,7 +156,7 @@ func TestDurationArithmeticPreservesTypesNullsAndOverflowChecks(t *testing.T) {
 		Sub(Duration(time.Second), Timestamp(0)),
 		Add(Timestamp(0), Timestamp(1)),
 	} {
-		if _, err := CompileScalar(memory.Schema{}, bad); err == nil {
+		if _, err := Compile(memory.Schema{}, bad); err == nil {
 			t.Fatalf("%s should be rejected", bad)
 		}
 	}
@@ -174,7 +174,7 @@ func TestDurationLiteralPredicate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err := program.Evaluate(batch, &EvalWorkspace{}, testKernelSet())
+	result, err := evaluateBoolTest(program, batch, &evaluationState{}, testKernelSet())
 	if err != nil {
 		t.Fatal(err)
 	}

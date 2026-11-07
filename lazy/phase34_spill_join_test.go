@@ -226,7 +226,7 @@ func TestBoundedSpillJoinAmplifiedOutputDrainsInChunks(t *testing.T) {
 		t.Fatal(err)
 	}
 	ctx := memory.WithQueryBudget(context.Background(), queryBudget)
-	stream, err := source.OpenBatchStreamWithPartitions(ctx, prepared.src, source.ReadOptions{Kernels: prepared.kernels}, prepared.parts)
+	stream, err := source.OpenBatchStream(ctx, prepared.src, source.ReadOptions{Kernels: prepared.kernels})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -276,7 +276,7 @@ func TestBoundedSpillJoinInputOverTenTimesBudgetDrains(t *testing.T) {
 		t.Fatal(err)
 	}
 	ctx := memory.WithQueryBudget(context.Background(), budget)
-	stream, err := source.OpenBatchStreamWithPartitions(ctx, prepared.src, source.ReadOptions{Kernels: prepared.kernels}, prepared.parts)
+	stream, err := source.OpenBatchStream(ctx, prepared.src, source.ReadOptions{Kernels: prepared.kernels})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -670,7 +670,7 @@ func TestSpillJoinPreparedRepeatAndEarlyCancellationCleanup(t *testing.T) {
 			t.Fatal(err)
 		}
 		ctx := memory.WithQueryBudget(context.Background(), budget)
-		stream, err := source.OpenBatchStreamWithPartitions(ctx, prepared.src, source.ReadOptions{Kernels: prepared.kernels}, prepared.parts)
+		stream, err := source.OpenBatchStream(ctx, prepared.src, source.ReadOptions{Kernels: prepared.kernels})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -700,7 +700,7 @@ func TestSpillJoinPreparedRepeatAndEarlyCancellationCleanup(t *testing.T) {
 	}
 	base, cancel := context.WithCancel(context.Background())
 	ctx := memory.WithQueryBudget(base, budget)
-	stream, err := source.OpenBatchStreamWithPartitions(ctx, prepared.src, source.ReadOptions{Kernels: prepared.kernels}, prepared.parts)
+	stream, err := source.OpenBatchStream(ctx, prepared.src, source.ReadOptions{Kernels: prepared.kernels})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -754,7 +754,7 @@ func TestSpillJoinCorruptOutputRunFailsAndCleansUp(t *testing.T) {
 		t.Fatal(err)
 	}
 	ctx := memory.WithQueryBudget(context.Background(), budget)
-	stream, err := source.OpenBatchStreamWithPartitions(ctx, prepared.src, source.ReadOptions{Kernels: prepared.kernels}, prepared.parts)
+	stream, err := source.OpenBatchStream(ctx, prepared.src, source.ReadOptions{Kernels: prepared.kernels})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -889,7 +889,7 @@ func BenchmarkPhase34SpillableJoinDrain(b *testing.B) {
 					b.Fatal(err)
 				}
 				ctx := memory.WithQueryBudget(context.Background(), budget)
-				stream, err := source.OpenBatchStreamWithPartitions(ctx, prepared.src, source.ReadOptions{Kernels: prepared.kernels}, prepared.parts)
+				stream, err := source.OpenBatchStream(ctx, prepared.src, source.ReadOptions{Kernels: prepared.kernels})
 				if err != nil {
 					b.Fatal(err)
 				}

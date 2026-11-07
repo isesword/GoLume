@@ -26,6 +26,25 @@ func Columns(e Expr) []string {
 			visit(x.Second)
 		case JSONDecodeExpr:
 			visit(x.Value)
+		case IfExpr:
+			visit(x.Condition)
+			visit(x.Then)
+			visit(x.Else)
+		case CaseExpr:
+			for _, branch := range x.Whens {
+				visit(branch.When)
+				visit(branch.Then)
+			}
+			visit(x.Else)
+		case CoalesceExpr:
+			for _, value := range x.Values {
+				visit(value)
+			}
+		case InExpr:
+			visit(x.Value)
+			for _, value := range x.Values {
+				visit(value)
+			}
 		}
 	}
 	visit(e)

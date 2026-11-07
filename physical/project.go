@@ -2,6 +2,7 @@ package physical
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"gocolumn/expr"
 	"gocolumn/kernel"
@@ -9,14 +10,14 @@ import (
 	"gocolumn/source"
 )
 
-// ProjectSource computes typed scalar projection expressions over an immutable
-// child source. Phase 2.6 compiles every computed output into one fused
-// ProjectionProgram so common subexpressions are evaluated once per batch.
+// ProjectSource computes typed projection expressions over an immutable child
+// source. All outputs share one expression program, including Boolean values,
+// so common subexpressions reuse the same evaluation domain.
 type ProjectSource struct {
 	input        source.Source
 	schema       memory.Schema
 	named        []expr.NamedExpr
-	program      expr.ProjectionProgram
+	program      expr.Program
 	includeInput bool
 	manager      memory.Manager
 }
@@ -168,7 +169,7 @@ func (s *DropColumnsSource) Dictionary(ctx context.Context, column string) (sour
 	return dp.Dictionary(ctx, column)
 }
 
-// NewProjectSource compiles named scalar expressions against input. When
+// NewProjectSource compiles named typed expressions against input. When
 // includeInput is true, input fields are retained and aliases replace matching
 // columns; otherwise only the named expressions are exposed.
 func NewProjectSource(input source.Source, named []expr.NamedExpr, includeInput bool, managers ...memory.Manager) (*ProjectSource, error) {
@@ -197,36 +198,11 @@ func NewProjectSource(input source.Source, named []expr.NamedExpr, includeInput 
 			return nil, fmt.Errorf("physical projection contains duplicate output %q", name)
 		}
 		produced[name] = struct{}{}
-		var field memory.Field
-		if c, ok := n.Expr.(expr.Column); ok {
-			f, exists := in.Field(c.Name)
-			if !exists {
-				return nil, fmt.Errorf("projection column %q not found", c.Name)
-			}
-			f.Name = name
-			field = f
-		} else {
-			info, err := expr.InferScalarType(in, n.Expr)
-			if err != nil {
-				return nil, fmt.Errorf("projection %q: %w", name, err)
-			}
-			field = memory.Field{Name: name, Type: info.Type, Nullable: info.Nullable, Encoding: memory.EncodingPlain}
-			if info.Type == memory.TypeString || info.Type == memory.TypeBinary {
-				field.Encoding = memory.EncodingView
-			} else if info.Type == memory.TypeList {
-				elementNullable := false
-				if ternary, ok := n.Expr.(expr.Ternary); ok && ternary.Op == expr.OpRegexExtractAll {
-					elementNullable = true
-				}
-				field = memory.ListStringField(name, info.Nullable, elementNullable)
-			} else if info.Type == memory.TypeStruct {
-				decoded, ok := n.Expr.(expr.JSONDecodeExpr)
-				if !ok {
-					return nil, fmt.Errorf("projection %q struct expression is unsupported", name)
-				}
-				field = memory.StructField(name, true, decoded.Schema.Fields...)
-			}
+		bound, err := expr.Bind(in, n.Expr)
+		if err != nil {
+			return nil, fmt.Errorf("projection %q: %w", name, err)
 		}
+		field := bound.OutputField(name)
 		if pos, exists := positions[name]; exists {
 			fields[pos] = field
 		} else {
@@ -234,7 +210,7 @@ func NewProjectSource(input source.Source, named []expr.NamedExpr, includeInput 
 			fields = append(fields, field)
 		}
 	}
-	program, err := expr.CompileProjection(in, named)
+	program, err := expr.CompileExpressions(in, named)
 	if err != nil {
 		return nil, err
 	}
@@ -296,69 +272,177 @@ func (s *ProjectSource) newBatchStream(ctx context.Context, opts source.ReadOpti
 	if err := opts.Validate(); err != nil {
 		return nil, err
 	}
+	if query := memory.QueryBudgetFromContext(ctx); query != nil {
+		opts.MemoryManager = query.Operator("SourceScan", memory.MemoryWorkspace)
+	}
 	child, err := openUnaryInputStream(ctx, s.input, opts, parts, prepared)
 	if err != nil {
 		return nil, err
 	}
-	stream := &projectBatchStream{owner: s, input: memory.NewBatch(), kernels: opts.Kernels}
+	localOwner := *s
+	if query := memory.QueryBudgetFromContext(ctx); query != nil {
+		localOwner.manager = query.Operator("Project", memory.MemoryWorkspace)
+	} else if localOwner.manager == nil {
+		localOwner.manager = memory.ClassifiedManager(opts.MemoryManager, "Project", memory.MemoryWorkspace)
+	}
+	workspace, err := expr.NewWorkspace(ctx, localOwner.program, localOwner.manager, "Project")
+	if err != nil {
+		return nil, errors.Join(err, child.Close())
+	}
+	stream := &projectBatchStream{owner: &localOwner, input: memory.NewBatch(), kernels: opts.Kernels, opts: opts.Normalize(), workspace: workspace, query: memory.QueryBudgetFromContext(ctx)}
 	stream.state.child = child
 	stream.state.closeOwn = func() error {
+		stream.releaseInputView()
 		stream.input.ReleaseOwned()
 		return stream.workspace.Close()
 	}
 	return stream, nil
 }
 
-func applyProjectBatch(ctx context.Context, owner *ProjectSource, input, dst *memory.Batch, workspace *expr.ScalarWorkspace, kernels kernel.Set) error {
-	workspace.SetMemoryManager(ctx, owner.manager)
-	values, err := owner.program.Evaluate(input, workspace, kernels)
+func applyProjectBatch(ctx context.Context, owner *ProjectSource, input, dst *memory.Batch, workspace *expr.Workspace, kernels kernel.Set) error {
+	values, err := workspace.Evaluate(ctx, input, kernels)
 	if err != nil {
 		return err
 	}
-	if len(values) != len(owner.program.Outputs) {
+	if len(values) != owner.program.OutputCount() {
 		return fmt.Errorf("projection output count mismatch")
 	}
 	dst.ClearColumns()
 	if owner.includeInput {
 		bindAll(dst, input)
 	}
-	for i, out := range owner.program.Outputs {
-		removeColumn(dst, out.Name)
-		if err := bindScalarValue(dst, out.Name, values[i]); err != nil {
+	for i := 0; i < owner.program.OutputCount(); i++ {
+		name := owner.program.OutputName(i)
+		removeColumn(dst, name)
+		if err := bindScalarValue(dst, name, values[i]); err != nil {
 			return err
 		}
 	}
+	// Passthrough values may be backed by owned Arrow range slices in input.
+	// The stream retains their owner; output clearing must never release it.
+	borrowFilterOwners(dst)
 	dst.Reset(input.Rows)
 	return nil
 }
 
 type projectBatchStream struct {
-	state     unaryStreamState
-	owner     *ProjectSource
-	input     *memory.Batch
-	workspace expr.ScalarWorkspace
-	kernels   kernel.Set
+	opts        source.ReadOptions
+	inputOffset int
+	nextRows    int
+	inputView   *memory.Batch
+	viewLease   memory.Reservation
+	state       unaryStreamState
+	owner       *ProjectSource
+	input       *memory.Batch
+	workspace   *expr.Workspace
+	query       *memory.QueryBudget
+	kernels     kernel.Set
 }
 
-// Next evaluates the fused projection over the next child Batch.
+// Next evaluates bounded input ranges. Pure expression candidates that exceed
+// payload or allocation budgets are discarded before a smaller prefix is tried;
+// successful outputs retain their input view and workspace until the next call.
 func (s *projectBatchStream) Next(ctx context.Context, dst *memory.Batch) (bool, error) {
 	if stop, err := s.state.before(ctx, dst); stop {
 		return false, err
 	}
-	ok, err := s.state.child.Next(ctx, s.input)
+	dst.ClearColumns()
+	if query := memory.QueryBudgetFromContext(ctx); query != nil && query != s.query {
+		return false, s.state.fail(fmt.Errorf("project stream cannot change query ownership"))
+	} else if query == nil && s.query != nil {
+		ctx = memory.WithQueryBudget(ctx, s.query)
+	}
+	s.releaseInputView()
+	for s.inputOffset >= s.input.Rows {
+		ok, err := s.state.child.Next(ctx, s.input)
+		if err != nil {
+			return false, s.state.fail(err)
+		}
+		if !ok {
+			return false, s.state.finish()
+		}
+		s.inputOffset = 0
+		if s.input.Rows == 0 {
+			continue
+		}
+	}
+	rows := s.input.Rows - s.inputOffset
+	if s.nextRows > 0 && rows > s.nextRows {
+		rows = s.nextRows
+	}
+	initialRows := rows
+	for {
+		if err := ctx.Err(); err != nil {
+			return false, s.state.fail(err)
+		}
+		err := s.bindInputView(ctx, rows)
+		if err == nil {
+			err = applyProjectBatch(ctx, s.owner, s.inputView, dst, s.workspace, s.kernels)
+		}
+		nextRows := rows / 2
+		if err == nil {
+			selected, selectErr := memory.SelectBatchRangeRows(dst, 0, dst.Rows, s.opts.BatchPayloadTargetBytes, s.opts.BatchPayloadBytes)
+			if selectErr != nil {
+				err = selectErr
+			} else if selected == rows {
+				s.inputOffset += rows
+				if s.nextRows == 0 || rows < initialRows || rows > s.nextRows {
+					s.nextRows = rows
+				}
+				return true, nil
+			} else {
+				nextRows = selected
+			}
+		}
+		// Never hide semantic errors. Only resource pressure or an oversized
+		// candidate may shrink; a single row must fit all hard limits.
+		retry := rows > 1 && (err == nil || errors.Is(err, memory.ErrBudgetExceeded))
+		dst.ClearColumns()
+		s.releaseInputView()
+		_ = s.workspace.Close()
+		if !retry {
+			return false, s.state.fail(err)
+		}
+		s.workspace, err = expr.NewWorkspace(ctx, s.owner.program, s.owner.manager, "Project")
+		if err != nil {
+			return false, s.state.fail(err)
+		}
+		if nextRows < 1 {
+			nextRows = 1
+		}
+		if nextRows >= rows {
+			nextRows = rows - 1
+		}
+		rows = nextRows
+	}
+}
+
+func (s *projectBatchStream) bindInputView(ctx context.Context, rows int) error {
+	bytes, err := memory.BorrowedRangeMetadataBytes(s.input, s.inputOffset, rows)
 	if err != nil {
-		dst.ClearColumns()
-		return false, s.state.fail(err)
+		return err
 	}
-	if !ok {
-		dst.ClearColumns()
-		return false, s.state.finish()
+	if bytes > 0 && s.owner.manager != nil {
+		s.viewLease, err = s.owner.manager.Reserve(ctx, bytes)
+		if err != nil {
+			return err
+		}
 	}
-	if err := applyProjectBatch(ctx, s.owner, s.input, dst, &s.workspace, s.kernels); err != nil {
-		dst.ClearColumns()
-		return false, s.state.fail(err)
+	s.inputView, err = memory.BorrowBatchRange(s.input, s.inputOffset, rows)
+	if err != nil {
+		s.releaseInputView()
 	}
-	return true, nil
+	return err
+}
+func (s *projectBatchStream) releaseInputView() {
+	if s.inputView != nil {
+		s.inputView.ClearColumns()
+	}
+	s.inputView = nil
+	if s.viewLease != nil {
+		s.viewLease.Release()
+		s.viewLease = nil
+	}
 }
 
 // Close releases projection reservations and the child stream.
@@ -394,6 +478,8 @@ func bindScalarValue(dst *memory.Batch, name string, v expr.ScalarValue) error {
 		dst.StringLists[name] = v.StringList
 	case v.Struct != nil:
 		dst.Structs[name] = v.Struct
+	case v.Opaque != nil:
+		dst.Opaque[name] = v.Opaque
 	default:
 		return fmt.Errorf("projection %q type %s has no physical vector", name, v.Type)
 	}

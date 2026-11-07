@@ -705,6 +705,24 @@ func (s Series) ToAnySlice() ([]any, error) {
 				}
 			}
 		}
+	case s.field.Type == memory.TypeBool:
+		chunks, e := s.Uint32Chunks()
+		if e != nil {
+			return nil, e
+		}
+		for _, c := range chunks {
+			for i := 0; i < c.Len(); i++ {
+				v, ok, e := c.Value(i)
+				if e != nil {
+					return nil, e
+				}
+				if ok {
+					out = append(out, v != 0)
+				} else {
+					out = append(out, nil)
+				}
+			}
+		}
 	case s.field.Type == memory.TypeUint64:
 		chunks, e := s.Uint64Chunks()
 		if e != nil {

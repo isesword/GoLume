@@ -10,7 +10,6 @@ import (
 	"math"
 	"os"
 	"time"
-	"unicode/utf8"
 
 	arrowparquet "github.com/apache/arrow-go/v18/parquet"
 	"github.com/apache/arrow-go/v18/parquet/file"
@@ -209,19 +208,6 @@ func (s *Source) Partitions(context.Context) ([]source.Partition, error) {
 	return out, nil
 }
 
-// NewReader opens an independent Arrow-Go reader configured to decode only the
-// projected column chunks.
-func (s *Source) NewReader(_ context.Context, opts source.ReadOptions) (source.Reader, error) {
-	if err := opts.Validate(); err != nil {
-		return nil, err
-	}
-	r, err := file.OpenParquetFile(s.path, false)
-	if err != nil {
-		return nil, err
-	}
-	return &reader{r: r, bindings: append([]columnBinding(nil), s.bindings...), kernels: opts.Kernels}, nil
-}
-
 // ApplyPushdown returns an immutable source clone that reads only requested
 // columns and prunes row groups that cannot make Predicate SQL TRUE according
 // to Parquet min/max/null-count statistics. The row-level predicate must still
@@ -229,6 +215,24 @@ func (s *Source) NewReader(_ context.Context, opts source.ReadOptions) (source.R
 func (s *Source) ApplyPushdown(_ context.Context, req source.PushdownRequest) (source.Source, source.PushdownReport, error) {
 	if s == nil {
 		return nil, source.PushdownReport{}, fmt.Errorf("nil parquet source")
+	}
+	// Metadata can prove a predicate never TRUE while an earlier evaluated
+	// subexpression still errors. Keep all row groups for a fallible predicate;
+	// the residual evaluator is responsible for its ordered mask semantics.
+	pruningPredicate := req.Predicate
+	var predicateColumns []string
+	if req.Predicate != nil {
+		bound, err := expr.Bind(s.baseSchema, req.Predicate)
+		if err != nil {
+			return nil, source.PushdownReport{}, fmt.Errorf("pushdown predicate: %w", err)
+		}
+		if bound.Field.Type != memory.TypeBool {
+			return nil, source.PushdownReport{}, fmt.Errorf("pushdown predicate must be bool, got %s", bound.Field.Type)
+		}
+		predicateColumns = bound.Columns
+		if bound.MayError {
+			pruningPredicate = nil
+		}
 	}
 	projection := append([]string(nil), req.Projection...)
 	if len(projection) == 0 {
@@ -240,7 +244,7 @@ func (s *Source) ApplyPushdown(_ context.Context, req source.PushdownRequest) (s
 	for _, name := range projection {
 		need[name] = struct{}{}
 	}
-	for _, name := range expr.Columns(req.Predicate) {
+	for _, name := range predicateColumns {
 		need[name] = struct{}{}
 	}
 	projection = orderedNames(s.baseSchema, need)
@@ -278,7 +282,7 @@ func (s *Source) ApplyPushdown(_ context.Context, req source.PushdownRequest) (s
 			totalChunkBytes += chunk.TotalCompressedSize()
 		}
 
-		keep, err := rowGroupMayMatch(s.meta, p.ID, req.Predicate, byName)
+		keep, err := rowGroupMayMatch(s.meta, p.ID, pruningPredicate, byName)
 		if err != nil {
 			return nil, source.PushdownReport{}, err
 		}
@@ -341,86 +345,56 @@ func orderedNames(schema memory.Schema, names map[string]struct{}) []string {
 	return out
 }
 
-type reader struct {
-	r          *file.Reader
-	bindings   []columnBinding
-	kernels    kernel.Set
-	dense64    []int64
-	dense32    []int32
-	denseF32   []float32
-	denseF64   []float64
-	denseBool  []bool
-	denseBytes []arrowparquet.ByteArray
-	defs       []int16
+// typedDecoder holds only pre-reserved scratch for native batch conversion.
+// Its methods only slice and fill buffers installed by allocateFixed; they
+// cannot create an eager reader or grow vectors outside stream reservations.
+type typedDecoder struct {
+	kernels   kernel.Set
+	dense64   []int64
+	dense32   []int32
+	denseF32  []float32
+	denseF64  []float64
+	denseBool []bool
+	defs      []int16
 }
 
-// Close releases the underlying Parquet file reader.
-func (r *reader) Close() error { return r.r.Close() }
-
-func resize[T any](s []T, n int) []T {
-	if cap(s) < n {
-		return make([]T, n)
+// scatterNullable fills already reserved vectors and writes each validity
+// word once. A local mask avoids one bitmap read/modify/write per non-NULL
+// value, and overwrites both NULL bits and the final word's unused tail.
+func scatterNullable[T any](out, dense []T, defs []int16, validity memory.Bitmap, count int, column string) error {
+	if count < 0 || count > len(dense) {
+		return fmt.Errorf("column %q invalid dense count %d", column, count)
 	}
-	return s[:n]
-}
-
-// ReadPartition decodes one projected row group into reusable typed vectors in dst.
-func (r *reader) ReadPartition(ctx context.Context, p source.Partition, dst *memory.Batch) error {
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	default:
-	}
-	if p.ID < 0 || p.ID >= r.r.NumRowGroups() {
-		return fmt.Errorf("row group %d out of range", p.ID)
-	}
-	rg := r.r.RowGroup(p.ID)
-	rows := int(rg.MetaData().NumRows())
-	for _, b := range r.bindings {
-		chunk, err := rg.Column(b.Index)
-		if err != nil {
-			return err
+	physical := dense[:count]
+	next := 0
+	var zero T
+	for base := 0; base < len(out); base += 64 {
+		var mask uint64
+		end := min(base+64, len(out))
+		outputWord, definitionWord := out[base:end], defs[base:end]
+		for row, bit := 0, uint64(1); row < len(outputWord); row, bit = row+1, bit<<1 {
+			if definitionWord[row] == 0 {
+				outputWord[row] = zero
+				continue
+			}
+			if next >= len(physical) {
+				return fmt.Errorf("column %q dense overflow", column)
+			}
+			outputWord[row] = physical[next]
+			next++
+			mask |= bit
 		}
-		switch b.Type {
-		case memory.TypeInt64, memory.TypeTimestamp:
-			if err := r.readInt64(chunk, b, rows, dst); err != nil {
-				return err
-			}
-		case memory.TypeInt8, memory.TypeInt16, memory.TypeUint8, memory.TypeUint16, memory.TypeInt32, memory.TypeDate32:
-			if err := r.readInt32(chunk, b, rows, dst); err != nil {
-				return err
-			}
-		case memory.TypeFloat32:
-			if err := r.readFloat32(chunk, b, rows, dst); err != nil {
-				return err
-			}
-		case memory.TypeFloat64:
-			if err := r.readFloat64(chunk, b, rows, dst); err != nil {
-				return err
-			}
-		case memory.TypeBool:
-			if err := r.readBool(chunk, b, rows, dst); err != nil {
-				return err
-			}
-		case memory.TypeString:
-			if err := r.readString(chunk, b, rows, dst); err != nil {
-				return err
-			}
-		default:
-			return fmt.Errorf("unsupported projected type %s for %q", b.Type, b.Name)
-		}
+		validity[base>>6] = mask
 	}
-	dst.Reset(rows)
+	if next != count {
+		return fmt.Errorf("column %q dense mismatch got=%d want=%d", column, next, count)
+	}
 	return nil
 }
 
-func (r *reader) readInt64(chunk file.ColumnChunkReader, b columnBinding, rows int, dst *memory.Batch) error {
+func (r *typedDecoder) readInt64(chunk file.ColumnChunkReader, b columnBinding, rows int, dst *memory.Batch) error {
 	v := dst.Int64s[b.Name]
-	if v == nil {
-		v = &memory.Int64Vector{}
-		dst.Int64s[b.Name] = v
-	}
-	v.Values = resize(v.Values, rows)
+	v.Values = v.Values[:rows]
 	v.Encoding = memory.EncodingPlain
 	c, ok := chunk.(*file.Int64ColumnChunkReader)
 	if !ok {
@@ -437,9 +411,9 @@ func (r *reader) readInt64(chunk file.ColumnChunkReader, b columnBinding, rows i
 		}
 		return normalizeTimestampColumn(b, v.Values, nil, r.kernels)
 	}
-	r.dense64 = resize(r.dense64, rows)
-	r.defs = resize(r.defs, rows)
-	v.Validity = memory.EnsureBitmap(v.Validity, rows)
+	r.dense64 = r.dense64[:rows]
+	r.defs = r.defs[:rows]
+	v.Validity = v.Validity[:memory.WordsFor(rows)]
 	total, values, err := c.ReadBatch(int64(rows), r.dense64[:rows], r.defs[:rows], nil)
 	if err != nil {
 		return err
@@ -447,35 +421,18 @@ func (r *reader) readInt64(chunk file.ColumnChunkReader, b columnBinding, rows i
 	if int(total) != rows {
 		return fmt.Errorf("column %q row count mismatch total=%d want=%d", b.Name, total, rows)
 	}
-	dense := 0
-	for i := 0; i < rows; i++ {
-		if r.defs[i] == 0 {
-			v.Values[i] = 0
-			continue
-		}
-		if dense >= values {
-			return fmt.Errorf("column %q dense overflow", b.Name)
-		}
-		v.Values[i] = r.dense64[dense]
-		dense++
-		memory.Set(v.Validity, i)
-	}
-	if dense != values {
-		return fmt.Errorf("column %q dense mismatch got=%d want=%d", b.Name, dense, values)
+	if err := scatterNullable(v.Values, r.dense64, r.defs, v.Validity, values, b.Name); err != nil {
+		return err
 	}
 	return normalizeTimestampColumn(b, v.Values, v.Validity, r.kernels)
 }
 
-func (r *reader) readInt32(chunk file.ColumnChunkReader, b columnBinding, rows int, dst *memory.Batch) error {
+func (r *typedDecoder) readInt32(chunk file.ColumnChunkReader, b columnBinding, rows int, dst *memory.Batch) error {
 	if b.Type != memory.TypeInt32 && b.Type != memory.TypeDate32 {
 		return r.readNarrowInt32(chunk, b, rows, dst)
 	}
 	v := dst.Int32s[b.Name]
-	if v == nil {
-		v = &memory.Int32Vector{}
-		dst.Int32s[b.Name] = v
-	}
-	v.Values = resize(v.Values, rows)
+	v.Values = v.Values[:rows]
 	v.Encoding = memory.EncodingPlain
 	c, ok := chunk.(*file.Int32ColumnChunkReader)
 	if !ok {
@@ -492,9 +449,9 @@ func (r *reader) readInt32(chunk file.ColumnChunkReader, b columnBinding, rows i
 		}
 		return nil
 	}
-	r.dense32 = resize(r.dense32, rows)
-	r.defs = resize(r.defs, rows)
-	v.Validity = memory.EnsureBitmap(v.Validity, rows)
+	r.dense32 = r.dense32[:rows]
+	r.defs = r.defs[:rows]
+	v.Validity = v.Validity[:memory.WordsFor(rows)]
 	total, values, err := c.ReadBatch(int64(rows), r.dense32[:rows], r.defs[:rows], nil)
 	if err != nil {
 		return err
@@ -502,35 +459,43 @@ func (r *reader) readInt32(chunk file.ColumnChunkReader, b columnBinding, rows i
 	if int(total) != rows {
 		return fmt.Errorf("column %q row count mismatch total=%d want=%d", b.Name, total, rows)
 	}
-	dense := 0
-	for i := 0; i < rows; i++ {
-		if r.defs[i] == 0 {
-			v.Values[i] = 0
-			continue
-		}
-		if dense >= values {
-			return fmt.Errorf("column %q dense overflow", b.Name)
-		}
-		v.Values[i] = r.dense32[dense]
-		dense++
-		memory.Set(v.Validity, i)
-	}
-	if dense != values {
-		return fmt.Errorf("column %q dense mismatch got=%d want=%d", b.Name, dense, values)
+	if err := scatterNullable(v.Values, r.dense32, r.defs, v.Validity, values, b.Name); err != nil {
+		return err
 	}
 	return nil
 }
 
-func (r *reader) readNarrowInt32(chunk file.ColumnChunkReader, b columnBinding, rows int, dst *memory.Batch) error {
+func (r *typedDecoder) readNarrowInt32(chunk file.ColumnChunkReader, b columnBinding, rows int, dst *memory.Batch) error {
 	c, ok := chunk.(*file.Int32ColumnChunkReader)
 	if !ok {
 		return fmt.Errorf("column %q is not an int32 chunk reader", b.Name)
 	}
-	r.dense32 = resize(r.dense32, rows)
-	r.defs = resize(r.defs, rows)
+	r.dense32 = r.dense32[:rows]
+	r.defs = r.defs[:rows]
 	var validity memory.Bitmap
+	switch b.Type {
+	case memory.TypeInt8:
+		if v := dst.Int8s[b.Name]; v != nil {
+			validity = v.Validity
+		}
+	case memory.TypeInt16:
+		if v := dst.Int16s[b.Name]; v != nil {
+			validity = v.Validity
+		}
+	case memory.TypeUint8:
+		if v := dst.Uint8s[b.Name]; v != nil {
+			validity = v.Validity
+		}
+	case memory.TypeUint16:
+		if v := dst.Uint16s[b.Name]; v != nil {
+			validity = v.Validity
+		}
+	}
 	if b.Nullable {
-		validity = memory.EnsureBitmap(nil, rows)
+		validity = validity[:memory.WordsFor(rows)]
+		clear(validity)
+	} else {
+		validity = nil
 	}
 	var total int64
 	var values int
@@ -563,13 +528,29 @@ func (r *reader) readNarrowInt32(chunk file.ColumnChunkReader, b columnBinding, 
 	}
 	switch b.Type {
 	case memory.TypeInt8:
-		dst.Int8s[b.Name] = &memory.Int8Vector{Values: resize(make([]int8, 0), rows), Validity: validity, Encoding: memory.EncodingPlain}
+		v := dst.Int8s[b.Name]
+		v.Values = v.Values[:rows]
+		clear(v.Values)
+		v.Validity = validity
+		v.Encoding = memory.EncodingPlain
 	case memory.TypeInt16:
-		dst.Int16s[b.Name] = &memory.Int16Vector{Values: make([]int16, rows), Validity: validity, Encoding: memory.EncodingPlain}
+		v := dst.Int16s[b.Name]
+		v.Values = v.Values[:rows]
+		clear(v.Values)
+		v.Validity = validity
+		v.Encoding = memory.EncodingPlain
 	case memory.TypeUint8:
-		dst.Uint8s[b.Name] = &memory.Uint8Vector{Values: make([]uint8, rows), Validity: validity, Encoding: memory.EncodingPlain}
+		v := dst.Uint8s[b.Name]
+		v.Values = v.Values[:rows]
+		clear(v.Values)
+		v.Validity = validity
+		v.Encoding = memory.EncodingPlain
 	case memory.TypeUint16:
-		dst.Uint16s[b.Name] = &memory.Uint16Vector{Values: make([]uint16, rows), Validity: validity, Encoding: memory.EncodingPlain}
+		v := dst.Uint16s[b.Name]
+		v.Values = v.Values[:rows]
+		clear(v.Values)
+		v.Validity = validity
+		v.Encoding = memory.EncodingPlain
 	}
 	dense := 0
 	for i := 0; i < rows; i++ {
@@ -592,13 +573,9 @@ func (r *reader) readNarrowInt32(chunk file.ColumnChunkReader, b columnBinding, 
 	return nil
 }
 
-func (r *reader) readFloat32(chunk file.ColumnChunkReader, b columnBinding, rows int, dst *memory.Batch) error {
+func (r *typedDecoder) readFloat32(chunk file.ColumnChunkReader, b columnBinding, rows int, dst *memory.Batch) error {
 	v := dst.Float32s[b.Name]
-	if v == nil {
-		v = &memory.Float32Vector{}
-		dst.Float32s[b.Name] = v
-	}
-	v.Values = resize(v.Values, rows)
+	v.Values = v.Values[:rows]
 	v.Encoding = memory.EncodingPlain
 	c, ok := chunk.(*file.Float32ColumnChunkReader)
 	if !ok {
@@ -615,9 +592,9 @@ func (r *reader) readFloat32(chunk file.ColumnChunkReader, b columnBinding, rows
 		}
 		return nil
 	}
-	r.denseF32 = resize(r.denseF32, rows)
-	r.defs = resize(r.defs, rows)
-	v.Validity = memory.EnsureBitmap(v.Validity, rows)
+	r.denseF32 = r.denseF32[:rows]
+	r.defs = r.defs[:rows]
+	v.Validity = v.Validity[:memory.WordsFor(rows)]
 	total, values, err := c.ReadBatch(int64(rows), r.denseF32[:rows], r.defs[:rows], nil)
 	if err != nil {
 		return err
@@ -625,32 +602,15 @@ func (r *reader) readFloat32(chunk file.ColumnChunkReader, b columnBinding, rows
 	if int(total) != rows {
 		return fmt.Errorf("column %q row count mismatch total=%d want=%d", b.Name, total, rows)
 	}
-	dense := 0
-	for i := 0; i < rows; i++ {
-		if r.defs[i] == 0 {
-			v.Values[i] = 0
-			continue
-		}
-		if dense >= values {
-			return fmt.Errorf("column %q dense overflow", b.Name)
-		}
-		v.Values[i] = r.denseF32[dense]
-		dense++
-		memory.Set(v.Validity, i)
-	}
-	if dense != values {
-		return fmt.Errorf("column %q dense mismatch got=%d want=%d", b.Name, dense, values)
+	if err := scatterNullable(v.Values, r.denseF32, r.defs, v.Validity, values, b.Name); err != nil {
+		return err
 	}
 	return nil
 }
 
-func (r *reader) readFloat64(chunk file.ColumnChunkReader, b columnBinding, rows int, dst *memory.Batch) error {
+func (r *typedDecoder) readFloat64(chunk file.ColumnChunkReader, b columnBinding, rows int, dst *memory.Batch) error {
 	v := dst.Float64s[b.Name]
-	if v == nil {
-		v = &memory.Float64Vector{}
-		dst.Float64s[b.Name] = v
-	}
-	v.Values = resize(v.Values, rows)
+	v.Values = v.Values[:rows]
 	v.Encoding = memory.EncodingPlain
 	c, ok := chunk.(*file.Float64ColumnChunkReader)
 	if !ok {
@@ -667,9 +627,9 @@ func (r *reader) readFloat64(chunk file.ColumnChunkReader, b columnBinding, rows
 		}
 		return nil
 	}
-	r.denseF64 = resize(r.denseF64, rows)
-	r.defs = resize(r.defs, rows)
-	v.Validity = memory.EnsureBitmap(v.Validity, rows)
+	r.denseF64 = r.denseF64[:rows]
+	r.defs = r.defs[:rows]
+	v.Validity = v.Validity[:memory.WordsFor(rows)]
 	total, values, err := c.ReadBatch(int64(rows), r.denseF64[:rows], r.defs[:rows], nil)
 	if err != nil {
 		return err
@@ -677,34 +637,17 @@ func (r *reader) readFloat64(chunk file.ColumnChunkReader, b columnBinding, rows
 	if int(total) != rows {
 		return fmt.Errorf("column %q row count mismatch total=%d want=%d", b.Name, total, rows)
 	}
-	dense := 0
-	for i := 0; i < rows; i++ {
-		if r.defs[i] == 0 {
-			v.Values[i] = 0
-			continue
-		}
-		if dense >= values {
-			return fmt.Errorf("column %q dense overflow", b.Name)
-		}
-		v.Values[i] = r.denseF64[dense]
-		dense++
-		memory.Set(v.Validity, i)
-	}
-	if dense != values {
-		return fmt.Errorf("column %q dense mismatch got=%d want=%d", b.Name, dense, values)
+	if err := scatterNullable(v.Values, r.denseF64, r.defs, v.Validity, values, b.Name); err != nil {
+		return err
 	}
 	return nil
 }
 
 // readBool decodes a Parquet boolean column into the engine bool physical
 // representation: a uint32 vector of 0/1 values under a TypeBool schema field.
-func (r *reader) readBool(chunk file.ColumnChunkReader, b columnBinding, rows int, dst *memory.Batch) error {
+func (r *typedDecoder) readBool(chunk file.ColumnChunkReader, b columnBinding, rows int, dst *memory.Batch) error {
 	v := dst.Uint32s[b.Name]
-	if v == nil {
-		v = &memory.Uint32Vector{}
-		dst.Uint32s[b.Name] = v
-	}
-	v.Values = resize(v.Values, rows)
+	v.Values = v.Values[:rows]
 	v.Encoding = memory.EncodingPlain
 	c, ok := chunk.(*file.BooleanColumnChunkReader)
 	if !ok {
@@ -712,7 +655,7 @@ func (r *reader) readBool(chunk file.ColumnChunkReader, b columnBinding, rows in
 	}
 	if !b.Nullable {
 		v.Validity = nil
-		r.denseBool = resize(r.denseBool, rows)
+		r.denseBool = r.denseBool[:rows]
 		total, values, err := c.ReadBatch(int64(rows), r.denseBool[:rows], nil, nil)
 		if err != nil {
 			return err
@@ -729,9 +672,9 @@ func (r *reader) readBool(chunk file.ColumnChunkReader, b columnBinding, rows in
 		}
 		return nil
 	}
-	r.denseBool = resize(r.denseBool, rows)
-	r.defs = resize(r.defs, rows)
-	v.Validity = memory.EnsureBitmap(v.Validity, rows)
+	r.denseBool = r.denseBool[:rows]
+	r.defs = r.defs[:rows]
+	v.Validity = v.Validity[:memory.WordsFor(rows)]
 	total, values, err := c.ReadBatch(int64(rows), r.denseBool[:rows], r.defs[:rows], nil)
 	if err != nil {
 		return err
@@ -739,100 +682,37 @@ func (r *reader) readBool(chunk file.ColumnChunkReader, b columnBinding, rows in
 	if int(total) != rows {
 		return fmt.Errorf("column %q row count mismatch total=%d want=%d", b.Name, total, rows)
 	}
+	if values < 0 || values > len(r.denseBool) {
+		return fmt.Errorf("column %q invalid dense count %d", b.Name, values)
+	}
+	physical := r.denseBool[:values]
 	dense := 0
-	for i := 0; i < rows; i++ {
-		if r.defs[i] == 0 {
-			v.Values[i] = 0
-			continue
-		}
-		if dense >= values {
-			return fmt.Errorf("column %q dense overflow", b.Name)
-		}
-		if r.denseBool[dense] {
-			v.Values[i] = 1
-		} else {
-			v.Values[i] = 0
-		}
-		dense++
-		memory.Set(v.Validity, i)
-	}
-	if dense != values {
-		return fmt.Errorf("column %q dense mismatch got=%d want=%d", b.Name, dense, values)
-	}
-	return nil
-}
-
-func (r *reader) readString(chunk file.ColumnChunkReader, b columnBinding, rows int, dst *memory.Batch) error {
-	v := dst.Strings[b.Name]
-	if v == nil {
-		v = &memory.StringViewVector{}
-		dst.Strings[b.Name] = v
-	}
-	v.Offsets = resize(v.Offsets, rows+1)
-	v.Offsets[0] = 0
-	v.Data = v.Data[:0]
-	v.Encoding = memory.EncodingView
-	c, ok := chunk.(*file.ByteArrayColumnChunkReader)
-	if !ok {
-		return fmt.Errorf("column %q is not a byte-array chunk reader", b.Name)
-	}
-	if !b.Nullable {
-		v.Validity = nil
-		r.denseBytes = resize(r.denseBytes, rows)
-		total, values, err := c.ReadBatch(int64(rows), r.denseBytes, nil, nil)
-		if err != nil {
-			return err
-		}
-		if int(total) != rows || values != rows {
-			return fmt.Errorf("column %q row count mismatch total=%d values=%d want=%d", b.Name, total, values, rows)
-		}
-		for row, value := range r.denseBytes {
-			if err := appendUTF8Value(v, b.Name, row, value); err != nil {
-				return err
+	for base := 0; base < rows; base += 64 {
+		var mask uint64
+		end := min(base+64, rows)
+		outputWord, definitionWord := v.Values[base:end], r.defs[base:end]
+		for i, bit := 0, uint64(1); i < len(outputWord); i, bit = i+1, bit<<1 {
+			if definitionWord[i] == 0 {
+				outputWord[i] = 0
+				continue
 			}
+			if dense >= len(physical) {
+				return fmt.Errorf("column %q dense overflow", b.Name)
+			}
+			if physical[dense] {
+				outputWord[i] = 1
+			} else {
+				outputWord[i] = 0
+			}
+			dense++
+			mask |= bit
 		}
-		return nil
-	}
-	r.denseBytes = resize(r.denseBytes, rows)
-	r.defs = resize(r.defs, rows)
-	v.Validity = memory.EnsureBitmap(v.Validity, rows)
-	total, values, err := c.ReadBatch(int64(rows), r.denseBytes, r.defs, nil)
-	if err != nil {
-		return err
-	}
-	if int(total) != rows {
-		return fmt.Errorf("column %q row count mismatch total=%d want=%d", b.Name, total, rows)
-	}
-	dense := 0
-	for row := 0; row < rows; row++ {
-		if r.defs[row] == 0 {
-			v.Offsets[row+1] = uint32(len(v.Data))
-			continue
-		}
-		if dense >= values {
-			return fmt.Errorf("column %q dense overflow", b.Name)
-		}
-		if err := appendUTF8Value(v, b.Name, row, r.denseBytes[dense]); err != nil {
-			return err
-		}
-		dense++
-		memory.Set(v.Validity, row)
+		v.Validity[base>>6] = mask
 	}
 	if dense != values {
 		return fmt.Errorf("column %q dense mismatch got=%d want=%d", b.Name, dense, values)
 	}
-	return nil
-}
 
-func appendUTF8Value(v *memory.StringViewVector, column string, row int, value arrowparquet.ByteArray) error {
-	if !utf8.Valid(value) {
-		return fmt.Errorf("column %q row %d contains invalid UTF-8", column, row)
-	}
-	if len(v.Data) > math.MaxUint32-len(value) {
-		return fmt.Errorf("column %q string data exceeds uint32 offset capacity", column)
-	}
-	v.Data = append(v.Data, value...)
-	v.Offsets[row+1] = uint32(len(v.Data))
 	return nil
 }
 
@@ -1063,9 +943,9 @@ func boolStatistic(value bool) int64 {
 }
 
 // floatComparisonTruth prunes a float64 column comparison against a numeric
-// literal using float64 min/max statistics. NaN bounds or literals make all
-// range reasoning unsound under SQL comparison semantics, so they degrade to
-// null-count-only pruning instead of risking false negatives.
+// literal using float64 min/max statistics. NaN bounds disable range reasoning;
+// NaN literals are FALSE on valid rows. Parquet may omit NaNs from statistics,
+// so ordinary comparisons must also retain FALSE as a possible result.
 func floatComparisonTruth(rg *metadata.RowGroupMetaData, stats metadata.TypedStatistics, literal expr.Expr, op expr.Op) (truthSet, error) {
 	value, ok := floatComparisonLiteral(literal)
 	if !ok {
@@ -1082,15 +962,19 @@ func floatComparisonTruth(rg *metadata.RowGroupMetaData, stats metadata.TypedSta
 	return floatRangeTruth(rg, stats, hasMinMax, min, max, value, op), nil
 }
 
-// floatComparisonLiteral accepts float64 literals and int64 literals as
-// float64 comparison bounds. The int64-to-float64 conversion matches the
-// engine's own predicate evaluation, keeping pruning semantics aligned.
+// floatComparisonLiteral accepts float64 literals and exactly representable
+// int64 bounds. Runtime integer/float comparisons are exact, so rounding a
+// nonrepresentable integer here could incorrectly exclude a matching group.
 func floatComparisonLiteral(literal expr.Expr) (float64, bool) {
 	switch v := literal.(type) {
 	case expr.Float64Literal:
 		return v.Value, true
 	case expr.Int64Literal:
-		return float64(v.Value), true
+		value := float64(v.Value)
+		if value >= 0x1p63 || value < -0x1p63 || int64(value) != v.Value {
+			return 0, false
+		}
+		return value, true
 	default:
 		return 0, false
 	}
@@ -1102,28 +986,31 @@ func floatRangeTruth(rg *metadata.RowGroupMetaData, stats metadata.TypedStatisti
 	if stats.HasNullCount() && stats.NullCount() >= rg.NumRows() {
 		return out
 	}
+	if math.IsNaN(literal) {
+		return out | truthFalse
+	}
 	if !hasMinMax {
 		return out | truthTrue | truthFalse
 	}
-	var mayTrue, mayFalse bool
+	// NaN rows are valid but can be absent from min/max. They make every
+	// supported comparison FALSE, including one whose numeric range is TRUE.
+	// Losing that possibility makes NOT and larger Boolean trees unsound.
+	out |= truthFalse
+	var mayTrue bool
 	switch op {
 	case expr.OpGT:
-		mayTrue, mayFalse = max > literal, min <= literal
+		mayTrue = max > literal
 	case expr.OpGE:
-		mayTrue, mayFalse = max >= literal, min < literal
+		mayTrue = max >= literal
 	case expr.OpLT:
-		mayTrue, mayFalse = min < literal, max >= literal
+		mayTrue = min < literal
 	case expr.OpLE:
-		mayTrue, mayFalse = min <= literal, max > literal
+		mayTrue = min <= literal
 	case expr.OpEQ:
 		mayTrue = min <= literal && literal <= max
-		mayFalse = min != literal || max != literal
 	}
 	if mayTrue {
 		out |= truthTrue
-	}
-	if mayFalse {
-		out |= truthFalse
 	}
 	return out
 }

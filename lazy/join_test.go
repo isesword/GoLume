@@ -3,10 +3,13 @@ package lazy
 import (
 	"context"
 	"errors"
+	"fmt"
 	"gocolumn/engine"
 	"gocolumn/memory"
 	"gocolumn/source"
 	"gocolumn/source/inmemory"
+	"reflect"
+	"sort"
 	"testing"
 )
 
@@ -17,16 +20,50 @@ func TestLazyJoinFixedWidthSemantics(t *testing.T) {
 	defer s.Close()
 	for _, tc := range []struct {
 		typ  JoinType
-		want int
-	}{{InnerJoin, 4}, {LeftJoin, 6}, {RightJoin, 5}, {FullJoin, 7}, {SemiJoin, 2}, {AntiJoin, 2}} {
-		lf := s.FromSource(left).Join(s.FromSource(right), JoinOptions{Type: tc.typ, LeftOn: []string{"key"}, RightOn: []string{"key"}})
-		got, err := lf.CollectJoin(context.Background())
-		if err != nil {
-			t.Fatalf("%s: %v", tc.typ, err)
-		}
-		if got.OutputRows != tc.want || len(got.Rows) != tc.want {
-			t.Fatalf("%s rows=%d len=%d want=%d", tc.typ, got.OutputRows, len(got.Rows), tc.want)
-		}
+		want []string
+	}{
+		{InnerJoin, []string{"2/2", "2/2", "2/2", "2/2"}},
+		{LeftJoin, []string{"1/NULL", "2/2", "2/2", "2/2", "2/2", "3/NULL"}},
+		{RightJoin, []string{"2/2", "2/2", "2/2", "2/2", "NULL/4"}},
+		{FullJoin, []string{"1/NULL", "2/2", "2/2", "2/2", "2/2", "3/NULL", "NULL/4"}},
+		{SemiJoin, []string{"2", "2"}},
+		{AntiJoin, []string{"1", "3"}},
+	} {
+		t.Run(tc.typ.String(), func(t *testing.T) {
+			lf := s.FromSource(left).Join(s.FromSource(right), JoinOptions{Type: tc.typ, LeftOn: []string{"key"}, RightOn: []string{"key"}})
+			got, err := lf.Collect(context.Background())
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer got.Close()
+			var rows []string
+			for _, batch := range got.batches() {
+				l := batch.Int32s["key"]
+				r := batch.Int32s["key_right"]
+				for row := 0; row < batch.Rows; row++ {
+					lv := "NULL"
+					if l.IsValid(row) {
+						lv = fmt.Sprint(l.Values[row])
+					}
+					if tc.typ == SemiJoin || tc.typ == AntiJoin {
+						if r != nil {
+							t.Fatal("semi/anti join materialized right payload")
+						}
+						rows = append(rows, lv)
+					} else {
+						rv := "NULL"
+						if r.IsValid(row) {
+							rv = fmt.Sprint(r.Values[row])
+						}
+						rows = append(rows, lv+"/"+rv)
+					}
+				}
+			}
+			sort.Strings(rows)
+			if got.Height() != int64(len(tc.want)) || !reflect.DeepEqual(rows, tc.want) {
+				t.Fatalf("height=%d rows=%v want=%v", got.Height(), rows, tc.want)
+			}
+		})
 	}
 }
 
@@ -46,16 +83,22 @@ func TestLazyJoinCompositeNullNeverMatches(t *testing.T) {
 	rs, _ := inmemory.New(memory.NewSchema(memory.Field{Name: "x", Type: memory.TypeInt64}, memory.Field{Name: "y", Type: memory.TypeUint32}), rightBatch)
 	s := NewSession(engine.DefaultOptions())
 	defer s.Close()
-	res, err := s.FromSource(ls).Join(s.FromSource(rs), JoinOptions{Type: InnerJoin, LeftOn: []string{"a", "b"}, RightOn: []string{"x", "y"}}).CollectJoin(context.Background())
+	res, err := s.FromSource(ls).Join(s.FromSource(rs), JoinOptions{Type: InnerJoin, LeftOn: []string{"a", "b"}, RightOn: []string{"x", "y"}}).Collect(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if res.OutputRows != 2 {
-		t.Fatalf("rows=%d want=2", res.OutputRows)
+	defer res.Close()
+	if res.Height() != 2 {
+		t.Fatalf("rows=%d want=2", res.Height())
 	}
-	for _, row := range res.Rows {
-		if row.Left.Row == 1 {
-			t.Fatal("NULL composite key matched")
+	if got := frameInt64Column(t, res, "a"); !equalI64(got, []int64{1, 2}) {
+		t.Fatalf("matched keys=%v want=[1 2]", got)
+	}
+	for _, batch := range res.batches() {
+		for row := 0; row < batch.Rows; row++ {
+			if !batch.Int64s["a"].IsValid(row) {
+				t.Fatal("NULL composite key matched")
+			}
 		}
 	}
 }
@@ -87,27 +130,32 @@ func TestLazyJoinDictionaryDomainsNormalizeOnce(t *testing.T) {
 	rs.WithDictionary("k", rightDict)
 	s := NewSession(engine.DefaultOptions())
 	defer s.Close()
-	res, err := s.FromSource(ls).Join(s.FromSource(rs), JoinOptions{Type: InnerJoin, LeftOn: []string{"k"}, RightOn: []string{"k"}}).CollectJoin(context.Background())
+	res, err := s.FromSource(ls).Join(s.FromSource(rs), JoinOptions{Type: InnerJoin, LeftOn: []string{"k"}, RightOn: []string{"k"}}).Collect(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if res.OutputRows != 3 {
-		t.Fatalf("rows=%d want=3", res.OutputRows)
+	defer res.Close()
+	if res.Height() != 3 {
+		t.Fatalf("rows=%d want=3", res.Height())
 	}
 }
 
-func TestPreparedJoinMemoryAccountingAndClose(t *testing.T) {
+func TestPreparedJoinPipelineMemoryAccountingAndClose(t *testing.T) {
 	left := makeI32Source(t, []int32{1, 2, 3})
 	right := makeI32Source(t, []int32{2, 3, 4})
 	opts := engine.DefaultOptions()
 	opts.MemoryLimitBytes = 1 << 20
 	s := NewSession(opts)
 	defer s.Close()
-	p, err := s.FromSource(left).Join(s.FromSource(right), JoinOptions{Type: InnerJoin, LeftOn: []string{"key"}, RightOn: []string{"key"}}).PrepareJoin(context.Background())
+	p, err := s.FromSource(left).Join(s.FromSource(right), JoinOptions{Type: InnerJoin, LeftOn: []string{"key"}, RightOn: []string{"key"}}).Prepare(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := p.Execute(context.Background()); err != nil {
+	result, err := p.Execute(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := result.Close(); err != nil {
 		t.Fatal(err)
 	}
 	if used := s.Engine().Memory().Used(); used <= 0 {
@@ -119,27 +167,73 @@ func TestPreparedJoinMemoryAccountingAndClose(t *testing.T) {
 	if used := s.Engine().Memory().Used(); used != 0 {
 		t.Fatalf("memory after close=%d want=0", used)
 	}
-	if _, err := p.Execute(context.Background()); !errors.Is(err, ErrPreparedJoinClosed) {
+	if _, err := p.Execute(context.Background()); !errors.Is(err, ErrPreparedFrameClosed) {
 		t.Fatalf("execute after close err=%v", err)
 	}
 }
 
-func TestPreparedJoinBudgetFailureDoesNotPoisonRetry(t *testing.T) {
+func TestPreparedJoinPipelineBudgetFailureDoesNotPoisonRetry(t *testing.T) {
 	left := makeI32Source(t, []int32{1, 2, 3})
 	right := makeI32Source(t, []int32{2, 3, 4})
 	opts := engine.DefaultOptions()
-	opts.MemoryLimitBytes = 8
+	opts.MemoryLimitBytes = 1 << 20
+	opts.ExecutionPolicy = engine.ExecutionMemoryOnly
 	s := NewSession(opts)
 	defer s.Close()
-	p, err := s.FromSource(left).Join(s.FromSource(right), JoinOptions{Type: InnerJoin, LeftOn: []string{"key"}, RightOn: []string{"key"}}).PrepareJoin(context.Background())
+	p, err := s.FromSource(left).Join(s.FromSource(right), JoinOptions{Type: InnerJoin, LeftOn: []string{"key"}, RightOn: []string{"key"}}).Prepare(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer p.Close()
-	if _, err := p.Execute(context.Background()); !errors.Is(err, memory.ErrBudgetExceeded) {
+	manager := s.Engine().Memory()
+	baseline := manager.Used()
+	pressure, err := manager.Reserve(context.Background(), manager.Limit()-baseline)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = p.Execute(context.Background())
+	pressure.Release()
+	if !errors.Is(err, memory.ErrBudgetExceeded) {
 		t.Fatalf("err=%v want budget", err)
 	}
-	if used := s.Engine().Memory().Used(); used != 0 {
-		t.Fatalf("failed build leaked %d bytes", used)
+	if used := manager.Used(); used != baseline {
+		t.Fatalf("failed execution retained %d bytes, want prepared baseline %d", used, baseline)
+	}
+	result, err := p.Execute(context.Background())
+	if err != nil {
+		t.Fatalf("retry: %v", err)
+	}
+	if result.Height() != 2 {
+		t.Fatalf("retry rows=%d want=2", result.Height())
+	}
+	_ = result.Close()
+}
+
+func TestPreparedJoinPipelineCancellationDoesNotPoisonRetry(t *testing.T) {
+	s := NewSession(engine.DefaultOptions())
+	defer s.Close()
+	left := makeI32Source(t, []int32{1, 2, 3})
+	right := makeI32Source(t, []int32{2, 3, 4})
+	p, err := s.FromSource(left).Join(s.FromSource(right), JoinOptions{Type: InnerJoin, LeftOn: []string{"key"}, RightOn: []string{"key"}}).Prepare(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer p.Close()
+	baseline := s.Engine().Memory().Used()
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if _, err := p.Execute(ctx); !errors.Is(err, context.Canceled) {
+		t.Fatalf("canceled execution err=%v", err)
+	}
+	if used := s.Engine().Memory().Used(); used != baseline {
+		t.Fatalf("canceled execution memory=%d want baseline=%d", used, baseline)
+	}
+	result, err := p.Execute(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer result.Close()
+	if result.Height() != 2 {
+		t.Fatalf("retry rows=%d want=2", result.Height())
 	}
 }

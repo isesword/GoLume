@@ -32,13 +32,13 @@ func TestMaterialize(t *testing.T) {
 	for _, tc := range []struct {
 		strategy string
 		workers  int
-	}{{"direct-fused", 1}, {"bitmap-direct", 1}, {"radix", 4}} {
+	}{{"direct-fused", 1}, {"bitmap-direct", 1}, {"", 4}} {
 		t.Run(tc.strategy, func(t *testing.T) {
 			opts := engine.DefaultOptions()
 			opts.Workers = 4
 			eng := engine.New(opts)
 			defer eng.Close()
-			q := expr.Query{Filter: expr.GT(expr.Col("pred"), expr.I64(32767)), GroupBy: []string{"key"}, Aggregates: []expr.Aggregate{expr.Sum("value", "sum"), expr.Count("count")}, Hints: expr.Hints{Selectivity: .451, Cardinality: 1 << 18, ForceStrategy: tc.strategy, ForceWorkerCount: tc.workers}}
+			q := expr.Query{Filter: expr.GT(expr.Col("pred"), expr.I64(32767)), GroupBy: []string{"key"}, Aggregates: []expr.Aggregate{expr.Sum("value", "sum"), expr.Count("count")}, Hints: expr.Hints{Selectivity: .451, Cardinality: 1 << 18, ForceStrategy: tc.strategy}}
 			r, err := eng.Execute(context.Background(), src, q, engine.ExecuteOptions{Materialize: true})
 			if err != nil {
 				t.Fatal(err)

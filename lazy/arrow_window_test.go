@@ -22,7 +22,7 @@ func TestWindowOverArrowRecordBatches(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err := frame.WithWindows(NewWindow(PartitionBy("grp"), OrderBy(Asc("score"))), RowNumber("rn"), Rank("rank")).CollectFrame(context.Background())
+	result, err := frame.WithWindows(NewWindow(PartitionBy("grp"), OrderBy(Asc("score"))), RowNumber("rn"), Rank("rank")).Collect(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}

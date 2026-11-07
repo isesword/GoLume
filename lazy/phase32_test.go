@@ -50,7 +50,7 @@ func TestLazyStringTimestampAndDurationPipeline(t *testing.T) {
 			Col("duration").Alias("duration"),
 			Col("elapsed").Alias("elapsed"),
 		).
-		CollectFrame(context.Background())
+		Collect(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}

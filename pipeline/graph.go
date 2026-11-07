@@ -40,9 +40,30 @@ func OpenBatchStream(ctx context.Context, src source.Source, readOpts source.Rea
 	if err := opts.Validate(); err != nil {
 		return nil, err
 	}
+	if err := readOpts.Validate(); err != nil {
+		return nil, err
+	}
+	readOpts = scanReadOptions(ctx, readOpts, manager, opts)
 	workers := EffectiveWorkers(src, parts, opts)
 	if workers <= 1 {
-		return source.OpenBatchStreamWithPartitions(ctx, src, readOpts, parts)
+		return openWholeStream(ctx, src, readOpts, parts)
+	}
+	// Multi-row batches leave room for rebased range metadata. A single
+	// whole-batch view allocates no such metadata, so its payload may use the
+	// full per-worker quota. Source-owned allocations retain their own limits.
+	perWorkerBytes := opts.MaxInFlightBytes / int64(workers)
+	if readOpts.BatchPayloadBytes == 0 || readOpts.BatchPayloadBytes > perWorkerBytes {
+		readOpts.BatchPayloadBytes = perWorkerBytes
+	}
+	target := perWorkerBytes / 2
+	if target < 1 {
+		target = 1
+	}
+	if target > readOpts.BatchPayloadBytes {
+		target = readOpts.BatchPayloadBytes
+	}
+	if readOpts.BatchPayloadTargetBytes == 0 || readOpts.BatchPayloadTargetBytes > target {
+		readOpts.BatchPayloadTargetBytes = target
 	}
 	exchange, err := NewExchange(manager, opts.MaxInFlightBytes, workers*2, workers)
 	if err != nil {
@@ -75,6 +96,25 @@ func OpenBatchStream(ctx context.Context, src source.Source, readOpts source.Rea
 	return p, nil
 }
 
+// scanReadOptions applies scan limits before decoding, not just when an
+// exchange later splits an already decoded batch. Source buffers and range
+// metadata have distinct ownership and are charged separately to the same query.
+func scanReadOptions(ctx context.Context, readOpts source.ReadOptions, manager memory.Manager, opts Options) source.ReadOptions {
+	readOpts = readOpts.Normalize()
+	if readOpts.BatchRows > opts.MaxMorselRows {
+		readOpts.BatchRows = opts.MaxMorselRows
+	}
+	if readOpts.BatchBytes > opts.MaxMorselBytes {
+		readOpts.BatchBytes = opts.MaxMorselBytes
+	}
+	if query := memory.QueryBudgetFromContext(ctx); query != nil {
+		readOpts.MemoryManager = query.Operator("SourceScan", memory.MemoryWorkspace)
+	} else if readOpts.MemoryManager == nil {
+		readOpts.MemoryManager = memory.ClassifiedManager(manager, "SourceScan", memory.MemoryWorkspace)
+	}
+	return readOpts
+}
+
 // EffectiveWorkers returns the safe partition parallelism after plan,
 // partition-size, partition-count, and per-worker byte-quota constraints are
 // applied. Workers is a ceiling; tiny partitions remain on the direct path.
@@ -83,10 +123,8 @@ func EffectiveWorkers(src source.Source, parts []source.Partition, opts Options)
 	if src == nil || partitions < 2 || !source.CanParallelizePartitions(source.StreamPlanOf(src)) {
 		return 1
 	}
-	// A parallel exchange owns and clones every emitted morsel. For sources with
-	// tiny physical partitions that fixed cost dominates useful work, so Workers
-	// is a ceiling rather than a command to parallelize. Larger batches can
-	// amortize the exchange and remain eligible for partition parallelism.
+	// Worker startup and handoff dominate tiny physical partitions, so Workers
+	// remains a ceiling rather than a command to parallelize.
 	if estimatedAveragePartitionBytes(src, parts) < opts.TargetMorselBytes/4 {
 		return 1
 	}
@@ -153,6 +191,7 @@ type parallelBatchStream struct {
 	expectedIndex uint64
 	current       exchangeItem
 	currentDst    *memory.Batch
+	currentRange  int
 
 	started     time.Time
 	outputRows  int64
@@ -190,6 +229,10 @@ func (p *parallelBatchStream) runWorker(group uint32, parts []source.Partition) 
 	for {
 		ok, nextErr := stream.Next(p.ctx, batch)
 		if nextErr != nil {
+			var payloadErr *memory.BatchPayloadTooLargeError
+			if errors.As(nextErr, &payloadErr) {
+				nextErr = errors.Join(nextErr, &MorselTooLargeError{Row: payloadErr.Row, Bytes: payloadErr.Bytes, LimitBytes: payloadErr.LimitBytes})
+			}
 			closeErr := stream.Close()
 			p.recordWorkerError(nextErr, closeErr)
 			return
@@ -209,12 +252,45 @@ func (p *parallelBatchStream) runWorker(group uint32, parts []source.Partition) 
 			p.recordWorkerError(splitErr, stream.Close())
 			return
 		}
+		if len(ranges) == 0 {
+			continue
+		}
+		payloadBytes, err := memory.EstimateBatchRangeBytes(batch, 0, batch.Rows)
+		if err != nil {
+			p.recordWorkerError(err, stream.Close())
+			return
+		}
+		if retained := memory.BatchBytes(batch); retained > payloadBytes {
+			payloadBytes = retained
+		}
+		if payloadBytes < 1 {
+			payloadBytes = 1
+		}
+		metadataBytes := int64(0)
 		for _, morsel := range ranges {
-			if err := p.exchange.enqueueRange(p.ctx, Sequence{Group: group, Index: index}, batch, morsel); err != nil {
+			bytes, err := memory.BorrowedRangeMetadataBytes(batch, morsel.Offset, morsel.Rows)
+			if err != nil {
 				p.recordWorkerError(err, stream.Close())
 				return
 			}
-			index++
+			if bytes > metadataBytes {
+				metadataBytes = bytes
+			}
+		}
+		lease, err := p.exchange.enqueueBorrowed(p.ctx, Sequence{Group: group, Index: index}, batch, ranges, payloadBytes, metadataBytes)
+		if err != nil {
+			p.recordWorkerError(err, stream.Close())
+			return
+		}
+		// A published batch cannot be revoked by cancellation: the consumer
+		// may still have hash tasks reading its borrowed vectors.
+		started := time.Now()
+		<-lease.released
+		p.exchange.blockedNanos.Add(int64(time.Since(started)))
+		index++
+		if err := p.ctx.Err(); err != nil {
+			p.recordWorkerError(err, stream.Close())
+			return
 		}
 	}
 }
@@ -272,7 +348,8 @@ func (p *parallelBatchStream) Next(ctx context.Context, dst *memory.Batch) (bool
 		dst.ClearColumns()
 		return false, nil
 	}
-	p.releaseCurrent()
+	p.releaseCurrentView()
+	dst.ClearColumns()
 	if err := ctx.Err(); err != nil {
 		return false, p.fail(err)
 	}
@@ -280,15 +357,31 @@ func (p *parallelBatchStream) Next(ctx context.Context, dst *memory.Batch) (bool
 		if err := p.failure(); err != nil {
 			return false, p.fail(err)
 		}
+		if p.ctx.Err() != nil {
+			return false, p.fail(context.Cause(p.ctx))
+		}
+		if p.current.borrowed != nil {
+			if p.currentRange < len(p.current.borrowed.ranges) {
+				if err := p.bindRange(dst); err != nil {
+					return false, p.fail(err)
+				}
+				return true, nil
+			}
+			p.releaseCurrent()
+		}
 		if p.opts.Ordering == OrderingStable {
 			if item, ok, err := p.readyStable(); err != nil {
 				return false, p.fail(err)
 			} else if ok {
-				p.bindCurrent(dst, item)
+				if err := p.bindCurrent(dst, item); err != nil {
+					return false, p.fail(err)
+				}
 				return true, nil
 			}
 		}
 		select {
+		case <-p.ctx.Done():
+			return false, p.fail(context.Cause(p.ctx))
 		case <-ctx.Done():
 			return false, p.fail(ctx.Err())
 		case item, ok := <-p.exchange.items:
@@ -300,7 +393,9 @@ func (p *parallelBatchStream) Next(ctx context.Context, dst *memory.Batch) (bool
 					if item, ready, err := p.readyStable(); err != nil {
 						return false, p.fail(err)
 					} else if ready {
-						p.bindCurrent(dst, item)
+						if err := p.bindCurrent(dst, item); err != nil {
+							return false, p.fail(err)
+						}
 						return true, nil
 					}
 					if p.expectedGroup != uint32(p.workers) {
@@ -315,7 +410,9 @@ func (p *parallelBatchStream) Next(ctx context.Context, dst *memory.Batch) (bool
 				if item.end {
 					continue
 				}
-				p.bindCurrent(dst, item)
+				if err := p.bindCurrent(dst, item); err != nil {
+					return false, p.fail(err)
+				}
 				return true, nil
 			}
 			if err := p.bufferStable(item); err != nil {
@@ -374,27 +471,48 @@ func (p *parallelBatchStream) readyStable() (exchangeItem, bool, error) {
 	return exchangeItem{}, false, nil
 }
 
-func (p *parallelBatchStream) bindCurrent(dst *memory.Batch, item exchangeItem) {
-	dst.ClearColumns()
-	old := *dst
-	*dst = *item.batch
-	*item.batch = old
-	item.batch.ClearColumns()
-	item.batch = nil
-	p.current, p.currentDst = item, dst
-	p.outputRows += int64(dst.Rows)
-	p.outputBytes += item.bytes
-	p.morsels++
+func (p *parallelBatchStream) bindCurrent(dst *memory.Batch, item exchangeItem) error {
+	p.current = item
+	p.currentRange = 0
+	return p.bindRange(dst)
 }
 
-func (p *parallelBatchStream) releaseCurrent() {
+func (p *parallelBatchStream) bindRange(dst *memory.Batch) error {
+	item := p.current
+	if item.borrowed == nil || p.currentRange >= len(item.borrowed.ranges) {
+		return fmt.Errorf("invalid borrowed batch lease")
+	}
+	r := item.borrowed.ranges[p.currentRange]
+	view, err := memory.BorrowBatchRange(item.batch, r.Offset, r.Rows)
+	if err != nil {
+		return err
+	}
+	dst.ClearColumns()
+	// Move only view-owned maps; never clear or swap the producer's batch.
+	old := *dst
+	*dst = *view
+	*view = old
+	p.currentDst = dst
+	p.currentRange++
+	p.outputRows += int64(r.Rows)
+	p.outputBytes += r.Bytes
+	p.morsels++
+	return nil
+}
+
+func (p *parallelBatchStream) releaseCurrentView() {
 	if p.currentDst != nil {
 		p.currentDst.ClearColumns()
 		p.currentDst = nil
 	}
-	if p.current.bytes != 0 || p.current.reservation != nil || p.current.batch != nil {
+}
+
+func (p *parallelBatchStream) releaseCurrent() {
+	p.releaseCurrentView()
+	if p.current.borrowed != nil || p.current.bytes != 0 || p.current.reservation != nil || p.current.batch != nil {
 		p.exchange.release(p.current)
 		p.current = exchangeItem{}
+		p.currentRange = 0
 	}
 }
 
@@ -420,7 +538,6 @@ func (p *parallelBatchStream) cleanup(cancel bool) {
 			p.cancel(p.terminalErr)
 		}
 		p.exchange.closeSignal()
-		p.wg.Wait()
 		p.releaseCurrent()
 		for _, group := range p.pending {
 			for _, item := range group.items {
@@ -428,9 +545,12 @@ func (p *parallelBatchStream) cleanup(cancel bool) {
 			}
 		}
 		p.pending = make(map[uint32]*pendingGroup)
+		// Drain before waiting: producers with published leases wait for ACK
+		// even after cancellation, to protect consumer-visible buffers.
 		for item := range p.exchange.items {
 			p.exchange.release(item)
 		}
+		p.wg.Wait()
 		p.observe()
 	})
 }
@@ -482,3 +602,13 @@ func (p *parallelBatchStream) Close() error {
 
 var _ source.BatchStream = (*parallelBatchStream)(nil)
 var _ StreamStatsProvider = (*parallelBatchStream)(nil)
+
+// openWholeStream opens the complete input, preserving prepared partitions only
+// when the source explicitly implements the partition contract. Global operators
+// have one stream and must never be mistaken for partition-subset providers.
+func openWholeStream(ctx context.Context, src source.Source, opts source.ReadOptions, parts []source.Partition) (source.BatchStream, error) {
+	if _, ok := src.(source.PreparedBatchStreamProvider); ok && source.CanParallelizePartitions(source.StreamPlanOf(src)) {
+		return source.OpenBatchStreamWithPartitions(ctx, src, opts, parts)
+	}
+	return source.OpenBatchStream(ctx, src, opts)
+}

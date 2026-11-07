@@ -13,8 +13,54 @@ import (
 )
 
 func evalJSONDecode(out, input *scalarRegister, fields []memory.Field, rows int) error {
-	result := &memory.StructVector{Fields: append([]memory.Field(nil), fields...), Values: memory.NewBatch(), Encoding: memory.EncodingView}
+	// Context checks surround each row and the field/list loops below. The
+	// standard library decoder itself is not interruptible within one call.
+	outputBytes, scratchBytes, err := jsonAllocationSizes(out, input, len(fields), rows)
+	if err != nil {
+		return err
+	}
+	// Reserve the complete new result before constructing it. The previous
+	// result remains alive and charged until the successful swap below.
+	var outputReservation, scratchReservation memory.Reservation
+	committed := false
+	defer func() {
+		if !committed && outputReservation != nil {
+			outputReservation.Release()
+		}
+	}()
+	if out.acquire != nil {
+		outputReservation, err = out.acquire(outputBytes)
+		if err != nil {
+			return err
+		}
+		scratchReservation, err = out.acquire(scratchBytes)
+		if err != nil {
+			return err
+		}
+		defer func() {
+			if scratchReservation != nil {
+				scratchReservation.Release()
+			}
+		}()
+	}
+	// The result schema belongs to this register, never the immutable program.
+	// Reuse it across batches under the read-only borrowed-result contract.
+	var ownedFields []memory.Field
+	if out.strct != nil {
+		ownedFields = out.strct.Fields
+	} else {
+		ownedFields = make([]memory.Field, len(fields))
+		for i, field := range fields {
+			ownedFields[i] = cloneBoundField(field)
+		}
+	}
+	result := &memory.StructVector{Fields: ownedFields, Values: memory.NewBatch(), Encoding: memory.EncodingView}
 	for row := 0; row < rows; row++ {
+		if out.checkContext != nil {
+			if err := out.checkContext(); err != nil {
+				return err
+			}
+		}
 		parentValid := isValidRegister(input, row)
 		var object map[string]json.RawMessage
 		if parentValid {
@@ -30,7 +76,7 @@ func evalJSONDecode(out, input *scalarRegister, fields []memory.Field, rows int)
 			if err := decoder.Decode(&object); err != nil {
 				return fmt.Errorf("JSON_DECODE at row %d: %w", row, err)
 			}
-			var extra any
+			var extra json.RawMessage
 			if err := decoder.Decode(&extra); err != io.EOF {
 				return fmt.Errorf("JSON_DECODE at row %d: trailing JSON value", row)
 			}
@@ -38,37 +84,113 @@ func evalJSONDecode(out, input *scalarRegister, fields []memory.Field, rows int)
 				parentValid = false
 			}
 		}
-		temp, err := jsonStructRow(fields, object, parentValid, row)
+		temp, err := jsonStructRow(fields, object, parentValid, row, out.checkContext)
 		if err != nil {
 			return err
-		}
-		projected := memory.BatchBytes(result.Values) + memory.BatchBytes(temp.Values) + int64(memory.WordsFor(row+1))*8
-		if projected > out.charged && out.reserve != nil {
-			if err := out.reserve(projected - out.charged); err != nil {
-				return fmt.Errorf("JSON_DECODE at row %d: %w", row, err)
-			}
-			out.charged = projected
 		}
 		if err := memory.AppendStructRow(result, temp, 0, parentValid); err != nil {
 			return fmt.Errorf("JSON_DECODE at row %d: %w", row, err)
 		}
 	}
-	bytesNeeded := memory.BatchBytes(result.Values) + int64(len(result.Validity))*8
-	if bytesNeeded > out.charged && out.reserve != nil {
-		if err := out.reserve(bytesNeeded - out.charged); err != nil {
+	if out.checkContext != nil {
+		if err := out.checkContext(); err != nil {
 			return err
 		}
-		out.charged = bytesNeeded
 	}
+	previous := out.jsonReservation
 	out.strct = result
 	out.validity = result.Validity
+	out.jsonReservation = outputReservation
+	if previous != nil {
+		previous.Release()
+	}
+	committed = true
 	return nil
 }
 
-func jsonStructRow(fields []memory.Field, object map[string]json.RawMessage, parentValid bool, row int) (*memory.StructVector, error) {
+// jsonAllocationSizes is a conservative live-allocation policy for the JSON
+// implementation, not a measurement of Go heap/RSS. The output allowance covers
+// row-aligned vectors, offsets/validity, append capacity, maps, and vector/field
+// metadata. Scratch covers the largest row's decoder/raw-message maps, decoded
+// strings/list elements, temporary StructVector, and stdlib parser workspace.
+// Encoded strings bound their decoded byte lengths; each list element consumes
+// encoded bytes. The multipliers deliberately allow geometric capacities and
+// small-object overhead. Scratch is returned after decoding, while the output
+// allowance stays charged for the lifetime of the result.
+func jsonAllocationSizes(out, input *scalarRegister, fieldCount, rows int) (int64, int64, error) {
+	if out.checkContext != nil {
+		if err := out.checkContext(); err != nil {
+			return 0, 0, err
+		}
+	}
+	if rows < 0 || fieldCount < 0 {
+		return 0, 0, fmt.Errorf("JSON_DECODE negative shape")
+	}
+	var total, largest int64
+	for row := 0; row < rows; row++ {
+		if out.checkContext != nil {
+			if err := out.checkContext(); err != nil {
+				return 0, 0, err
+			}
+		}
+		if !isValidRegister(input, row) {
+			continue
+		}
+		var size int64
+		if input.constant {
+			// Avoid registerString's []byte conversion before reservation.
+			size = int64(len(input.strlit))
+		} else {
+			raw, err := registerString(input, row)
+			if err != nil {
+				return 0, 0, err
+			}
+			size = int64(len(raw))
+		}
+		if total > math.MaxInt64-size {
+			return 0, 0, fmt.Errorf("JSON_DECODE allocation estimate overflows int64")
+		}
+		total += size
+		if size > largest {
+			largest = size
+		}
+	}
+	// Express the arithmetic as checked terms, without allocating a term list.
+	output := int64(2048)
+	if !addJSONAllocation(&output, total, 16) ||
+		!addJSONAllocation(&output, int64(fieldCount), 512) {
+		return 0, 0, fmt.Errorf("JSON_DECODE allocation estimate overflows int64")
+	}
+	rowBytes := int64(64)
+	if !addJSONAllocation(&rowBytes, int64(fieldCount), 64) ||
+		!addJSONAllocation(&output, int64(rows), rowBytes) {
+		return 0, 0, fmt.Errorf("JSON_DECODE allocation estimate overflows int64")
+	}
+	scratch := int64(8192)
+	if !addJSONAllocation(&scratch, largest, 128) ||
+		!addJSONAllocation(&scratch, int64(fieldCount), 2048) {
+		return 0, 0, fmt.Errorf("JSON_DECODE allocation estimate overflows int64")
+	}
+	return output, scratch, nil
+}
+
+func addJSONAllocation(total *int64, count, size int64) bool {
+	if count < 0 || size < 0 || (size != 0 && count > (math.MaxInt64-*total)/size) {
+		return false
+	}
+	*total += count * size
+	return true
+}
+
+func jsonStructRow(fields []memory.Field, object map[string]json.RawMessage, parentValid bool, row int, checkContext func() error) (*memory.StructVector, error) {
 	v := &memory.StructVector{Rows: 1, Fields: append([]memory.Field(nil), fields...), Values: memory.NewBatch(), Encoding: memory.EncodingView}
 	v.Values.Rows = 1
 	for _, field := range fields {
+		if checkContext != nil {
+			if err := checkContext(); err != nil {
+				return nil, err
+			}
+		}
 		raw, present := object[field.Name]
 		isNull := !present || bytes.Equal(bytes.TrimSpace(raw), []byte("null"))
 		valid := parentValid && !isNull
@@ -91,11 +213,18 @@ func jsonStructRow(fields []memory.Field, object map[string]json.RawMessage, par
 					return nil, jsonFieldError(row, field.Name, err)
 				}
 			}
-			vec := &memory.Int32Vector{Values: []int32{int32(value)}, Encoding: field.Encoding}
+			var validity memory.Bitmap
 			if !valid {
-				vec.Validity = memory.EnsureBitmap(nil, 1)
+				validity = memory.EnsureBitmap(nil, 1)
 			}
-			v.Values.Int32s[field.Name] = vec
+			switch field.Type {
+			case memory.TypeInt8:
+				v.Values.Int8s[field.Name] = &memory.Int8Vector{Values: []int8{int8(value)}, Validity: validity, Encoding: field.Encoding}
+			case memory.TypeInt16:
+				v.Values.Int16s[field.Name] = &memory.Int16Vector{Values: []int16{int16(value)}, Validity: validity, Encoding: field.Encoding}
+			default:
+				v.Values.Int32s[field.Name] = &memory.Int32Vector{Values: []int32{int32(value)}, Validity: validity, Encoding: field.Encoding}
+			}
 		case memory.TypeInt64, memory.TypeDate64, memory.TypeTimestamp, memory.TypeTime64, memory.TypeDuration:
 			value := int64(0)
 			var err error
@@ -132,11 +261,18 @@ func jsonStructRow(fields []memory.Field, object map[string]json.RawMessage, par
 					return nil, jsonFieldError(row, field.Name, err)
 				}
 			}
-			vec := &memory.Uint32Vector{Values: []uint32{uint32(value)}, Encoding: field.Encoding}
+			var validity memory.Bitmap
 			if !valid {
-				vec.Validity = memory.EnsureBitmap(nil, 1)
+				validity = memory.EnsureBitmap(nil, 1)
 			}
-			v.Values.Uint32s[field.Name] = vec
+			switch field.Type {
+			case memory.TypeUint8:
+				v.Values.Uint8s[field.Name] = &memory.Uint8Vector{Values: []uint8{uint8(value)}, Validity: validity, Encoding: field.Encoding}
+			case memory.TypeUint16:
+				v.Values.Uint16s[field.Name] = &memory.Uint16Vector{Values: []uint16{uint16(value)}, Validity: validity, Encoding: field.Encoding}
+			default:
+				v.Values.Uint32s[field.Name] = &memory.Uint32Vector{Values: []uint32{uint32(value)}, Validity: validity, Encoding: field.Encoding}
+			}
 		case memory.TypeUint64:
 			value := uint64(0)
 			var err error
@@ -155,19 +291,30 @@ func jsonStructRow(fields []memory.Field, object map[string]json.RawMessage, par
 			value := float64(0)
 			var err error
 			if valid {
-				value, err = strconv.ParseFloat(string(raw), 64)
+				bits := 64
+				if field.Type == memory.TypeFloat32 {
+					bits = 32
+				}
+				value, err = strconv.ParseFloat(string(raw), bits)
+				if math.IsInf(value, 0) {
+					return nil, jsonFieldError(row, field.Name, fmt.Errorf("value overflows %s", field.Type))
+				}
 				if err != nil {
 					return nil, jsonFieldError(row, field.Name, fmt.Errorf("expected number"))
 				}
-				if math.IsInf(value, 0) || (field.Type == memory.TypeFloat32 && math.Abs(value) > math.MaxFloat32) {
+				if math.IsNaN(value) {
 					return nil, jsonFieldError(row, field.Name, fmt.Errorf("value overflows %s", field.Type))
 				}
 			}
-			vec := &memory.Float64Vector{Values: []float64{value}, Encoding: field.Encoding}
+			var validity memory.Bitmap
 			if !valid {
-				vec.Validity = memory.EnsureBitmap(nil, 1)
+				validity = memory.EnsureBitmap(nil, 1)
 			}
-			v.Values.Float64s[field.Name] = vec
+			if field.Type == memory.TypeFloat32 {
+				v.Values.Float32s[field.Name] = &memory.Float32Vector{Values: []float32{float32(value)}, Validity: validity, Encoding: field.Encoding}
+			} else {
+				v.Values.Float64s[field.Name] = &memory.Float64Vector{Values: []float64{value}, Validity: validity, Encoding: field.Encoding}
+			}
 		case memory.TypeString:
 			value := ""
 			var err error
@@ -198,6 +345,11 @@ func jsonStructRow(fields []memory.Field, object map[string]json.RawMessage, par
 				}
 				list.Offsets[1] = uint32(len(elements))
 				for index, element := range elements {
+					if index%256 == 0 && checkContext != nil {
+						if err := checkContext(); err != nil {
+							return nil, err
+						}
+					}
 					null := bytes.Equal(bytes.TrimSpace(element), []byte("null"))
 					if null && !field.Children[0].Nullable {
 						return nil, fmt.Errorf("JSON_DECODE at row %d field %q[%d]: null element is not allowed", row, field.Name, index)

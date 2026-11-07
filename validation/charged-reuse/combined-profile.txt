@@ -1,0 +1,4 @@
+=== RUN   TestW4FixedIterationCPUProfile
+    reuse_fixed_cpu_test.go:173: knownN=300 elapsed/op=13.735ms processCPU/op=39.748ms work/4=9.937ms CloseUsed=0 profile=combined-profile.pprof
+--- PASS: TestW4FixedIterationCPUProfile (4.18s)
+PASS

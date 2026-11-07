@@ -2,7 +2,7 @@ package source
 
 import "fmt"
 
-// Replayability describes whether independent readers observe the same stable
+// Replayability describes whether independent streams observe the same stable
 // source snapshot for the lifetime of a prepared query.
 type Replayability uint8
 
@@ -31,7 +31,7 @@ type ReplayabilityProvider interface {
 }
 
 // ReplayabilityOf returns a source declaration or the conservative unknown
-// default. Independent Reader creation alone does not prove snapshot identity.
+// default. Independent stream creation alone does not prove snapshot identity.
 func ReplayabilityOf(src Source) Replayability {
 	if provider, ok := src.(ReplayabilityProvider); ok {
 		return provider.Replayability()

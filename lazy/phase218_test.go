@@ -27,7 +27,7 @@ func TestPhase218ListExpressionsFlowThroughLazyFrame(t *testing.T) {
 	frame, err := session.FromSource(src).SelectExprs(
 		Split(Col("value"), Col("delimiter")).Alias("parts"),
 		RegexExtractAll(Col("value"), Str(`[^,\-0-9]+`), Lit(0)).Alias("words"),
-	).CollectFrame(context.Background())
+	).Collect(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,7 +53,7 @@ func TestPhase218ListExpressionsFlowThroughLazyFrame(t *testing.T) {
 
 func TestPhase218ListExpressionWorkspaceHonorsBudget(t *testing.T) {
 	batch := memory.NewBatch()
-	batch.Strings["value"] = &memory.StringViewVector{Offsets: []uint32{0, 10}, Data: []byte("a,b,c,d,e"), Encoding: memory.EncodingView}
+	batch.Strings["value"] = &memory.StringViewVector{Offsets: []uint32{0, 9}, Data: []byte("a,b,c,d,e"), Encoding: memory.EncodingView}
 	batch.Reset(1)
 	src, err := inmemory.New(memory.NewSchema(memory.Field{Name: "value", Type: memory.TypeString, Encoding: memory.EncodingView}), batch)
 	if err != nil {
@@ -63,7 +63,7 @@ func TestPhase218ListExpressionWorkspaceHonorsBudget(t *testing.T) {
 	opts.MemoryLimitBytes = 16
 	session := NewSession(opts)
 	defer session.Close()
-	_, err = session.FromSource(src).SelectExprs(Split(Col("value"), Str(",")).Alias("parts")).CollectFrame(context.Background())
+	_, err = session.FromSource(src).SelectExprs(Split(Col("value"), Str(",")).Alias("parts")).Collect(context.Background())
 	if !errors.Is(err, memory.ErrBudgetExceeded) {
 		t.Fatalf("error=%v want=%v", err, memory.ErrBudgetExceeded)
 	}

@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-func TestRadixHonorsMemoryBudget(t *testing.T) {
+func TestStreamHonorsMemoryBudget(t *testing.T) {
 	src, err := parquetsource.OpenFile(testPath(t))
 	if err != nil {
 		t.Fatal(err)
@@ -19,7 +19,7 @@ func TestRadixHonorsMemoryBudget(t *testing.T) {
 	opts.MemoryLimitBytes = 1024
 	eng := engine.New(opts)
 	defer eng.Close()
-	_, err = eng.Execute(context.Background(), src, query("radix", 4), engine.ExecuteOptions{})
+	_, err = eng.Execute(context.Background(), src, query("", 4), engine.ExecuteOptions{})
 	if !errors.Is(err, memory.ErrBudgetExceeded) {
 		t.Fatalf("expected memory budget error, got %v", err)
 	}

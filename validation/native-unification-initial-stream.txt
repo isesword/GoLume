@@ -1,0 +1,220 @@
+goos: linux
+goarch: amd64
+pkg: gocolumn/engine
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkInt32ComparisonKernelMode/direct-fused/select=50/mode=scalar         	     136	   8439043 ns/op	   45376 B/op	     161 allocs/op
+BenchmarkInt32ComparisonKernelMode/direct-fused/select=50/mode=simd           	     130	   8905159 ns/op	   45376 B/op	     161 allocs/op
+BenchmarkInt32ComparisonKernelMode/bitmap-direct/select=50/mode=scalar        	     162	   7350057 ns/op	   61912 B/op	     151 allocs/op
+BenchmarkInt32ComparisonKernelMode/bitmap-direct/select=50/mode=simd          	     163	   7097133 ns/op	   61912 B/op	     151 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/engine
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkInt32ComparisonKernelMode/direct-fused/select=50/mode=scalar         	     140	   8679139 ns/op	   45376 B/op	     161 allocs/op
+BenchmarkInt32ComparisonKernelMode/direct-fused/select=50/mode=simd           	     144	   8123372 ns/op	   45376 B/op	     161 allocs/op
+BenchmarkInt32ComparisonKernelMode/bitmap-direct/select=50/mode=scalar        	     163	   7046665 ns/op	   61912 B/op	     151 allocs/op
+BenchmarkInt32ComparisonKernelMode/bitmap-direct/select=50/mode=simd          	     168	   7302686 ns/op	   61912 B/op	     151 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/engine
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkInt32ComparisonKernelMode/direct-fused/select=50/mode=scalar         	     141	   7583788 ns/op	   45376 B/op	     161 allocs/op
+BenchmarkInt32ComparisonKernelMode/direct-fused/select=50/mode=simd           	     146	   8324416 ns/op	   45376 B/op	     161 allocs/op
+BenchmarkInt32ComparisonKernelMode/bitmap-direct/select=50/mode=scalar        	     162	   7325764 ns/op	   61912 B/op	     151 allocs/op
+BenchmarkInt32ComparisonKernelMode/bitmap-direct/select=50/mode=simd          	     150	   7675954 ns/op	   61912 B/op	     151 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/engine
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkInt32ComparisonKernelMode/direct-fused/select=50/mode=scalar         	     142	   8215555 ns/op	   45376 B/op	     161 allocs/op
+BenchmarkInt32ComparisonKernelMode/direct-fused/select=50/mode=simd           	     144	   8284734 ns/op	   45376 B/op	     161 allocs/op
+BenchmarkInt32ComparisonKernelMode/bitmap-direct/select=50/mode=scalar        	     165	   7968135 ns/op	   61912 B/op	     151 allocs/op
+BenchmarkInt32ComparisonKernelMode/bitmap-direct/select=50/mode=simd          	     156	   7970691 ns/op	   61912 B/op	     151 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/engine
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkInt32ComparisonKernelMode/direct-fused/select=50/mode=scalar         	     142	   7997183 ns/op	   45376 B/op	     161 allocs/op
+BenchmarkInt32ComparisonKernelMode/direct-fused/select=50/mode=simd           	     141	   8569745 ns/op	   45376 B/op	     161 allocs/op
+BenchmarkInt32ComparisonKernelMode/bitmap-direct/select=50/mode=scalar        	     154	   7809702 ns/op	   61912 B/op	     151 allocs/op
+BenchmarkInt32ComparisonKernelMode/bitmap-direct/select=50/mode=simd          	     157	   7758466 ns/op	   61912 B/op	     151 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/engine
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkInt32ComparisonKernelMode/direct-fused/select=50/mode=scalar         	     142	   8371400 ns/op	   45377 B/op	     161 allocs/op
+BenchmarkInt32ComparisonKernelMode/direct-fused/select=50/mode=simd           	     140	   8260086 ns/op	   45376 B/op	     161 allocs/op
+BenchmarkInt32ComparisonKernelMode/bitmap-direct/select=50/mode=scalar        	     164	   7366365 ns/op	   61912 B/op	     151 allocs/op
+BenchmarkInt32ComparisonKernelMode/bitmap-direct/select=50/mode=simd          	     160	   7867038 ns/op	   61912 B/op	     151 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/engine
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkInt32ComparisonKernelMode/direct-fused/select=50/mode=scalar         	     138	   7954321 ns/op	   45376 B/op	     161 allocs/op
+BenchmarkInt32ComparisonKernelMode/direct-fused/select=50/mode=simd           	     150	   8493726 ns/op	   45376 B/op	     161 allocs/op
+BenchmarkInt32ComparisonKernelMode/bitmap-direct/select=50/mode=scalar        	     154	   7678738 ns/op	   61912 B/op	     151 allocs/op
+BenchmarkInt32ComparisonKernelMode/bitmap-direct/select=50/mode=simd          	     151	   7631655 ns/op	   61912 B/op	     151 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/engine
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkInt32ComparisonKernelMode/direct-fused/select=50/mode=scalar         	     144	   7840053 ns/op	   45376 B/op	     161 allocs/op
+BenchmarkInt32ComparisonKernelMode/direct-fused/select=50/mode=simd           	     150	   7746270 ns/op	   45376 B/op	     161 allocs/op
+BenchmarkInt32ComparisonKernelMode/bitmap-direct/select=50/mode=scalar        	     159	   7755122 ns/op	   61912 B/op	     151 allocs/op
+BenchmarkInt32ComparisonKernelMode/bitmap-direct/select=50/mode=simd          	     163	   6881553 ns/op	   61912 B/op	     151 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/engine
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkInt32ComparisonKernelMode/direct-fused/select=50/mode=scalar         	     144	   8120790 ns/op	   45376 B/op	     161 allocs/op
+BenchmarkInt32ComparisonKernelMode/direct-fused/select=50/mode=simd           	     152	   7815197 ns/op	   45376 B/op	     161 allocs/op
+BenchmarkInt32ComparisonKernelMode/bitmap-direct/select=50/mode=scalar        	     157	   7835035 ns/op	   61912 B/op	     151 allocs/op
+BenchmarkInt32ComparisonKernelMode/bitmap-direct/select=50/mode=simd          	     152	   7932367 ns/op	   61912 B/op	     151 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/engine
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkInt32ComparisonKernelMode/direct-fused/select=50/mode=scalar         	     159	   8124017 ns/op	   45376 B/op	     161 allocs/op
+BenchmarkInt32ComparisonKernelMode/direct-fused/select=50/mode=simd           	     152	   8518328 ns/op	   45376 B/op	     161 allocs/op
+BenchmarkInt32ComparisonKernelMode/bitmap-direct/select=50/mode=scalar        	     157	   7870538 ns/op	   61912 B/op	     151 allocs/op
+BenchmarkInt32ComparisonKernelMode/bitmap-direct/select=50/mode=simd          	     159	   7242719 ns/op	   61912 B/op	     151 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/engine
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkDirectFused  	      27	  44583790 ns/op	41327473 B/op	    2841 allocs/op
+BenchmarkBitmapDirect 	      31	  40385946 ns/op	41346946 B/op	    2831 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/engine
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkDirectFused  	      24	  44257044 ns/op	41330126 B/op	    2843 allocs/op
+BenchmarkBitmapDirect 	      31	  40586599 ns/op	41346958 B/op	    2831 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/engine
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkDirectFused  	      26	  45631177 ns/op	41330279 B/op	    2843 allocs/op
+BenchmarkBitmapDirect 	      30	  40310349 ns/op	41346984 B/op	    2832 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/engine
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkDirectFused  	      28	  43603896 ns/op	41330307 B/op	    2842 allocs/op
+BenchmarkBitmapDirect 	      31	  45208278 ns/op	41347014 B/op	    2832 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/engine
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkDirectFused  	      19	  53041403 ns/op	41329970 B/op	    2843 allocs/op
+BenchmarkBitmapDirect 	      27	  46616721 ns/op	41345461 B/op	    2832 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/engine
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkDirectFused  	      22	  51729738 ns/op	41328237 B/op	    2842 allocs/op
+BenchmarkBitmapDirect 	      26	  43897331 ns/op	41345249 B/op	    2830 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/engine
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkDirectFused  	      25	  44014138 ns/op	41330210 B/op	    2843 allocs/op
+BenchmarkBitmapDirect 	      33	  45887630 ns/op	41344715 B/op	    2830 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/engine
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkDirectFused  	      26	  42079403 ns/op	41327281 B/op	    2841 allocs/op
+BenchmarkBitmapDirect 	      33	  43241530 ns/op	41347064 B/op	    2832 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/engine
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkDirectFused  	      30	  45430978 ns/op	41327952 B/op	    2842 allocs/op
+BenchmarkBitmapDirect 	      25	  43833941 ns/op	41346696 B/op	    2832 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/engine
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkDirectFused  	      27	  43229824 ns/op	41330188 B/op	    2842 allocs/op
+BenchmarkBitmapDirect 	      28	  47596928 ns/op	41345507 B/op	    2831 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/engine
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkPreparedStreamW4-4   	      26	  39757841 ns/op	67001558 B/op	    6421 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/engine
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkPreparedStreamW4-4   	      27	  41556632 ns/op	66998437 B/op	    6421 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/engine
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkPreparedStreamW4-4   	      28	  36739034 ns/op	67010270 B/op	    6423 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/engine
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkPreparedStreamW4-4   	      28	  37515694 ns/op	67006188 B/op	    6422 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/engine
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkPreparedStreamW4-4   	      33	  36382916 ns/op	66997644 B/op	    6420 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/engine
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkPreparedStreamW4-4   	      32	  37681444 ns/op	66996796 B/op	    6420 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/engine
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkPreparedStreamW4-4   	      32	  37599663 ns/op	66999134 B/op	    6421 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/engine
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkPreparedStreamW4-4   	      31	  35769781 ns/op	67001184 B/op	    6420 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/engine
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkPreparedStreamW4-4   	      31	  40304653 ns/op	66994050 B/op	    6420 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/engine
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkPreparedStreamW4-4   	      33	  35854499 ns/op	66996616 B/op	    6421 allocs/op
+PASS

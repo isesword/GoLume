@@ -185,7 +185,8 @@ func NewJoinSourceWithOptions(ctx context.Context, left, right source.Source, ty
 			s.spillable = false
 			if buildErr := s.buildRight(ctx, manager); buildErr != nil {
 				s.release()
-				if !errors.Is(buildErr, memory.ErrBudgetExceeded) {
+				var cleanupFailure *joinBuildCleanupError
+				if !errors.Is(buildErr, memory.ErrBudgetExceeded) || errors.As(buildErr, &cleanupFailure) {
 					return nil, buildErr
 				}
 				s.spillable = true
@@ -244,7 +245,7 @@ func (s *JoinSource) StreamPlan() source.StreamPlanNode {
 		// Right and Full need one query-wide matched-build bitmap before their
 		// unmatched build rows can be emitted. Running one stream per probe
 		// partition would duplicate those rows or require an unbounded merge.
-		PartitionParallel: !s.spillable && !s.merge && s.typ != join.Right && s.typ != join.Full,
+		PartitionParallel: s.partitionParallel(),
 		Children:          []source.StreamPlanNode{source.StreamPlanOf(s.left), source.StreamPlanOf(s.right)},
 	}
 }
@@ -498,7 +499,16 @@ func (s *JoinSource) compileBindings(ctx context.Context) error {
 	return nil
 }
 
-func (s *JoinSource) buildRight(ctx context.Context, manager memory.Manager) error {
+// A failed reader cleanup is never a recoverable broadcast budget rejection.
+type joinBuildCleanupError struct{ err error }
+
+// Error describes the failed build-reader cleanup.
+func (e *joinBuildCleanupError) Error() string { return e.err.Error() }
+
+// Unwrap preserves the original cleanup cause for errors.Is and errors.As.
+func (e *joinBuildCleanupError) Unwrap() error { return e.err }
+
+func (s *JoinSource) buildRight(ctx context.Context, manager memory.Manager) (resultErr error) {
 	parts, err := s.right.Partitions(ctx)
 	if err != nil {
 		return err
@@ -539,11 +549,17 @@ func (s *JoinSource) buildRight(ctx context.Context, manager memory.Manager) err
 		}
 		defer scratch.Release()
 	}
-	rd, err := source.OpenBatchStreamWithPartitions(ctx, s.right, source.ReadOptions{Kernels: s.kernels}, parts)
+	rd, err := source.OpenBatchStream(ctx, s.right, source.ReadOptions{
+		Kernels: s.kernels, MemoryManager: memory.ClassifiedManager(manager, "SourceScan", memory.MemoryWorkspace),
+	})
 	if err != nil {
 		return err
 	}
-	defer rd.Close()
+	defer func() {
+		if closeErr := rd.Close(); closeErr != nil {
+			resultErr = errors.Join(resultErr, &joinBuildCleanupError{err: closeErr})
+		}
+	}()
 	s.rightBatches = make([]*memory.Batch, 0, len(parts))
 	s.buildLoc = make([]rowLocation, 0, int(totalRows))
 	var fixed []hashagg.Key128

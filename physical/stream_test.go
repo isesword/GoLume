@@ -41,13 +41,9 @@ func TestNativePipelineConsumesZeroToManyInputsPerOutput(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	parts, err := limited.Partitions(context.Background())
-	if err != nil {
-		t.Fatal(err)
-	}
-	stream, err := source.OpenBatchStreamWithPartitions(
+	stream, err := source.OpenBatchStream(
 		context.Background(), limited,
-		source.ReadOptions{Kernels: kernel.New(kernel.ModeScalar)}, parts,
+		source.ReadOptions{Kernels: kernel.New(kernel.ModeScalar)},
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -124,3 +120,11 @@ func (*recordingBatchStream) Next(context.Context, *memory.Batch) (bool, error) 
 func (s *recordingBatchStream) Close() error                                    { return s.close() }
 
 var _ source.BatchStream = (*recordingBatchStream)(nil)
+
+func TestGlobalOperatorsDoNotAdvertisePartitionSubsets(t *testing.T) {
+	for _, operator := range []any{&SortSource{}, &TopKSource{}, &WindowSource{}, &LimitSource{}} {
+		if _, ok := operator.(source.PreparedBatchStreamProvider); ok {
+			t.Fatalf("global operator %T advertises partition subsets", operator)
+		}
+	}
+}

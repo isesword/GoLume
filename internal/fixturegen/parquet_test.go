@@ -188,9 +188,9 @@ func TestParquetReadBackThroughSource(t *testing.T) {
 	if len(parts) != 3 {
 		t.Fatalf("partitions=%d, want 3", len(parts))
 	}
-	reader, err := src.NewReader(ctx, source.ReadOptions{Kernels: kernel.New(kernel.ModeScalar)})
+	reader, err := src.NewBatchStreamWithPartitions(ctx, source.ReadOptions{Kernels: kernel.New(kernel.ModeScalar), BatchRows: 127}, parts)
 	if err != nil {
-		t.Fatalf("NewReader: %v", err)
+		t.Fatalf("NewBatchStream: %v", err)
 	}
 	defer func() { _ = reader.Close() }()
 	wantInts := table.Batch().Int64s["i"]
@@ -199,9 +199,13 @@ func TestParquetReadBackThroughSource(t *testing.T) {
 	wantBools := table.Batch().Uint32s["b"]
 	batch := memory.NewBatch()
 	offset := 0
-	for _, partition := range parts {
-		if err := reader.ReadPartition(ctx, partition, batch); err != nil {
-			t.Fatalf("ReadPartition %d: %v", partition.ID, err)
+	for {
+		ok, err := reader.Next(ctx, batch)
+		if err != nil {
+			t.Fatalf("Next: %v", err)
+		}
+		if !ok {
+			break
 		}
 		gotInts := batch.Int64s["i"]
 		gotFloats := batch.Float64s["f"]

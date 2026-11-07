@@ -56,17 +56,31 @@ type residentJoinBatchStream struct {
 // NewBatchStream opens either the execution-scoped spill implementation or a
 // native stream over the retained broadcast build.
 func (s *JoinSource) NewBatchStream(ctx context.Context, opts source.ReadOptions) (source.BatchStream, error) {
-	parts, err := s.Partitions(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return s.NewBatchStreamWithPartitions(ctx, opts, parts)
+	return s.newBatchStream(ctx, opts, nil, false)
 }
 
-// NewBatchStreamWithPartitions preserves the prepared physical graph. Join
-// output partitions are synthetic; every strategy opens its child stream and
-// supports zero or many output batches per source partition.
+func (s *JoinSource) partitionParallel() bool {
+	return !s.spillable && !s.merge && s.typ != join.Right && s.typ != join.Full && source.CanParallelizePartitions(source.StreamPlanOf(s.left))
+}
+
+// NewBatchStreamWithPartitions restricts a partition-safe resident join to the
+// requested probe fragments. Global joins reject subsets instead of replaying
+// the entire probe side for every worker.
 func (s *JoinSource) NewBatchStreamWithPartitions(ctx context.Context, opts source.ReadOptions, parts []source.Partition) (source.BatchStream, error) {
+	if !s.partitionParallel() {
+		return nil, fmt.Errorf("join strategy %s type %s does not support partition subsets", s.Strategy(), s.typ)
+	}
+	selected := make([]source.Partition, len(parts))
+	for i, part := range parts {
+		if part.ID < 0 || part.ID >= len(s.leftParts) {
+			return nil, fmt.Errorf("invalid join partition ID %d", part.ID)
+		}
+		selected[i] = s.leftParts[part.ID]
+	}
+	return s.newBatchStream(ctx, opts, selected, true)
+}
+
+func (s *JoinSource) newBatchStream(ctx context.Context, opts source.ReadOptions, probeParts []source.Partition, subset bool) (source.BatchStream, error) {
 	if err := opts.Validate(); err != nil {
 		return nil, err
 	}
@@ -77,19 +91,25 @@ func (s *JoinSource) NewBatchStreamWithPartitions(ctx context.Context, opts sour
 		return nil, fmt.Errorf("physical join source closed")
 	}
 	if s.spillable {
-		return newSpillableJoinStream(ctx, s)
+		return newSpillableJoinStream(ctx, s, opts)
 	}
 	if s.merge {
-		return newMergeJoinStream(ctx, s)
+		return newMergeJoinStream(ctx, s, opts)
 	}
-	left, err := source.OpenBatchStreamWithPartitions(ctx, s.left, opts, s.leftParts)
+	var left source.BatchStream
+	var err error
+	if subset {
+		left, err = source.OpenBatchStreamWithPartitions(ctx, s.left, opts, probeParts)
+	} else {
+		left, err = source.OpenBatchStream(ctx, s.left, opts)
+	}
 	if err != nil {
 		return nil, err
 	}
 	stream := &residentJoinBatchStream{
 		reader:           &joinReader{owner: s, left: left, leftBatch: memory.NewBatch()},
 		started:          time.Now(),
-		feedbackEligible: len(parts) == len(s.parts),
+		feedbackEligible: !subset,
 	}
 	if query := memory.QueryBudgetFromContext(ctx); query != nil && query.Limit() > 0 {
 		stream.workspace = query.Operator("BroadcastJoinWorkspace", memory.MemoryWorkspace)
@@ -267,6 +287,7 @@ func (s *residentJoinBatchStream) recordStats() {
 
 type spillableJoinStream struct {
 	owner                 *JoinSource
+	readOpts              source.ReadOptions
 	query                 *memory.QueryBudget
 	store                 memory.SpillManager
 	leftSchema            memory.Schema
@@ -315,7 +336,7 @@ type spillableJoinStream struct {
 	statsRecorded   bool
 }
 
-func newSpillableJoinStream(ctx context.Context, owner *JoinSource) (*spillableJoinStream, error) {
+func newSpillableJoinStream(ctx context.Context, owner *JoinSource, opts source.ReadOptions) (*spillableJoinStream, error) {
 	if ctx == nil {
 		return nil, fmt.Errorf("spillable join context is nil")
 	}
@@ -350,7 +371,7 @@ func newSpillableJoinStream(ctx context.Context, owner *JoinSource) (*spillableJ
 		chunkRows = 4096
 	}
 	stream := &spillableJoinStream{
-		owner: owner, query: query, store: store, leftSchema: owner.left.Schema(), rightSchema: owner.right.Schema(),
+		owner: owner, readOpts: opts, query: query, store: store, leftSchema: owner.left.Schema(), rightSchema: owner.right.Schema(),
 		leftFP: memory.SchemaFingerprint(owner.left.Schema()), rightFP: memory.SchemaFingerprint(owner.right.Schema()), outputFP: memory.SchemaFingerprint(owner.schema),
 		gather: query.Operator("JoinPartitionGather", memory.MemoryWorkspace), encoder: query.Operator("JoinEncode", memory.MemorySpillBuffer),
 		restorer: query.Operator("JoinRestore", memory.MemorySpillBuffer), state: query.Operator("JoinBuild", memory.MemoryRetainedState),
@@ -548,7 +569,7 @@ func (s *spillableJoinStream) partitionBatch(ctx context.Context, schema memory.
 }
 
 func (s *spillableJoinStream) partitionSource(ctx context.Context, input source.Source, schema memory.Schema, fingerprint [32]byte, left bool, destinations [][]joinRunRef) error {
-	stream, err := source.OpenBatchStream(ctx, input, source.ReadOptions{Kernels: s.owner.kernels})
+	stream, err := source.OpenBatchStream(ctx, input, s.readOpts)
 	if err != nil {
 		return err
 	}
@@ -629,7 +650,7 @@ func (s *spillableJoinStream) loadBuild(ctx context.Context, refs []joinRunRef) 
 	if err != nil {
 		return nil, err
 	}
-	build := &loadedJoinBuild{reservation: reservation, table: join.NewPairTable(maxInt(8, total))}
+	build := &loadedJoinBuild{reservation: reservation, table: join.NewPairTable(maxInt(8, total)), locations: make([]rowLocation, 0, total)}
 	keys := make([]hashagg.Key128, 0, total)
 	masks := make([]uint8, 0, total)
 	for _, ref := range refs {
@@ -713,10 +734,33 @@ func (s *spillableJoinStream) ownerWithBuild(build *loadedJoinBuild) *JoinSource
 	return &materializer
 }
 
+// Reserve scratch before allocating it so a rejected budget cannot cause a
+// transient allocation proportional to an input partition.
+func newJoinMatchedRows(ctx context.Context, manager memory.Manager, rows int) ([]bool, memory.Reservation, error) {
+	if rows < 0 {
+		return nil, nil, fmt.Errorf("negative join matched row count")
+	}
+	reservation, err := manager.Reserve(ctx, int64(rows))
+	if err != nil {
+		return nil, nil, err
+	}
+	return make([]bool, rows), reservation, nil
+}
+
+func newJoinProbeKeys(ctx context.Context, manager memory.Manager, rows int) ([]hashagg.Key128, []uint8, memory.Reservation, error) {
+	if rows < 0 || int64(rows) > math.MaxInt64/17 {
+		return nil, nil, nil, fmt.Errorf("join probe scratch byte estimate overflows int64")
+	}
+	reservation, err := manager.Reserve(ctx, int64(rows)*17)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	return make([]hashagg.Key128, rows), make([]uint8, rows), reservation, nil
+}
+
 func (s *spillableJoinStream) probePartition(ctx context.Context, build *loadedJoinBuild, leftRefs []joinRunRef, partition int) ([]joinRunRef, error) {
 	created := make([]joinRunRef, 0)
-	matched := make([]bool, len(build.locations))
-	matchedReservation, err := s.state.Reserve(ctx, int64(len(matched)))
+	matched, matchedReservation, err := newJoinMatchedRows(ctx, s.state, len(build.locations))
 	if err != nil {
 		return nil, err
 	}
@@ -728,9 +772,7 @@ func (s *spillableJoinStream) probePartition(ctx context.Context, build *loadedJ
 			return nil, err
 		}
 		batch := decoded.Batch
-		keys := make([]hashagg.Key128, batch.Rows)
-		masks := make([]uint8, batch.Rows)
-		scratch, err := s.state.Reserve(ctx, int64(batch.Rows)*17)
+		keys, masks, scratch, err := newJoinProbeKeys(ctx, s.state, batch.Rows)
 		if err != nil {
 			_ = decoded.Close()
 			s.deleteRefs(context.Background(), created)
@@ -1300,7 +1342,7 @@ func (s *spillableJoinStream) StreamDiagnostics() map[string]string {
 		"probe_rows": fmt.Sprint(s.probeRows), "probe_bytes": fmt.Sprint(s.probeBytes),
 		"matched_probe_rows": fmt.Sprint(s.matchedProbe), "output_rows": fmt.Sprint(s.outputCount),
 		"spill_runs": fmt.Sprint(s.spillRuns), "spill_bytes": fmt.Sprint(s.spillBytes),
-		"peak_memory_bytes": fmt.Sprint(snapshot.PeakBytes), "max_radix_depth": fmt.Sprint(s.maxDepth),
+		"peak_memory_scope": "query", "peak_memory_bytes": fmt.Sprint(snapshot.PeakBytes), "max_radix_depth": fmt.Sprint(s.maxDepth),
 		"max_partition_build_rows": fmt.Sprint(s.maxBuildRows), "max_multiplicity": fmt.Sprint(s.maxMultiplicity),
 	}
 }

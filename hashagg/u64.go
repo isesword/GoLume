@@ -18,6 +18,8 @@ type GroupU64 struct {
 
 // U64Table is an adaptive open-addressing aggregation table for uint64 keys.
 type U64Table struct {
+	slotLease  memory.Reservation
+	nullLease  memory.Reservation
 	keys       []uint64
 	state      aggregate.Int64Vector
 	epoch      []uint32
@@ -32,20 +34,61 @@ type U64Table struct {
 
 // NewU64Table creates a uint64 aggregation table using default growth policy.
 func NewU64Table(cardinalityHint int) *U64Table {
-	return NewU64TableWithOptions(cardinalityHint, TableOptions{})
+	table, err := NewU64TableWithOptions(cardinalityHint, TableOptions{})
+	if err != nil {
+		panic(err)
+	}
+	return table
 }
 
 // NewU64TableWithOptions creates an adaptive uint64 aggregation table.
-func NewU64TableWithOptions(cardinalityHint int, opts TableOptions) *U64Table {
+// All backing allocations are reserved before construction. On failure,
+// successfully acquired reservations are released and no table is returned.
+func NewU64TableWithOptions(cardinalityHint int, opts TableOptions) (*U64Table, error) {
 	opts = normalizeTableOptions(opts)
-	n := tableCapacity(cardinalityHint)
-	return &U64Table{
+	n, err := checkedTableCapacity(cardinalityHint, u64TableBytesForCapacity(1, opts.Aggregates))
+	if err != nil {
+		return nil, err
+	}
+	t := &U64Table{opts: opts}
+	committed := false
+	defer func() {
+		if !committed {
+			t.Close()
+		}
+	}()
+	t.slotLease, err = reserveAllocation(opts.Reserve, u64TableBytesForCapacity(n, opts.Aggregates))
+	if err != nil {
+		return nil, err
+	}
+	t.nullLease, err = reserveAllocation(opts.Reserve, aggregate.Int64VectorBytesForSlots(1, opts.Aggregates))
+	if err != nil {
+		return nil, err
+	}
+	*t = U64Table{slotLease: t.slotLease, nullLease: t.nullLease,
 		keys:  make([]uint64, n),
 		state: aggregate.NewInt64Vector(n, opts.Aggregates),
 		epoch: make([]uint32, n), mask: uint64(n - 1),
 		maxEntries: loadLimit(n, opts.MaxLoadFactor), opts: opts,
 		nullState: aggregate.NewInt64Vector(1, opts.Aggregates),
 	}
+	// Epoch zero belongs to freshly allocated, unoccupied slots.
+	t.gen = 1
+	committed = true
+	return t, nil
+}
+
+// Close releases all table-owned buffers and reservations. It is idempotent.
+// The table must not be used afterward, except for Close and size inspection.
+func (t *U64Table) Close() {
+	if t == nil {
+		return
+	}
+	slots := t.slotLease
+	null := t.nullLease
+	*t = U64Table{}
+	releaseAllocation(slots)
+	releaseAllocation(null)
 }
 
 // Reset clears logical table contents while retaining allocated capacity.
@@ -61,10 +104,20 @@ func (t *U64Table) Reset() {
 
 func (t *U64Table) grow() error {
 	oldCap := len(t.keys)
-	newCap := oldCap << 1
-	if err := reserveGrowth(t.opts.Reserve, u64TableBytesForCapacity(oldCap, t.opts.Aggregates), u64TableBytesForCapacity(newCap, t.opts.Aggregates)); err != nil {
+	newCap, err := checkedGrowCapacity(oldCap, u64TableBytesForCapacity(1, t.opts.Aggregates))
+	if err != nil {
 		return err
 	}
+	lease, err := reserveAllocation(t.opts.Reserve, u64TableBytesForCapacity(newCap, t.opts.Aggregates))
+	if err != nil {
+		return err
+	}
+	committed := false
+	defer func() {
+		if !committed {
+			releaseAllocation(lease)
+		}
+	}()
 	keys := make([]uint64, newCap)
 	state := aggregate.NewInt64Vector(newCap, t.opts.Aggregates)
 	epoch := make([]uint32, newCap)
@@ -85,6 +138,10 @@ func (t *U64Table) grow() error {
 	t.keys, t.state, t.epoch = keys, state, epoch
 	t.mask = mask
 	t.maxEntries = loadLimit(newCap, t.opts.MaxLoadFactor)
+	oldLease := t.slotLease
+	t.slotLease = lease
+	committed = true
+	releaseAllocation(oldLease)
 	return nil
 }
 
@@ -95,28 +152,30 @@ func (t *U64Table) TryAdd(key uint64, value int64) (bool, error) {
 
 // TryAddValue updates one non-NULL key while preserving aggregate-value NULL semantics.
 func (t *U64Table) TryAddValue(key uint64, value int64, valueValid bool) (bool, error) {
-	for {
-		p := Hash64(key) & t.mask
-		for {
-			if t.epoch[p] != t.gen {
-				if t.size+1 > t.maxEntries {
-					if err := t.grow(); err != nil {
-						return false, err
-					}
-					break
-				}
-				t.epoch[p], t.keys[p] = t.gen, key
-				t.state.InitValue(int(p), value, valueValid)
-				t.size++
-				return true, nil
-			}
-			if t.keys[p] == key {
-				t.state.AddValue(int(p), value, valueValid)
-				return false, nil
-			}
-			p = (p + 1) & t.mask
-		}
+	slot, exists := t.lookupSlot(key)
+	if exists {
+		t.state.AddValue(slot, value, valueValid)
+		return false, nil
 	}
+	return t.insertValueAt(key, slot, value, valueValid)
+}
+
+// insertValueAt consumes an empty slot found by lookupSlot. Scalar and vector
+// inputs share this insertion and reservation path. A resize invalidates the
+// slot, so only that uncommon path probes again against the new backing arrays.
+func (t *U64Table) insertValueAt(key uint64, slot int, value int64, valueValid bool) (bool, error) {
+	if t.size+1 > t.maxEntries {
+		for t.size+1 > t.maxEntries {
+			if err := t.grow(); err != nil {
+				return false, err
+			}
+		}
+		slot, _ = t.lookupSlot(key)
+	}
+	t.epoch[slot], t.keys[slot] = t.gen, key
+	t.state.InitValue(slot, value, valueValid)
+	t.size++
+	return true, nil
 }
 
 // Add updates one non-NULL group and panics if configured growth is rejected.
@@ -200,6 +259,45 @@ func (t *U64Table) AggregateSelectedNullable(keys []int64, keyValidity memory.Bi
 
 // AggregateSelectedNullableValues aggregates selected rows while preserving key and value validity.
 func (t *U64Table) AggregateSelectedNullableValues(keys []int64, keyValidity memory.Bitmap, vals []int64, valueValidity memory.Bitmap, sel memory.Bitmap) (Summary, error) {
+	updater, sumCount := t.state.SumCountUpdater()
+	// Nullability is constant for a vector. Keep the common all-valid loop
+	// free of row-level validity checks and nullable-key dispatch.
+	if keyValidity == nil && valueValidity == nil {
+		var out Summary
+		for wi, word := range sel {
+			base := wi << 6
+			for word != 0 {
+				i := base + bits.TrailingZeros64(word)
+				if i >= len(keys) {
+					break
+				}
+				value := vals[i]
+				key := uint64(keys[i])
+				if slot, exists := t.lookupSlot(key); exists {
+					if sumCount {
+						updater.AddValue(slot, value, true)
+					} else {
+						t.state.AddValue(slot, value, true)
+					}
+				} else {
+					// Insertions, rehashing, and reservation failures have a
+					// single implementation shared with the scalar path.
+					created, err := t.insertValueAt(key, slot, value, true)
+					if err != nil {
+						return out, err
+					}
+					if created {
+						out.Groups++
+					}
+				}
+				out.Checksum += value
+				out.Rows++
+				word &= word - 1
+			}
+		}
+		return out, nil
+	}
+
 	var out Summary
 	for wi, word := range sel {
 		base := wi << 6
@@ -212,7 +310,21 @@ func (t *U64Table) AggregateSelectedNullableValues(keys []int64, keyValidity mem
 			k := uint64(keys[i])
 			keyValid := keyValidity == nil || memory.IsSet(keyValidity, i)
 			valueValid := valueValidity == nil || memory.IsSet(valueValidity, i)
-			created, err := t.TryAddNullableValue(k, keyValid, vals[i], valueValid)
+			var created bool
+			var err error
+			if keyValid {
+				if slot, exists := t.lookupSlot(k); exists {
+					if sumCount {
+						updater.AddValue(slot, vals[i], valueValid)
+					} else {
+						t.state.AddValue(slot, vals[i], valueValid)
+					}
+				} else {
+					created, err = t.insertValueAt(k, slot, vals[i], valueValid)
+				}
+			} else {
+				created, err = t.TryAddNullableValue(k, false, vals[i], valueValid)
+			}
 			if err != nil {
 				return out, err
 			}
@@ -227,6 +339,59 @@ func (t *U64Table) AggregateSelectedNullableValues(keys []int64, keyValidity mem
 		}
 	}
 	return out, nil
+}
+
+// AggregateIndexedNullableValues aggregates rows in index order, including
+// repeated indices, preserving key and value NULL semantics. Indices must be
+// valid for keys and vals; validity bitmaps, when present, must cover those rows.
+func (t *U64Table) AggregateIndexedNullableValues(keys []int64, keyValidity memory.Bitmap, vals []int64, valueValidity memory.Bitmap, indices []int) (Summary, error) {
+	updater, sumCount := t.state.SumCountUpdater()
+	var out Summary
+	for _, i := range indices {
+		key := uint64(keys[i])
+		value := vals[i]
+		keyValid := keyValidity == nil || memory.IsSet(keyValidity, i)
+		valueValid := valueValidity == nil || memory.IsSet(valueValidity, i)
+		var created bool
+		var err error
+		if keyValid {
+			if slot, exists := t.lookupSlot(key); exists {
+				if sumCount {
+					updater.AddValue(slot, value, valueValid)
+				} else {
+					t.state.AddValue(slot, value, valueValid)
+				}
+			} else {
+				created, err = t.insertValueAt(key, slot, value, valueValid)
+			}
+		} else {
+			created, err = t.TryAddNullableValue(key, false, value, valueValid)
+		}
+		if err != nil {
+			return out, err
+		}
+		if created {
+			out.Groups++
+		}
+		if valueValid {
+			out.Checksum += value
+		}
+		out.Rows++
+	}
+	return out, nil
+}
+
+// lookupSlot returns the existing key slot or the first empty insertion slot.
+// The returned slot remains valid until the next resize or Reset.
+func (t *U64Table) lookupSlot(key uint64) (int, bool) {
+	p := Hash64(key) & t.mask
+	for t.epoch[p] == t.gen {
+		if t.keys[p] == key {
+			return int(p), true
+		}
+		p = (p + 1) & t.mask
+	}
+	return int(p), false
 }
 
 // Materialize appends all current groups, including the SQL NULL group, to dst.
@@ -306,6 +471,9 @@ func (t *U64Table) Len() int {
 
 // RetainedBytes returns the table-owned key, epoch, and aggregate-state bytes.
 func (t *U64Table) RetainedBytes() int64 {
+	if t == nil || t.Capacity() == 0 {
+		return 0
+	}
 	return u64TableBytesForCapacity(len(t.keys), t.opts.Aggregates) + aggregate.Int64VectorBytesForSlots(1, t.opts.Aggregates)
 }
 

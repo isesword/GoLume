@@ -15,7 +15,7 @@ import (
 )
 
 func baseQuery(group []string, force string, workers int) expr.Query {
-	return expr.Query{Filter: expr.GT(expr.Col("pred"), expr.I64(0)), GroupBy: group, Aggregates: []expr.Aggregate{expr.Sum("value", "sum"), expr.Count("count")}, Hints: expr.Hints{Selectivity: .8, Cardinality: 64, ForceStrategy: force, ForceWorkerCount: workers}}
+	return expr.Query{Filter: expr.GT(expr.Col("pred"), expr.I64(0)), GroupBy: group, Aggregates: []expr.Aggregate{expr.Sum("value", "sum"), expr.Count("count")}, Hints: expr.Hints{Selectivity: .8, Cardinality: 64, ForceStrategy: force}}
 }
 
 func TestDirectFusedTypedComparisonUsesBlockMasks(t *testing.T) {
@@ -85,7 +85,7 @@ func TestDictionaryStringGroupByAndMaterialize(t *testing.T) {
 		t.Fatal(err)
 	}
 	src.WithDictionary("key", source.Dictionary{Domain: "dict-v1", Offsets: off, Data: data})
-	for _, force := range []string{"direct-fused", "bitmap-direct", "radix"} {
+	for _, force := range []string{"direct-fused", "bitmap-direct", "", "partitioned-hash"} {
 		t.Run(force, func(t *testing.T) {
 			opts := engine.DefaultOptions()
 			opts.Workers = 2
@@ -166,7 +166,7 @@ func pairBatch(a []int32, bk []int64, vals []int64) *memory.Batch {
 	b.Int64s["value"] = &memory.Int64Vector{Values: vals}
 	return b
 }
-func TestMultiColumnGroupByRadix(t *testing.T) {
+func TestMultiColumnGroupByStream(t *testing.T) {
 	schema := memory.NewSchema(memory.Field{Name: "pred", Type: memory.TypeInt64}, memory.Field{Name: "a", Type: memory.TypeInt32}, memory.Field{Name: "b", Type: memory.TypeInt64}, memory.Field{Name: "value", Type: memory.TypeInt64})
 	src, err := inmemory.New(schema, pairBatch([]int32{1, 1, 1, 2}, []int64{10, 10, 20, 10}, []int64{1, 2, 3, 4}), pairBatch([]int32{2, 1, 3, 3}, []int64{10, 20, 30, 30}, []int64{5, 6, 7, 8}))
 	if err != nil {
@@ -176,7 +176,7 @@ func TestMultiColumnGroupByRadix(t *testing.T) {
 	opts.Workers = 2
 	eng := engine.New(opts)
 	defer eng.Close()
-	q := baseQuery([]string{"a", "b"}, "radix", 2)
+	q := baseQuery([]string{"a", "b"}, "", 2)
 	q.Hints.Cardinality = 8
 	r, err := eng.Execute(context.Background(), src, q, engine.ExecuteOptions{Materialize: true})
 	if err != nil {
@@ -234,16 +234,17 @@ func TestCompositePredicateUsesBitmapProgram(t *testing.T) {
 	}
 }
 
-func TestPreparedQueryRetainsAndReleasesWorkspace(t *testing.T) {
+func TestPreparedQueryReleasesEveryExecution(t *testing.T) {
 	src, err := parquetsource.OpenFile(testPath(t))
 	if err != nil {
 		t.Fatal(err)
 	}
 	opts := engine.DefaultOptions()
+	opts.PreparedCacheBytes = 0 // Explicitly test no-retention mode.
 	opts.Workers = 4
 	eng := engine.New(opts)
 	defer eng.Close()
-	p, err := eng.Prepare(context.Background(), src, query("radix", 4), engine.PrepareOptions{MaxConcurrency: 1})
+	p, err := eng.Prepare(context.Background(), src, query("", 4), engine.PrepareOptions{MaxConcurrency: 1})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -255,15 +256,15 @@ func TestPreparedQueryRetainsAndReleasesWorkspace(t *testing.T) {
 		t.Fatal(err)
 	}
 	used1 := eng.Memory().Used()
-	if used1 <= 0 {
-		t.Fatal("expected retained workspace reservation")
+	if used1 != 0 {
+		t.Fatal("execution retained memory after stream close")
 	}
 	r2, err := p.Execute(context.Background(), engine.ExecuteOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if used2 := eng.Memory().Used(); used2 != used1 {
-		t.Fatalf("workspace was not reused: %d -> %d", used1, used2)
+		t.Fatalf("execution leaked memory: %d -> %d", used1, used2)
 	}
 	if r1.GroupCount != r2.GroupCount || r1.Checksum != r2.Checksum {
 		t.Fatal("repeated prepared result mismatch")
@@ -319,7 +320,7 @@ func pairToI32Batch() *memory.Batch {
 	return b
 }
 
-func TestInt64GroupByRadix(t *testing.T) {
+func TestInt64GroupByStream(t *testing.T) {
 	mk := func(keys []int64, vals []int64) *memory.Batch {
 		b := memory.NewBatch()
 		b.Rows = len(keys)
@@ -341,7 +342,7 @@ func TestInt64GroupByRadix(t *testing.T) {
 	opts.Workers = 2
 	eng := engine.New(opts)
 	defer eng.Close()
-	q := baseQuery([]string{"key64"}, "radix", 2)
+	q := baseQuery([]string{"key64"}, "", 2)
 	q.Hints.Cardinality = 4
 	r, err := eng.Execute(context.Background(), src, q, engine.ExecuteOptions{Materialize: true})
 	if err != nil {

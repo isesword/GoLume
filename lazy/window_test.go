@@ -44,7 +44,7 @@ func TestWindowsRankAndRollingKeepInputOrderAcrossPartitions(t *testing.T) {
 		RollingCountRows(RowsBetween(Preceding(1), CurrentRow), "rows"),
 		RollingCount("value", RowsBetween(Preceding(1), CurrentRow), "count"),
 		RollingSum("value", RowsBetween(Preceding(1), CurrentRow), "sum"),
-	).CollectFrame(context.Background())
+	).Collect(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -93,7 +93,7 @@ func TestWindowFilterIsStrictSemanticBoundary(t *testing.T) {
 	if strings.Contains(explain, "pushed_predicate=") {
 		t.Fatalf("window-crossing filter was pushed down:\n%s", explain)
 	}
-	result, err := frame.CollectFrame(context.Background())
+	result, err := frame.Collect(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -121,7 +121,7 @@ func TestWindowExpressionOrderAndFloatMinMax(t *testing.T) {
 		RollingMin("x", RowsBetween(UnboundedPreceding, CurrentRow), "min"),
 		RollingMax("x", RowsBetween(UnboundedPreceding, CurrentRow), "max"),
 		RollingAvg("x", RowsBetween(UnboundedPreceding, CurrentRow), "avg"),
-	).CollectFrame(context.Background())
+	).Collect(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -163,12 +163,12 @@ func TestWindowFramesValidationOverflowAndBudget(t *testing.T) {
 		t.Fatalf("invalid frame error=%v", err)
 	}
 	overflow := session.FromSource(src).WithWindows(NewWindow(nil, OrderBy(Asc("x"))), RollingSum("x", RowsBetween(UnboundedPreceding, CurrentRow), "sum"))
-	if _, err := overflow.CollectFrame(context.Background()); err == nil || !strings.Contains(err.Error(), "overflows int64") {
+	if _, err := overflow.Collect(context.Background()); err == nil || !strings.Contains(err.Error(), "overflows int64") {
 		t.Fatalf("overflow error=%v", err)
 	}
 	tiny := NewSession(engine.Options{MemoryLimitBytes: 1})
 	defer tiny.Close()
-	if _, err := tiny.FromSource(src).WithWindows(NewWindow(nil, OrderBy(Asc("x"))), RowNumber("rn")).CollectFrame(context.Background()); !errors.Is(err, memory.ErrBudgetExceeded) {
+	if _, err := tiny.FromSource(src).WithWindows(NewWindow(nil, OrderBy(Asc("x"))), RowNumber("rn")).Collect(context.Background()); !errors.Is(err, memory.ErrBudgetExceeded) {
 		t.Fatalf("budget error=%v", err)
 	}
 }
@@ -197,7 +197,7 @@ func TestWindowProjectionEliminationAndEmptyInput(t *testing.T) {
 	if strings.Contains(explain, "WINDOW") || strings.Contains(explain, "grp") || strings.Contains(explain, "score") || strings.Contains(explain, "payload") {
 		t.Fatalf("unused window was not eliminated:\n%s", explain)
 	}
-	result, err := pruned.CollectFrame(context.Background())
+	result, err := pruned.Collect(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -207,7 +207,7 @@ func TestWindowProjectionEliminationAndEmptyInput(t *testing.T) {
 	}
 
 	empty, _ := inmemory.New(memory.NewSchema(memory.Field{Name: "x", Type: memory.TypeInt64}))
-	emptyFrame, err := session.FromSource(empty).WithWindows(NewWindow(nil, OrderBy(Asc("x"))), RowNumber("rn"), RollingCountRows(RowsBetween(CurrentRow, CurrentRow), "count")).CollectFrame(context.Background())
+	emptyFrame, err := session.FromSource(empty).WithWindows(NewWindow(nil, OrderBy(Asc("x"))), RowNumber("rn"), RollingCountRows(RowsBetween(CurrentRow, CurrentRow), "count")).Collect(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -244,7 +244,7 @@ func TestWindowNumericResultTypesAndCancellation(t *testing.T) {
 		RollingMin("i", RowsBetween(UnboundedPreceding, CurrentRow), "imin"),
 		RollingMax("u", RowsBetween(UnboundedPreceding, CurrentRow), "umax"),
 		RollingAvg("f", RowsBetween(UnboundedPreceding, CurrentRow), "favg"),
-	).CollectFrame(context.Background())
+	).Collect(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -275,7 +275,7 @@ func TestWindowNumericResultTypesAndCancellation(t *testing.T) {
 	}
 	canceled, cancel := context.WithCancel(context.Background())
 	cancel()
-	if _, err := session.FromSource(src).WithWindows(NewWindow(nil, OrderBy(Asc("i"))), RowNumber("rn")).CollectFrame(canceled); !errors.Is(err, context.Canceled) {
+	if _, err := session.FromSource(src).WithWindows(NewWindow(nil, OrderBy(Asc("i"))), RowNumber("rn")).Collect(canceled); !errors.Is(err, context.Canceled) {
 		t.Fatalf("canceled execution error=%v", err)
 	}
 }
@@ -288,7 +288,7 @@ func windowValidity(rows int, validRows ...int) memory.Bitmap {
 	return bits
 }
 
-func frameInt64WithValidity(t *testing.T, frame Frame, name string) ([]int64, []bool) {
+func frameInt64WithValidity(t *testing.T, frame DataFrame, name string) ([]int64, []bool) {
 	t.Helper()
 	var values []int64
 	var valid []bool
@@ -305,7 +305,7 @@ func frameInt64WithValidity(t *testing.T, frame Frame, name string) ([]int64, []
 	return values, valid
 }
 
-func frameFloat64Column(t *testing.T, frame Frame, name string) []float64 {
+func frameFloat64Column(t *testing.T, frame DataFrame, name string) []float64 {
 	t.Helper()
 	var out []float64
 	for _, batch := range frame.batches() {
@@ -318,7 +318,7 @@ func frameFloat64Column(t *testing.T, frame Frame, name string) []float64 {
 	return out
 }
 
-func frameUint64Column(t *testing.T, frame Frame, name string) []uint64 {
+func frameUint64Column(t *testing.T, frame DataFrame, name string) []uint64 {
 	t.Helper()
 	var out []uint64
 	for _, batch := range frame.batches() {
@@ -331,7 +331,7 @@ func frameUint64Column(t *testing.T, frame Frame, name string) []uint64 {
 	return out
 }
 
-func frameUint32Column(t *testing.T, frame Frame, name string) []uint32 {
+func frameUint32Column(t *testing.T, frame DataFrame, name string) []uint32 {
 	t.Helper()
 	var out []uint32
 	for _, batch := range frame.batches() {

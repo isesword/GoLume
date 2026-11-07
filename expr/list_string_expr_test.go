@@ -18,11 +18,11 @@ func TestSplitDynamicDelimiterUnicodeAndNulls(t *testing.T) {
 	batch.Strings["delimiter"] = testStringVector([]string{",", "", ",", ",", "ignored"}, []bool{true, true, true, true, false})
 	batch.Reset(5)
 
-	program, err := CompileScalar(schema, Split(Col("value"), Col("delimiter")))
+	program, err := Compile(schema, Split(Col("value"), Col("delimiter")))
 	if err != nil {
 		t.Fatal(err)
 	}
-	got, err := program.Evaluate(batch, &ScalarWorkspace{}, testKernelSet())
+	got, err := evaluateValueTest(program, batch, &evaluationState{}, testKernelSet())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -45,7 +45,7 @@ func TestListExpressionCompilationContracts(t *testing.T) {
 		RegexExtractAll(Col("s"), Str("(a)"), I64(2)),
 		RegexExtractAll(Col("s"), Str(strings.Repeat("a", maxRegexPatternBytes+1)), I64(0)),
 	} {
-		if _, err := CompileScalar(schema, expression); err == nil {
+		if _, err := Compile(schema, expression); err == nil {
 			t.Fatalf("CompileScalar(%s) succeeded", expression)
 		}
 	}
@@ -86,19 +86,19 @@ func TestRegexExtractAllPreservesMatchCardinality(t *testing.T) {
 	batch.Reset(4)
 
 	all := RegexExtractAll(Col("value"), Str(`a([0-9])?|b`), I64(1))
-	program, err := CompileProjection(schema, []NamedExpr{Named(all, "captures"), Named(all, "again")})
+	program, err := CompileExpressions(schema, []NamedExpr{Named(all, "captures"), Named(all, "again")})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if program.Outputs[0].Root != program.Outputs[1].Root {
+	if program.outputs[0].root != program.outputs[1].root {
 		t.Fatal("identical RegexExtractAll expressions did not share their CSE root")
 	}
-	for _, instruction := range program.Instructions {
+	for _, instruction := range program.instructions {
 		if instruction.Code == scalarLiteralString {
 			t.Fatal("regex pattern was row-materialized")
 		}
 	}
-	values, err := program.Evaluate(batch, &ScalarWorkspace{}, testKernelSet())
+	values, err := evaluateProjectionTest(program, batch, &evaluationState{}, testKernelSet())
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -36,18 +36,14 @@ func TestOpenFileReadsUTF8DateAndNormalizedTimestamps(t *testing.T) {
 		}
 	}
 
-	r, err := src.NewReader(context.Background(), testReadOptions())
+	r, err := src.NewBatchStream(context.Background(), testReadOptions())
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer r.Close()
-	parts, err := src.Partitions(context.Background())
-	if err != nil {
-		t.Fatal(err)
-	}
 	batch := memory.NewBatch()
-	if err := r.ReadPartition(context.Background(), parts[0], batch); err != nil {
-		t.Fatal(err)
+	if ok, err := r.Next(context.Background(), batch); !ok || err != nil {
+		t.Fatalf("first batch: ok=%v err=%v", ok, err)
 	}
 	strings, err := batch.String("s")
 	if err != nil {
@@ -207,16 +203,12 @@ func TestReaderRejectsInvalidUTF8AndTimestampOverflow(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			r, err := src.NewReader(context.Background(), testReadOptions())
+			r, err := src.NewBatchStream(context.Background(), testReadOptions())
 			if err != nil {
 				t.Fatal(err)
 			}
 			defer r.Close()
-			parts, err := src.Partitions(context.Background())
-			if err != nil {
-				t.Fatal(err)
-			}
-			if err := r.ReadPartition(context.Background(), parts[0], memory.NewBatch()); err == nil {
+			if _, err := r.Next(context.Background(), memory.NewBatch()); err == nil {
 				t.Fatal("expected read failure")
 			}
 		})

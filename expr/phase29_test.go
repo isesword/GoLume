@@ -32,7 +32,7 @@ func TestStringAndCalendarProjectionExpressions(t *testing.T) {
 		memory.Field{Name: "d64", Type: memory.TypeDate64},
 		memory.Field{Name: "ts", Type: memory.TypeTimestamp, Nullable: true},
 	)
-	program, err := CompileProjection(schema, []NamedExpr{
+	program, err := CompileExpressions(schema, []NamedExpr{
 		Length(Col("s")).Alias("len"),
 		Year(Col("d")).Alias("date_year"),
 		Month(Col("d64")).Alias("date64_month"),
@@ -44,8 +44,8 @@ func TestStringAndCalendarProjectionExpressions(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var workspace ScalarWorkspace
-	values, err := program.Evaluate(batch, &workspace, testKernelSet())
+	var workspace evaluationState
+	values, err := evaluateProjectionTest(program, batch, &workspace, testKernelSet())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -100,8 +100,8 @@ func TestStringAndCalendarPredicates(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var workspace EvalWorkspace
-	result, err := program.Evaluate(batch, &workspace, testKernelSet())
+	var workspace evaluationState
+	result, err := evaluateBoolTest(program, batch, &workspace, testKernelSet())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -116,7 +116,7 @@ func TestStringAndCalendarPredicates(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err = program.Evaluate(batch, &workspace, testKernelSet())
+	result, err = evaluateBoolTest(program, batch, &workspace, testKernelSet())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -128,7 +128,7 @@ func TestStringAndCalendarPredicates(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err = program.Evaluate(batch, &workspace, testKernelSet())
+	result, err = evaluateBoolTest(program, batch, &workspace, testKernelSet())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -143,10 +143,10 @@ func TestStringAndCalendarExpressionTypeErrors(t *testing.T) {
 		memory.Field{Name: "d", Type: memory.TypeDate32},
 		memory.Field{Name: "s", Type: memory.TypeString, Encoding: memory.EncodingView},
 	)
-	if _, err := CompileScalar(schema, Length(Col("i"))); err == nil {
+	if _, err := Compile(schema, Length(Col("i"))); err == nil {
 		t.Fatal("expected LENGTH type error")
 	}
-	if _, err := CompileScalar(schema, Hour(Col("d"))); err == nil {
+	if _, err := Compile(schema, Hour(Col("d"))); err == nil {
 		t.Fatal("expected HOUR type error")
 	}
 	if _, _, err := CompilePredicate(schema, Contains(Col("i"), Str("1"))); err == nil {

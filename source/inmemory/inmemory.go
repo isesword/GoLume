@@ -5,10 +5,11 @@ import (
 	"fmt"
 	"gocolumn/memory"
 	"gocolumn/source"
+	"gocolumn/source/internal/batchview"
 )
 
 // Source is a zero-copy test/embedding source. Batches are treated as immutable
-// and Reader exposes shallow vector views into them.
+// and each native stream exposes bounded shallow vector views into them.
 type Source struct {
 	identity   *byte
 	schema     memory.Schema
@@ -102,12 +103,35 @@ func (s *Source) Partitions(context.Context) ([]source.Partition, error) {
 	return append([]source.Partition(nil), s.parts...), nil
 }
 
-// NewReader creates an independent reader over the immutable batches.
-func (s *Source) NewReader(_ context.Context, opts source.ReadOptions) (source.Reader, error) {
+// NewBatchStream creates an independent stream over immutable batches.
+func (s *Source) NewBatchStream(ctx context.Context, opts source.ReadOptions) (source.BatchStream, error) {
+	if s == nil {
+		return nil, fmt.Errorf("inmemory: nil source")
+	}
+	return s.NewBatchStreamWithPartitions(ctx, opts, s.parts)
+}
+
+// NewBatchStreamWithPartitions borrows the exact immutable partition sequence.
+// An empty sequence produces no batches; it never falls back to all partitions.
+func (s *Source) NewBatchStreamWithPartitions(ctx context.Context, opts source.ReadOptions, parts []source.Partition) (source.BatchStream, error) {
+	if s == nil {
+		return nil, fmt.Errorf("inmemory: nil source")
+	}
+	if ctx == nil {
+		return nil, fmt.Errorf("inmemory: nil context")
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	if err := opts.Validate(); err != nil {
 		return nil, err
 	}
-	return &reader{s: s}, nil
+	for _, part := range parts {
+		if part.ID < 0 || part.ID >= len(s.batches) {
+			return nil, fmt.Errorf("inmemory: partition %d out of range", part.ID)
+		}
+	}
+	return &batchStream{s: s, parts: parts, opts: opts.Normalize(), projected: memory.NewBatch()}, nil
 }
 
 // ApplyPushdown returns a shallow projected source. In-memory sources have no
@@ -161,132 +185,174 @@ func (s *Source) Dictionary(_ context.Context, column string) (source.Dictionary
 	return d, nil
 }
 
-type reader struct{ s *Source }
+type batchStream struct {
+	s                 *Source
+	parts             []source.Partition
+	opts              source.ReadOptions
+	next, offset      int
+	projected         *memory.Batch
+	view              batchview.View
+	closed, exhausted bool
+	terminalErr       error
+}
 
-// Close releases reader resources; the in-memory reader owns no external resources.
-func (*reader) Close() error { return nil }
-
-// ReadPartition binds dst to immutable zero-copy vector views for p.
-func (r *reader) ReadPartition(ctx context.Context, p source.Partition, dst *memory.Batch) error {
-	if err := ctx.Err(); err != nil {
-		return err
-	}
-	if p.ID < 0 || p.ID >= len(r.s.batches) {
-		return fmt.Errorf("partition %d out of range", p.ID)
-	}
-	src := r.s.batches[p.ID]
-	dst.ClearColumns()
-	dst.Rows = src.Rows
-	for k, v := range src.Int8s {
-		dst.Int8s[k] = v
-	}
-	for k, v := range src.Int16s {
-		dst.Int16s[k] = v
-	}
-	for k, v := range src.Uint8s {
-		dst.Uint8s[k] = v
-	}
-	for k, v := range src.Uint16s {
-		dst.Uint16s[k] = v
-	}
-	for k, v := range src.Float32s {
-		dst.Float32s[k] = v
-	}
-	if len(r.s.projection) == 0 {
-		for k, v := range src.Int64s {
-			dst.Int64s[k] = v
-		}
-		for k, v := range src.Int32s {
-			dst.Int32s[k] = v
-		}
-		for k, v := range src.Uint32s {
-			dst.Uint32s[k] = v
-		}
-		for k, v := range src.Uint64s {
-			dst.Uint64s[k] = v
-		}
-		for k, v := range src.Float64s {
-			dst.Float64s[k] = v
-		}
-		for k, v := range src.Strings {
-			dst.Strings[k] = v
-		}
-		for k, v := range src.DictStrings {
-			dst.DictStrings[k] = v
-		}
-		for k, v := range src.StringLists {
-			dst.StringLists[k] = v
-		}
-		for k, v := range src.Structs {
-			dst.Structs[k] = v
-		}
-		for k, v := range src.Opaque {
-			dst.Opaque[k] = v
-		}
+// Close releases the stream views and owned resources exactly once.
+func (s *batchStream) Close() error {
+	if s == nil || s.closed {
 		return nil
 	}
-	for _, k := range r.s.projection {
-		if v, ok := src.Int8s[k]; ok {
-			dst.Int8s[k] = v
+	s.closed = true
+	s.view.Release()
+	s.clearProjection()
+	return nil
+}
+
+func (s *batchStream) fail(err error) (bool, error) {
+	s.view.Release()
+	s.clearProjection()
+	s.terminalErr = err
+	return false, err
+}
+
+// Next binds the next bounded view or returns the terminal stream result.
+func (s *batchStream) Next(ctx context.Context, dst *memory.Batch) (bool, error) {
+	if dst == nil {
+		return false, fmt.Errorf("inmemory: nil destination")
+	}
+	dst.ClearColumns()
+	s.view.Release()
+	if s.closed {
+		return false, source.ErrBatchStreamClosed
+	}
+	if s.terminalErr != nil {
+		return false, s.terminalErr
+	}
+	if s.exhausted {
+		return false, nil
+	}
+	if ctx == nil {
+		return s.fail(fmt.Errorf("inmemory: nil context"))
+	}
+	if err := ctx.Err(); err != nil {
+		return s.fail(err)
+	}
+	if s.next == len(s.parts) {
+		s.exhausted = true
+		s.clearProjection()
+		return false, nil
+	}
+	batch := s.s.batches[s.parts[s.next].ID]
+	if s.offset == 0 {
+		if err := s.bindProjection(batch); err != nil {
+			return s.fail(err)
+		}
+	}
+	rows, err := s.view.Bind(ctx, dst, s.projected, s.offset, s.opts)
+	if err != nil {
+		return s.fail(err)
+	}
+	s.offset += rows
+	if s.offset == batch.Rows {
+		s.next++
+		s.offset = 0
+	}
+	return true, nil
+}
+
+// bindProjection selects schema-visible vectors without allocating value buffers.
+func (s *batchStream) bindProjection(src *memory.Batch) error {
+	dst := s.projected
+	s.clearProjection()
+	dst.Rows = src.Rows
+	for _, field := range s.s.schema.Fields {
+		name := field.Name
+		if v, ok := src.Int8s[name]; ok {
+			dst.Int8s[name] = v
 			continue
 		}
-		if v, ok := src.Int16s[k]; ok {
-			dst.Int16s[k] = v
+		if v, ok := src.Int16s[name]; ok {
+			dst.Int16s[name] = v
 			continue
 		}
-		if v, ok := src.Uint8s[k]; ok {
-			dst.Uint8s[k] = v
+		if v, ok := src.Int32s[name]; ok {
+			dst.Int32s[name] = v
 			continue
 		}
-		if v, ok := src.Uint16s[k]; ok {
-			dst.Uint16s[k] = v
+		if v, ok := src.Int64s[name]; ok {
+			dst.Int64s[name] = v
 			continue
 		}
-		if v, ok := src.Float32s[k]; ok {
-			dst.Float32s[k] = v
+		if v, ok := src.Uint8s[name]; ok {
+			dst.Uint8s[name] = v
 			continue
 		}
-		if v, ok := src.Int64s[k]; ok {
-			dst.Int64s[k] = v
+		if v, ok := src.Uint16s[name]; ok {
+			dst.Uint16s[name] = v
 			continue
 		}
-		if v, ok := src.Int32s[k]; ok {
-			dst.Int32s[k] = v
+		if v, ok := src.Uint32s[name]; ok {
+			dst.Uint32s[name] = v
 			continue
 		}
-		if v, ok := src.Uint32s[k]; ok {
-			dst.Uint32s[k] = v
+		if v, ok := src.Uint64s[name]; ok {
+			dst.Uint64s[name] = v
 			continue
 		}
-		if v, ok := src.Uint64s[k]; ok {
-			dst.Uint64s[k] = v
+		if v, ok := src.Float32s[name]; ok {
+			dst.Float32s[name] = v
 			continue
 		}
-		if v, ok := src.Float64s[k]; ok {
-			dst.Float64s[k] = v
+		if v, ok := src.Float64s[name]; ok {
+			dst.Float64s[name] = v
 			continue
 		}
-		if v, ok := src.Strings[k]; ok {
-			dst.Strings[k] = v
+		if v, ok := src.Strings[name]; ok {
+			dst.Strings[name] = v
 			continue
 		}
-		if v, ok := src.DictStrings[k]; ok {
-			dst.DictStrings[k] = v
+		if v, ok := src.DictStrings[name]; ok {
+			dst.DictStrings[name] = v
 			continue
 		}
-		if v, ok := src.StringLists[k]; ok {
-			dst.StringLists[k] = v
+		if v, ok := src.StringLists[name]; ok {
+			dst.StringLists[name] = v
 			continue
 		}
-		if v, ok := src.Structs[k]; ok {
-			dst.Structs[k] = v
+		if v, ok := src.Structs[name]; ok {
+			dst.Structs[name] = v
 			continue
 		}
-		if v, ok := src.Opaque[k]; ok {
-			dst.Opaque[k] = v
+		if v, ok := src.Opaque[name]; ok {
+			copy := *v
+			copy.Owned = false
+			dst.Opaque[name] = &copy
 			continue
 		}
-		return fmt.Errorf("projected column %q not present in batch", k)
+		return fmt.Errorf("inmemory: column %q not present in batch", name)
 	}
 	return nil
+}
+
+var _ source.Source = (*Source)(nil)
+var _ source.PreparedBatchStreamProvider = (*Source)(nil)
+
+// clearProjection drops borrowed headers without releasing source-owned nested
+// opaque values. Only batchview owns range-local Arrow slice references.
+func (s *batchStream) clearProjection() {
+	clear(s.projected.Int8s)
+	clear(s.projected.Int16s)
+	clear(s.projected.Int32s)
+	clear(s.projected.Int64s)
+	clear(s.projected.Uint8s)
+	clear(s.projected.Uint16s)
+	clear(s.projected.Uint32s)
+	clear(s.projected.Uint64s)
+	clear(s.projected.Float32s)
+	clear(s.projected.Float64s)
+	clear(s.projected.Strings)
+	clear(s.projected.DictStrings)
+	clear(s.projected.StringLists)
+	clear(s.projected.Structs)
+	clear(s.projected.Opaque)
+	s.projected.Rows = 0
 }

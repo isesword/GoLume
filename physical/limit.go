@@ -8,7 +8,7 @@ import (
 )
 
 // LimitSource stops producing rows after a global row limit while preserving
-// input order. The limit is reader-local, so independent PreparedFrame Execute
+// input order. The limit is reader-local, so independent PreparedDataFrame Execute
 // calls do not share counters.
 type LimitSource struct {
 	input source.Source
@@ -64,19 +64,14 @@ func (s *LimitSource) Partitions(ctx context.Context) ([]source.Partition, error
 
 // NewBatchStream creates a native early-stopping limit stream.
 func (s *LimitSource) NewBatchStream(ctx context.Context, opts source.ReadOptions) (source.BatchStream, error) {
-	return s.newBatchStream(ctx, opts, nil, false)
+	return s.newBatchStream(ctx, opts)
 }
 
-// NewBatchStreamWithPartitions propagates prepared partition metadata.
-func (s *LimitSource) NewBatchStreamWithPartitions(ctx context.Context, opts source.ReadOptions, parts []source.Partition) (source.BatchStream, error) {
-	return s.newBatchStream(ctx, opts, parts, true)
-}
-
-func (s *LimitSource) newBatchStream(ctx context.Context, opts source.ReadOptions, parts []source.Partition, prepared bool) (source.BatchStream, error) {
+func (s *LimitSource) newBatchStream(ctx context.Context, opts source.ReadOptions) (source.BatchStream, error) {
 	if err := opts.Validate(); err != nil {
 		return nil, err
 	}
-	child, err := openUnaryInputStream(ctx, s.input, opts, parts, prepared)
+	child, err := source.OpenBatchStream(ctx, s.input, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -154,5 +149,4 @@ func (s *LimitSource) Dictionary(ctx context.Context, column string) (source.Dic
 var _ source.StreamPlanProvider = (*LimitSource)(nil)
 var _ source.ReplayabilityProvider = (*LimitSource)(nil)
 var _ source.BatchStreamProvider = (*LimitSource)(nil)
-var _ source.PreparedBatchStreamProvider = (*LimitSource)(nil)
 var _ source.BatchStream = (*limitBatchStream)(nil)

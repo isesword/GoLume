@@ -250,7 +250,7 @@ func (l Layout) IsZero() bool {
 	return !l.Sum && !l.CountRows && !l.CountValues && !l.Min && !l.Max && !l.Avg
 }
 
-// IsSumCountOnly reports whether the layout can use the current radix
+// IsSumCountOnly reports whether the layout can use the shared
 // SUM+COUNT specialization without additional aggregate state.
 func (l Layout) IsSumCountOnly() bool {
 	return l.Sum && l.CountRows && !l.CountValues && !l.Min && !l.Max && !l.Avg
@@ -282,21 +282,88 @@ type Int64Result struct {
 // It avoids interface dispatch in row loops while retaining a generic
 // control-plane Layout selected by the planner.
 type Int64Vector struct {
-	layout      Layout
-	sums        []int64
-	sumValid    []uint8
-	countRows   []uint64
-	countValues []uint64
-	mins        []int64
-	minValid    []uint8
-	maxs        []int64
-	maxValid    []uint8
+	layout       Layout
+	sumCountOnly bool
+	sums         []int64
+	sumValid     []uint8
+	countRows    []uint64
+	countValues  []uint64
+	mins         []int64
+	minValid     []uint8
+	maxs         []int64
+	maxValid     []uint8
+}
+
+// SumCountUpdater is a checked, non-owning update view for a SUM+COUNT(*)
+// vector. It must come from Int64Vector.SumCountUpdater and remains valid only
+// while that vector keeps the same layout and has not been released. It owns
+// no buffers and observes replacement backing arrays through the vector.
+type SumCountUpdater struct{ vector *Int64Vector }
+
+// SumCountUpdater selects the narrow state transition once outside a batch
+// loop. Other layouts return false and must use the general vector methods.
+func (v *Int64Vector) SumCountUpdater() (SumCountUpdater, bool) {
+	if v == nil || !v.sumCountOnly {
+		return SumCountUpdater{}, false
+	}
+	return SumCountUpdater{vector: v}, true
+}
+
+// AddValue updates an occupied slot, counting NULL rows without changing SUM.
+// Slot bounds and initialization follow the Int64Vector.AddValue contract.
+func (u SumCountUpdater) AddValue(slot int, value int64, valid bool) {
+	u.vector.addSumCountValue(slot, value, valid)
+}
+
+// InitValue initializes a newly occupied slot, replacing any previous state.
+// Slot bounds follow the Int64Vector.InitValue contract.
+func (u SumCountUpdater) InitValue(slot int, value int64, valid bool) {
+	u.vector.initSumCountValue(slot, value, valid)
+}
+
+// SumCountState is a checked, borrowed state view for SUM+COUNT(*). Unlike
+// SumCountUpdater, it captures the current backing arrays rather than following
+// vector replacement. It must come from Int64Vector.BorrowSumCountState and
+// must not be used after the vector's backing arrays are replaced or released.
+// It owns no buffers, does not extend their accounting lifetime, and requires
+// the same exclusive access as the vector itself.
+type SumCountState struct {
+	sums      []int64
+	sumValid  []uint8
+	countRows []uint64
+}
+
+// BorrowSumCountState fills a fixed-backing view outside a batch loop. It
+// returns false and clears dst for nil vectors or layouts other than SUM+COUNT.
+// The caller must discard the view before replacing or releasing the vector,
+// including hash-table growth, and bind it again afterward. dst must be non-nil.
+func (v *Int64Vector) BorrowSumCountState(dst *SumCountState) bool {
+	if v == nil || !v.sumCountOnly {
+		*dst = SumCountState{}
+		return false
+	}
+	dst.sums = v.sums
+	dst.sumValid = v.sumValid
+	dst.countRows = v.countRows
+	return true
+}
+
+// InitValue initializes a newly occupied slot, replacing any previous state.
+// Slot bounds follow Int64Vector.InitValue. The view must still be valid.
+func (s SumCountState) InitValue(slot int, value int64, valid bool) {
+	initSumCountValue(s.sums, s.sumValid, s.countRows, slot, value, valid)
+}
+
+// AddValue updates an occupied slot, counting NULL rows without changing SUM.
+// Slot bounds follow Int64Vector.AddValue. The view must still be valid.
+func (s SumCountState) AddValue(slot int, value int64, valid bool) {
+	addSumCountValue(s.sums, s.sumValid, s.countRows, slot, value, valid)
 }
 
 // NewInt64Vector allocates aggregate state for slots according to layout.
 func NewInt64Vector(slots int, layout Layout) Int64Vector {
 	layout = normalizeLayout(layout)
-	v := Int64Vector{layout: layout}
+	v := Int64Vector{layout: layout, sumCountOnly: layout.IsSumCountOnly()}
 	if layout.Sum || layout.Avg {
 		v.sums = make([]int64, slots)
 	}
@@ -329,6 +396,10 @@ func (v *Int64Vector) Init(slot int, value int64) { v.InitValue(slot, value, tru
 // InitValue initializes a newly occupied slot and applies SQL aggregate NULL
 // semantics to the first row in the group.
 func (v *Int64Vector) InitValue(slot int, value int64, valid bool) {
+	if v.sumCountOnly {
+		v.initSumCountValue(slot, value, valid)
+		return
+	}
 	if v.layout.Sum || v.layout.Avg {
 		if valid {
 			v.sums[slot] = value
@@ -374,6 +445,10 @@ func (v *Int64Vector) Add(slot int, value int64) { v.AddValue(slot, value, true)
 
 // AddValue updates an existing slot and applies SQL aggregate NULL semantics.
 func (v *Int64Vector) AddValue(slot int, value int64, valid bool) {
+	if v.sumCountOnly {
+		v.addSumCountValue(slot, value, valid)
+		return
+	}
 	if v.layout.CountRows {
 		v.countRows[slot]++
 	}
@@ -394,6 +469,39 @@ func (v *Int64Vector) AddValue(slot int, value int64, valid bool) {
 	}
 	if v.layout.Max && (v.maxValid[slot] == 0 || value > v.maxs[slot]) {
 		v.maxs[slot], v.maxValid[slot] = value, 1
+	}
+}
+
+// initSumCountValue routes generic and live-vector initialization to the same
+// typed transition used by borrowed fixed-backing state views.
+func (v *Int64Vector) initSumCountValue(slot int, value int64, valid bool) {
+	initSumCountValue(v.sums, v.sumValid, v.countRows, slot, value, valid)
+}
+
+// addSumCountValue routes generic and live-vector updates to the same typed
+// transition used by borrowed fixed-backing state views.
+func (v *Int64Vector) addSumCountValue(slot int, value int64, valid bool) {
+	addSumCountValue(v.sums, v.sumValid, v.countRows, slot, value, valid)
+}
+
+// initSumCountValue overwrites stale slots after Reset and counts a NULL first
+// row. All SUM+COUNT vector entry points share this exact state transition.
+func initSumCountValue(sums []int64, sumValid []uint8, countRows []uint64, slot int, value int64, valid bool) {
+	countRows[slot] = 1
+	if valid {
+		sums[slot], sumValid[slot] = value, 1
+	} else {
+		sums[slot], sumValid[slot] = 0, 0
+	}
+}
+
+// addSumCountValue counts NULL rows while leaving SUM invalid until a non-NULL
+// value arrives. All SUM+COUNT vector entry points share this exact transition.
+func addSumCountValue(sums []int64, sumValid []uint8, countRows []uint64, slot int, value int64, valid bool) {
+	countRows[slot]++
+	if valid {
+		sums[slot] += value
+		sumValid[slot] = 1
 	}
 }
 

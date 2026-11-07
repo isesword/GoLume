@@ -4,33 +4,8 @@ import (
 	"fmt"
 	"gocolumn/aggregate"
 	"gocolumn/expr"
-	"gocolumn/hashagg"
 	"gocolumn/memory"
-	"math/bits"
 )
-
-func (p *PreparedQuery) aggregateInput(batch *memory.Batch) (*memory.Int64Vector, error) {
-	if p.cq.ValueColumn == "" {
-		return nil, nil
-	}
-	return batch.Int64(p.cq.ValueColumn)
-}
-
-func aggregateValueAt(values *memory.Int64Vector, row int) (int64, bool) {
-	if values == nil {
-		return 0, false
-	}
-	return values.Values[row], values.IsValid(row)
-}
-
-func (p *PreparedQuery) selection(w *workerWorkspace) (memory.Bitmap, int, error) {
-	b := w.batch
-	bv, err := p.cq.Predicate.Evaluate(b, &w.expr, p.e.kernels)
-	if err != nil {
-		return nil, 0, err
-	}
-	return bv.Truth, memory.CountBitmap(bv.Truth), nil
-}
 
 type fixedColumn struct {
 	typ      memory.DataType
@@ -94,28 +69,6 @@ func (c fixedColumn) at(i int) uint64 {
 	}
 }
 
-func forSelected(sel memory.Bitmap, rows int, fn func(i int) error) error {
-	for wi, word := range sel {
-		base := wi << 6
-		for word != 0 {
-			bit := bits.TrailingZeros64(word)
-			i := base + bit
-			if i >= rows {
-				break
-			}
-			if err := fn(i); err != nil {
-				return err
-			}
-			word &= word - 1
-		}
-	}
-	return nil
-}
-
-func (p *PreparedQuery) decodeFixed(g CompiledGroupColumn, v uint64) KeyPart {
-	return p.decodeFixedValid(g, v, true)
-}
-
 func (p *PreparedQuery) decodeFixedValid(g CompiledGroupColumn, v uint64, valid bool) KeyPart {
 	if !valid {
 		return KeyPart{Valid: false, Type: g.Type, DictionaryDomain: g.DictionaryDomain}
@@ -140,10 +93,6 @@ func (p *PreparedQuery) decodeFixedValid(g CompiledGroupColumn, v uint64, valid 
 	}
 }
 
-func sumCountAggregateState(sum int64, count uint64) aggregate.Int64Result {
-	return aggregate.Int64Result{Sum: sum, SumValid: count > 0, CountRows: count}
-}
-
 func (p *PreparedQuery) materializeAggregates(st aggregate.Int64Result) []AggregateValue {
 	out := make([]AggregateValue, 0, len(p.cq.Aggregates))
 	for _, a := range p.cq.Aggregates {
@@ -166,37 +115,3 @@ func (p *PreparedQuery) materializeAggregates(st aggregate.Int64Result) []Aggreg
 	}
 	return out
 }
-
-func (p *PreparedQuery) materializeI32Result(out *Result, t *hashagg.I32Table) {
-	gs := t.Materialize(nil)
-	out.Rows = make([]AggregateRow, len(gs))
-	for i, g := range gs {
-		out.Rows[i] = AggregateRow{Keys: []KeyPart{p.decodeFixedValid(p.cq.GroupBy[0], uint64(uint32(g.Key)), g.Valid)}, Sum: g.Sum, Count: g.Count, Aggregates: p.materializeAggregates(g.State)}
-	}
-}
-func (p *PreparedQuery) materializeU64Result(out *Result, t *hashagg.U64Table) {
-	gs := t.Materialize(nil)
-	out.Rows = make([]AggregateRow, len(gs))
-	gcol := p.cq.GroupBy[0]
-	for i, g := range gs {
-		out.Rows[i] = AggregateRow{Keys: []KeyPart{p.decodeFixedValid(gcol, g.Key, g.Valid)}, Sum: g.Sum, Count: g.Count, Aggregates: p.materializeAggregates(g.State)}
-	}
-}
-
-func (p *PreparedQuery) materializeU32Result(out *Result, t *hashagg.U32Table) {
-	gs := t.Materialize(nil)
-	out.Rows = make([]AggregateRow, len(gs))
-	gcol := p.cq.GroupBy[0]
-	for i, g := range gs {
-		out.Rows[i] = AggregateRow{Keys: []KeyPart{p.decodeFixedValid(gcol, uint64(g.Key), g.Valid)}, Sum: g.Sum, Count: g.Count, Aggregates: p.materializeAggregates(g.State)}
-	}
-}
-func (p *PreparedQuery) materializePairResult(out *Result, t *hashagg.PairTable) {
-	gs := t.Materialize(nil)
-	out.Rows = make([]AggregateRow, len(gs))
-	for i, g := range gs {
-		out.Rows[i] = AggregateRow{Keys: []KeyPart{p.decodeFixedValid(p.cq.GroupBy[0], g.Key.A, g.ValidMask&1 != 0), p.decodeFixedValid(p.cq.GroupBy[1], g.Key.B, g.ValidMask&2 != 0)}, Sum: g.Sum, Count: g.Count, Aggregates: p.materializeAggregates(g.State)}
-	}
-}
-
-func memorySet(b memory.Bitmap, i int) bool { return memory.IsSet(b, i) }

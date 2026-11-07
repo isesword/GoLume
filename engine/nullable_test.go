@@ -38,7 +38,7 @@ func nullableQuery(strategy string, workers int) expr.Query {
 		Filter:     expr.GT(expr.Col("pred"), expr.I64(0)),
 		GroupBy:    []string{"key"},
 		Aggregates: []expr.Aggregate{expr.Sum("value", "sum"), expr.Count("count")},
-		Hints:      expr.Hints{Cardinality: 2, Selectivity: 1, ForceStrategy: strategy, ForceWorkerCount: workers},
+		Hints:      expr.Hints{Cardinality: 2, Selectivity: 1, ForceStrategy: strategy},
 	}
 }
 
@@ -67,7 +67,7 @@ func TestNullableSingleKeyAcrossStrategies(t *testing.T) {
 	for _, tc := range []struct {
 		strategy string
 		workers  int
-	}{{"direct-fused", 1}, {"bitmap-direct", 1}, {"radix", 2}} {
+	}{{"direct-fused", 1}, {"bitmap-direct", 1}, {"", 2}} {
 		t.Run(tc.strategy, func(t *testing.T) {
 			e := engine.New(engine.Options{Workers: 2})
 			defer e.Close()
@@ -144,7 +144,7 @@ func TestAdaptiveGrowthRespectsMemoryBudget(t *testing.T) {
 	}
 }
 
-func TestRadixFallsBackWhenCardinalityHintIsWrong(t *testing.T) {
+func TestNativeStreamGrowsWithUnderestimatedCardinality(t *testing.T) {
 	const n = 4096
 	b := memory.NewBatch()
 	b.Rows = n
@@ -162,9 +162,8 @@ func TestRadixFallsBackWhenCardinalityHintIsWrong(t *testing.T) {
 		memory.Field{Name: "key", Type: memory.TypeInt32},
 		memory.Field{Name: "value", Type: memory.TypeInt64},
 	), b)
-	q := nullableQuery("radix", 2)
+	q := nullableQuery("", 2)
 	q.Hints.Cardinality = 8
-	q.Hints.ForceRadixBits = 1
 	e := engine.New(engine.Options{Workers: 2})
 	defer e.Close()
 	r, err := e.Execute(context.Background(), src, q, engine.ExecuteOptions{Materialize: true})
@@ -176,7 +175,7 @@ func TestRadixFallsBackWhenCardinalityHintIsWrong(t *testing.T) {
 	}
 }
 
-func TestNullableCompositeKeyRadix(t *testing.T) {
+func TestNullableCompositeKeyStream(t *testing.T) {
 	b := memory.NewBatch()
 	b.Rows = 6
 	b.Int64s["pred"] = &memory.Int64Vector{Values: []int64{1, 1, 1, 1, 1, 1}}
@@ -204,7 +203,7 @@ func TestNullableCompositeKeyRadix(t *testing.T) {
 		Filter:     expr.GT(expr.Col("pred"), expr.I64(0)),
 		GroupBy:    []string{"a", "b"},
 		Aggregates: []expr.Aggregate{expr.Sum("value", "sum"), expr.Count("count")},
-		Hints:      expr.Hints{Cardinality: 8, Selectivity: 1, ForceStrategy: "radix", ForceWorkerCount: 2, ForceRadixBits: 2},
+		Hints:      expr.Hints{Cardinality: 8, Selectivity: 1, ForceStrategy: ""},
 	}
 	e := engine.New(engine.Options{Workers: 2})
 	defer e.Close()

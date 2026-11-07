@@ -38,7 +38,7 @@ func TestLazyStringAndCalendarExpressions(t *testing.T) {
 		Filter(expr.And(Contains(Col("s"), Str("语")), Year(Col("ts")).Eq(Lit(2024)))).
 		WithColumns(Length(Col("s")).Alias("chars"), Hour(Col("ts")).Alias("hour")).
 		SelectExprs(Col("chars").Alias("chars"), Col("hour").Alias("hour")).
-		CollectFrame(context.Background())
+		Collect(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}

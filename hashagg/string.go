@@ -3,7 +3,9 @@ package hashagg
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"gocolumn/aggregate"
+	"gocolumn/memory"
 	"math/bits"
 )
 
@@ -30,25 +32,76 @@ type StringTable struct {
 	size       int
 	maxEntries int
 	arena      []byte
-	reserve    ReserveFunc
+	slotLease  memory.Reservation
+	nullLease  memory.Reservation
+	arenaLease memory.Reservation
 	opts       TableOptions
 	nullSet    bool
 	nullState  aggregate.Int64Vector
 }
 
 // NewStringTable creates a string table with default table growth policy.
-func NewStringTable(cardinalityHint, arenaHint int, reserve ReserveFunc) *StringTable {
+func NewStringTable(cardinalityHint, arenaHint int, reserve ReserveFunc) (*StringTable, error) {
 	return NewStringTableWithOptions(cardinalityHint, arenaHint, TableOptions{Reserve: reserve})
 }
 
 // NewStringTableWithOptions creates an adaptive string aggregation table.
-func NewStringTableWithOptions(cardinalityHint, arenaHint int, opts TableOptions) *StringTable {
+// All backing allocations are reserved before construction. On failure,
+// successfully acquired reservations are released and no table is returned.
+func NewStringTableWithOptions(cardinalityHint, arenaHint int, opts TableOptions) (*StringTable, error) {
 	opts = normalizeTableOptions(opts)
-	n := tableCapacity(cardinalityHint)
+	n, err := checkedTableCapacity(cardinalityHint, stringTableSlotBytesForCapacity(1, opts.Aggregates))
+	if err != nil {
+		return nil, err
+	}
 	if arenaHint < 0 {
 		arenaHint = 0
 	}
-	return &StringTable{off: make([]uint32, n), lens: make([]uint32, n), state: aggregate.NewInt64Vector(n, opts.Aggregates), epoch: make([]uint32, n), mask: uint64(n - 1), maxEntries: loadLimit(n, opts.MaxLoadFactor), arena: make([]byte, 0, arenaHint), reserve: opts.Reserve, opts: opts, nullState: aggregate.NewInt64Vector(1, opts.Aggregates)}
+	if uint64(arenaHint) > uint64(^uint32(0)) {
+		return nil, fmt.Errorf("string arena hint exceeds uint32 offsets")
+	}
+	t := &StringTable{opts: opts}
+	committed := false
+	defer func() {
+		if !committed {
+			t.Close()
+		}
+	}()
+	t.slotLease, err = reserveAllocation(opts.Reserve, stringTableSlotBytesForCapacity(n, opts.Aggregates))
+	if err != nil {
+		return nil, err
+	}
+	t.nullLease, err = reserveAllocation(opts.Reserve, aggregate.Int64VectorBytesForSlots(1, opts.Aggregates))
+	if err != nil {
+		return nil, err
+	}
+	t.arenaLease, err = reserveAllocation(opts.Reserve, int64(arenaHint))
+	if err != nil {
+		return nil, err
+	}
+	t.off, t.lens = make([]uint32, n), make([]uint32, n)
+	t.state = aggregate.NewInt64Vector(n, opts.Aggregates)
+	t.epoch = make([]uint32, n)
+	t.mask, t.maxEntries = uint64(n-1), loadLimit(n, opts.MaxLoadFactor)
+	t.arena = make([]byte, 0, arenaHint)
+	t.nullState = aggregate.NewInt64Vector(1, opts.Aggregates)
+	// Epoch zero belongs to freshly allocated, unoccupied slots.
+	t.gen = 1
+	committed = true
+	return t, nil
+}
+
+// Close releases all table-owned buffers and reservations. It is idempotent.
+// The table must not be used afterward, except for Close and size inspection.
+func (t *StringTable) Close() {
+	if t == nil {
+		return
+	}
+	slots, null, arena := t.slotLease, t.nullLease, t.arenaLease
+	*t = StringTable{}
+	releaseAllocation(slots)
+	releaseAllocation(null)
+	releaseAllocation(arena)
 }
 
 // Reset clears logical table contents and arena length while retaining capacity.
@@ -67,32 +120,59 @@ func (t *StringTable) Reset() {
 func (t *StringTable) ArenaCap() int { return cap(t.arena) }
 
 func (t *StringTable) ensureArena(extra int) error {
+	if extra < 0 || extra > int(^uint(0)>>1)-len(t.arena) {
+		return fmt.Errorf("string arena size overflow")
+	}
+	if uint64(len(t.arena))+uint64(extra) > uint64(^uint32(0)) {
+		return fmt.Errorf("string arena length exceeds uint32 offsets")
+	}
 	need := len(t.arena) + extra
 	if need <= cap(t.arena) {
 		return nil
 	}
 	newCap := nextPow2Int(need)
+	if newCap <= 0 {
+		return fmt.Errorf("string arena capacity overflow")
+	}
 	if newCap < 64 {
 		newCap = 64
 	}
-	delta := newCap - cap(t.arena)
-	if t.reserve != nil {
-		if err := t.reserve(int64(delta)); err != nil {
-			return err
-		}
+	lease, err := reserveAllocation(t.opts.Reserve, int64(newCap))
+	if err != nil {
+		return err
 	}
+	committed := false
+	defer func() {
+		if !committed {
+			releaseAllocation(lease)
+		}
+	}()
 	b := make([]byte, len(t.arena), newCap)
 	copy(b, t.arena)
 	t.arena = b
+	oldLease := t.arenaLease
+	t.arenaLease = lease
+	committed = true
+	releaseAllocation(oldLease)
 	return nil
 }
 
 func (t *StringTable) grow() error {
 	oldCap := len(t.off)
-	newCap := oldCap << 1
-	if err := reserveGrowth(t.opts.Reserve, stringTableSlotBytesForCapacity(oldCap, t.opts.Aggregates), stringTableSlotBytesForCapacity(newCap, t.opts.Aggregates)); err != nil {
+	newCap, err := checkedGrowCapacity(oldCap, stringTableSlotBytesForCapacity(1, t.opts.Aggregates))
+	if err != nil {
 		return err
 	}
+	lease, err := reserveAllocation(t.opts.Reserve, stringTableSlotBytesForCapacity(newCap, t.opts.Aggregates))
+	if err != nil {
+		return err
+	}
+	committed := false
+	defer func() {
+		if !committed {
+			releaseAllocation(lease)
+		}
+	}()
 	off := make([]uint32, newCap)
 	lens := make([]uint32, newCap)
 	state := aggregate.NewInt64Vector(newCap, t.opts.Aggregates)
@@ -103,7 +183,7 @@ func (t *StringTable) grow() error {
 			continue
 		}
 		lo, ln := t.off[i], t.lens[i]
-		key := t.arena[lo : lo+ln]
+		key := t.arena[uint64(lo) : uint64(lo)+uint64(ln)]
 		p := HashBytes(key) & mask
 		for epoch[p] == t.gen {
 			p = (p + 1) & mask
@@ -115,6 +195,10 @@ func (t *StringTable) grow() error {
 	t.off, t.lens, t.state, t.epoch = off, lens, state, epoch
 	t.mask = mask
 	t.maxEntries = loadLimit(newCap, t.opts.MaxLoadFactor)
+	oldLease := t.slotLease
+	t.slotLease = lease
+	committed = true
+	releaseAllocation(oldLease)
 	return nil
 }
 
@@ -148,7 +232,7 @@ func (t *StringTable) AddValue(key []byte, value int64, valueValid bool) (bool, 
 				return true, nil
 			}
 			o, ln := t.off[p], t.lens[p]
-			if int(o+ln) <= len(t.arena) && bytes.Equal(t.arena[o:o+ln], key) {
+			if uint64(o)+uint64(ln) <= uint64(len(t.arena)) && bytes.Equal(t.arena[uint64(o):uint64(o)+uint64(ln)], key) {
 				t.state.AddValue(int(p), value, valueValid)
 				return false, nil
 			}
@@ -212,7 +296,7 @@ func (t *StringTable) TryMergeNullable(key []byte, keyValid bool, state aggregat
 				return true, nil
 			}
 			o, ln := t.off[p], t.lens[p]
-			if int(o+ln) <= len(t.arena) && bytes.Equal(t.arena[o:o+ln], key) {
+			if uint64(o)+uint64(ln) <= uint64(len(t.arena)) && bytes.Equal(t.arena[uint64(o):uint64(o)+uint64(ln)], key) {
 				t.state.MergeResult(int(p), state)
 				return false, nil
 			}
@@ -228,7 +312,7 @@ func (t *StringTable) Materialize(dst []GroupString) []GroupString {
 		if t.epoch[i] == t.gen {
 			o, ln := t.off[i], t.lens[i]
 			st := t.state.Result(i)
-			dst = append(dst, GroupString{Key: string(t.arena[o : o+ln]), Valid: true, Sum: st.Sum, Count: st.CountRows, State: st})
+			dst = append(dst, GroupString{Key: string(t.arena[uint64(o) : uint64(o)+uint64(ln)]), Valid: true, Sum: st.Sum, Count: st.CountRows, State: st})
 		}
 	}
 	if t.nullSet {
@@ -247,7 +331,7 @@ func (t *StringTable) Visit(fn func(key []byte, valid bool, state aggregate.Int6
 	for i := range t.epoch {
 		if t.epoch[i] == t.gen {
 			o, ln := t.off[i], t.lens[i]
-			if err := fn(t.arena[o:o+ln], true, t.state.Result(i)); err != nil {
+			if err := fn(t.arena[uint64(o):uint64(o)+uint64(ln)], true, t.state.Result(i)); err != nil {
 				return err
 			}
 		}
@@ -272,7 +356,7 @@ func (t *StringTable) VisitChunk(cursor *int, limit int, fn func(key []byte, val
 			continue
 		}
 		o, ln := t.off[i], t.lens[i]
-		if err := fn(t.arena[o:o+ln], true, t.state.Result(i)); err != nil {
+		if err := fn(t.arena[uint64(o):uint64(o)+uint64(ln)], true, t.state.Result(i)); err != nil {
 			return false, err
 		}
 		emitted++
@@ -303,6 +387,9 @@ func (t *StringTable) Len() int {
 
 // RetainedBytes returns slot/state bytes plus the owned key-arena capacity.
 func (t *StringTable) RetainedBytes() int64 {
+	if t == nil || t.Capacity() == 0 {
+		return 0
+	}
 	return stringTableSlotBytesForCapacity(len(t.off), t.opts.Aggregates) + int64(cap(t.arena)) + aggregate.Int64VectorBytesForSlots(1, t.opts.Aggregates)
 }
 

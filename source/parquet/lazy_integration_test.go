@@ -37,7 +37,7 @@ func TestLazyParquetStringAndTemporalExpressions(t *testing.T) {
 			lazy.Hour(lazy.Col("event_time")).Alias("hour"),
 		).
 		SelectExprs(lazy.Col("characters").Alias("characters"), lazy.Col("day").Alias("day"), lazy.Col("hour").Alias("hour")).
-		CollectFrame(context.Background())
+		Collect(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}

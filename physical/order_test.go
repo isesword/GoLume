@@ -45,15 +45,14 @@ func TestSortPreservesNativeNumericOutputs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	parts, _ := sorted.Partitions(context.Background())
-	r, err := openTestReader(context.Background(), sorted, testReadOptions())
+	r, err := source.OpenBatchStream(context.Background(), sorted, testReadOptions())
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer r.Close()
 	out := memory.NewBatch()
-	if err := r.ReadPartition(context.Background(), parts[0], out); err != nil {
-		t.Fatal(err)
+	if ok, err := r.Next(context.Background(), out); err != nil || !ok {
+		t.Fatalf("next: ok=%v err=%v", ok, err)
 	}
 	keys, err := out.Int8("key")
 	if err != nil {
@@ -87,17 +86,13 @@ func TestSortHonorsMemoryBudget(t *testing.T) {
 		t.Fatal(err)
 	}
 	ctx := context.Background()
-	r, err := openTestReader(ctx, s, testReadOptions())
+	r, err := source.OpenBatchStream(ctx, s, testReadOptions())
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer r.Close()
-	parts, err := s.Partitions(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
 	dst := memory.NewBatch()
-	err = r.ReadPartition(ctx, parts[0], dst)
+	_, err = r.Next(ctx, dst)
 	if !errors.Is(err, memory.ErrBudgetExceeded) {
 		t.Fatalf("sort error=%v, want ErrBudgetExceeded", err)
 	}
@@ -125,16 +120,12 @@ func TestTopKHonorsMemoryBudget(t *testing.T) {
 		t.Fatal(err)
 	}
 	ctx := context.Background()
-	r, err := openTestReader(ctx, s, testReadOptions())
+	r, err := source.OpenBatchStream(ctx, s, testReadOptions())
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer r.Close()
-	parts, err := s.Partitions(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = r.ReadPartition(ctx, parts[0], memory.NewBatch())
+	_, err = r.Next(ctx, memory.NewBatch())
 	if !errors.Is(err, memory.ErrBudgetExceeded) {
 		t.Fatalf("top-k error=%v, want ErrBudgetExceeded", err)
 	}
@@ -155,14 +146,13 @@ func TestTopKReleasesMemoryReservationOnClose(t *testing.T) {
 		t.Fatal(err)
 	}
 	ctx := context.Background()
-	r, err := openTestReader(ctx, s, testReadOptions())
+	r, err := source.OpenBatchStream(ctx, s, testReadOptions())
 	if err != nil {
 		t.Fatal(err)
 	}
-	parts, _ := s.Partitions(ctx)
 	dst := memory.NewBatch()
-	if err := r.ReadPartition(ctx, parts[0], dst); err != nil {
-		t.Fatal(err)
+	if ok, err := r.Next(ctx, dst); err != nil || !ok {
+		t.Fatalf("next: ok=%v err=%v", ok, err)
 	}
 	if manager.Used() == 0 {
 		t.Fatal("top-k did not retain a memory reservation while reader is active")
@@ -194,16 +184,11 @@ func TestTopKRejectsActualVariableKeyStateOverBudget(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	reader, err := openTestReader(context.Background(), top, testReadOptions())
+	reader, err := source.OpenBatchStream(context.Background(), top, testReadOptions())
 	if err != nil {
 		t.Fatal(err)
 	}
-	parts, err := top.Partitions(context.Background())
-	if err != nil {
-		_ = reader.Close()
-		t.Fatal(err)
-	}
-	err = reader.ReadPartition(context.Background(), parts[0], memory.NewBatch())
+	_, err = reader.Next(context.Background(), memory.NewBatch())
 	if !errors.Is(err, memory.ErrBudgetExceeded) {
 		_ = reader.Close()
 		t.Fatalf("top-k error=%v, want ErrBudgetExceeded for retained string key", err)
@@ -253,18 +238,14 @@ func TestDescendingOrderKeepsNullPlacementForSortAndTopK(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			reader, err := openTestReader(context.Background(), ordered, testReadOptions())
+			reader, err := source.OpenBatchStream(context.Background(), ordered, testReadOptions())
 			if err != nil {
 				t.Fatal(err)
 			}
 			defer reader.Close()
-			parts, err := ordered.Partitions(context.Background())
-			if err != nil {
-				t.Fatal(err)
-			}
 			out := memory.NewBatch()
-			if err := reader.ReadPartition(context.Background(), parts[0], out); err != nil {
-				t.Fatal(err)
+			if ok, err := reader.Next(context.Background(), out); err != nil || !ok {
+				t.Fatalf("next: ok=%v err=%v", ok, err)
 			}
 			ids, err := out.Int64("id")
 			if err != nil {
@@ -378,16 +359,12 @@ func TestParallelSortChargesMergedOrdinalBuffer(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	reader, err := openTestReader(context.Background(), ordered, testReadOptions())
+	reader, err := source.OpenBatchStream(context.Background(), ordered, testReadOptions())
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer reader.Close()
-	parts, err := ordered.Partitions(context.Background())
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = reader.ReadPartition(context.Background(), parts[0], memory.NewBatch())
+	_, err = reader.Next(context.Background(), memory.NewBatch())
 	if !errors.Is(err, memory.ErrBudgetExceeded) {
 		t.Fatalf("parallel sort error=%v, want ErrBudgetExceeded", err)
 	}
@@ -431,21 +408,29 @@ func sortedIDs(t *testing.T, ordered source.Source) []int64 {
 	if len(parts) != 1 {
 		t.Fatalf("ordered partitions=%d want 1", len(parts))
 	}
-	reader, err := openTestReader(ctx, ordered, testReadOptions())
+	reader, err := source.OpenBatchStream(ctx, ordered, testReadOptions())
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer reader.Close()
 	out := memory.NewBatch()
 	defer out.ReleaseOwned()
-	if err := reader.ReadPartition(ctx, parts[0], out); err != nil {
-		t.Fatal(err)
+	var result []int64
+	for {
+		ok, err := reader.Next(ctx, out)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !ok {
+			break
+		}
+		ids, err := out.Int64("id")
+		if err != nil {
+			t.Fatal(err)
+		}
+		result = append(result, ids.Values...)
 	}
-	ids, err := out.Int64("id")
-	if err != nil {
-		t.Fatal(err)
-	}
-	return append([]int64(nil), ids.Values...)
+	return result
 }
 
 func equalInt64s(got, want []int64) bool {

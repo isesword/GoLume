@@ -25,7 +25,7 @@ func TestDataFrameShapeViewsAndChunkedSeries(t *testing.T) {
 	}
 	session := NewSession(engine.DefaultOptions())
 	defer session.Close()
-	df, err := session.FromSource(src).CollectFrame(context.Background())
+	df, err := session.FromSource(src).Collect(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -114,7 +114,7 @@ func TestDataFrameDisplayIsBoundedAndDistinguishesNestedNulls(t *testing.T) {
 	}
 	session := NewSession(engine.DefaultOptions())
 	defer session.Close()
-	df, err := session.FromSource(src).CollectFrame(context.Background())
+	df, err := session.FromSource(src).Collect(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -146,7 +146,7 @@ func TestDataFrameMaterializationHonorsAndReleasesBudget(t *testing.T) {
 	low := engine.DefaultOptions()
 	low.MemoryLimitBytes = 16
 	small := NewSession(low)
-	_, err = small.FromSource(src).CollectFrame(context.Background())
+	_, err = small.FromSource(src).Collect(context.Background())
 	if !errors.Is(err, memory.ErrBudgetExceeded) {
 		t.Fatalf("budget error=%v", err)
 	}
@@ -158,7 +158,7 @@ func TestDataFrameMaterializationHonorsAndReleasesBudget(t *testing.T) {
 	ok.MemoryLimitBytes = 1024
 	session := NewSession(ok)
 	defer session.Close()
-	df, err := session.FromSource(src).CollectFrame(context.Background())
+	df, err := session.FromSource(src).Collect(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
