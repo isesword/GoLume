@@ -1,0 +1,64 @@
+package engine
+
+import (
+	"context"
+	"gocolumn/memory"
+	"testing"
+)
+
+// This supplemental candidate-only check is not part of the comparable timed
+// executables. It inspects actual gating and allocated stream descriptors.
+func TestGlobalBindingActualEligibility(t *testing.T) {
+	for _, c := range globalBindingCases() {
+		t.Run(c.name(), func(t *testing.T) {
+			f := makeGlobalBindingFixture(t, c)
+			e, p := prepareGlobalBinding(t, c, f)
+			defer e.Close()
+			defer p.Close()
+			want := c.control == "" || c.control == "countonly"
+			got := p.globalAggregateBindingsEligible()
+			if got != want {
+				t.Fatalf("actual eligibility=%t want=%t", got, want)
+			}
+			bound := 0
+			if p.IsSortedAggregate() {
+				budget, err := e.BeginQueryMemory()
+				if err != nil {
+					t.Fatal(err)
+				}
+				ctx := memory.WithQueryBudget(context.Background(), budget)
+				stream, err := p.NewSortedAggregateStream(ctx, p.resultSchema(), 1)
+				if err != nil {
+					budget.Close()
+					t.Fatal(err)
+				}
+				concrete, ok := stream.(*sortedAggregateStream)
+				if !ok {
+					t.Fatalf("unexpected stream %T", stream)
+				}
+				bound = len(concrete.globalBindings)
+				if (bound > 0) != want {
+					t.Fatalf("allocated bindings=%d eligible=%t", bound, want)
+				}
+				if want && bound != len(p.cq.MultiAggregate.Columns) {
+					t.Fatal("descriptor count does not match lanes")
+				}
+				if _, err := stream.Next(ctx, memory.NewBatch()); err != nil {
+					stream.Close()
+					budget.Close()
+					t.Fatal(err)
+				}
+				if err := stream.Close(); err != nil {
+					t.Fatal(err)
+				}
+				if budget.Used() != 0 || e.Memory().Used() != 0 {
+					t.Fatal("stream close leaked charged bytes")
+				}
+				if err := budget.Close(); err != nil {
+					t.Fatal(err)
+				}
+			}
+			t.Logf("actual_eligible=%t allocated_bindings=%d native=%t plan=%+v", got, bound, p.nativeAggregate(), p.Plan())
+		})
+	}
+}

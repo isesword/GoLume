@@ -1,0 +1,1 @@
+Six alternating pairs, 1 s target per case. Each case runs before/after consecutively, with AB/BA reversed by round. All five apparent >5% regressions in the initial matrix are included, plus the large two/four-lane dense and largest four-lane nullable headline cases. No outliers are discarded. Binaries and harness are the same as the initial matrix.

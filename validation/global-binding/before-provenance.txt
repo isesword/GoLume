@@ -1,0 +1,52 @@
+source_tree=/workspace/scratch/ac8e1e118737/aggregate-binding-baseline/src
+GOEXPERIMENT=simd
+GOMAXPROCS=1
+go version go1.27.3 linux/amd64
+linux
+amd64
+v1
+Linux x86_64
+9e7a6c1b112c5f5e33ef4e4b3535637a852e985542738283a2f371648dc454b0  /workspace/scratch/ac8e1e118737/GoLume-next/validation/global-binding/harness.go.txt
+131f78f1b76460e860f52529743573ed8f87ee73a1f89da0917f7a33ef924e46  /workspace/scratch/ac8e1e118737/global-binding-binaries/before.engine.test
+999f8c42d4fcb0d61cb2989fca06502cd5d05714ed29a37da770864c03076a46  /workspace/scratch/ac8e1e118737/GoLume-next/scripts/bench_global_binding.sh
+/workspace/scratch/ac8e1e118737/global-binding-binaries/before.engine.test: go1.27.3-X:simd
+	path	gocolumn/engine.test
+	mod	gocolumn	(devel)	
+	dep	github.com/andybalholm/brotli	v1.2.2	h1:HzTuoo2ErYQqf5qvcJInB8uvqSVxRttzkFexPWtnceM=
+	dep	github.com/apache/arrow-go/v18	v18.7.0	h1:Vw/i+cJyebUofT7JlqFpe65LrmwxULn166jjwStM4HY=
+	dep	github.com/apache/thrift	v0.24.0	h1:zy31L1a49QTNB2bG1BBfMXol3yJrTH975G3pPubQVLQ=
+	dep	github.com/cespare/xxhash/v2	v2.3.0	h1:UL815xU9SqsFlibzuggzjXhog7bL6oX9BbNZnL2UFvs=
+	dep	github.com/goccy/go-json	v0.10.6	h1:p8HrPJzOakx/mn/bQtjgNjdTcN+/S6FcG2CTtQOrHVU=
+	dep	github.com/google/flatbuffers	v25.12.19+incompatible	h1:haMV2JRRJCe1998HeW/p0X9UaMTK6SDo0ffLn2+DbLs=
+	dep	github.com/google/uuid	v1.6.0	h1:NIvaJDMOsjHA8n1jAhLSgzrAzy1Hgr+hNrb57e+94F0=
+	dep	github.com/klauspost/compress	v1.19.0	h1:sXLILfc9jV2QYWkzFOPWStmcUVH2RHEB1JCdY2oVvCQ=
+	dep	github.com/klauspost/cpuid/v2	v2.4.0	h1:S6Hrbc7+ywsr0r+RLapfGBHfyefhCTwEh3A0tV913Dw=
+	dep	github.com/pierrec/lz4/v4	v4.1.27	h1:+PhzhWDrjRj89TH2sw43nE3+4+W8lSxIuQadEHZyjUk=
+	dep	github.com/zeebo/xxh3	v1.1.0	h1:s7DLGDK45Dyfg7++yxI0khrfwq9661w9EN78eP/UZVs=
+	dep	golang.org/x/exp	v0.0.0-20260812173653-3d80eb74bc5b	h1:3XR0v9KL97wjTmRb+6RqMylL4d7ZWM1sQYIITGDxtmg=
+	dep	golang.org/x/sync	v0.22.0	h1:SZjpbeLmrCk4xhRSZFNZW5gFUeCeFgjekvI/+gfScek=
+	dep	golang.org/x/sys	v0.47.0	h1:o7XGOvZQCADBQQ4Y7VNq2dRWQR7JmOUW8Kxx4ZsNgWs=
+	build	-buildmode=exe
+	build	-compiler=gc
+	build	CGO_ENABLED=1
+	build	CGO_CFLAGS=
+	build	CGO_CPPFLAGS=
+	build	CGO_CXXFLAGS=
+	build	CGO_LDFLAGS=
+	build	GOARCH=amd64
+	build	GOEXPERIMENT=simd
+	build	GOOS=linux
+	build	GOAMD64=v1
+{
+  "baseline": "b105e07a29ebbfaef5d7d3be5857feda999cc1d6",
+  "tree": "62317d68705f4ebcfe06807aeb2ec321c06cf398",
+  "files_verified": 711,
+  "differences": [],
+  "known_fixture_excluded": "testdata/bench-1m.parquet",
+  "snapshot_excludes": [
+    "validation/",
+    "*.test",
+    "*.cpu",
+    "*.mem"
+  ]
+}

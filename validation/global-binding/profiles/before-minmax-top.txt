@@ -1,0 +1,44 @@
+File: before.engine.test
+Build ID: f6d2ddfd2d4204d7437473a61ae51ae7c97d6fe4
+Type: cpu
+Time: 2026-11-08 00:21:45 CST
+Duration: 2.81s, Total samples = 2.82s (100.20%)
+Showing nodes accounting for 2.75s, 97.52% of 2.82s total
+Dropped 47 nodes (cum <= 0.01s)
+      flat  flat%   sum%        cum   cum%
+     0.89s 31.56% 31.56%      0.94s 33.33%  gocolumn/engine.(*sortedAggregateStream).nextSelected
+     0.38s 13.48% 45.04%      2.77s 98.23%  gocolumn/engine.(*sortedAggregateStream).next
+     0.28s  9.93% 54.96%      1.44s 51.06%  gocolumn/engine.(*sortedAggregateStream).addBundleRow
+     0.21s  7.45% 62.41%      0.65s 23.05%  gocolumn/aggregate.(*NumericVector).AddBits
+     0.12s  4.26% 66.67%      0.39s 13.83%  gocolumn/aggregate.numericExtreme
+     0.12s  4.26% 70.92%      0.29s 10.28%  internal/runtime/maps.(*Map).getWithoutKeySmallFastStr
+     0.12s  4.26% 75.18%      0.12s  4.26%  math.archMax
+     0.09s  3.19% 78.37%      0.09s  3.19%  internal/runtime/maps.memHashAES
+     0.06s  2.13% 80.50%      0.44s 15.60%  gocolumn/engine.nativeAggregateBits
+     0.06s  2.13% 82.62%      0.06s  2.13%  internal/runtime/maps.(*groupReference).key (inline)
+     0.06s  2.13% 84.75%      0.06s  2.13%  math.archMin
+     0.06s  2.13% 86.88%      0.35s 12.41%  runtime.mapaccess2_faststr
+     0.05s  1.77% 88.65%      0.70s 24.82%  gocolumn/aggregate.(*NumericBundle).AddBits (inline)
+     0.05s  1.77% 90.43%      0.05s  1.77%  math.IsNaN (inline)
+     0.04s  1.42% 91.84%      0.04s  1.42%  gocolumn/aggregate.normalizeNumericBits (inline)
+     0.04s  1.42% 93.26%      0.04s  1.42%  math.Float64bits (inline)
+     0.03s  1.06% 94.33%      0.03s  1.06%  gocolumn/engine.aggregateBatchBinding.key
+     0.03s  1.06% 95.39%      0.03s  1.06%  runtime.memequal
+     0.02s  0.71% 96.10%      0.02s  0.71%  gocolumn/engine.(*byteStatisticsWorkspace).commit (inline)
+     0.02s  0.71% 96.81%      0.08s  2.84%  math.Min (inline)
+     0.02s  0.71% 97.52%      0.36s 12.77%  runtime.mapaccess1_faststr
+         0     0% 97.52%      2.78s 98.58%  gocolumn/engine.(*PreparedQuery).ExecuteTyped
+         0     0% 97.52%      2.78s 98.58%  gocolumn/engine.(*PreparedQuery).executeTyped
+         0     0% 97.52%      2.77s 98.23%  gocolumn/engine.(*sortedAggregateStream).consumeRecords
+         0     0% 97.52%      0.02s  0.71%  gocolumn/engine.(*sortedAggregateStream).loadInput
+         0     0% 97.52%      0.02s  0.71%  gocolumn/engine.BenchmarkGlobalBindingWholeQuery
+         0     0% 97.52%      2.80s 99.29%  gocolumn/engine.BenchmarkGlobalBindingWholeQuery.func1
+         0     0% 97.52%      0.12s  4.26%  math.Max (inline)
+         0     0% 97.52%      0.02s  0.71%  runtime.mallocgc
+         0     0% 97.52%      0.02s  0.71%  testing.(*B).Run
+         0     0% 97.52%      2.80s 99.29%  testing.(*B).launch
+         0     0% 97.52%      0.02s  0.71%  testing.(*B).run1.func1
+         0     0% 97.52%      2.82s   100%  testing.(*B).runN
+         0     0% 97.52%      0.02s  0.71%  testing.(*matcher).fullName
+         0     0% 97.52%      0.02s  0.71%  testing.simpleMatch.matches
+         0     0% 97.52%      0.02s  0.71%  testing/internal/testdeps.TestDeps.MatchString

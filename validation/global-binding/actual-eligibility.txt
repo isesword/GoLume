@@ -1,0 +1,112 @@
+=== RUN   TestGlobalBindingActualEligibility
+=== RUN   TestGlobalBindingActualEligibility/global/lanes=2/dense/rows=63/batch=63/mode=auto
+    global_binding_eligibility_test.go:61: actual_eligible=true allocated_bindings=2 native=true plan={Strategy:{Kind:sorted Workers:1 Reason:global aggregation uses one bounded state} Rows:63 Partitions:1 KeyWidthBytes:0 PredicateOps:1 GroupColumns:0 MaxConcurrency:1 FeedbackSamples:0 EstimatedSelectivity:0.5 EstimatedCardinality:1}
+=== RUN   TestGlobalBindingActualEligibility/global/lanes=2/dense/rows=4097/batch=4097/mode=auto
+    global_binding_eligibility_test.go:61: actual_eligible=true allocated_bindings=2 native=true plan={Strategy:{Kind:sorted Workers:1 Reason:global aggregation uses one bounded state} Rows:4097 Partitions:1 KeyWidthBytes:0 PredicateOps:1 GroupColumns:0 MaxConcurrency:1 FeedbackSamples:0 EstimatedSelectivity:0.5 EstimatedCardinality:1}
+=== RUN   TestGlobalBindingActualEligibility/global/lanes=2/dense/rows=32771/batch=32771/mode=auto
+    global_binding_eligibility_test.go:61: actual_eligible=true allocated_bindings=2 native=true plan={Strategy:{Kind:sorted Workers:1 Reason:global aggregation uses one bounded state} Rows:32771 Partitions:1 KeyWidthBytes:0 PredicateOps:1 GroupColumns:0 MaxConcurrency:1 FeedbackSamples:0 EstimatedSelectivity:0.5 EstimatedCardinality:1}
+=== RUN   TestGlobalBindingActualEligibility/global/lanes=2/dense/rows=32771/batch=1021/mode=auto
+    global_binding_eligibility_test.go:61: actual_eligible=true allocated_bindings=2 native=true plan={Strategy:{Kind:sorted Workers:1 Reason:global aggregation uses one bounded state} Rows:32771 Partitions:33 KeyWidthBytes:0 PredicateOps:1 GroupColumns:0 MaxConcurrency:1 FeedbackSamples:0 EstimatedSelectivity:0.5 EstimatedCardinality:1}
+=== RUN   TestGlobalBindingActualEligibility/global/lanes=2/nullable/rows=63/batch=63/mode=auto
+    global_binding_eligibility_test.go:61: actual_eligible=true allocated_bindings=2 native=true plan={Strategy:{Kind:sorted Workers:1 Reason:global aggregation uses one bounded state} Rows:63 Partitions:1 KeyWidthBytes:0 PredicateOps:1 GroupColumns:0 MaxConcurrency:1 FeedbackSamples:0 EstimatedSelectivity:0.5 EstimatedCardinality:1}
+=== RUN   TestGlobalBindingActualEligibility/global/lanes=2/nullable/rows=4097/batch=4097/mode=auto
+    global_binding_eligibility_test.go:61: actual_eligible=true allocated_bindings=2 native=true plan={Strategy:{Kind:sorted Workers:1 Reason:global aggregation uses one bounded state} Rows:4097 Partitions:1 KeyWidthBytes:0 PredicateOps:1 GroupColumns:0 MaxConcurrency:1 FeedbackSamples:0 EstimatedSelectivity:0.5 EstimatedCardinality:1}
+=== RUN   TestGlobalBindingActualEligibility/global/lanes=2/nullable/rows=32771/batch=32771/mode=auto
+    global_binding_eligibility_test.go:61: actual_eligible=true allocated_bindings=2 native=true plan={Strategy:{Kind:sorted Workers:1 Reason:global aggregation uses one bounded state} Rows:32771 Partitions:1 KeyWidthBytes:0 PredicateOps:1 GroupColumns:0 MaxConcurrency:1 FeedbackSamples:0 EstimatedSelectivity:0.5 EstimatedCardinality:1}
+=== RUN   TestGlobalBindingActualEligibility/global/lanes=2/nullable/rows=32771/batch=1021/mode=auto
+    global_binding_eligibility_test.go:61: actual_eligible=true allocated_bindings=2 native=true plan={Strategy:{Kind:sorted Workers:1 Reason:global aggregation uses one bounded state} Rows:32771 Partitions:33 KeyWidthBytes:0 PredicateOps:1 GroupColumns:0 MaxConcurrency:1 FeedbackSamples:0 EstimatedSelectivity:0.5 EstimatedCardinality:1}
+=== RUN   TestGlobalBindingActualEligibility/global/lanes=2/selective/rows=63/batch=63/mode=auto
+    global_binding_eligibility_test.go:61: actual_eligible=true allocated_bindings=2 native=true plan={Strategy:{Kind:sorted Workers:1 Reason:global aggregation uses one bounded state} Rows:63 Partitions:1 KeyWidthBytes:0 PredicateOps:1 GroupColumns:0 MaxConcurrency:1 FeedbackSamples:0 EstimatedSelectivity:0.5 EstimatedCardinality:1}
+=== RUN   TestGlobalBindingActualEligibility/global/lanes=2/selective/rows=4097/batch=4097/mode=auto
+    global_binding_eligibility_test.go:61: actual_eligible=true allocated_bindings=2 native=true plan={Strategy:{Kind:sorted Workers:1 Reason:global aggregation uses one bounded state} Rows:4097 Partitions:1 KeyWidthBytes:0 PredicateOps:1 GroupColumns:0 MaxConcurrency:1 FeedbackSamples:0 EstimatedSelectivity:0.5 EstimatedCardinality:1}
+=== RUN   TestGlobalBindingActualEligibility/global/lanes=2/selective/rows=32771/batch=32771/mode=auto
+    global_binding_eligibility_test.go:61: actual_eligible=true allocated_bindings=2 native=true plan={Strategy:{Kind:sorted Workers:1 Reason:global aggregation uses one bounded state} Rows:32771 Partitions:1 KeyWidthBytes:0 PredicateOps:1 GroupColumns:0 MaxConcurrency:1 FeedbackSamples:0 EstimatedSelectivity:0.5 EstimatedCardinality:1}
+=== RUN   TestGlobalBindingActualEligibility/global/lanes=2/selective/rows=32771/batch=1021/mode=auto
+    global_binding_eligibility_test.go:61: actual_eligible=true allocated_bindings=2 native=true plan={Strategy:{Kind:sorted Workers:1 Reason:global aggregation uses one bounded state} Rows:32771 Partitions:33 KeyWidthBytes:0 PredicateOps:1 GroupColumns:0 MaxConcurrency:1 FeedbackSamples:0 EstimatedSelectivity:0.5 EstimatedCardinality:1}
+=== RUN   TestGlobalBindingActualEligibility/global/lanes=4/dense/rows=63/batch=63/mode=auto
+    global_binding_eligibility_test.go:61: actual_eligible=true allocated_bindings=4 native=true plan={Strategy:{Kind:sorted Workers:1 Reason:global aggregation uses one bounded state} Rows:63 Partitions:1 KeyWidthBytes:0 PredicateOps:1 GroupColumns:0 MaxConcurrency:1 FeedbackSamples:0 EstimatedSelectivity:0.5 EstimatedCardinality:1}
+=== RUN   TestGlobalBindingActualEligibility/global/lanes=4/dense/rows=4097/batch=4097/mode=auto
+    global_binding_eligibility_test.go:61: actual_eligible=true allocated_bindings=4 native=true plan={Strategy:{Kind:sorted Workers:1 Reason:global aggregation uses one bounded state} Rows:4097 Partitions:1 KeyWidthBytes:0 PredicateOps:1 GroupColumns:0 MaxConcurrency:1 FeedbackSamples:0 EstimatedSelectivity:0.5 EstimatedCardinality:1}
+=== RUN   TestGlobalBindingActualEligibility/global/lanes=4/dense/rows=32771/batch=32771/mode=auto
+    global_binding_eligibility_test.go:61: actual_eligible=true allocated_bindings=4 native=true plan={Strategy:{Kind:sorted Workers:1 Reason:global aggregation uses one bounded state} Rows:32771 Partitions:1 KeyWidthBytes:0 PredicateOps:1 GroupColumns:0 MaxConcurrency:1 FeedbackSamples:0 EstimatedSelectivity:0.5 EstimatedCardinality:1}
+=== RUN   TestGlobalBindingActualEligibility/global/lanes=4/dense/rows=32771/batch=1021/mode=auto
+    global_binding_eligibility_test.go:61: actual_eligible=true allocated_bindings=4 native=true plan={Strategy:{Kind:sorted Workers:1 Reason:global aggregation uses one bounded state} Rows:32771 Partitions:33 KeyWidthBytes:0 PredicateOps:1 GroupColumns:0 MaxConcurrency:1 FeedbackSamples:0 EstimatedSelectivity:0.5 EstimatedCardinality:1}
+=== RUN   TestGlobalBindingActualEligibility/global/lanes=4/nullable/rows=63/batch=63/mode=auto
+    global_binding_eligibility_test.go:61: actual_eligible=true allocated_bindings=4 native=true plan={Strategy:{Kind:sorted Workers:1 Reason:global aggregation uses one bounded state} Rows:63 Partitions:1 KeyWidthBytes:0 PredicateOps:1 GroupColumns:0 MaxConcurrency:1 FeedbackSamples:0 EstimatedSelectivity:0.5 EstimatedCardinality:1}
+=== RUN   TestGlobalBindingActualEligibility/global/lanes=4/nullable/rows=4097/batch=4097/mode=auto
+    global_binding_eligibility_test.go:61: actual_eligible=true allocated_bindings=4 native=true plan={Strategy:{Kind:sorted Workers:1 Reason:global aggregation uses one bounded state} Rows:4097 Partitions:1 KeyWidthBytes:0 PredicateOps:1 GroupColumns:0 MaxConcurrency:1 FeedbackSamples:0 EstimatedSelectivity:0.5 EstimatedCardinality:1}
+=== RUN   TestGlobalBindingActualEligibility/global/lanes=4/nullable/rows=32771/batch=32771/mode=auto
+    global_binding_eligibility_test.go:61: actual_eligible=true allocated_bindings=4 native=true plan={Strategy:{Kind:sorted Workers:1 Reason:global aggregation uses one bounded state} Rows:32771 Partitions:1 KeyWidthBytes:0 PredicateOps:1 GroupColumns:0 MaxConcurrency:1 FeedbackSamples:0 EstimatedSelectivity:0.5 EstimatedCardinality:1}
+=== RUN   TestGlobalBindingActualEligibility/global/lanes=4/nullable/rows=32771/batch=1021/mode=auto
+    global_binding_eligibility_test.go:61: actual_eligible=true allocated_bindings=4 native=true plan={Strategy:{Kind:sorted Workers:1 Reason:global aggregation uses one bounded state} Rows:32771 Partitions:33 KeyWidthBytes:0 PredicateOps:1 GroupColumns:0 MaxConcurrency:1 FeedbackSamples:0 EstimatedSelectivity:0.5 EstimatedCardinality:1}
+=== RUN   TestGlobalBindingActualEligibility/global/lanes=4/selective/rows=63/batch=63/mode=auto
+    global_binding_eligibility_test.go:61: actual_eligible=true allocated_bindings=4 native=true plan={Strategy:{Kind:sorted Workers:1 Reason:global aggregation uses one bounded state} Rows:63 Partitions:1 KeyWidthBytes:0 PredicateOps:1 GroupColumns:0 MaxConcurrency:1 FeedbackSamples:0 EstimatedSelectivity:0.5 EstimatedCardinality:1}
+=== RUN   TestGlobalBindingActualEligibility/global/lanes=4/selective/rows=4097/batch=4097/mode=auto
+    global_binding_eligibility_test.go:61: actual_eligible=true allocated_bindings=4 native=true plan={Strategy:{Kind:sorted Workers:1 Reason:global aggregation uses one bounded state} Rows:4097 Partitions:1 KeyWidthBytes:0 PredicateOps:1 GroupColumns:0 MaxConcurrency:1 FeedbackSamples:0 EstimatedSelectivity:0.5 EstimatedCardinality:1}
+=== RUN   TestGlobalBindingActualEligibility/global/lanes=4/selective/rows=32771/batch=32771/mode=auto
+    global_binding_eligibility_test.go:61: actual_eligible=true allocated_bindings=4 native=true plan={Strategy:{Kind:sorted Workers:1 Reason:global aggregation uses one bounded state} Rows:32771 Partitions:1 KeyWidthBytes:0 PredicateOps:1 GroupColumns:0 MaxConcurrency:1 FeedbackSamples:0 EstimatedSelectivity:0.5 EstimatedCardinality:1}
+=== RUN   TestGlobalBindingActualEligibility/global/lanes=4/selective/rows=32771/batch=1021/mode=auto
+    global_binding_eligibility_test.go:61: actual_eligible=true allocated_bindings=4 native=true plan={Strategy:{Kind:sorted Workers:1 Reason:global aggregation uses one bounded state} Rows:32771 Partitions:33 KeyWidthBytes:0 PredicateOps:1 GroupColumns:0 MaxConcurrency:1 FeedbackSamples:0 EstimatedSelectivity:0.5 EstimatedCardinality:1}
+=== RUN   TestGlobalBindingActualEligibility/grouped/lanes=2/dense/rows=32771/batch=32771/mode=auto
+    global_binding_eligibility_test.go:61: actual_eligible=false allocated_bindings=0 native=true plan={Strategy:{Kind:bitmap-direct Workers:1 Reason:forced} Rows:32771 Partitions:1 KeyWidthBytes:4 PredicateOps:1 GroupColumns:1 MaxConcurrency:1 FeedbackSamples:0 EstimatedSelectivity:0.5 EstimatedCardinality:64}
+=== RUN   TestGlobalBindingActualEligibility/grouped/lanes=4/nullable/rows=32771/batch=1021/mode=auto
+    global_binding_eligibility_test.go:61: actual_eligible=false allocated_bindings=0 native=true plan={Strategy:{Kind:bitmap-direct Workers:1 Reason:forced} Rows:32771 Partitions:33 KeyWidthBytes:4 PredicateOps:1 GroupColumns:1 MaxConcurrency:1 FeedbackSamples:0 EstimatedSelectivity:0.5 EstimatedCardinality:64}
+=== RUN   TestGlobalBindingActualEligibility/minmax/lanes=2/dense/rows=32771/batch=32771/mode=auto
+    global_binding_eligibility_test.go:61: actual_eligible=false allocated_bindings=0 native=true plan={Strategy:{Kind:sorted Workers:1 Reason:global aggregation uses one bounded state} Rows:32771 Partitions:1 KeyWidthBytes:0 PredicateOps:1 GroupColumns:0 MaxConcurrency:1 FeedbackSamples:0 EstimatedSelectivity:0.5 EstimatedCardinality:1}
+=== RUN   TestGlobalBindingActualEligibility/statistics/lanes=4/nullable/rows=32771/batch=1021/mode=auto
+    global_binding_eligibility_test.go:61: actual_eligible=false allocated_bindings=0 native=true plan={Strategy:{Kind:sorted Workers:1 Reason:global aggregation uses one bounded state} Rows:32771 Partitions:33 KeyWidthBytes:0 PredicateOps:1 GroupColumns:0 MaxConcurrency:1 FeedbackSamples:0 EstimatedSelectivity:0.5 EstimatedCardinality:1}
+=== RUN   TestGlobalBindingActualEligibility/global/lanes=2/selective/rows=32771/batch=1021/mode=scalar
+    global_binding_eligibility_test.go:61: actual_eligible=true allocated_bindings=2 native=true plan={Strategy:{Kind:sorted Workers:1 Reason:global aggregation uses one bounded state} Rows:32771 Partitions:33 KeyWidthBytes:0 PredicateOps:1 GroupColumns:0 MaxConcurrency:1 FeedbackSamples:0 EstimatedSelectivity:0.5 EstimatedCardinality:1}
+=== RUN   TestGlobalBindingActualEligibility/global/lanes=2/selective/rows=32771/batch=1021/mode=forced-simd
+    global_binding_eligibility_test.go:61: actual_eligible=true allocated_bindings=2 native=true plan={Strategy:{Kind:sorted Workers:1 Reason:global aggregation uses one bounded state} Rows:32771 Partitions:33 KeyWidthBytes:0 PredicateOps:1 GroupColumns:0 MaxConcurrency:1 FeedbackSamples:0 EstimatedSelectivity:0.5 EstimatedCardinality:1}
+=== RUN   TestGlobalBindingActualEligibility/global/lanes=4/selective/rows=32771/batch=1021/mode=scalar
+    global_binding_eligibility_test.go:61: actual_eligible=true allocated_bindings=4 native=true plan={Strategy:{Kind:sorted Workers:1 Reason:global aggregation uses one bounded state} Rows:32771 Partitions:33 KeyWidthBytes:0 PredicateOps:1 GroupColumns:0 MaxConcurrency:1 FeedbackSamples:0 EstimatedSelectivity:0.5 EstimatedCardinality:1}
+=== RUN   TestGlobalBindingActualEligibility/global/lanes=4/selective/rows=32771/batch=1021/mode=forced-simd
+    global_binding_eligibility_test.go:61: actual_eligible=true allocated_bindings=4 native=true plan={Strategy:{Kind:sorted Workers:1 Reason:global aggregation uses one bounded state} Rows:32771 Partitions:33 KeyWidthBytes:0 PredicateOps:1 GroupColumns:0 MaxConcurrency:1 FeedbackSamples:0 EstimatedSelectivity:0.5 EstimatedCardinality:1}
+=== RUN   TestGlobalBindingActualEligibility/global/lanes=2/nullable/rows=262147/batch=262147/mode=auto
+    global_binding_eligibility_test.go:61: actual_eligible=true allocated_bindings=2 native=true plan={Strategy:{Kind:sorted Workers:1 Reason:global aggregation uses one bounded state} Rows:262147 Partitions:1 KeyWidthBytes:0 PredicateOps:1 GroupColumns:0 MaxConcurrency:1 FeedbackSamples:0 EstimatedSelectivity:0.5 EstimatedCardinality:1}
+=== RUN   TestGlobalBindingActualEligibility/countonly/lanes=2/nullable/rows=32771/batch=32771/mode=auto
+    global_binding_eligibility_test.go:61: actual_eligible=true allocated_bindings=2 native=true plan={Strategy:{Kind:sorted Workers:1 Reason:global aggregation uses one bounded state} Rows:32771 Partitions:1 KeyWidthBytes:0 PredicateOps:1 GroupColumns:0 MaxConcurrency:1 FeedbackSamples:0 EstimatedSelectivity:0.5 EstimatedCardinality:1}
+=== RUN   TestGlobalBindingActualEligibility/global/lanes=4/nullable/rows=262147/batch=262147/mode=auto
+    global_binding_eligibility_test.go:61: actual_eligible=true allocated_bindings=4 native=true plan={Strategy:{Kind:sorted Workers:1 Reason:global aggregation uses one bounded state} Rows:262147 Partitions:1 KeyWidthBytes:0 PredicateOps:1 GroupColumns:0 MaxConcurrency:1 FeedbackSamples:0 EstimatedSelectivity:0.5 EstimatedCardinality:1}
+=== RUN   TestGlobalBindingActualEligibility/countonly/lanes=4/nullable/rows=32771/batch=32771/mode=auto
+    global_binding_eligibility_test.go:61: actual_eligible=true allocated_bindings=4 native=true plan={Strategy:{Kind:sorted Workers:1 Reason:global aggregation uses one bounded state} Rows:32771 Partitions:1 KeyWidthBytes:0 PredicateOps:1 GroupColumns:0 MaxConcurrency:1 FeedbackSamples:0 EstimatedSelectivity:0.5 EstimatedCardinality:1}
+--- PASS: TestGlobalBindingActualEligibility (0.13s)
+    --- PASS: TestGlobalBindingActualEligibility/global/lanes=2/dense/rows=63/batch=63/mode=auto (0.00s)
+    --- PASS: TestGlobalBindingActualEligibility/global/lanes=2/dense/rows=4097/batch=4097/mode=auto (0.00s)
+    --- PASS: TestGlobalBindingActualEligibility/global/lanes=2/dense/rows=32771/batch=32771/mode=auto (0.00s)
+    --- PASS: TestGlobalBindingActualEligibility/global/lanes=2/dense/rows=32771/batch=1021/mode=auto (0.00s)
+    --- PASS: TestGlobalBindingActualEligibility/global/lanes=2/nullable/rows=63/batch=63/mode=auto (0.00s)
+    --- PASS: TestGlobalBindingActualEligibility/global/lanes=2/nullable/rows=4097/batch=4097/mode=auto (0.00s)
+    --- PASS: TestGlobalBindingActualEligibility/global/lanes=2/nullable/rows=32771/batch=32771/mode=auto (0.00s)
+    --- PASS: TestGlobalBindingActualEligibility/global/lanes=2/nullable/rows=32771/batch=1021/mode=auto (0.00s)
+    --- PASS: TestGlobalBindingActualEligibility/global/lanes=2/selective/rows=63/batch=63/mode=auto (0.00s)
+    --- PASS: TestGlobalBindingActualEligibility/global/lanes=2/selective/rows=4097/batch=4097/mode=auto (0.00s)
+    --- PASS: TestGlobalBindingActualEligibility/global/lanes=2/selective/rows=32771/batch=32771/mode=auto (0.00s)
+    --- PASS: TestGlobalBindingActualEligibility/global/lanes=2/selective/rows=32771/batch=1021/mode=auto (0.00s)
+    --- PASS: TestGlobalBindingActualEligibility/global/lanes=4/dense/rows=63/batch=63/mode=auto (0.00s)
+    --- PASS: TestGlobalBindingActualEligibility/global/lanes=4/dense/rows=4097/batch=4097/mode=auto (0.00s)
+    --- PASS: TestGlobalBindingActualEligibility/global/lanes=4/dense/rows=32771/batch=32771/mode=auto (0.00s)
+    --- PASS: TestGlobalBindingActualEligibility/global/lanes=4/dense/rows=32771/batch=1021/mode=auto (0.00s)
+    --- PASS: TestGlobalBindingActualEligibility/global/lanes=4/nullable/rows=63/batch=63/mode=auto (0.00s)
+    --- PASS: TestGlobalBindingActualEligibility/global/lanes=4/nullable/rows=4097/batch=4097/mode=auto (0.00s)
+    --- PASS: TestGlobalBindingActualEligibility/global/lanes=4/nullable/rows=32771/batch=32771/mode=auto (0.00s)
+    --- PASS: TestGlobalBindingActualEligibility/global/lanes=4/nullable/rows=32771/batch=1021/mode=auto (0.01s)
+    --- PASS: TestGlobalBindingActualEligibility/global/lanes=4/selective/rows=63/batch=63/mode=auto (0.00s)
+    --- PASS: TestGlobalBindingActualEligibility/global/lanes=4/selective/rows=4097/batch=4097/mode=auto (0.00s)
+    --- PASS: TestGlobalBindingActualEligibility/global/lanes=4/selective/rows=32771/batch=32771/mode=auto (0.00s)
+    --- PASS: TestGlobalBindingActualEligibility/global/lanes=4/selective/rows=32771/batch=1021/mode=auto (0.00s)
+    --- PASS: TestGlobalBindingActualEligibility/grouped/lanes=2/dense/rows=32771/batch=32771/mode=auto (0.00s)
+    --- PASS: TestGlobalBindingActualEligibility/grouped/lanes=4/nullable/rows=32771/batch=1021/mode=auto (0.00s)
+    --- PASS: TestGlobalBindingActualEligibility/minmax/lanes=2/dense/rows=32771/batch=32771/mode=auto (0.00s)
+    --- PASS: TestGlobalBindingActualEligibility/statistics/lanes=4/nullable/rows=32771/batch=1021/mode=auto (0.01s)
+    --- PASS: TestGlobalBindingActualEligibility/global/lanes=2/selective/rows=32771/batch=1021/mode=scalar (0.00s)
+    --- PASS: TestGlobalBindingActualEligibility/global/lanes=2/selective/rows=32771/batch=1021/mode=forced-simd (0.00s)
+    --- PASS: TestGlobalBindingActualEligibility/global/lanes=4/selective/rows=32771/batch=1021/mode=scalar (0.00s)
+    --- PASS: TestGlobalBindingActualEligibility/global/lanes=4/selective/rows=32771/batch=1021/mode=forced-simd (0.00s)
+    --- PASS: TestGlobalBindingActualEligibility/global/lanes=2/nullable/rows=262147/batch=262147/mode=auto (0.02s)
+    --- PASS: TestGlobalBindingActualEligibility/countonly/lanes=2/nullable/rows=32771/batch=32771/mode=auto (0.00s)
+    --- PASS: TestGlobalBindingActualEligibility/global/lanes=4/nullable/rows=262147/batch=262147/mode=auto (0.03s)
+    --- PASS: TestGlobalBindingActualEligibility/countonly/lanes=4/nullable/rows=32771/batch=32771/mode=auto (0.00s)
+PASS
+ok  	gocolumn/engine	0.142s

@@ -1,0 +1,9 @@
+Superseded preflight evidence only. No measured paired timings used these files.
+A comment incorrectly described the largest source batch as one active scan
+view. The measured harness corrects that comment; executable statements are
+unchanged. Both before and after binaries were rebuilt with the same corrected
+source and their oracle checks rerun. Current evidence lives one directory up.
+Earlier binaries remain as superseded-before.engine.test and
+superseded-after.engine.test in the external global-binding-binaries directory.
+Duplicated preflight logs, overlays and old binaries are retained locally only;
+this explanatory notice is the only published file from this directory.

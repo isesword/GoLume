@@ -1,0 +1,42 @@
+File: after.engine.test
+Build ID: 115ff97a7ec839e2a9378f6414b52a7eb3259f61
+Type: cpu
+Time: 2026-11-08 00:21:51 CST
+Duration: 2.69s, Total samples = 2.69s (99.93%)
+Showing nodes accounting for 2.57s, 95.54% of 2.69s total
+Dropped 40 nodes (cum <= 0.01s)
+      flat  flat%   sum%        cum   cum%
+     0.99s 36.80% 36.80%      1.04s 38.66%  gocolumn/engine.(*sortedAggregateStream).nextSelected
+     0.26s  9.67% 46.47%      0.60s 22.30%  gocolumn/aggregate.(*NumericVector).AddBits
+     0.23s  8.55% 55.02%      2.66s 98.88%  gocolumn/engine.(*sortedAggregateStream).next
+     0.19s  7.06% 62.08%      1.36s 50.56%  gocolumn/engine.(*sortedAggregateStream).addBundleRow
+     0.18s  6.69% 68.77%      0.31s 11.52%  internal/runtime/maps.(*Map).getWithoutKeySmallFastStr
+     0.09s  3.35% 72.12%      0.09s  3.35%  internal/runtime/maps.memHashAES
+     0.08s  2.97% 75.09%      0.08s  2.97%  math.archMax
+     0.07s  2.60% 77.70%      0.49s 18.22%  gocolumn/engine.nativeAggregateBits
+     0.07s  2.60% 80.30%      0.38s 14.13%  runtime.mapaccess2_faststr
+     0.06s  2.23% 82.53%      0.66s 24.54%  gocolumn/aggregate.(*NumericBundle).AddBits (inline)
+     0.06s  2.23% 84.76%      0.26s  9.67%  gocolumn/aggregate.numericExtreme
+     0.06s  2.23% 86.99%      0.06s  2.23%  math.Float64bits (inline)
+     0.05s  1.86% 88.85%      0.05s  1.86%  math.archMin
+     0.03s  1.12% 89.96%      0.03s  1.12%  gocolumn/aggregate.normalizeNumericBits (inline)
+     0.03s  1.12% 91.08%      0.03s  1.12%  gocolumn/engine.aggregateBatchBinding.key
+     0.03s  1.12% 92.19%      0.03s  1.12%  math.IsNaN (inline)
+     0.03s  1.12% 93.31%      0.08s  2.97%  math.Min (inline)
+     0.03s  1.12% 94.42%      0.03s  1.12%  runtime.memequal
+     0.02s  0.74% 95.17%      0.05s  1.86%  gocolumn/aggregate.numericSum (inline)
+     0.01s  0.37% 95.54%      0.02s  0.74%  runtime.scanblock
+         0     0% 95.54%      2.67s 99.26%  gocolumn/engine.(*PreparedQuery).ExecuteTyped
+         0     0% 95.54%      2.67s 99.26%  gocolumn/engine.(*PreparedQuery).executeTyped
+         0     0% 95.54%      2.66s 98.88%  gocolumn/engine.(*sortedAggregateStream).consumeRecords
+         0     0% 95.54%      0.02s  0.74%  gocolumn/engine.(*sortedAggregateStream).loadInput
+         0     0% 95.54%      2.68s 99.63%  gocolumn/engine.BenchmarkGlobalBindingWholeQuery.func1
+         0     0% 95.54%      0.02s  0.74%  gocolumn/source/inmemory.(*batchStream).Next
+         0     0% 95.54%      0.08s  2.97%  math.Max (inline)
+         0     0% 95.54%      0.02s  0.74%  runtime.mallocgc
+         0     0% 95.54%      0.38s 14.13%  runtime.mapaccess1_faststr
+         0     0% 95.54%      0.02s  0.74%  runtime.markroot
+         0     0% 95.54%      0.02s  0.74%  runtime.markrootBlock
+         0     0% 95.54%      0.02s  0.74%  runtime.systemstack
+         0     0% 95.54%      2.67s 99.26%  testing.(*B).launch
+         0     0% 95.54%      2.68s 99.63%  testing.(*B).runN

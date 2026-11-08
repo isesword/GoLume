@@ -1,0 +1,1100 @@
++ date -u
+Sun Nov  8 06:07:34 UTC 2026
++ go version
+go version go1.27.3 linux/amd64
++ go env GOARCH GOOS GOFLAGS
+amd64
+linux
+-buildvcs=false
++ bash scripts/validate.sh
+GoDoc check: PASS (package docs and exported API comments follow naming conventions)
+kernel registry, gates file, and code are consistent
+SIMD structure checks passed
+ok  	gocolumn/aggregate	(cached)
+?   	gocolumn/cmd/demo	[no test files]
+ok  	gocolumn/cmd/kernel-info	(cached)
+?   	gocolumn/cmd/lazy-demo	[no test files]
+?   	gocolumn/costmodel	[no test files]
+ok  	gocolumn/engine	4.767s
+ok  	gocolumn/expr	(cached)
+ok  	gocolumn/hashagg	(cached)
+ok  	gocolumn/internal/benchtrack	(cached)
+?   	gocolumn/internal/cmd/gensimd	[no test files]
+ok  	gocolumn/internal/fixturegen	(cached)
+?   	gocolumn/internal/hashmix	[no test files]
+ok  	gocolumn/internal/kernelgate	(cached)
+ok  	gocolumn/internal/oracle	23.568s
+?   	gocolumn/internal/platformcal	[no test files]
+ok  	gocolumn/internal/proptest	0.155s
+ok  	gocolumn/join	(cached)
+ok  	gocolumn/kernel	(cached)
+ok  	gocolumn/lazy	2.679s
+ok  	gocolumn/logical	(cached)
+ok  	gocolumn/memory	(cached)
+?   	gocolumn/observer	[no test files]
+ok  	gocolumn/optimizer	(cached)
+ok  	gocolumn/physical	(cached)
+ok  	gocolumn/pipeline	(cached)
+ok  	gocolumn/planner	(cached)
+ok  	gocolumn/radix	(cached)
+ok  	gocolumn/scheduler	(cached)
+ok  	gocolumn/source	(cached)
+ok  	gocolumn/source/arrowrecord	(cached)
+ok  	gocolumn/source/inmemory	(cached)
+?   	gocolumn/source/internal/batchview	[no test files]
+ok  	gocolumn/source/parquet	0.843s
+ok  	gocolumn/tools/benchtrack	(cached)
+?   	gocolumn/tools/checkgodoc	[no test files]
+ok  	gocolumn/tools/genfallbackfixture	0.101s
+ok  	gocolumn/tools/genfixture	(cached)
+ok  	gocolumn/tools/kernelgate	(cached)
+ok  	gocolumn/tuplesort	(cached)
+arch=amd64 mode=scalar
+compare-int8-gt                backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-int8-ge                backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-int8-lt                backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-int8-le                backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-int8-eq                backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-int16-gt               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-int16-ge               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-int16-lt               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-int16-le               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-int16-eq               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-int32-gt               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-int32-ge               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-int32-lt               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-int32-le               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-int32-eq               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-int64-gt               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-int64-ge               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-int64-lt               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-int64-le               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-int64-eq               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-uint8-gt               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-uint8-ge               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-uint8-lt               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-uint8-le               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-uint8-eq               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-uint16-gt              backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-uint16-ge              backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-uint16-lt              backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-uint16-le              backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-uint16-eq              backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-uint32-gt              backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-uint32-ge              backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-uint32-lt              backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-uint32-le              backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-uint32-eq              backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-uint64-gt              backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-uint64-ge              backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-uint64-lt              backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-uint64-le              backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-uint64-eq              backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-float32-gt             backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-float32-ge             backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-float32-lt             backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-float32-le             backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-float32-eq             backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-float64-gt             backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-float64-ge             backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-float64-lt             backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-float64-le             backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-float64-eq             backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+arithmetic-int32-add           backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+arithmetic-int32-sub           backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+arithmetic-int32-mul           backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+arithmetic-int64-add           backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+arithmetic-int64-sub           backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+arithmetic-int64-mul           backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+arithmetic-uint32-add          backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+arithmetic-uint32-sub          backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+arithmetic-uint32-mul          backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+arithmetic-uint64-add          backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+arithmetic-uint64-sub          backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+arithmetic-uint64-mul          backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+arithmetic-float32-add         backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+arithmetic-float32-sub         backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+arithmetic-float32-mul         backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+arithmetic-float32-div         backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+arithmetic-float64-add         backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+arithmetic-float64-sub         backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+arithmetic-float64-mul         backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+arithmetic-float64-div         backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int8-abs                  backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int8-round                backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int8-floor                backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int8-ceil                 backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int8-mod                  backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int8-floor-div            backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int8-pow                  backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int16-abs                 backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int16-round               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int16-floor               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int16-ceil                backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int16-mod                 backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int16-floor-div           backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int16-pow                 backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int32-abs                 backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int32-round               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int32-floor               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int32-ceil                backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int32-mod                 backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int32-floor-div           backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int32-pow                 backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int64-abs                 backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int64-round               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int64-floor               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int64-ceil                backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int64-mod                 backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int64-floor-div           backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int64-pow                 backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint8-abs                 backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint8-round               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint8-floor               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint8-ceil                backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint8-mod                 backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint8-floor-div           backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint8-pow                 backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint16-abs                backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint16-round              backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint16-floor              backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint16-ceil               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint16-mod                backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint16-floor-div          backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint16-pow                backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint32-abs                backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint32-round              backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint32-floor              backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint32-ceil               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint32-mod                backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint32-floor-div          backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint32-pow                backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint64-abs                backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint64-round              backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint64-floor              backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint64-ceil               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint64-mod                backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint64-floor-div          backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint64-pow                backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-float32-abs               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-float32-round             backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-float32-floor             backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-float32-ceil              backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-float32-sqrt              backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-float32-log               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-float32-mod               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-float32-floor-div         backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-float32-pow               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-float64-abs               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-float64-round             backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-float64-floor             backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-float64-ceil              backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-float64-sqrt              backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-float64-log               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-float64-mod               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-float64-floor-div         backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-float64-pow               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+boolean-and                    backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+boolean-or                     backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+boolean-not                    backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+hash64-batch                   backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+hash128-batch                  backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+int64-scale                    backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+string-byte-length             backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+string-utf8-length             backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+string-match-equal             backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+string-match-prefix            backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+string-match-suffix            backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+string-match-contains          backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compact-int8                   backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compact-int16                  backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compact-int32                  backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compact-int64                  backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compact-uint8                  backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compact-uint16                 backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compact-uint32                 backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compact-uint64                 backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compact-float32                backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compact-float64                backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-int8-gt        backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-int8-ge        backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-int8-lt        backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-int8-le        backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-int8-eq        backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-int16-gt       backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-int16-ge       backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-int16-lt       backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-int16-le       backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-int16-eq       backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-int32-gt       backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-int32-ge       backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-int32-lt       backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-int32-le       backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-int32-eq       backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-int64-gt       backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-int64-ge       backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-int64-lt       backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-int64-le       backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-int64-eq       backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-uint8-gt       backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-uint8-ge       backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-uint8-lt       backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-uint8-le       backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-uint8-eq       backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-uint16-gt      backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-uint16-ge      backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-uint16-lt      backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-uint16-le      backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-uint16-eq      backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-uint32-gt      backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-uint32-ge      backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-uint32-lt      backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-uint32-le      backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-uint32-eq      backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-uint64-gt      backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-uint64-ge      backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-uint64-lt      backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-uint64-le      backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-uint64-eq      backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-float32-gt     backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-float32-ge     backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-float32-lt     backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-float32-le     backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-float32-eq     backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-float64-gt     backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-float64-ge     backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-float64-lt     backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-float64-le     backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-float64-eq     backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+ok  	gocolumn/aggregate	(cached)
+?   	gocolumn/cmd/demo	[no test files]
+ok  	gocolumn/cmd/kernel-info	(cached)
+?   	gocolumn/cmd/lazy-demo	[no test files]
+?   	gocolumn/costmodel	[no test files]
+ok  	gocolumn/engine	4.873s
+ok  	gocolumn/expr	(cached)
+ok  	gocolumn/hashagg	(cached)
+ok  	gocolumn/internal/benchtrack	(cached)
+?   	gocolumn/internal/cmd/gensimd	[no test files]
+ok  	gocolumn/internal/fixturegen	(cached)
+?   	gocolumn/internal/hashmix	[no test files]
+ok  	gocolumn/internal/kernelgate	(cached)
+ok  	gocolumn/internal/oracle	23.394s
+?   	gocolumn/internal/platformcal	[no test files]
+ok  	gocolumn/internal/proptest	0.189s
+ok  	gocolumn/join	(cached)
+ok  	gocolumn/kernel	(cached)
+ok  	gocolumn/lazy	2.579s
+ok  	gocolumn/logical	(cached)
+ok  	gocolumn/memory	(cached)
+?   	gocolumn/observer	[no test files]
+ok  	gocolumn/optimizer	(cached)
+ok  	gocolumn/physical	(cached)
+ok  	gocolumn/pipeline	(cached)
+ok  	gocolumn/planner	(cached)
+ok  	gocolumn/radix	(cached)
+ok  	gocolumn/scheduler	(cached)
+ok  	gocolumn/source	(cached)
+ok  	gocolumn/source/arrowrecord	(cached)
+ok  	gocolumn/source/inmemory	(cached)
+?   	gocolumn/source/internal/batchview	[no test files]
+ok  	gocolumn/source/parquet	0.873s
+ok  	gocolumn/tools/benchtrack	(cached)
+?   	gocolumn/tools/checkgodoc	[no test files]
+ok  	gocolumn/tools/genfallbackfixture	0.121s
+ok  	gocolumn/tools/genfixture	(cached)
+ok  	gocolumn/tools/kernelgate	(cached)
+ok  	gocolumn/tuplesort	(cached)
+arch=amd64 mode=auto
+compare-int8-gt                backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-int8-ge                backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-int8-lt                backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-int8-le                backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-int8-eq                backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-int16-gt               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-int16-ge               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-int16-lt               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-int16-le               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-int16-eq               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-int32-gt               backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-int32-ge               backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-int32-lt               backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-int32-le               backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-int32-eq               backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-int64-gt               backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-int64-ge               backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-int64-lt               backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-int64-le               backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-int64-eq               backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-uint8-gt               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-uint8-ge               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-uint8-lt               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-uint8-le               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-uint8-eq               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-uint16-gt              backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-uint16-ge              backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-uint16-lt              backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-uint16-le              backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-uint16-eq              backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-uint32-gt              backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-uint32-ge              backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-uint32-lt              backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-uint32-le              backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-uint32-eq              backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-uint64-gt              backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-uint64-ge              backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-uint64-lt              backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-uint64-le              backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-uint64-eq              backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-float32-gt             backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-float32-ge             backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-float32-lt             backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-float32-le             backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-float32-eq             backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-float64-gt             backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-float64-ge             backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-float64-lt             backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-float64-le             backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-float64-eq             backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+arithmetic-int32-add           backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+arithmetic-int32-sub           backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+arithmetic-int32-mul           backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+arithmetic-int64-add           backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+arithmetic-int64-sub           backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+arithmetic-int64-mul           backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+arithmetic-uint32-add          backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+arithmetic-uint32-sub          backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+arithmetic-uint32-mul          backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+arithmetic-uint64-add          backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+arithmetic-uint64-sub          backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+arithmetic-uint64-mul          backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+arithmetic-float32-add         backend=portable-simd                vector=512 hardware=true  emulated=false available=portable-simd                auto=true
+arithmetic-float32-sub         backend=portable-simd                vector=512 hardware=true  emulated=false available=portable-simd                auto=true
+arithmetic-float32-mul         backend=portable-simd                vector=512 hardware=true  emulated=false available=portable-simd                auto=true
+arithmetic-float32-div         backend=portable-simd                vector=512 hardware=true  emulated=false available=portable-simd                auto=true
+arithmetic-float64-add         backend=portable-simd                vector=512 hardware=true  emulated=false available=portable-simd                auto=true
+arithmetic-float64-sub         backend=portable-simd                vector=512 hardware=true  emulated=false available=portable-simd                auto=true
+arithmetic-float64-mul         backend=portable-simd                vector=512 hardware=true  emulated=false available=portable-simd                auto=true
+arithmetic-float64-div         backend=portable-simd                vector=512 hardware=true  emulated=false available=portable-simd                auto=true
+math-int8-abs                  backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int8-round                backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int8-floor                backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int8-ceil                 backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int8-mod                  backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int8-floor-div            backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int8-pow                  backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int16-abs                 backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int16-round               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int16-floor               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int16-ceil                backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int16-mod                 backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int16-floor-div           backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int16-pow                 backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int32-abs                 backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int32-round               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int32-floor               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int32-ceil                backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int32-mod                 backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int32-floor-div           backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int32-pow                 backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int64-abs                 backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int64-round               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int64-floor               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int64-ceil                backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int64-mod                 backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int64-floor-div           backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int64-pow                 backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint8-abs                 backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint8-round               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint8-floor               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint8-ceil                backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint8-mod                 backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint8-floor-div           backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint8-pow                 backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint16-abs                backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint16-round              backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint16-floor              backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint16-ceil               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint16-mod                backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint16-floor-div          backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint16-pow                backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint32-abs                backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint32-round              backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint32-floor              backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint32-ceil               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint32-mod                backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint32-floor-div          backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint32-pow                backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint64-abs                backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint64-round              backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint64-floor              backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint64-ceil               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint64-mod                backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint64-floor-div          backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint64-pow                backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-float32-abs               backend=portable-simd                vector=512 hardware=true  emulated=false available=portable-simd                auto=true
+math-float32-round             backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-float32-floor             backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-float32-ceil              backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-float32-sqrt              backend=portable-simd                vector=512 hardware=true  emulated=false available=portable-simd                auto=true
+math-float32-log               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-float32-mod               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-float32-floor-div         backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-float32-pow               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-float64-abs               backend=portable-simd                vector=512 hardware=true  emulated=false available=portable-simd                auto=true
+math-float64-round             backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-float64-floor             backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-float64-ceil              backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-float64-sqrt              backend=portable-simd                vector=512 hardware=true  emulated=false available=portable-simd                auto=true
+math-float64-log               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-float64-mod               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-float64-floor-div         backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-float64-pow               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+boolean-and                    backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+boolean-or                     backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+boolean-not                    backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+hash64-batch                   backend=archsimd-avx512-hash         vector=512 hardware=true  emulated=false available=archsimd-avx512-hash         auto=true
+hash128-batch                  backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+int64-scale                    backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+string-byte-length             backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+string-utf8-length             backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+string-match-equal             backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+string-match-prefix            backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+string-match-suffix            backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+string-match-contains          backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compact-int8                   backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compact-int16                  backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compact-int32                  backend=archsimd-avx512-compress     vector=512 hardware=true  emulated=false available=archsimd-avx512-compress     auto=true
+compact-int64                  backend=archsimd-avx512-compress     vector=512 hardware=true  emulated=false available=archsimd-avx512-compress     auto=true
+compact-uint8                  backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compact-uint16                 backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compact-uint32                 backend=archsimd-avx512-compress     vector=512 hardware=true  emulated=false available=archsimd-avx512-compress     auto=true
+compact-uint64                 backend=archsimd-avx512-compress     vector=512 hardware=true  emulated=false available=archsimd-avx512-compress     auto=true
+compact-float32                backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compact-float64                backend=archsimd-avx512-compress     vector=512 hardware=true  emulated=false available=archsimd-avx512-compress     auto=true
+compare-columns-int8-gt        backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-int8-ge        backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-int8-lt        backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-int8-le        backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-int8-eq        backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-int16-gt       backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-int16-ge       backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-int16-lt       backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-int16-le       backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-int16-eq       backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-int32-gt       backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-columns-int32-ge       backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-columns-int32-lt       backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-columns-int32-le       backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-columns-int32-eq       backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-columns-int64-gt       backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-int64-ge       backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-int64-lt       backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-int64-le       backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-int64-eq       backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-uint8-gt       backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-uint8-ge       backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-uint8-lt       backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-uint8-le       backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-uint8-eq       backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-uint16-gt      backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-uint16-ge      backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-uint16-lt      backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-uint16-le      backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-uint16-eq      backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-uint32-gt      backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-columns-uint32-ge      backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-columns-uint32-lt      backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-columns-uint32-le      backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-columns-uint32-eq      backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-columns-uint64-gt      backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-uint64-ge      backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-uint64-lt      backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-uint64-le      backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-uint64-eq      backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-float32-gt     backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-columns-float32-ge     backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-columns-float32-lt     backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-columns-float32-le     backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-columns-float32-eq     backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-columns-float64-gt     backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-columns-float64-ge     backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-columns-float64-lt     backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-columns-float64-le     backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-columns-float64-eq     backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+arch=amd64 mode=forced-simd
+compare-int8-gt                backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-int8-ge                backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-int8-lt                backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-int8-le                backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-int8-eq                backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-int16-gt               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-int16-ge               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-int16-lt               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-int16-le               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-int16-eq               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-int32-gt               backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-int32-ge               backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-int32-lt               backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-int32-le               backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-int32-eq               backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-int64-gt               backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-int64-ge               backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-int64-lt               backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-int64-le               backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-int64-eq               backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-uint8-gt               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-uint8-ge               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-uint8-lt               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-uint8-le               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-uint8-eq               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-uint16-gt              backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-uint16-ge              backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-uint16-lt              backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-uint16-le              backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-uint16-eq              backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-uint32-gt              backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-uint32-ge              backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-uint32-lt              backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-uint32-le              backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-uint32-eq              backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-uint64-gt              backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-uint64-ge              backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-uint64-lt              backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-uint64-le              backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-uint64-eq              backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-float32-gt             backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-float32-ge             backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-float32-lt             backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-float32-le             backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-float32-eq             backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-float64-gt             backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-float64-ge             backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-float64-lt             backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-float64-le             backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-float64-eq             backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+arithmetic-int32-add           backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+arithmetic-int32-sub           backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+arithmetic-int32-mul           backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+arithmetic-int64-add           backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+arithmetic-int64-sub           backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+arithmetic-int64-mul           backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+arithmetic-uint32-add          backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+arithmetic-uint32-sub          backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+arithmetic-uint32-mul          backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+arithmetic-uint64-add          backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+arithmetic-uint64-sub          backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+arithmetic-uint64-mul          backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+arithmetic-float32-add         backend=portable-simd                vector=512 hardware=true  emulated=false available=portable-simd                auto=true
+arithmetic-float32-sub         backend=portable-simd                vector=512 hardware=true  emulated=false available=portable-simd                auto=true
+arithmetic-float32-mul         backend=portable-simd                vector=512 hardware=true  emulated=false available=portable-simd                auto=true
+arithmetic-float32-div         backend=portable-simd                vector=512 hardware=true  emulated=false available=portable-simd                auto=true
+arithmetic-float64-add         backend=portable-simd                vector=512 hardware=true  emulated=false available=portable-simd                auto=true
+arithmetic-float64-sub         backend=portable-simd                vector=512 hardware=true  emulated=false available=portable-simd                auto=true
+arithmetic-float64-mul         backend=portable-simd                vector=512 hardware=true  emulated=false available=portable-simd                auto=true
+arithmetic-float64-div         backend=portable-simd                vector=512 hardware=true  emulated=false available=portable-simd                auto=true
+math-int8-abs                  backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int8-round                backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int8-floor                backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int8-ceil                 backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int8-mod                  backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int8-floor-div            backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int8-pow                  backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int16-abs                 backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int16-round               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int16-floor               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int16-ceil                backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int16-mod                 backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int16-floor-div           backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int16-pow                 backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int32-abs                 backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int32-round               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int32-floor               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int32-ceil                backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int32-mod                 backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int32-floor-div           backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int32-pow                 backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int64-abs                 backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int64-round               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int64-floor               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int64-ceil                backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int64-mod                 backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int64-floor-div           backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int64-pow                 backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint8-abs                 backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint8-round               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint8-floor               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint8-ceil                backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint8-mod                 backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint8-floor-div           backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint8-pow                 backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint16-abs                backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint16-round              backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint16-floor              backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint16-ceil               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint16-mod                backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint16-floor-div          backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint16-pow                backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint32-abs                backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint32-round              backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint32-floor              backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint32-ceil               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint32-mod                backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint32-floor-div          backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint32-pow                backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint64-abs                backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint64-round              backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint64-floor              backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint64-ceil               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint64-mod                backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint64-floor-div          backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint64-pow                backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-float32-abs               backend=portable-simd                vector=512 hardware=true  emulated=false available=portable-simd                auto=true
+math-float32-round             backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-float32-floor             backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-float32-ceil              backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-float32-sqrt              backend=portable-simd                vector=512 hardware=true  emulated=false available=portable-simd                auto=true
+math-float32-log               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-float32-mod               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-float32-floor-div         backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-float32-pow               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-float64-abs               backend=portable-simd                vector=512 hardware=true  emulated=false available=portable-simd                auto=true
+math-float64-round             backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-float64-floor             backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-float64-ceil              backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-float64-sqrt              backend=portable-simd                vector=512 hardware=true  emulated=false available=portable-simd                auto=true
+math-float64-log               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-float64-mod               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-float64-floor-div         backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-float64-pow               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+boolean-and                    backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+boolean-or                     backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+boolean-not                    backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+hash64-batch                   backend=archsimd-avx512-hash         vector=512 hardware=true  emulated=false available=archsimd-avx512-hash         auto=true
+hash128-batch                  backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+int64-scale                    backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+string-byte-length             backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+string-utf8-length             backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+string-match-equal             backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+string-match-prefix            backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+string-match-suffix            backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+string-match-contains          backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compact-int8                   backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compact-int16                  backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compact-int32                  backend=archsimd-avx512-compress     vector=512 hardware=true  emulated=false available=archsimd-avx512-compress     auto=true
+compact-int64                  backend=archsimd-avx512-compress     vector=512 hardware=true  emulated=false available=archsimd-avx512-compress     auto=true
+compact-uint8                  backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compact-uint16                 backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compact-uint32                 backend=archsimd-avx512-compress     vector=512 hardware=true  emulated=false available=archsimd-avx512-compress     auto=true
+compact-uint64                 backend=archsimd-avx512-compress     vector=512 hardware=true  emulated=false available=archsimd-avx512-compress     auto=true
+compact-float32                backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compact-float64                backend=archsimd-avx512-compress     vector=512 hardware=true  emulated=false available=archsimd-avx512-compress     auto=true
+compare-columns-int8-gt        backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-int8-ge        backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-int8-lt        backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-int8-le        backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-int8-eq        backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-int16-gt       backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-int16-ge       backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-int16-lt       backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-int16-le       backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-int16-eq       backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-int32-gt       backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-columns-int32-ge       backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-columns-int32-lt       backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-columns-int32-le       backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-columns-int32-eq       backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-columns-int64-gt       backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-int64-ge       backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-int64-lt       backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-int64-le       backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-int64-eq       backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-uint8-gt       backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-uint8-ge       backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-uint8-lt       backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-uint8-le       backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-uint8-eq       backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-uint16-gt      backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-uint16-ge      backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-uint16-lt      backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-uint16-le      backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-uint16-eq      backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-uint32-gt      backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-columns-uint32-ge      backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-columns-uint32-lt      backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-columns-uint32-le      backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-columns-uint32-eq      backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-columns-uint64-gt      backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-uint64-ge      backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-uint64-lt      backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-uint64-le      backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-uint64-eq      backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-float32-gt     backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-columns-float32-ge     backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-columns-float32-lt     backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-columns-float32-le     backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-columns-float32-eq     backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-columns-float64-gt     backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-columns-float64-ge     backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-columns-float64-lt     backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-columns-float64-le     backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+compare-columns-float64-eq     backend=archsimd-amd64-mask          vector=512 hardware=true  emulated=false available=archsimd-amd64-mask          auto=true
+ok  	gocolumn/kernel	1.147s
+ok  	gocolumn/expr	4.702s
+ok  	gocolumn/physical	1.210s
+ok  	gocolumn/engine	3.540s
+ok  	gocolumn/lazy	2.328s
+ok  	gocolumn/optimizer	0.008s
+ok  	gocolumn/memory	(cached)
+ok  	gocolumn/source/arrowrecord	0.008s
+arch=amd64 mode=auto
+compare-int8-gt                backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-int8-ge                backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-int8-lt                backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-int8-le                backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-int8-eq                backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-int16-gt               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-int16-ge               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-int16-lt               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-int16-le               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-int16-eq               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-int32-gt               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-int32-ge               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-int32-lt               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-int32-le               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-int32-eq               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-int64-gt               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-int64-ge               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-int64-lt               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-int64-le               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-int64-eq               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-uint8-gt               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-uint8-ge               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-uint8-lt               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-uint8-le               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-uint8-eq               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-uint16-gt              backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-uint16-ge              backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-uint16-lt              backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-uint16-le              backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-uint16-eq              backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-uint32-gt              backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-uint32-ge              backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-uint32-lt              backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-uint32-le              backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-uint32-eq              backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-uint64-gt              backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-uint64-ge              backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-uint64-lt              backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-uint64-le              backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-uint64-eq              backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-float32-gt             backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-float32-ge             backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-float32-lt             backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-float32-le             backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-float32-eq             backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-float64-gt             backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-float64-ge             backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-float64-lt             backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-float64-le             backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-float64-eq             backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+arithmetic-int32-add           backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+arithmetic-int32-sub           backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+arithmetic-int32-mul           backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+arithmetic-int64-add           backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+arithmetic-int64-sub           backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+arithmetic-int64-mul           backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+arithmetic-uint32-add          backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+arithmetic-uint32-sub          backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+arithmetic-uint32-mul          backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+arithmetic-uint64-add          backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+arithmetic-uint64-sub          backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+arithmetic-uint64-mul          backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+arithmetic-float32-add         backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+arithmetic-float32-sub         backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+arithmetic-float32-mul         backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+arithmetic-float32-div         backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+arithmetic-float64-add         backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+arithmetic-float64-sub         backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+arithmetic-float64-mul         backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+arithmetic-float64-div         backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int8-abs                  backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int8-round                backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int8-floor                backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int8-ceil                 backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int8-mod                  backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int8-floor-div            backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int8-pow                  backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int16-abs                 backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int16-round               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int16-floor               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int16-ceil                backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int16-mod                 backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int16-floor-div           backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int16-pow                 backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int32-abs                 backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int32-round               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int32-floor               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int32-ceil                backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int32-mod                 backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int32-floor-div           backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int32-pow                 backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int64-abs                 backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int64-round               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int64-floor               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int64-ceil                backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int64-mod                 backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int64-floor-div           backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-int64-pow                 backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint8-abs                 backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint8-round               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint8-floor               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint8-ceil                backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint8-mod                 backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint8-floor-div           backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint8-pow                 backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint16-abs                backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint16-round              backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint16-floor              backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint16-ceil               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint16-mod                backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint16-floor-div          backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint16-pow                backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint32-abs                backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint32-round              backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint32-floor              backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint32-ceil               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint32-mod                backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint32-floor-div          backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint32-pow                backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint64-abs                backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint64-round              backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint64-floor              backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint64-ceil               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint64-mod                backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint64-floor-div          backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-uint64-pow                backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-float32-abs               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-float32-round             backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-float32-floor             backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-float32-ceil              backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-float32-sqrt              backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-float32-log               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-float32-mod               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-float32-floor-div         backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-float32-pow               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-float64-abs               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-float64-round             backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-float64-floor             backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-float64-ceil              backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-float64-sqrt              backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-float64-log               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-float64-mod               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-float64-floor-div         backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+math-float64-pow               backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+boolean-and                    backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+boolean-or                     backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+boolean-not                    backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+hash64-batch                   backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+hash128-batch                  backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+int64-scale                    backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+string-byte-length             backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+string-utf8-length             backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+string-match-equal             backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+string-match-prefix            backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+string-match-suffix            backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+string-match-contains          backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compact-int8                   backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compact-int16                  backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compact-int32                  backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compact-int64                  backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compact-uint8                  backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compact-uint16                 backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compact-uint32                 backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compact-uint64                 backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compact-float32                backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compact-float64                backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-int8-gt        backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-int8-ge        backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-int8-lt        backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-int8-le        backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-int8-eq        backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-int16-gt       backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-int16-ge       backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-int16-lt       backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-int16-le       backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-int16-eq       backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-int32-gt       backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-int32-ge       backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-int32-lt       backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-int32-le       backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-int32-eq       backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-int64-gt       backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-int64-ge       backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-int64-lt       backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-int64-le       backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-int64-eq       backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-uint8-gt       backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-uint8-ge       backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-uint8-lt       backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-uint8-le       backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-uint8-eq       backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-uint16-gt      backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-uint16-ge      backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-uint16-lt      backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-uint16-le      backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-uint16-eq      backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-uint32-gt      backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-uint32-ge      backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-uint32-lt      backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-uint32-le      backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-uint32-eq      backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-uint64-gt      backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-uint64-ge      backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-uint64-lt      backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-uint64-le      backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-uint64-eq      backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-float32-gt     backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-float32-ge     backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-float32-lt     backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-float32-le     backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-float32-eq     backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-float64-gt     backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-float64-ge     backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-float64-lt     backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-float64-le     backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+compare-columns-float64-eq     backend=scalar                       vector=  0 hardware=false emulated=false available=scalar                       auto=false
+ok  	gocolumn/kernel	0.700s
+ok  	gocolumn/expr	3.948s
+ok  	gocolumn/engine	3.082s
+ok  	gocolumn/radix	0.004s
+ok  	gocolumn/kernel	0.738s
+ok  	gocolumn/expr	4.049s
+ok  	gocolumn/engine	3.264s
+ok  	gocolumn/radix	0.004s
+ok  	gocolumn/kernel	0.719s
+ok  	gocolumn/expr	3.953s
+ok  	gocolumn/engine	3.167s
+ok  	gocolumn/radix	0.004s
+ok  	gocolumn/engine	31.565s
+ok  	gocolumn/hashagg	(cached)
+ok  	gocolumn/join	(cached)
+ok  	gocolumn/radix	(cached)
+ok  	gocolumn/scheduler	(cached)
+ok  	gocolumn/lazy	14.471s
+ok  	gocolumn/physical	(cached)
+ok  	gocolumn/optimizer	(cached)
+ok  	gocolumn/memory	(cached)
+ok  	gocolumn/source/parquet	4.853s
+ok  	gocolumn/source/arrowrecord	(cached)
+--- logical ---
+AGGREGATE keys=[key] aggs=[sum(value) AS sum, count(*) AS count]
+  PROJECTION [key, value]
+    FILTER (pred > 32767)
+      SCAN source=parquet(./testdata/bench-1m.parquet) columns=ALL
+--- optimized ---
+rules=[predicate-pushdown]
+AGGREGATE keys=[key] aggs=[sum(value) AS sum, count(*) AS count]
+  PROJECTION [key, value]
+    FILTER (pred > 32767)
+      SCAN source=parquet(./testdata/bench-1m.parquet) columns=[pred, key, value] pushed_predicate=(pred > 32767)
+--- explain analyze ---
+LOGICAL
+AGGREGATE keys=[key] aggs=[sum(value) AS sum, count(*) AS count]
+  PROJECTION [key, value]
+    FILTER (pred > 32767)
+      SCAN source=parquet(./testdata/bench-1m.parquet) columns=ALL
+OPTIMIZED
+rules=[predicate-pushdown]
+AGGREGATE keys=[key] aggs=[sum(value) AS sum, count(*) AS count]
+  PROJECTION [key, value]
+    FILTER (pred > 32767)
+      SCAN source=parquet(./testdata/bench-1m.parquet) columns=[pred, key, value] pushed_predicate=(pred > 32767)
+PHYSICAL
+AGGREGATE keys=[key] aggs=[sum(value) AS sum, count(*) AS count]
+  PROJECTION [key, value]
+    FILTER (pred > 32767)
+      SCAN source=parquet(./testdata/bench-1m.parquet) columns=[pred, key, value] pushed_predicate=(pred > 32767) partitions=17/17 rows=1048576/1048576
+PUSHDOWN columns=[pred, key, value] partitions=17/17 row_groups=17/17 pruned=0 rows=1048576/1048576 source_bytes=3561811/3561811
+PHYSICAL row-pipeline partitions=1 columns=[key, sum, count]
+STREAM PIPELINE Analyze
+  STREAM BLOCKING Aggregate groups=1 aggregates=2 mode=resident-stream strategy=partitioned-hash workers=4
+ESTIMATE rows=65536
+ANALYZE prepare=309.163µs execute=162.945362ms prepare_alloc=134520B execute_alloc=144846056B output_rows=219196 output_batches=4 first_batch=98.359567ms termination=completed groups=219196 selected_rows=472475 strategy=partitioned-hash
+EXECUTE OPERATORS
+id    kind        calls   input_rows   output_rows   output_bytes   inclusive      self           label
+op01  scan          133            0       1048576       20971520   44.249044ms   44.249044ms   parquet(./testdata/bench-1m.parquet) parquet_batches=32 parquet_max_compressed_page_bytes=8388608 parquet_max_uncompressed_page_bytes=8388608 parquet_memory_scope=decoded vector capacities, typed scratch and borrowed-view headers; excludes Arrow pages, dictionaries, codecs, stream metadata and Go object overhead parquet_peak_managed_bytes=163840 parquet_rows=262084 parquet_string_page_reads=0 parquet_string_replays=0
+op02  filter        133            0        472475        9449500   53.354763ms    9.105719ms   residual filter
+op03  projection    177            0        472475        5669700   57.589548ms    4.234785ms   column projection
+op04  aggregate       5            0        219196        4411320  162.783649ms  105.194101ms   native aggregate stream aggregate_wave_bytes=405504 aggregate_wave_rows=32768 checksum=236716301 groups=219196 kernel_arch=amd64 kernel_mode=auto peak_memory_bytes=37125520 peak_memory_scope=query selected_rows=472475 spill_runs=0 state_partitions=256 strategy=partitioned-hash workers=4
+
+--- physical ---
+AGGREGATE keys=[key] aggs=[sum(value) AS sum, count(*) AS count]
+  PROJECTION [key, value]
+    FILTER (pred > 32767)
+      SCAN source=parquet(./testdata/bench-1m.parquet) columns=[pred, key, value] pushed_predicate=(pred > 32767) partitions=17/17 rows=1048576/1048576
+EXECUTION policy=auto memory_limit=unbounded spill_limit=disabled workers=4 pipeline_workers=4 target_morsel_bytes=1048576 max_in_flight_bytes=67108864 ordering=stable
+PHYSICAL strategy=partitioned-hash workers=4 key_width=4 predicate_ops=1 feedback_samples=0 est_selectivity=0.5000 est_cardinality=65536
+PUSHDOWN columns=[pred, key, value] partitions=17/17 row_groups=17/17 pruned=0 rows=1048576/1048576 source_bytes=3561811/3561811
+STREAM MEMORY_SINK Collect
+  STREAM BLOCKING Aggregate
+    STREAM PIPELINE Project
+      STREAM PIPELINE Filter
+        STREAM PIPELINE Scan
+run=1 groups=219196 selected=472475 checksum=236716301 strategy=partitioned-hash workers=4 elapsed=23.082027ms
+run=2 groups=219196 selected=472475 checksum=236716301 strategy=partitioned-hash workers=4 elapsed=13.950457ms
+run=3 groups=219196 selected=472475 checksum=236716301 strategy=partitioned-hash workers=4 elapsed=13.310888ms
++ GOEXPERIMENT=simd
++ go test -race ./...
+ok  	gocolumn/aggregate	(cached)
+?   	gocolumn/cmd/demo	[no test files]
+ok  	gocolumn/cmd/kernel-info	(cached)
+?   	gocolumn/cmd/lazy-demo	[no test files]
+?   	gocolumn/costmodel	[no test files]
+ok  	gocolumn/engine	(cached)
+ok  	gocolumn/expr	(cached)
+ok  	gocolumn/hashagg	(cached)
+ok  	gocolumn/internal/benchtrack	(cached)
+?   	gocolumn/internal/cmd/gensimd	[no test files]
+ok  	gocolumn/internal/fixturegen	(cached)
+?   	gocolumn/internal/hashmix	[no test files]
+ok  	gocolumn/internal/kernelgate	(cached)
+ok  	gocolumn/internal/oracle	71.291s
+?   	gocolumn/internal/platformcal	[no test files]
+ok  	gocolumn/internal/proptest	1.237s
+ok  	gocolumn/join	(cached)
+ok  	gocolumn/kernel	(cached)
+ok  	gocolumn/lazy	(cached)
+ok  	gocolumn/logical	(cached)
+ok  	gocolumn/memory	(cached)
+?   	gocolumn/observer	[no test files]
+ok  	gocolumn/optimizer	(cached)
+ok  	gocolumn/physical	(cached)
+ok  	gocolumn/pipeline	(cached)
+ok  	gocolumn/planner	(cached)
+ok  	gocolumn/radix	(cached)
+ok  	gocolumn/scheduler	(cached)
+ok  	gocolumn/source	(cached)
+ok  	gocolumn/source/arrowrecord	(cached)
+ok  	gocolumn/source/inmemory	(cached)
+?   	gocolumn/source/internal/batchview	[no test files]
+ok  	gocolumn/source/parquet	(cached)
+ok  	gocolumn/tools/benchtrack	(cached)
+?   	gocolumn/tools/checkgodoc	[no test files]
+ok  	gocolumn/tools/genfallbackfixture	1.172s
+ok  	gocolumn/tools/genfixture	(cached)
+ok  	gocolumn/tools/kernelgate	(cached)
+ok  	gocolumn/tuplesort	(cached)
++ GOEXPERIMENT=simd
++ go vet ./...
++ go build ./...
++ GOEXPERIMENT=simd
++ go build ./...
++ GOOS=linux
++ GOARCH=arm64
++ GOEXPERIMENT=simd
++ go test -c ./engine -o /workspace/scratch/ac8e1e118737/engine-global-binding-arm64.test
++ bash -n scripts/bench_global_binding.sh
++ printf '\nFINAL VERIFICATION PASS\n'
+
+FINAL VERIFICATION PASS

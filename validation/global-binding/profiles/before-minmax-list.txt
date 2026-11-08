@@ -1,0 +1,86 @@
+Total: 2.82s
+ROUTINE ======================== gocolumn/engine.(*sortedAggregateStream).addBundleRow in /workspace/scratch/ac8e1e118737/aggregate-binding-baseline/src/engine/multi_aggregate.go
+     280ms      1.44s (flat, cum) 51.06% of Total
+      30ms       30ms    475:func (s *sortedAggregateStream) addBundleRow() error {
+      30ms       30ms    476:	row := s.nextRow - 1
+         .          .    477:	if st := s.query.statistics(); st != nil {
+         .          .    478:		if err := s.byteWorkspace.prepare(s.statistics, st, 0, s.binding.batch, row, aggregate.SourceOrdinal{Row: s.binding.ordinalBase + uint64(row)}); err != nil {
+         .          .    479:			return err
+         .          .    480:		}
+         .          .    481:		defer s.byteWorkspace.abort()
+         .          .    482:	}
+      60ms       60ms    483:	for lane, name := range s.query.cq.MultiAggregate.Columns {
+         .          .    484:		if name == "" {
+      10ms       10ms    485:			if s.numeric != nil {
+         .          .    486:				s.numeric.AddBits(0, lane, 0, false)
+         .          .    487:			} else {
+         .          .    488:				s.bundle.AddValue(0, lane, 0, false)
+         .          .    489:			}
+         .          .    490:			continue
+         .          .    491:		}
+         .          .    492:		if s.numeric != nil {
+      80ms      520ms    493:			bits, valid := nativeAggregateBits(s.binding.batch, name, s.query.cq.MultiAggregate.Types[lane], s.query.cq.MultiAggregate.Layouts[lane], row)
+         .      700ms    494:			s.numeric.AddBits(0, lane, bits, valid)
+         .          .    495:			continue
+         .          .    496:		}
+         .          .    497:		v := s.binding.batch.Int64s[name]
+         .          .    498:		s.bundle.AddValue(0, lane, v.Values[row], v.IsValid(row))
+         .          .    499:	}
+      10ms       10ms    500:	if s.statistics != nil {
+         .          .    501:		st := s.query.statistics()
+         .          .    502:		for lane, name := range st.Columns {
+         .          .    503:			if byteStatisticsType(st.Types[lane]) {
+         .          .    504:				continue
+         .          .    505:			}
+         .          .    506:			bits, valid := statisticsInputBits(s.binding.batch, name, st.Types[lane], row)
+         .          .    507:			if err := s.statistics.AddBits(0, lane, bits, valid, aggregate.SourceOrdinal{Row: s.binding.ordinalBase + uint64(row)}); err != nil {
+         .          .    508:				return err
+         .          .    509:			}
+         .          .    510:		}
+         .          .    511:	}
+         .       20ms    512:	s.byteWorkspace.commit()
+      60ms       60ms    513:	return nil
+         .          .    514:}
+ROUTINE ======================== gocolumn/engine.nativeAggregateBits in /workspace/scratch/ac8e1e118737/aggregate-binding-baseline/src/engine/native_aggregate.go
+      60ms      440ms (flat, cum) 15.60% of Total
+      10ms       10ms    105:func nativeAggregateBits(b *memory.Batch, name string, typ memory.DataType, layout aggregate.Layout, row int) (uint64, bool) {
+         .          .    106:	if !aggregateNeedsValue(layout) {
+         .          .    107:		_, validity, _ := aggregateColumnInfo(b, name, typ, false)
+         .          .    108:		return 0, validity == nil || memory.IsSet(validity, row)
+         .          .    109:	}
+         .          .    110:	switch typ {
+         .          .    111:	case memory.TypeInt8:
+         .          .    112:		v := b.Int8s[name]
+         .          .    113:		return uint64(int64(v.Values[row])), v.IsValid(row)
+         .          .    114:	case memory.TypeInt16:
+         .          .    115:		v := b.Int16s[name]
+         .          .    116:		return uint64(int64(v.Values[row])), v.IsValid(row)
+         .          .    117:	case memory.TypeInt32:
+         .          .    118:		v := b.Int32s[name]
+         .          .    119:		return uint64(int64(v.Values[row])), v.IsValid(row)
+         .          .    120:	case memory.TypeInt64:
+         .          .    121:		v := b.Int64s[name]
+         .          .    122:		return uint64(v.Values[row]), v.IsValid(row)
+         .          .    123:	case memory.TypeUint8:
+         .          .    124:		v := b.Uint8s[name]
+         .          .    125:		return uint64(v.Values[row]), v.IsValid(row)
+         .          .    126:	case memory.TypeUint16:
+         .          .    127:		v := b.Uint16s[name]
+         .          .    128:		return uint64(v.Values[row]), v.IsValid(row)
+         .          .    129:	case memory.TypeUint32:
+         .          .    130:		v := b.Uint32s[name]
+         .          .    131:		return uint64(v.Values[row]), v.IsValid(row)
+         .          .    132:	case memory.TypeUint64:
+      10ms      180ms    133:		v := b.Uint64s[name]
+         .          .    134:		return v.Values[row], v.IsValid(row)
+         .          .    135:	case memory.TypeFloat32:
+         .          .    136:		v := b.Float32s[name]
+         .          .    137:		return uint64(math.Float32bits(v.Values[row])), v.IsValid(row)
+         .          .    138:	case memory.TypeFloat64:
+      10ms      200ms    139:		v := b.Float64s[name]
+      30ms       50ms    140:		return math.Float64bits(v.Values[row]), v.IsValid(row)
+         .          .    141:	}
+         .          .    142:	return 0, false
+         .          .    143:}
+         .          .    144:
+         .          .    145:func (p *PreparedQuery) nativeRecordValue(record aggregateRecord, index int) (memory.DataType, uint64, bool) {

@@ -1,0 +1,85 @@
+Scope and comparability
+=======================
+BenchmarkGlobalBindingWholeQuery has 36 whole ExecuteTyped workloads. Core cases
+cover two mixed numeric columns (UInt64 and F64) or four (plus Int32 and F32),
+dense or nullable input, and a predicate selecting 20% of rows. Sizes are 63,
+4,097 and 32,771 rows, with one source batch or 1,021-row source batches.
+Additional cases cover 262,147 rows, a UInt64 count-only lane alongside value
+lanes, Scalar and forced-SIMD predicate paths, and excluded grouped/minmax/statistics controls. The existing six
+BenchmarkNativeAggregate cases are unchanged and measured for continuity.
+
+All source construction and preparation are outside timing. Each timed iteration
+runs ExecuteTyped with Materialize:true, including execution-state/source open,
+scan, reduction, result collection, and execution-state/source close. Prepared
+plan and engine lifetime are outside timing. Prepared caching is disabled. One
+worker and GOMAXPROCS=1 preserve row order and avoid parallel amplification.
+Source fixtures are immutable and are identical for baseline and candidate.
+The benchmark name's batch value is the source-batch size, not necessarily the
+active scan-morsel size. MaxMorselRows=65536 means the 262,147-row single source
+batch is split into five scan batches (four 65,536-row views plus a 3-row tail).
+The 32,771-row single source batch is one active view; the 1,021-row source-batch
+cases contain 33 views, including their final tail. The harness comment was
+corrected before measured timing. Earlier preflight logs and overlay source are
+retained locally under superseded-harness, and earlier executables are retained
+in the external binary directory. Only their explanatory NOTICE is published;
+both measured executables use the corrected identical source.
+
+The same source file is frozen as harness.go.txt and used as a Go build overlay
+against both source trees. No candidate-only API is used. The baseline binary is
+frozen before candidate measurements. The supplied baseline source verification
+record is retained in provenance, alongside source manifests and binary hashes.
+Old BenchmarkNativeAggregate source and existing baseline executable are retained.
+The shell runner refuses to overwrite frozen binaries or measurement evidence.
+
+Correctness and actual scope
+============================
+The oracle independently visits input rows in source order. It implements U64
+modulo addition, Int32 modulo addition, F32 per-step rounding and F64 sequential
+addition without production aggregation/kernel helpers. The data intentionally
+includes cancellation at 1e16 and 2^24, values above MaxInt64, integer overflow,
+negative zero, nulls, and selected-out rows. Extra exact tests cover NaN/Inf,
+all-null input, zero selected rows and empty input. The same oracle is run for
+Scalar/Auto/SIMD and repeated executions. First/Last and min/max controls are also
+checked independently. Test logs retain plans, native compilation, layouts,
+intended binding scope, and charged peak. Intended scope is descriptive baseline
+metadata; candidate source inspection and CPU profiles establish actual dispatch.
+Forced SIMD configures eligible predicate kernels; this change is batch-column
+binding, not a new SIMD reduction or floating-point reassociation.
+
+Memory accounting
+=================
+B/op and allocs/op are Go benchmark heap allocation measurements per complete
+execution. peak-charged-B is collected in a separate untimed verified execution
+with an explicit query budget. It is query-charged peak, not fixture storage,
+process RSS or a substitute for heap allocation. After execution, both the query
+and engine must report 0 bytes used; repeat execution must have the same peak.
+The oracle and budget Snapshot allocations are outside timing. Source fixtures
+are not rebuilt per iteration and are not included in B/op.
+
+A candidate descriptor slice may add O(lanes) allocation/charged bytes. Report
+such increases, including allocator size-class rounding. Absolute peak need not
+be constant with row count: the pre-existing predicate bitmap and in-flight
+source views depend on active morsel shape. Compare candidate-minus-baseline peak
+at fixed lane count, including 32,771 versus 262,147 input rows, to distinguish new
+descriptor cost from unchanged baseline scratch. Do not require all memory to
+be numerically identical or call these numbers total process memory.
+
+Timing protocol
+===============
+Six before/after pairs use 150 ms benchmark targets, alternating AB/BA by round.
+This is 36 new plus 6 unchanged benchmarks per variant per round. No compilation
+occurs inside the measurement loop. Material apparent regressions receive longer
+paired follow-up before conclusions. Report medians and paired per-round ratios;
+any exact sign-flip p-value is descriptive/unadjusted, not an acceptance threshold.
+Use whole-query timings, not reductions alone, for performance conclusions.
+
+Completed longer-run protocol
+=============================
+After the initial six pairs, all five apparent regressions above 5% and three
+representative large eligible cases received six adjacent before/after pairs at
+1 s per sample. The remaining two positive median changes then received eight
+adjacent pairs at 2 s per sample. AB/BA direction and case order were alternated.
+All 632 unprofiled observations are retained, including large scheduling outliers.
+Matched global and MIN/MAX CPU profiles were collected afterward, separately
+from timing claims. Supplemental candidate-only actual-eligibility inspection
+was also untimed and does not change either comparable executable.

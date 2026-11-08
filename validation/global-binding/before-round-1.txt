@@ -1,0 +1,47 @@
+goos: linux
+goarch: amd64
+pkg: gocolumn/engine
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkGlobalBindingWholeQuery/global/lanes=2/dense/rows=63/batch=63/mode=auto         	    7594	     24265 ns/op	      5238 peak-charged-B	   16344 B/op	     140 allocs/op
+BenchmarkGlobalBindingWholeQuery/global/lanes=2/dense/rows=4097/batch=4097/mode=auto     	     520	    334723 ns/op	      6262 peak-charged-B	   17496 B/op	     141 allocs/op
+BenchmarkGlobalBindingWholeQuery/global/lanes=2/dense/rows=32771/batch=32771/mode=auto   	      73	   2376019 ns/op	     13430 peak-charged-B	   26073 B/op	     141 allocs/op
+BenchmarkGlobalBindingWholeQuery/global/lanes=2/dense/rows=32771/batch=1021/mode=auto    	      87	   2517651 ns/op	      5478 peak-charged-B	   24793 B/op	     269 allocs/op
+BenchmarkGlobalBindingWholeQuery/global/lanes=2/nullable/rows=63/batch=63/mode=auto      	   10000	     24222 ns/op	      5238 peak-charged-B	   16344 B/op	     140 allocs/op
+BenchmarkGlobalBindingWholeQuery/global/lanes=2/nullable/rows=4097/batch=4097/mode=auto  	     565	    317557 ns/op	      6262 peak-charged-B	   17496 B/op	     141 allocs/op
+BenchmarkGlobalBindingWholeQuery/global/lanes=2/nullable/rows=32771/batch=32771/mode=auto         	      79	   2613905 ns/op	     13430 peak-charged-B	   26073 B/op	     141 allocs/op
+BenchmarkGlobalBindingWholeQuery/global/lanes=2/nullable/rows=32771/batch=1021/mode=auto          	      68	   2838924 ns/op	      5478 peak-charged-B	   24794 B/op	     269 allocs/op
+BenchmarkGlobalBindingWholeQuery/global/lanes=2/selective/rows=63/batch=63/mode=auto              	   10000	     22166 ns/op	      5238 peak-charged-B	   16344 B/op	     140 allocs/op
+BenchmarkGlobalBindingWholeQuery/global/lanes=2/selective/rows=4097/batch=4097/mode=auto          	    2587	     81490 ns/op	      6262 peak-charged-B	   17496 B/op	     141 allocs/op
+BenchmarkGlobalBindingWholeQuery/global/lanes=2/selective/rows=32771/batch=32771/mode=auto        	     351	    545919 ns/op	     13430 peak-charged-B	   26073 B/op	     141 allocs/op
+BenchmarkGlobalBindingWholeQuery/global/lanes=2/selective/rows=32771/batch=1021/mode=auto         	     272	    607234 ns/op	      5478 peak-charged-B	   24793 B/op	     269 allocs/op
+BenchmarkGlobalBindingWholeQuery/global/lanes=4/dense/rows=63/batch=63/mode=auto                  	    7788	     30569 ns/op	      6676 peak-charged-B	   19345 B/op	     152 allocs/op
+BenchmarkGlobalBindingWholeQuery/global/lanes=4/dense/rows=4097/batch=4097/mode=auto              	     332	    535680 ns/op	      7700 peak-charged-B	   20488 B/op	     153 allocs/op
+BenchmarkGlobalBindingWholeQuery/global/lanes=4/dense/rows=32771/batch=32771/mode=auto            	      45	   3940549 ns/op	     14868 peak-charged-B	   29064 B/op	     153 allocs/op
+BenchmarkGlobalBindingWholeQuery/global/lanes=4/dense/rows=32771/batch=1021/mode=auto             	      42	   4103875 ns/op	      6916 peak-charged-B	   31883 B/op	     345 allocs/op
+BenchmarkGlobalBindingWholeQuery/global/lanes=4/nullable/rows=63/batch=63/mode=auto               	    7246	     32145 ns/op	      6676 peak-charged-B	   19345 B/op	     152 allocs/op
+BenchmarkGlobalBindingWholeQuery/global/lanes=4/nullable/rows=4097/batch=4097/mode=auto           	     372	    508441 ns/op	      7700 peak-charged-B	   20489 B/op	     153 allocs/op
+BenchmarkGlobalBindingWholeQuery/global/lanes=4/nullable/rows=32771/batch=32771/mode=auto         	      48	   3814865 ns/op	     14868 peak-charged-B	   29064 B/op	     153 allocs/op
+BenchmarkGlobalBindingWholeQuery/global/lanes=4/nullable/rows=32771/batch=1021/mode=auto          	      48	   3922166 ns/op	      6916 peak-charged-B	   31882 B/op	     345 allocs/op
+BenchmarkGlobalBindingWholeQuery/global/lanes=4/selective/rows=63/batch=63/mode=auto              	   10000	     24581 ns/op	      6676 peak-charged-B	   19345 B/op	     152 allocs/op
+BenchmarkGlobalBindingWholeQuery/global/lanes=4/selective/rows=4097/batch=4097/mode=auto          	    1513	    128886 ns/op	      7700 peak-charged-B	   20489 B/op	     153 allocs/op
+BenchmarkGlobalBindingWholeQuery/global/lanes=4/selective/rows=32771/batch=32771/mode=auto        	     187	    875514 ns/op	     14868 peak-charged-B	   29065 B/op	     153 allocs/op
+BenchmarkGlobalBindingWholeQuery/global/lanes=4/selective/rows=32771/batch=1021/mode=auto         	     189	    968910 ns/op	      6916 peak-charged-B	   31882 B/op	     345 allocs/op
+BenchmarkGlobalBindingWholeQuery/grouped/lanes=2/dense/rows=32771/batch=32771/mode=auto           	      44	   4850133 ns/op	     50814 peak-charged-B	   81230 B/op	     488 allocs/op
+BenchmarkGlobalBindingWholeQuery/grouped/lanes=4/nullable/rows=32771/batch=1021/mode=auto         	      30	   7149990 ns/op	     64348 peak-charged-B	  114345 B/op	     742 allocs/op
+BenchmarkGlobalBindingWholeQuery/minmax/lanes=2/dense/rows=32771/batch=32771/mode=auto            	      68	   3035800 ns/op	     13718 peak-charged-B	   26666 B/op	     145 allocs/op
+BenchmarkGlobalBindingWholeQuery/statistics/lanes=4/nullable/rows=32771/batch=1021/mode=auto      	      31	   6453707 ns/op	      8236 peak-charged-B	   33908 B/op	     358 allocs/op
+BenchmarkGlobalBindingWholeQuery/global/lanes=2/selective/rows=32771/batch=1021/mode=scalar       	     270	    799716 ns/op	      5478 peak-charged-B	   24793 B/op	     269 allocs/op
+BenchmarkGlobalBindingWholeQuery/global/lanes=2/selective/rows=32771/batch=1021/mode=forced-simd  	     291	    672139 ns/op	      5478 peak-charged-B	   24793 B/op	     269 allocs/op
+BenchmarkGlobalBindingWholeQuery/global/lanes=4/selective/rows=32771/batch=1021/mode=scalar       	     160	   1048776 ns/op	      6916 peak-charged-B	   31882 B/op	     345 allocs/op
+BenchmarkGlobalBindingWholeQuery/global/lanes=4/selective/rows=32771/batch=1021/mode=forced-simd  	     178	   1005221 ns/op	      6916 peak-charged-B	   31882 B/op	     345 allocs/op
+BenchmarkGlobalBindingWholeQuery/global/lanes=2/nullable/rows=262147/batch=262147/mode=auto       	       9	  19524903 ns/op	     21606 peak-charged-B	   33752 B/op	     157 allocs/op
+BenchmarkGlobalBindingWholeQuery/countonly/lanes=2/nullable/rows=32771/batch=32771/mode=auto      	      75	   2531342 ns/op	     13286 peak-charged-B	   25713 B/op	     139 allocs/op
+BenchmarkGlobalBindingWholeQuery/global/lanes=4/nullable/rows=262147/batch=262147/mode=auto       	       6	  29345497 ns/op	     23044 peak-charged-B	   37256 B/op	     177 allocs/op
+BenchmarkGlobalBindingWholeQuery/countonly/lanes=4/nullable/rows=32771/batch=32771/mode=auto      	      49	   3555427 ns/op	     14724 peak-charged-B	   28562 B/op	     149 allocs/op
+BenchmarkNativeAggregate/groups=0/lanes=2                                                         	      79	   2379165 ns/op	   22340 B/op	     128 allocs/op
+BenchmarkNativeAggregate/groups=0/lanes=4                                                         	      40	   3872742 ns/op	   24289 B/op	     136 allocs/op
+BenchmarkNativeAggregate/groups=64/lanes=2                                                        	      38	   4652870 ns/op	   35641 B/op	     201 allocs/op
+BenchmarkNativeAggregate/groups=64/lanes=4                                                        	      26	   6041787 ns/op	   42269 B/op	     221 allocs/op
+BenchmarkNativeAggregate/groups=4096/lanes=2                                                      	      32	   5841868 ns/op	  898602 B/op	     328 allocs/op
+BenchmarkNativeAggregate/groups=4096/lanes=4                                                      	      27	   6997368 ns/op	 1055748 B/op	     372 allocs/op
+PASS

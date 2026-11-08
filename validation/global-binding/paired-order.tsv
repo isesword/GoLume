@@ -1,0 +1,13 @@
+round	order	variant
+1	1	before
+1	2	after
+2	1	after
+2	2	before
+3	1	before
+3	2	after
+4	1	after
+4	2	before
+5	1	before
+5	2	after
+6	1	after
+6	2	before

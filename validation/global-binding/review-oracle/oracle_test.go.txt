@@ -1,0 +1,305 @@
+package engine
+
+import (
+	"context"
+	"fmt"
+	"gocolumn/expr"
+	"gocolumn/kernel"
+	"gocolumn/memory"
+	"gocolumn/source"
+	"math"
+	"reflect"
+	"testing"
+)
+
+// This independent end-to-end oracle uses no aggregation production helpers.
+// Input construction uses the existing fixture's typed-vector writer only.
+// Reused vector headers get different slice and validity headers every Next.
+type reviewOracleSource struct {
+	schema  memory.Schema
+	batches []*memory.Batch
+	rows    int
+	closes  int
+}
+
+func (s *reviewOracleSource) Schema() memory.Schema { return s.schema }
+func (s *reviewOracleSource) Stats(context.Context) (source.Stats, error) {
+	return source.Stats{Rows: int64(s.rows), Partitions: 1}, nil
+}
+func (s *reviewOracleSource) Partitions(context.Context) ([]source.Partition, error) {
+	return []source.Partition{{ID: 0, Rows: int64(s.rows)}}, nil
+}
+func (s *reviewOracleSource) NewBatchStream(context.Context, source.ReadOptions) (source.BatchStream, error) {
+	return &reviewOracleStream{src: s, headers: memory.NewBatch()}, nil
+}
+func (s *reviewOracleSource) NewBatchStreamWithPartitions(ctx context.Context, opts source.ReadOptions, _ []source.Partition) (source.BatchStream, error) {
+	return s.NewBatchStream(ctx, opts)
+}
+
+type reviewOracleStream struct {
+	src     *reviewOracleSource
+	headers *memory.Batch
+	index   int
+	closed  bool
+}
+
+func (s *reviewOracleStream) Next(ctx context.Context, dst *memory.Batch) (bool, error) {
+	if err := ctx.Err(); err != nil {
+		return false, err
+	}
+	dst.ClearColumns()
+	if s.index == len(s.src.batches) {
+		return false, nil
+	}
+	b := s.src.batches[s.index]
+	s.index++
+	oldV, newV, dstV := reflect.ValueOf(s.headers).Elem(), reflect.ValueOf(b).Elem(), reflect.ValueOf(dst).Elem()
+	for _, name := range []string{"Int8s", "Int16s", "Int32s", "Int64s", "Uint8s", "Uint16s", "Uint32s", "Uint64s", "Float32s", "Float64s", "Opaque"} {
+		oldM, newM, dstM := oldV.FieldByName(name), newV.FieldByName(name), dstV.FieldByName(name)
+		it := newM.MapRange()
+		for it.Next() {
+			key, next := it.Key(), it.Value()
+			old := oldM.MapIndex(key)
+			if !old.IsValid() {
+				old = reflect.New(next.Type().Elem())
+				oldM.SetMapIndex(key, old)
+			}
+			old.Elem().Set(next.Elem())
+			dstM.SetMapIndex(key, old)
+		}
+	}
+	dst.Rows = b.Rows
+	return true, nil
+}
+func (s *reviewOracleStream) Close() error {
+	if !s.closed {
+		s.closed = true
+		s.src.closes++
+		s.headers.ClearColumns()
+	}
+	return nil
+}
+
+func reviewOracleAdd(typ memory.DataType, sum, value uint64) uint64 {
+	switch typ {
+	case memory.TypeInt8:
+		return sum + uint64(int64(int8(value)))
+	case memory.TypeInt16:
+		return sum + uint64(int64(int16(value)))
+	case memory.TypeInt32:
+		return uint64(int64(int32(sum) + int32(value)))
+	case memory.TypeInt64:
+		return sum + value
+	case memory.TypeUint8:
+		return sum + uint64(uint8(value))
+	case memory.TypeUint16:
+		return sum + uint64(uint16(value))
+	case memory.TypeUint32:
+		return uint64(uint32(sum) + uint32(value))
+	case memory.TypeUint64:
+		return sum + value
+	case memory.TypeFloat32:
+		a, b := math.Float32frombits(uint32(sum)), math.Float32frombits(uint32(value))
+		return uint64(math.Float32bits(float32(a + b)))
+	case memory.TypeFloat64:
+		a, b := math.Float64frombits(sum), math.Float64frombits(value)
+		return math.Float64bits(a + b)
+	}
+	panic("unsupported oracle type")
+}
+
+func TestReviewGlobalBindingIndependentOracle(t *testing.T) {
+	types := []memory.DataType{memory.TypeInt8, memory.TypeInt16, memory.TypeInt32, memory.TypeInt64, memory.TypeUint8, memory.TypeUint16, memory.TypeUint32, memory.TypeUint64, memory.TypeFloat32, memory.TypeFloat64}
+	for _, mode := range []kernel.Mode{kernel.ModeScalar, kernel.ModeAuto, kernel.ModeSIMD} {
+		for seed := 0; seed < 16; seed++ {
+			t.Run(fmt.Sprintf("mode=%v/seed=%d", mode, seed), func(t *testing.T) {
+				fields := []memory.Field{{Name: "selected", Type: memory.TypeInt64}}
+				q := expr.Query{Filter: expr.GT(expr.Col("selected"), expr.I64(0))}
+				for i, typ := range types {
+					name := fmt.Sprintf("v%d", i)
+					fields = append(fields, memory.Field{Name: name, Type: typ, Nullable: true})
+					q.Aggregates = append(q.Aggregates, expr.Sum(name, "sum_"+name), expr.CountColumn(name, "count_"+name))
+				}
+				q.Aggregates = append(q.Aggregates, expr.Count("rows"))
+				src := &reviewOracleSource{schema: memory.NewSchema(fields...)}
+				sums := make([]uint64, len(types))
+				counts := make([]uint64, len(types))
+				selected := 0
+				state := uint64(seed + 1)
+				next := func() uint64 { state ^= state << 13; state ^= state >> 7; state ^= state << 17; return state }
+				for bi, rows := range []int{0, 1, 7, 63, 0, 65, 129, 2, 0} {
+					b := memory.NewBatch()
+					b.Rows = rows
+					picks := make([]int64, rows)
+					for r := range picks {
+						yes := seed%4 == 0 || seed%4 == 1 && r%2 == 0 || seed%4 == 2 && (r+bi)%31 == 0
+						if yes {
+							picks[r] = 1
+							selected++
+						}
+					}
+					b.Int64s["selected"] = &memory.Int64Vector{Values: picks}
+					for lane, typ := range types {
+						values := make([]uint64, rows)
+						var validity memory.Bitmap
+						if (bi+seed)%3 != 0 {
+							validity = make(memory.Bitmap, memory.WordsFor(rows))
+						}
+						for r := range values {
+							values[r] = next()
+							if typ == memory.TypeFloat32 {
+								special := []float32{1 << 24, 1, -(1 << 24), -0.0, 0, 3.25, -2.5}
+								values[r] = uint64(math.Float32bits(special[(r+bi)%len(special)]))
+								if seed >= 12 && r%19 == 0 {
+									values[r] = uint64([]uint32{0x7fc00073, 0x7f800000, 0xff800000, 0x80000000}[(r+bi)%4])
+								}
+							}
+							if typ == memory.TypeFloat64 {
+								special := []float64{1 << 53, 1, -(1 << 53), -0.0, 0, 3.25, -2.5}
+								values[r] = math.Float64bits(special[(r+bi)%len(special)])
+								if seed >= 12 && r%19 == 0 {
+									values[r] = []uint64{0x7ff8000000000073, 0x7ff0000000000000, 0xfff0000000000000, 0x8000000000000000}[(r+bi)%4]
+								}
+							}
+							valid := validity == nil || seed%7 != 0 && (r+lane+bi)%3 != 0
+							if valid && validity != nil {
+								memory.Set(validity, r)
+							}
+							if picks[r] != 0 && valid {
+								sums[lane] = reviewOracleAdd(typ, sums[lane], values[r])
+								counts[lane]++
+							}
+						}
+						fillNativeTestColumn(b, nativeTestColumn{name: fmt.Sprintf("v%d", lane), typ: typ, bits: values, valid: validity})
+					}
+					src.batches = append(src.batches, b)
+					src.rows += rows
+				}
+				opts := streamTestOptions()
+				opts.KernelMode = mode
+				opts.MemoryLimitBytes = 1 << 20
+				opts.Pipeline.MaxMorselRows = 256
+				opts.Pipeline.MaxMorselBytes = 32 << 10
+				opts.Pipeline.MaxInFlightBytes = 64 << 10
+				e := New(opts)
+				defer e.Close()
+				p, err := e.Prepare(context.Background(), src, q, PrepareOptions{})
+				if err != nil {
+					t.Fatal(err)
+				}
+				defer p.Close()
+				if !p.nativeAggregate() || p.cq.GroupShape != GroupShapeGlobal {
+					t.Fatal("fixture is not native global")
+				}
+				for repeat := 0; repeat < 3; repeat++ {
+					budget, err := e.BeginQueryMemory()
+					if err != nil {
+						t.Fatal(err)
+					}
+					got, err := p.ExecuteTyped(memory.WithQueryBudget(context.Background(), budget), ExecuteOptions{Materialize: true})
+					if err != nil {
+						t.Fatal(err)
+					}
+					if len(got.Rows) != 1 || got.Summary.SelectedRows != selected {
+						t.Fatalf("summary=%+v rows=%d", got.Summary, len(got.Rows))
+					}
+					for lane, typ := range types {
+						sum, count := got.Rows[0].Aggregates[lane*2].Value, got.Rows[0].Aggregates[lane*2+1].Value
+						wantType := typ
+						if typ == memory.TypeInt8 || typ == memory.TypeInt16 || typ == memory.TypeUint8 || typ == memory.TypeUint16 {
+							wantType = memory.TypeInt64
+						}
+						same := sum.Bits == sums[lane]
+						if typ == memory.TypeFloat32 {
+							same = same || math.IsNaN(float64(math.Float32frombits(uint32(sum.Bits)))) && math.IsNaN(float64(math.Float32frombits(uint32(sums[lane]))))
+						}
+						if typ == memory.TypeFloat64 {
+							same = same || math.IsNaN(math.Float64frombits(sum.Bits)) && math.IsNaN(math.Float64frombits(sums[lane]))
+						}
+						if sum.Type != wantType || sum.Valid != (counts[lane] > 0) || sum.Valid && !same {
+							t.Fatalf("lane %d sum=%+v want type=%v bits=%x valid=%v", lane, sum, wantType, sums[lane], counts[lane] > 0)
+						}
+						if !count.Valid || count.Type != memory.TypeUint64 || count.Bits != counts[lane] {
+							t.Fatalf("lane %d count=%+v want=%d", lane, count, counts[lane])
+						}
+					}
+					rows := got.Rows[0].Aggregates[len(types)*2].Value
+					if !rows.Valid || rows.Bits != uint64(selected) {
+						t.Fatalf("row count=%+v want=%d", rows, selected)
+					}
+					if used := budget.Snapshot().UsedBytes; used != 0 {
+						t.Fatalf("retained query bytes %d", used)
+					}
+					budget.Close()
+				}
+				if src.closes != 3 {
+					t.Fatalf("closed %d sources, want 3", src.closes)
+				}
+			})
+		}
+	}
+}
+
+func TestReviewGlobalBindingOpaqueCountRebinding(t *testing.T) {
+	// Even primitive COUNT-only lanes may legally arrive as opaque vectors.
+	// None of these three count lanes has a specialized vector or payload.
+	fields := []memory.Field{{Name: "u", Type: memory.TypeUint64}, {Name: "s", Type: memory.TypeString, Nullable: true}, {Name: "flag", Type: memory.TypeBool, Nullable: true}, {Name: "floating", Type: memory.TypeFloat32, Nullable: true}}
+	q := expr.Query{Aggregates: []expr.Aggregate{expr.Sum("u", "sum"), expr.CountColumn("s", "strings"), expr.CountColumn("flag", "flags"), expr.CountColumn("floating", "floats"), expr.Count("rows")}}
+	src := &reviewOracleSource{schema: memory.NewSchema(fields...)}
+	want := []uint64{0, 0, 0, 0, 0}
+	for bi, n := range []int{0, 3, 0, 65, 1, 0} {
+		b := memory.NewBatch()
+		b.Rows = n
+		u := make([]uint64, n)
+		for i := range u {
+			u[i] = 1<<63 + uint64(bi+i)
+			want[0] += u[i]
+		}
+		b.Uint64s["u"] = &memory.Uint64Vector{Values: u}
+		for lane, f := range fields[1:] {
+			var valid memory.Bitmap
+			if bi%3 != 0 {
+				valid = make(memory.Bitmap, memory.WordsFor(n))
+			}
+			for r := 0; r < n; r++ {
+				if valid == nil || (r+lane+bi)%3 != 0 {
+					if valid != nil {
+						memory.Set(valid, r)
+					}
+					want[lane+1]++
+				}
+			}
+			b.Opaque[f.Name] = &memory.OpaqueVector{Rows: n, Type: f.Type, Validity: valid, Value: nil}
+		}
+		src.batches = append(src.batches, b)
+		src.rows += n
+		want[4] += uint64(n)
+	}
+	opts := streamTestOptions()
+	opts.MemoryLimitBytes = 1 << 20
+	opts.Pipeline.MaxMorselRows = 128
+	e := New(opts)
+	defer e.Close()
+	p, err := e.Prepare(context.Background(), src, q, PrepareOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer p.Close()
+	for repeat := 0; repeat < 3; repeat++ {
+		got, err := p.ExecuteTyped(context.Background(), ExecuteOptions{Materialize: true})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(got.Rows) != 1 {
+			t.Fatal(got)
+		}
+		for i, v := range got.Rows[0].Aggregates {
+			if !v.Value.Valid || v.Value.Bits != want[i] {
+				t.Fatalf("lane %d got=%+v want=%d", i, v.Value, want[i])
+			}
+		}
+		if used := e.Memory().Used(); used != 0 {
+			t.Fatalf("retained %d bytes", used)
+		}
+	}
+}

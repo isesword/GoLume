@@ -1,0 +1,45 @@
+Raw .cpu profiles and frozen executables are local-only, excluded from the
+published deliverable. Portable evidence consists of these commands, text exports
+and hashes; regenerate profiles locally when needed.
+
+Matched CPU profiling was performed after all unprofiled measurements finished.
+The order was before-global, before-minmax, after-global, after-minmax. All used
+the same final frozen executables as the unprofiled matrix, GOMAXPROCS=1 and a
+2 s benchmark target. Profiles include Go benchmark calibration, setup, untimed
+verification and cleanup in addition to the timed benchmark loop. They establish
+mechanism/hot-path evidence; the profiled benchmark times are not substitutes for
+or additional samples in the unprofiled timing analysis. Source files and binary
+hashes were checked unchanged afterward.
+
+Exact invocation from the repository root (bash):
+
+source /workspace/scratch/ac8e1e118737/numeric-env.sh
+export GOMAXPROCS=1
+for variant in before after; do
+  for case in global minmax; do
+    lanes=4
+    if [[ "$case" == minmax ]]; then lanes=2; fi
+    /workspace/scratch/ac8e1e118737/global-binding-binaries/$variant.engine.test \
+      -test.run '^$' \
+      -test.bench "^BenchmarkGlobalBindingWholeQuery$/^$case$/^lanes=$lanes$/^dense$/^rows=32771$/^batch=32771$/^mode=auto$" \
+      -test.benchtime 2s -test.benchmem \
+      -test.cpuprofile validation/global-binding/profiles/$variant-$case.cpu \
+      > validation/global-binding/profiles/$variant-$case-run.txt
+    go tool pprof -top -nodecount=45 \
+      /workspace/scratch/ac8e1e118737/global-binding-binaries/$variant.engine.test \
+      validation/global-binding/profiles/$variant-$case.cpu \
+      > validation/global-binding/profiles/$variant-$case-top.txt
+    go tool pprof -list='nativeAggregateBits|addBundleRow|globalAggregateLaneBinding.*bits' \
+      /workspace/scratch/ac8e1e118737/global-binding-binaries/$variant.engine.test \
+      validation/global-binding/profiles/$variant-$case.cpu \
+      > validation/global-binding/profiles/$variant-$case-list.txt
+  done
+done
+
+Supplemental disassembly commands:
+
+for variant in before after; do
+  go tool objdump -s 'gocolumn/engine.\(\*sortedAggregateStream\).addBundleRow' \
+    /workspace/scratch/ac8e1e118737/global-binding-binaries/$variant.engine.test \
+    > validation/global-binding/profiles/$variant-addBundleRow-asm.txt
+done

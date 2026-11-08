@@ -167,6 +167,11 @@ func (p *PreparedQuery) newSortedAggregateStream(ctx context.Context, schema mem
 		stateLease.Release()
 		return nil, errors.Join(err, input.Close())
 	}
+	if err = stream.initGlobalAggregateBindings(ctx); err != nil {
+		// The constructor's defer still owns the prepared-query reference.
+		stream.active = false
+		return nil, errors.Join(err, stream.cleanup())
+	}
 	// Seed the empty global group without adding a row: COUNT(*) must remain
 	// zero and SUM/MIN/MAX/AVG retain their SQL NULL identity.
 	stream.haveGroup = p.cq.GroupShape == GroupShapeGlobal
@@ -198,6 +203,9 @@ type sortedAggregateStream struct {
 	outputLease       memory.Reservation
 	outputStringLease memory.Reservation
 	outputRows        int
+
+	globalBindings     []globalAggregateLaneBinding
+	globalBindingLease memory.Reservation
 
 	inputBatch *memory.Batch
 	binding    aggregateBatchBinding
@@ -363,15 +371,20 @@ func (s *sortedAggregateStream) flushGroup(ctx context.Context, dst *memory.Batc
 
 func (s *sortedAggregateStream) loadInput(ctx context.Context) error {
 	for !s.inputDone {
+		// The producer may recycle the previous borrowed batch on Next.
+		clear(s.globalBindings)
+		s.binding = aggregateBatchBinding{}
+		s.selection = nil
 		ok, err := s.input.Next(ctx, s.inputBatch)
 		if err != nil {
+			s.inputBatch.ClearColumns()
 			return err
 		}
 		if !ok {
 			s.inputDone = true
+			s.inputBatch.ClearColumns()
 			return nil
 		}
-		s.selection = nil
 		selection, err := s.predicate.evaluate(ctx, s.query.cq.Predicate, s.inputBatch, s.query.e.kernels)
 		if err != nil {
 			return err
@@ -386,6 +399,7 @@ func (s *sortedAggregateStream) loadInput(ctx context.Context) error {
 		}
 		s.selection = selection.Truth
 		s.binding = binding
+		s.bindGlobalAggregateInputs()
 		s.nextRow = 0
 		for row := 0; row < s.inputBatch.Rows; row++ {
 			if memory.IsSet(s.selection, row) {
@@ -619,6 +633,12 @@ func (s *sortedAggregateStream) cleanup() error {
 	}
 	s.cleaned = true
 	s.binding = aggregateBatchBinding{}
+	clear(s.globalBindings)
+	s.globalBindings = nil
+	if s.globalBindingLease != nil {
+		s.globalBindingLease.Release()
+		s.globalBindingLease = nil
+	}
 	s.selection = nil
 	s.predicate.close()
 	s.current = aggregateRecord{}

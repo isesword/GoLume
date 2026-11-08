@@ -1,0 +1,12 @@
+Sun Nov  8 06:12:14 UTC 2026
+go version go1.27.3 linux/amd64
+Linux 5acd0615432d 6.18.57 #1 SMP Tue Oct 20 21:56:04 UTC 2026 x86_64 GNU/Linux
+GOMAXPROCS=1
+GOEXPERIMENT=simd
+GODEBUG=
+benchtime=150ms
+samples=6
+131f78f1b76460e860f52529743573ed8f87ee73a1f89da0917f7a33ef924e46  /workspace/scratch/ac8e1e118737/global-binding-binaries/before.engine.test
+27e51d5b2919f98979c8fceed9f42c48cf87bc2691e83b21a6e9f879bfe118d8  /workspace/scratch/ac8e1e118737/global-binding-binaries/after.engine.test
+9e7a6c1b112c5f5e33ef4e4b3535637a852e985542738283a2f371648dc454b0  /workspace/scratch/ac8e1e118737/GoLume-next/validation/global-binding/harness.go.txt
+model name	: INTEL(R) XEON(R) PLATINUM 8573C

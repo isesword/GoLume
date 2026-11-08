@@ -1,0 +1,48 @@
+Total: 2.79s
+ROUTINE ======================== gocolumn/engine.(*globalAggregateLaneBinding).bits in /workspace/scratch/ac8e1e118737/GoLume-next/engine/native_global_binding.go
+     210ms      220ms (flat, cum)  7.89% of Total
+      50ms       50ms    117:func (b *globalAggregateLaneBinding) bits(row int) (uint64, bool) {
+         .          .    118:	if b.rowsOnly {
+         .          .    119:		return 0, false
+         .          .    120:	}
+         .          .    121:	valid := b.validity == nil || memory.IsSet(b.validity, row)
+      60ms       60ms    122:	switch b.typ {
+         .          .    123:	case memory.TypeInt8:
+         .          .    124:		return uint64(int64(b.int8s.Values[row])), valid
+         .          .    125:	case memory.TypeInt16:
+         .          .    126:		return uint64(int64(b.int16s.Values[row])), valid
+         .          .    127:	case memory.TypeInt32:
+      30ms       30ms    128:		return uint64(int64(b.int32s.Values[row])), valid
+         .          .    129:	case memory.TypeInt64:
+         .          .    130:		return uint64(b.int64s.Values[row]), valid
+         .          .    131:	case memory.TypeUint8:
+         .          .    132:		return uint64(b.uint8s.Values[row]), valid
+         .          .    133:	case memory.TypeUint16:
+         .          .    134:		return uint64(b.uint16s.Values[row]), valid
+         .          .    135:	case memory.TypeUint32:
+         .          .    136:		return uint64(b.uint32s.Values[row]), valid
+         .          .    137:	case memory.TypeUint64:
+      20ms       20ms    138:		return b.uint64s.Values[row], valid
+         .          .    139:	case memory.TypeFloat32:
+      10ms       20ms    140:		return uint64(math.Float32bits(b.float32s.Values[row])), valid
+         .          .    141:	case memory.TypeFloat64:
+      40ms       40ms    142:		return math.Float64bits(b.float64s.Values[row]), valid
+         .          .    143:	default:
+         .          .    144:		return 0, valid
+         .          .    145:	}
+         .          .    146:}
+ROUTINE ======================== gocolumn/engine.(*sortedAggregateStream).addBundleRow in /workspace/scratch/ac8e1e118737/GoLume-next/engine/multi_aggregate.go
+     120ms      890ms (flat, cum) 31.90% of Total
+      10ms       10ms    475:func (s *sortedAggregateStream) addBundleRow() error {
+         .          .    476:	row := s.nextRow - 1
+         .          .    477:	if s.globalBindings != nil {
+      20ms       20ms    478:		for lane := range s.globalBindings {
+      60ms      280ms    479:			bits, valid := s.globalBindings[lane].bits(row)
+      10ms      560ms    480:			s.numeric.AddBits(0, lane, bits, valid)
+         .          .    481:		}
+      20ms       20ms    482:		return nil
+         .          .    483:	}
+         .          .    484:	if st := s.query.statistics(); st != nil {
+         .          .    485:		if err := s.byteWorkspace.prepare(s.statistics, st, 0, s.binding.batch, row, aggregate.SourceOrdinal{Row: s.binding.ordinalBase + uint64(row)}); err != nil {
+         .          .    486:			return err
+         .          .    487:		}

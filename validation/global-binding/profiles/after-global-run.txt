@@ -1,0 +1,6 @@
+goos: linux
+goarch: amd64
+pkg: gocolumn/engine
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkGlobalBindingWholeQuery/global/lanes=4/dense/rows=32771/batch=32771/mode=auto         	     963	   2602342 ns/op	     15316 peak-charged-B	   29633 B/op	     157 allocs/op
+PASS

@@ -474,6 +474,13 @@ func (p *PreparedQuery) newAggregateRunReader(payload []byte) (*aggregateRunRead
 
 func (s *sortedAggregateStream) addBundleRow() error {
 	row := s.nextRow - 1
+	if s.globalBindings != nil {
+		for lane := range s.globalBindings {
+			bits, valid := s.globalBindings[lane].bits(row)
+			s.numeric.AddBits(0, lane, bits, valid)
+		}
+		return nil
+	}
 	if st := s.query.statistics(); st != nil {
 		if err := s.byteWorkspace.prepare(s.statistics, st, 0, s.binding.batch, row, aggregate.SourceOrdinal{Row: s.binding.ordinalBase + uint64(row)}); err != nil {
 			return err

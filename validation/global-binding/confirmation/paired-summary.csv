@@ -1,0 +1,3 @@
+benchmark,pairs,before_ns,after_ns,change_pct,speedup,paired_ratio_geomean,paired_ratio_min,paired_ratio_max,paired_signflip_p,before_B,after_B,delta_B,before_allocs,after_allocs,delta_allocs,before_peak,after_peak,delta_peak
+BenchmarkGlobalBindingWholeQuery/global/lanes=4/selective/rows=63/batch=63/mode=auto,8,22136.5,22315.0,0.8063605357667258,0.9920008962581224,0.9906431416936357,0.9478448633834399,1.0313767047548839,0.4296875,19345.0,19913.0,568.0,152.0,156.0,4.0,6676.0,7124.0,448.0
+BenchmarkGlobalBindingWholeQuery/minmax/lanes=2/dense/rows=32771/batch=32771/mode=auto,8,2751407.5,2841720.5,3.282429084023364,0.9682189011903176,1.2902008753613372,0.8805629168787116,5.82415858982298,0.21875,26665.0,26665.0,0.0,145.0,145.0,0.0,13718.0,13718.0,0.0

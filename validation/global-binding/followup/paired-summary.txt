@@ -1,0 +1,8 @@
+BenchmarkGlobalBindingWholeQuery/global/lanes=4/selective/rows=63/batch=63/mode=auto: 23,069 -> 24,775 ns/op (+7.4%, 0.93x); heap 19,345 -> 19,913 B/op (+568); allocs 152 -> 156 (+4); peak 6676 -> 7124 (+448)
+BenchmarkGlobalBindingWholeQuery/grouped/lanes=2/dense/rows=32771/batch=32771/mode=auto: 4,734,657 -> 4,696,830 ns/op (-0.8%, 1.01x); heap 81,229 -> 81,229 B/op (+0); allocs 488 -> 488 (+0); peak 50814 -> 50814 (+0)
+BenchmarkGlobalBindingWholeQuery/minmax/lanes=2/dense/rows=32771/batch=32771/mode=auto: 2,821,876 -> 3,099,934 ns/op (+9.9%, 0.91x); heap 26,665 -> 26,665 B/op (+0); allocs 145 -> 145 (+0); peak 13718 -> 13718 (+0)
+BenchmarkGlobalBindingWholeQuery/statistics/lanes=4/nullable/rows=32771/batch=1021/mode=auto: 6,269,064 -> 6,158,267 ns/op (-1.8%, 1.02x); heap 33,906 -> 33,906 B/op (+0); allocs 358 -> 358 (+0); peak 8236 -> 8236 (+0)
+BenchmarkGlobalBindingWholeQuery/global/lanes=2/selective/rows=32771/batch=1021/mode=forced-simd: 620,358 -> 476,823 ns/op (-23.1%, 1.30x); heap 24,793 -> 25,137 B/op (+344); allocs 269 -> 273 (+4); peak 5478 -> 5702 (+224)
+BenchmarkGlobalBindingWholeQuery/global/lanes=2/dense/rows=32771/batch=32771/mode=auto: 2,423,202 -> 1,666,759 ns/op (-31.2%, 1.45x); heap 26,073 -> 26,417 B/op (+344); allocs 141 -> 145 (+4); peak 13430 -> 13654 (+224)
+BenchmarkGlobalBindingWholeQuery/global/lanes=4/dense/rows=32771/batch=32771/mode=auto: 3,937,845 -> 2,062,140 ns/op (-47.6%, 1.91x); heap 29,066 -> 29,634 B/op (+568); allocs 153 -> 157 (+4); peak 14868 -> 15316 (+448)
+BenchmarkGlobalBindingWholeQuery/global/lanes=4/nullable/rows=262147/batch=262147/mode=auto: 27,743,332 -> 16,786,462 ns/op (-39.5%, 1.65x); heap 37,256 -> 37,824 B/op (+568); allocs 177 -> 181 (+4); peak 23044 -> 23492 (+448)

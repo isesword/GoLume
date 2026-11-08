@@ -1,0 +1,417 @@
+TEXT gocolumn/engine.(*sortedAggregateStream).addBundleRow(SB) /workspace/scratch/ac8e1e118737/GoLume-next/engine/multi_aggregate.go
+  multi_aggregate.go:475	0x8ffa20		4c8d6424b8		LEAQ -0x48(SP), R12								
+  multi_aggregate.go:475	0x8ffa25		4d3b6610		CMPQ R12, 0x10(R14)								
+  multi_aggregate.go:475	0x8ffa29		0f86a9060000		JBE 0x9000d8									
+  multi_aggregate.go:475	0x8ffa2f		55			PUSHQ BP									
+  multi_aggregate.go:475	0x8ffa30		4889e5			MOVQ SP, BP									
+  multi_aggregate.go:475	0x8ffa33		4881ecc0000000		SUBQ $0xc0, SP									
+  multi_aggregate.go:475	0x8ffa3a		66440fd6bc24b8000000	MOVQ X15, 0xb8(SP)								
+  multi_aggregate.go:477	0x8ffa44		48898424d0000000	MOVQ AX, 0xd0(SP)								
+  multi_aggregate.go:475	0x8ffa4c		c644244700		MOVB $0x0, 0x47(SP)								
+  multi_aggregate.go:475	0x8ffa51		440f11bc2490000000	MOVUPS X15, 0x90(SP)								
+  multi_aggregate.go:476	0x8ffa5a		488bb078020000		MOVQ 0x278(AX), SI								
+  multi_aggregate.go:476	0x8ffa61		4c8d46ff		LEAQ -0x1(SI), R8								
+  multi_aggregate.go:476	0x8ffa65		4c89442448		MOVQ R8, 0x48(SP)								
+  multi_aggregate.go:477	0x8ffa6a		4883b81801000000	CMPQ 0x118(AX), $0x0								
+  multi_aggregate.go:477	0x8ffa72		0f85f3000000		JNE 0x8ffb6b									
+  multi_aggregate.go:484	0x8ffa78		4c8b9880000000		MOVQ 0x80(AX), R11								
+  statistics_aggregate.go:67	0x8ffa7f		4d8b9b28010000		MOVQ 0x128(R11), R11								
+  statistics_aggregate.go:67	0x8ffa86		4d85db			TESTQ R11, R11									
+  statistics_aggregate.go:67	0x8ffa89		7406			JE 0x8ffa91									
+  statistics_aggregate.go:70	0x8ffa8b		498b4b68		MOVQ 0x68(R11), CX								
+  multi_aggregate.go:484	0x8ffa8f		eb02			JMP 0x8ffa93									
+  multi_aggregate.go:484	0x8ffa91		31c9			XORL CX, CX									
+  multi_aggregate.go:476	0x8ffa93		4889b42480000000	MOVQ SI, 0x80(SP)								
+  multi_aggregate.go:476	0x8ffa9b		0f1f440000		NOPL 0(AX)(AX*1)								
+  multi_aggregate.go:484	0x8ffaa0		4885c9			TESTQ CX, CX									
+  multi_aggregate.go:484	0x8ffaa3		7504			JNE 0x8ffaa9									
+  multi_aggregate.go:484	0x8ffaa5		31c9			XORL CX, CX									
+  multi_aggregate.go:484	0x8ffaa7		eb78			JMP 0x8ffb21									
+  multi_aggregate.go:485	0x8ffaa9		488b98b0030000		MOVQ 0x3b0(AX), BX								
+  multi_aggregate.go:485	0x8ffab0		488b9058010000		MOVQ 0x158(AX), DX								
+  multi_aggregate.go:485	0x8ffab7		4c8b9848010000		MOVQ 0x148(AX), R11								
+  multi_aggregate.go:485	0x8ffabe		4d8d1433		LEAQ 0(R11)(SI*1), R10								
+  multi_aggregate.go:485	0x8ffac2		4d8d52ff		LEAQ -0x1(R10), R10								
+  multi_aggregate.go:485	0x8ffac6		31ff			XORL DI, DI									
+  multi_aggregate.go:485	0x8ffac8		4889d6			MOVQ DX, SI									
+  multi_aggregate.go:485	0x8ffacb		4531c9			XORL R9, R9									
+  multi_aggregate.go:485	0x8fface		e82d7cfeff		CALL gocolumn/engine.(*byteStatisticsWorkspace).prepare(SB)			
+  multi_aggregate.go:485	0x8ffad3		4885c0			TESTQ AX, AX									
+  multi_aggregate.go:485	0x8ffad6		757a			JNE 0x8ffb52									
+  multi_aggregate.go:488	0x8ffad8		4c8d05a1cd0900		LEAQ gocolumn/engine.(*sortedAggregateStream).addBundleRow.deferwrap1(SB), R8	
+  multi_aggregate.go:488	0x8ffadf		4c898424a0000000	MOVQ R8, 0xa0(SP)								
+  multi_aggregate.go:488	0x8ffae7		4c8b8424d0000000	MOVQ 0xd0(SP), R8								
+  multi_aggregate.go:488	0x8ffaef		4c898424a8000000	MOVQ R8, 0xa8(SP)								
+  multi_aggregate.go:488	0x8ffaf7		4c8d8c24a0000000	LEAQ 0xa0(SP), R9								
+  multi_aggregate.go:488	0x8ffaff		4c898c24b8000000	MOVQ R9, 0xb8(SP)								
+  multi_aggregate.go:488	0x8ffb07		c644244701		MOVB $0x1, 0x47(SP)								
+  multi_aggregate.go:490	0x8ffb0c		4c89c0			MOVQ R8, AX									
+  multi_aggregate.go:505	0x8ffb0f		488bb42480000000	MOVQ 0x80(SP), SI								
+  bitmap.go:72			0x8ffb17		4c8b442448		MOVQ 0x48(SP), R8								
+  bitmap.go:72			0x8ffb1c		b901000000		MOVL $0x1, CX									
+  multi_aggregate.go:490	0x8ffb21		884c2446		MOVB CL, 0x46(SP)								
+  multi_aggregate.go:490	0x8ffb25		4c8b8880000000		MOVQ 0x80(AX), R9								
+  multi_aggregate.go:490	0x8ffb2c		4d8b8928010000		MOVQ 0x128(R9), R9								
+  multi_aggregate.go:490	0x8ffb33		4d8b11			MOVQ 0(R9), R10									
+  multi_aggregate.go:490	0x8ffb36		4d8b4908		MOVQ 0x8(R9), R9								
+  multi_aggregate.go:490	0x8ffb3a		4c894c2478		MOVQ R9, 0x78(SP)								
+  bitmap.go:72			0x8ffb3f		4d89c3			MOVQ R8, R11									
+  bitmap.go:72			0x8ffb42		49c1f806		SARQ $0x6, R8									
+  bitmap.go:72			0x8ffb46		4c89442470		MOVQ R8, 0x70(SP)								
+  bitmap.go:72			0x8ffb4b		31d2			XORL DX, DX									
+  multi_aggregate.go:490	0x8ffb4d		e911010000		JMP 0x8ffc63									
+  multi_aggregate.go:486	0x8ffb52		4889842490000000	MOVQ AX, 0x90(SP)								
+  multi_aggregate.go:486	0x8ffb5a		48899c2498000000	MOVQ BX, 0x98(SP)								
+  multi_aggregate.go:486	0x8ffb62		4881c4c0000000		ADDQ $0xc0, SP									
+  multi_aggregate.go:486	0x8ffb69		5d			POPQ BP										
+  multi_aggregate.go:486	0x8ffb6a		c3			RET										
+  multi_aggregate.go:478	0x8ffb6b		488b8820010000		MOVQ 0x120(AX), CX								
+  multi_aggregate.go:478	0x8ffb72		48898c2480000000	MOVQ CX, 0x80(SP)								
+  multi_aggregate.go:478	0x8ffb7a		31d2			XORL DX, DX									
+  multi_aggregate.go:478	0x8ffb7c		eb3a			JMP 0x8ffbb8									
+  numeric_bundle.go:165		0x8ffb7e		488b5230		MOVQ 0x30(DX), DX								
+  numeric_bundle.go:165		0x8ffb82		4869f7b0010000		IMULQ $0x1b0, DI, SI								
+  numeric_bundle.go:165		0x8ffb89		4801f2			ADDQ SI, DX									
+  numeric_bundle.go:165		0x8ffb8c		4889c1			MOVQ AX, CX									
+  numeric_bundle.go:165		0x8ffb8f		89df			MOVL BX, DI									
+  numeric_bundle.go:165		0x8ffb91		4889d0			MOVQ DX, AX									
+  numeric_bundle.go:165		0x8ffb94		31db			XORL BX, BX									
+  numeric_bundle.go:165		0x8ffb96		e84516eeff		CALL gocolumn/aggregate.(*NumericVector).AddBits(SB)				
+  multi_aggregate.go:478	0x8ffb9b		488b542460		MOVQ 0x60(SP), DX								
+  multi_aggregate.go:478	0x8ffba0		48ffc2			INCQ DX										
+  multi_aggregate.go:479	0x8ffba3		488b8424d0000000	MOVQ 0xd0(SP), AX								
+  multi_aggregate.go:478	0x8ffbab		488b8c2480000000	MOVQ 0x80(SP), CX								
+  multi_aggregate.go:479	0x8ffbb3		4c8b442448		MOVQ 0x48(SP), R8								
+  multi_aggregate.go:478	0x8ffbb8		4839ca			CMPQ DX, CX									
+  multi_aggregate.go:478	0x8ffbbb		7d4e			JGE 0x8ffc0b									
+  multi_aggregate.go:479	0x8ffbbd		488bb020010000		MOVQ 0x120(AX), SI								
+  multi_aggregate.go:479	0x8ffbc4		4839f2			CMPQ DX, SI									
+  multi_aggregate.go:479	0x8ffbc7		735d			JAE 0x8ffc26									
+  multi_aggregate.go:478	0x8ffbc9		4889542460		MOVQ DX, 0x60(SP)								
+  multi_aggregate.go:479	0x8ffbce		488b8818010000		MOVQ 0x118(AX), CX								
+  multi_aggregate.go:479	0x8ffbd5		486bd270		IMULQ $0x70, DX, DX								
+  multi_aggregate.go:479	0x8ffbd9		488d0411		LEAQ 0(CX)(DX*1), AX								
+  multi_aggregate.go:479	0x8ffbdd		4c89c3			MOVQ R8, BX									
+  multi_aggregate.go:479	0x8ffbe0		e8db570000		CALL gocolumn/engine.(*globalAggregateLaneBinding).bits(SB)			
+  multi_aggregate.go:480	0x8ffbe5		488b8c24d0000000	MOVQ 0xd0(SP), CX								
+  multi_aggregate.go:480	0x8ffbed		488b91a8030000		MOVQ 0x3a8(CX), DX								
+  numeric_bundle.go:165		0x8ffbf4		488b7238		MOVQ 0x38(DX), SI								
+  numeric_bundle.go:165		0x8ffbf8		488b7c2460		MOVQ 0x60(SP), DI								
+  numeric_bundle.go:165		0x8ffbfd		0f1f00			NOPL 0(AX)									
+  numeric_bundle.go:165		0x8ffc00		4839f7			CMPQ DI, SI									
+  numeric_bundle.go:165		0x8ffc03		0f8275ffffff		JB 0x8ffb7e									
+  numeric_bundle.go:165		0x8ffc09		eb16			JMP 0x8ffc21									
+  multi_aggregate.go:482	0x8ffc0b		440f11bc2490000000	MOVUPS X15, 0x90(SP)								
+  multi_aggregate.go:482	0x8ffc14		31c0			XORL AX, AX									
+  multi_aggregate.go:482	0x8ffc16		31db			XORL BX, BX									
+  multi_aggregate.go:482	0x8ffc18		4881c4c0000000		ADDQ $0xc0, SP									
+  multi_aggregate.go:482	0x8ffc1f		5d			POPQ BP										
+  multi_aggregate.go:482	0x8ffc20		c3			RET										
+  numeric_bundle.go:165		0x8ffc21		e89a59b9ff		CALL runtime.panicBounds(SB)							
+  multi_aggregate.go:479	0x8ffc26		e89559b9ff		CALL runtime.panicBounds(SB)							
+  multi_aggregate.go:490	0x8ffc2b		4c8b9424b0000000	MOVQ 0xb0(SP), R10								
+  multi_aggregate.go:490	0x8ffc33		4983c210		ADDQ $0x10, R10									
+  multi_aggregate.go:490	0x8ffc37		488b542458		MOVQ 0x58(SP), DX								
+  multi_aggregate.go:490	0x8ffc3c		48ffc2			INCQ DX										
+  multi_aggregate.go:492	0x8ffc3f		488b8424d0000000	MOVQ 0xd0(SP), AX								
+  multi_aggregate.go:520	0x8ffc47		0fb64c2446		MOVZX 0x46(SP), CX								
+  multi_aggregate.go:505	0x8ffc4c		488bb42480000000	MOVQ 0x80(SP), SI								
+  bitmap.go:72			0x8ffc54		4c8b442470		MOVQ 0x70(SP), R8								
+  multi_aggregate.go:490	0x8ffc59		4c8b4c2478		MOVQ 0x78(SP), R9								
+  multi_aggregate.go:500	0x8ffc5e		4c8b5c2448		MOVQ 0x48(SP), R11								
+  multi_aggregate.go:490	0x8ffc63		4c39ca			CMPQ DX, R9									
+  multi_aggregate.go:490	0x8ffc66		0f8d19020000		JGE 0x8ffe85									
+  multi_aggregate.go:490	0x8ffc6c		4889542458		MOVQ DX, 0x58(SP)								
+  multi_aggregate.go:490	0x8ffc71		4c899424b0000000	MOVQ R10, 0xb0(SP)								
+  multi_aggregate.go:490	0x8ffc79		498b7a08		MOVQ 0x8(R10), DI								
+  multi_aggregate.go:490	0x8ffc7d		0f1f00			NOPL 0(AX)									
+  multi_aggregate.go:491	0x8ffc80		4885ff			TESTQ DI, DI									
+  multi_aggregate.go:491	0x8ffc83		757a			JNE 0x8ffcff									
+  multi_aggregate.go:492	0x8ffc85		4c8ba0a8030000		MOVQ 0x3a8(AX), R12								
+  multi_aggregate.go:492	0x8ffc8c		4d85e4			TESTQ R12, R12									
+  multi_aggregate.go:492	0x8ffc8f		7439			JE 0x8ffcca									
+  numeric_bundle.go:165		0x8ffc91		4d8b6c2438		MOVQ 0x38(R12), R13								
+  multi_aggregate.go:493	0x8ffc96		90			NOPL										
+  multi_aggregate.go:493	0x8ffc97		660f1f840000000000	NOPW 0(AX)(AX*1)								
+  numeric_bundle.go:165		0x8ffca0		4c39ea			CMPQ DX, R13									
+  numeric_bundle.go:165		0x8ffca3		0f830b040000		JAE 0x9000b4									
+  numeric_bundle.go:165		0x8ffca9		498b742430		MOVQ 0x30(R12), SI								
+  numeric_bundle.go:165		0x8ffcae		4869d2b0010000		IMULQ $0x1b0, DX, DX								
+  numeric_bundle.go:165		0x8ffcb5		488d0416		LEAQ 0(SI)(DX*1), AX								
+  numeric_bundle.go:165		0x8ffcb9		31db			XORL BX, BX									
+  numeric_bundle.go:165		0x8ffcbb		31c9			XORL CX, CX									
+  numeric_bundle.go:165		0x8ffcbd		31ff			XORL DI, DI									
+  numeric_bundle.go:165		0x8ffcbf		90			NOPL										
+  numeric_bundle.go:165		0x8ffcc0		e81b15eeff		CALL gocolumn/aggregate.(*NumericVector).AddBits(SB)				
+  multi_aggregate.go:497	0x8ffcc5		e961ffffff		JMP 0x8ffc2b									
+  multi_aggregate.go:495	0x8ffcca		4c8ba0a0030000		MOVQ 0x3a0(AX), R12								
+  int64_bundle.go:163		0x8ffcd1		4d8b6c2420		MOVQ 0x20(R12), R13								
+  int64_bundle.go:163		0x8ffcd6		4c39ea			CMPQ DX, R13									
+  int64_bundle.go:163		0x8ffcd9		0f83d0030000		JAE 0x9000af									
+  int64_bundle.go:163		0x8ffcdf		498b742418		MOVQ 0x18(R12), SI								
+  int64_bundle.go:163		0x8ffce4		4869d2c8000000		IMULQ $0xc8, DX, DX								
+  int64_bundle.go:163		0x8ffceb		488d0416		LEAQ 0(SI)(DX*1), AX								
+  int64_bundle.go:163		0x8ffcef		31db			XORL BX, BX									
+  int64_bundle.go:163		0x8ffcf1		31c9			XORL CX, CX									
+  int64_bundle.go:163		0x8ffcf3		31ff			XORL DI, DI									
+  int64_bundle.go:163		0x8ffcf5		e8a6c0edff		CALL gocolumn/aggregate.(*Int64Vector).AddValue(SB)				
+  multi_aggregate.go:497	0x8ffcfa		e92cffffff		JMP 0x8ffc2b									
+  multi_aggregate.go:490	0x8ffcff		498b1a			MOVQ 0(R10), BX									
+  multi_aggregate.go:499	0x8ffd02		4883b8a803000000	CMPQ 0x3a8(AX), $0x0								
+  multi_aggregate.go:499	0x8ffd0a		0f84be000000		JE 0x8ffdce									
+  multi_aggregate.go:500	0x8ffd10		4c8ba080000000		MOVQ 0x80(AX), R12								
+  multi_aggregate.go:500	0x8ffd17		4d8ba42428010000	MOVQ 0x128(R12), R12								
+  multi_aggregate.go:500	0x8ffd1f		4d8b6c2420		MOVQ 0x20(R12), R13								
+  multi_aggregate.go:500	0x8ffd24		4c39ea			CMPQ DX, R13									
+  multi_aggregate.go:500	0x8ffd27		0f837d030000		JAE 0x9000aa									
+  multi_aggregate.go:500	0x8ffd2d		4d8b6c2418		MOVQ 0x18(R12), R13								
+  multi_aggregate.go:500	0x8ffd32		4d8b7c2440		MOVQ 0x40(R12), R15								
+  multi_aggregate.go:500	0x8ffd37		460fb62c2a		MOVZX 0(DX)(R13*1), R13								
+  multi_aggregate.go:500	0x8ffd3c		0f1f4000		NOPL 0(AX)									
+  multi_aggregate.go:500	0x8ffd40		4c39fa			CMPQ DX, R15									
+  multi_aggregate.go:500	0x8ffd43		0f835c030000		JAE 0x9000a5									
+  multi_aggregate.go:500	0x8ffd49		488b8058010000		MOVQ 0x158(AX), AX								
+  multi_aggregate.go:500	0x8ffd50		4d8b442438		MOVQ 0x38(R12), R8								
+  multi_aggregate.go:500	0x8ffd55		4801d2			ADDQ DX, DX									
+  multi_aggregate.go:500	0x8ffd58		488d1452		LEAQ 0(DX)(DX*2), DX								
+  multi_aggregate.go:500	0x8ffd5c		450fb74c1004		MOVZX 0x4(R8)(DX*1), R9								
+  multi_aggregate.go:500	0x8ffd62		418b1410		MOVL 0(R8)(DX*1), DX								
+  multi_aggregate.go:500	0x8ffd66		89542440		MOVL DX, 0x40(SP)								
+  multi_aggregate.go:500	0x8ffd6a		6644894c2444		MOVW R9, 0x44(SP)								
+  multi_aggregate.go:500	0x8ffd70		8b542440		MOVL 0x40(SP), DX								
+  multi_aggregate.go:500	0x8ffd74		891424			MOVL DX, 0(SP)									
+  multi_aggregate.go:500	0x8ffd77		6644894c2404		MOVW R9, 0x4(SP)								
+  multi_aggregate.go:500	0x8ffd7d		4889f9			MOVQ DI, CX									
+  multi_aggregate.go:500	0x8ffd80		4489ef			MOVL R13, DI									
+  multi_aggregate.go:500	0x8ffd83		4c89de			MOVQ R11, SI									
+  multi_aggregate.go:500	0x8ffd86		e815380000		CALL gocolumn/engine.nativeAggregateBits(SB)					
+  multi_aggregate.go:501	0x8ffd8b		488b9424d0000000	MOVQ 0xd0(SP), DX								
+  multi_aggregate.go:501	0x8ffd93		4c8b82a8030000		MOVQ 0x3a8(DX), R8								
+  numeric_bundle.go:165		0x8ffd9a		4d8b4838		MOVQ 0x38(R8), R9								
+  numeric_bundle.go:165		0x8ffd9e		4c8b542458		MOVQ 0x58(SP), R10								
+  numeric_bundle.go:165		0x8ffda3		4d39ca			CMPQ R10, R9									
+  numeric_bundle.go:165		0x8ffda6		0f83f1020000		JAE 0x90009d									
+  numeric_bundle.go:165		0x8ffdac		498b5030		MOVQ 0x30(R8), DX								
+  numeric_bundle.go:165		0x8ffdb0		4969f2b0010000		IMULQ $0x1b0, R10, SI								
+  numeric_bundle.go:165		0x8ffdb7		4801f2			ADDQ SI, DX									
+  numeric_bundle.go:165		0x8ffdba		4889c1			MOVQ AX, CX									
+  numeric_bundle.go:165		0x8ffdbd		89df			MOVL BX, DI									
+  numeric_bundle.go:165		0x8ffdbf		4889d0			MOVQ DX, AX									
+  numeric_bundle.go:165		0x8ffdc2		31db			XORL BX, BX									
+  numeric_bundle.go:165		0x8ffdc4		e81714eeff		CALL gocolumn/aggregate.(*NumericVector).AddBits(SB)				
+  multi_aggregate.go:502	0x8ffdc9		e95dfeffff		JMP 0x8ffc2b									
+  multi_aggregate.go:504	0x8ffdce		488b9058010000		MOVQ 0x158(AX), DX								
+  multi_aggregate.go:504	0x8ffdd5		488b5218		MOVQ 0x18(DX), DX								
+  multi_aggregate.go:504	0x8ffdd9		488d05307a1f01		LEAQ 0x11f7a30(IP), AX								
+  multi_aggregate.go:504	0x8ffde0		4889d9			MOVQ BX, CX									
+  multi_aggregate.go:504	0x8ffde3		4889d3			MOVQ DX, BX									
+  multi_aggregate.go:504	0x8ffde6		e83509b1ff		CALL runtime.mapaccess1_faststr(SB)						
+  multi_aggregate.go:504	0x8ffdeb		488b10			MOVQ 0(AX), DX									
+  zz_generated_numeric.go:55	0x8ffdee		488b7218		MOVQ 0x18(DX), SI								
+  zz_generated_numeric.go:55	0x8ffdf2		4885f6			TESTQ SI, SI									
+  zz_generated_numeric.go:55	0x8ffdf5		7425			JE 0x8ffe1c									
+  zz_generated_numeric.go:55	0x8ffdf7		4c8b4220		MOVQ 0x20(DX), R8								
+  bitmap.go:72			0x8ffdfb		4c8b4c2470		MOVQ 0x70(SP), R9								
+  bitmap.go:72			0x8ffe00		4d39c8			CMPQ R8, R9									
+  bitmap.go:72			0x8ffe03		0f868f020000		JBE 0x900098									
+  bitmap.go:72			0x8ffe09		4a8b34ce		MOVQ 0(SI)(R9*8), SI								
+  bitmap.go:72			0x8ffe0d		4c8b442448		MOVQ 0x48(SP), R8								
+  bitmap.go:72			0x8ffe12		4c0fa3c6		BTQ R8, SI									
+  bitmap.go:72			0x8ffe16		400f92c7		SETB DI										
+  zz_generated_numeric.go:55	0x8ffe1a		eb0f			JMP 0x8ffe2b									
+  multi_aggregate.go:505	0x8ffe1c		4c8b442448		MOVQ 0x48(SP), R8								
+  bitmap.go:72			0x8ffe21		4c8b4c2470		MOVQ 0x70(SP), R9								
+  bitmap.go:72			0x8ffe26		bf01000000		MOVL $0x1, DI									
+  multi_aggregate.go:505	0x8ffe2b		488b7208		MOVQ 0x8(DX), SI								
+  multi_aggregate.go:505	0x8ffe2f		4c39c6			CMPQ SI, R8									
+  multi_aggregate.go:505	0x8ffe32		0f865b020000		JBE 0x900093									
+  multi_aggregate.go:505	0x8ffe38		488bb424d0000000	MOVQ 0xd0(SP), SI								
+  multi_aggregate.go:505	0x8ffe40		4c8b96a0030000		MOVQ 0x3a0(SI), R10								
+  multi_aggregate.go:505	0x8ffe47		488b12			MOVQ 0(DX), DX									
+  int64_bundle.go:163		0x8ffe4a		4d8b5a20		MOVQ 0x20(R10), R11								
+  multi_aggregate.go:505	0x8ffe4e		4c8ba42480000000	MOVQ 0x80(SP), R12								
+  multi_aggregate.go:505	0x8ffe56		4a8b4ce2f8		MOVQ -0x8(DX)(R12*8), CX							
+  int64_bundle.go:163		0x8ffe5b		488b542458		MOVQ 0x58(SP), DX								
+  int64_bundle.go:163		0x8ffe60		4c39da			CMPQ DX, R11									
+  int64_bundle.go:163		0x8ffe63		0f8325020000		JAE 0x90008e									
+  int64_bundle.go:163		0x8ffe69		498b7218		MOVQ 0x18(R10), SI								
+  int64_bundle.go:163		0x8ffe6d		4869d2c8000000		IMULQ $0xc8, DX, DX								
+  int64_bundle.go:163		0x8ffe74		488d0416		LEAQ 0(SI)(DX*1), AX								
+  int64_bundle.go:163		0x8ffe78		31db			XORL BX, BX									
+  int64_bundle.go:163		0x8ffe7a		e821bfedff		CALL gocolumn/aggregate.(*Int64Vector).AddValue(SB)				
+  int64_bundle.go:163		0x8ffe7f		90			NOPL										
+  multi_aggregate.go:505	0x8ffe80		e9a6fdffff		JMP 0x8ffc2b									
+  multi_aggregate.go:507	0x8ffe85		4883b8b003000000	CMPQ 0x3b0(AX), $0x0								
+  multi_aggregate.go:507	0x8ffe8d		743b			JE 0x8ffeca									
+  multi_aggregate.go:508	0x8ffe8f		4c8b8080000000		MOVQ 0x80(AX), R8								
+  statistics_aggregate.go:67	0x8ffe96		4d8b8028010000		MOVQ 0x128(R8), R8								
+  statistics_aggregate.go:67	0x8ffe9d		0f1f00			NOPL 0(AX)									
+  statistics_aggregate.go:67	0x8ffea0		4d85c0			TESTQ R8, R8									
+  statistics_aggregate.go:67	0x8ffea3		7406			JE 0x8ffeab									
+  statistics_aggregate.go:70	0x8ffea5		4d8b4068		MOVQ 0x68(R8), R8								
+  multi_aggregate.go:508	0x8ffea9		eb03			JMP 0x8ffeae									
+  multi_aggregate.go:508	0x8ffeab		4531c0			XORL R8, R8									
+  multi_aggregate.go:508	0x8ffeae		4c89842488000000	MOVQ R8, 0x88(SP)								
+  multi_aggregate.go:509	0x8ffeb6		4d8b08			MOVQ 0(R8), R9									
+  multi_aggregate.go:509	0x8ffeb9		4d8b5008		MOVQ 0x8(R8), R10								
+  multi_aggregate.go:509	0x8ffebd		4c89542478		MOVQ R10, 0x78(SP)								
+  multi_aggregate.go:509	0x8ffec2		4531e4			XORL R12, R12									
+  multi_aggregate.go:509	0x8ffec5		e9a2000000		JMP 0x8fff6c									
+  multi_aggregate.go:519	0x8ffeca		90			NOPL										
+  bytes_statistics.go:130	0x8ffecb		488b7008		MOVQ 0x8(AX), SI								
+  bytes_statistics.go:130	0x8ffecf		4889b42480000000	MOVQ SI, 0x80(SP)								
+  bytes_statistics.go:130	0x8ffed7		31d2			XORL DX, DX									
+  bytes_statistics.go:130	0x8ffed9		eb36			JMP 0x8fff11									
+  bytes_statistics.go:130	0x8ffedb		4889542468		MOVQ DX, 0x68(SP)								
+  bytes_statistics.go:131	0x8ffee0		488b08			MOVQ 0(AX), CX									
+  bytes_statistics.go:131	0x8ffee3		488d14d2		LEAQ 0(DX)(DX*8), DX								
+  bytes_statistics.go:131	0x8ffee7		48c1e204		SHLQ $0x4, DX									
+  bytes_statistics.go:131	0x8ffeeb		488d0411		LEAQ 0(CX)(DX*1), AX								
+  bytes_statistics.go:131	0x8ffeef		e86cd1edff		CALL gocolumn/aggregate.(*BytesEndpointMutation).Commit(SB)			
+  bytes_statistics.go:130	0x8ffef4		488b542468		MOVQ 0x68(SP), DX								
+  bytes_statistics.go:130	0x8ffef9		48ffc2			INCQ DX										
+  bytes_statistics.go:131	0x8ffefc		488b8424d0000000	MOVQ 0xd0(SP), AX								
+  multi_aggregate.go:520	0x8fff04		0fb64c2446		MOVZX 0x46(SP), CX								
+  bytes_statistics.go:130	0x8fff09		488bb42480000000	MOVQ 0x80(SP), SI								
+  bytes_statistics.go:130	0x8fff11		4839f2			CMPQ DX, SI									
+  bytes_statistics.go:130	0x8fff14		7d0c			JGE 0x8fff22									
+  bytes_statistics.go:131	0x8fff16		488b5808		MOVQ 0x8(AX), BX								
+  bytes_statistics.go:131	0x8fff1a		4839da			CMPQ DX, BX									
+  bytes_statistics.go:131	0x8fff1d		72bc			JB 0x8ffedb									
+  bytes_statistics.go:131	0x8fff1f		90			NOPL										
+  bytes_statistics.go:131	0x8fff20		eb39			JMP 0x8fff5b									
+  multi_aggregate.go:520	0x8fff22		440f11bc2490000000	MOVUPS X15, 0x90(SP)								
+  multi_aggregate.go:520	0x8fff2b		84c9			TESTL CL, CL									
+  multi_aggregate.go:520	0x8fff2d		7413			JE 0x8fff42									
+  multi_aggregate.go:520	0x8fff2f		c644244700		MOVB $0x0, 0x47(SP)								
+  multi_aggregate.go:520	0x8fff34		488b9424b8000000	MOVQ 0xb8(SP), DX								
+  multi_aggregate.go:520	0x8fff3c		488b02			MOVQ 0(DX), AX									
+  multi_aggregate.go:520	0x8fff3f		90			NOPL										
+  multi_aggregate.go:520	0x8fff40		ffd0			CALL AX										
+  multi_aggregate.go:520	0x8fff42		488b842490000000	MOVQ 0x90(SP), AX								
+  multi_aggregate.go:520	0x8fff4a		488b9c2498000000	MOVQ 0x98(SP), BX								
+  multi_aggregate.go:520	0x8fff52		4881c4c0000000		ADDQ $0xc0, SP									
+  multi_aggregate.go:520	0x8fff59		5d			POPQ BP										
+  multi_aggregate.go:520	0x8fff5a		c3			RET										
+  bytes_statistics.go:131	0x8fff5b		0f1f440000		NOPL 0(AX)(AX*1)								
+  bytes_statistics.go:131	0x8fff60		e85b56b9ff		CALL runtime.panicBounds(SB)							
+  multi_aggregate.go:509	0x8fff65		4983c110		ADDQ $0x10, R9									
+  multi_aggregate.go:509	0x8fff69		49ffc4			INCQ R12									
+  multi_aggregate.go:509	0x8fff6c		4d39d4			CMPQ R12, R10									
+  multi_aggregate.go:509	0x8fff6f		0f8d55ffffff		JGE 0x8ffeca									
+  multi_aggregate.go:510	0x8fff75		4d8b6820		MOVQ 0x20(R8), R13								
+  multi_aggregate.go:510	0x8fff79		0f1f8000000000		NOPL 0(AX)									
+  multi_aggregate.go:510	0x8fff80		4d39ec			CMPQ R12, R13									
+  multi_aggregate.go:510	0x8fff83		0f8300010000		JAE 0x900089									
+  multi_aggregate.go:510	0x8fff89		4d8b6818		MOVQ 0x18(R8), R13								
+  multi_aggregate.go:510	0x8fff8d		430fb63c2c		MOVZX 0(R12)(R13*1), DI								
+  bytes_statistics.go:14	0x8fff92		4189fd			MOVL DI, R13									
+  bytes_statistics.go:14	0x8fff95		4183cd01		ORL $0x1, R13									
+  bytes_statistics.go:14	0x8fff99		4180fd07		CMPL R13, $0x7									
+  multi_aggregate.go:510	0x8fff9d		74c6			JE 0x8fff65									
+  multi_aggregate.go:509	0x8fff9f		4c89642450		MOVQ R12, 0x50(SP)								
+  multi_aggregate.go:509	0x8fffa4		4c898c24b0000000	MOVQ R9, 0xb0(SP)								
+  multi_aggregate.go:509	0x8fffac		498b19			MOVQ 0(R9), BX									
+  multi_aggregate.go:509	0x8fffaf		498b4908		MOVQ 0x8(R9), CX								
+  multi_aggregate.go:513	0x8fffb3		488b8058010000		MOVQ 0x158(AX), AX								
+  multi_aggregate.go:513	0x8fffba		4c89de			MOVQ R11, SI									
+  multi_aggregate.go:513	0x8fffbd		0f1f00			NOPL 0(AX)									
+  multi_aggregate.go:513	0x8fffc0		e8fbaa0300		CALL gocolumn/engine.statisticsInputBits(SB)					
+  multi_aggregate.go:514	0x8fffc5		488b9424d0000000	MOVQ 0xd0(SP), DX								
+  multi_aggregate.go:514	0x8fffcd		4c8b82b0030000		MOVQ 0x3b0(DX), R8								
+  multi_aggregate.go:514	0x8fffd4		488b9248010000		MOVQ 0x148(DX), DX								
+  multi_aggregate.go:514	0x8fffdb		4c8b8c2480000000	MOVQ 0x80(SP), R9								
+  multi_aggregate.go:514	0x8fffe3		4e8d0c0a		LEAQ 0(DX)(R9*1), R9								
+  multi_aggregate.go:514	0x8fffe7		4d8d49ff		LEAQ -0x1(R9), R9								
+  multi_aggregate.go:514	0x8fffeb		488b4c2450		MOVQ 0x50(SP), CX								
+  multi_aggregate.go:514	0x8ffff0		4889c7			MOVQ AX, DI									
+  multi_aggregate.go:514	0x8ffff3		89de			MOVL BX, SI									
+  multi_aggregate.go:514	0x8ffff5		4c89c0			MOVQ R8, AX									
+  multi_aggregate.go:514	0x8ffff8		31db			XORL BX, BX									
+  multi_aggregate.go:514	0x8ffffa		4531c0			XORL R8, R8									
+  multi_aggregate.go:514	0x8ffffd		0f1f00			NOPL 0(AX)									
+  multi_aggregate.go:514	0x900000		e87b48eeff		CALL gocolumn/aggregate.(*StatisticsBundle).AddBits(SB)				
+  multi_aggregate.go:514	0x900005		4885c0			TESTQ AX, AX									
+  multi_aggregate.go:514	0x900008		753b			JNE 0x900045									
+  multi_aggregate.go:513	0x90000a		488b8424d0000000	MOVQ 0xd0(SP), AX								
+  multi_aggregate.go:520	0x900012		0fb64c2446		MOVZX 0x46(SP), CX								
+  multi_aggregate.go:514	0x900017		488bb42480000000	MOVQ 0x80(SP), SI								
+  multi_aggregate.go:510	0x90001f		4c8b842488000000	MOVQ 0x88(SP), R8								
+  multi_aggregate.go:509	0x900027		4c8b8c24b0000000	MOVQ 0xb0(SP), R9								
+  multi_aggregate.go:509	0x90002f		4c8b542478		MOVQ 0x78(SP), R10								
+  multi_aggregate.go:513	0x900034		4c8b5c2448		MOVQ 0x48(SP), R11								
+  multi_aggregate.go:509	0x900039		4c8b642450		MOVQ 0x50(SP), R12								
+  multi_aggregate.go:509	0x90003e		6690			NOPW										
+  multi_aggregate.go:514	0x900040		e920ffffff		JMP 0x8fff65									
+  multi_aggregate.go:515	0x900045		4889842490000000	MOVQ AX, 0x90(SP)								
+  multi_aggregate.go:515	0x90004d		48899c2498000000	MOVQ BX, 0x98(SP)								
+  multi_aggregate.go:515	0x900055		0fb64c2446		MOVZX 0x46(SP), CX								
+  multi_aggregate.go:515	0x90005a		84c9			TESTL CL, CL									
+  multi_aggregate.go:515	0x90005c		7412			JE 0x900070									
+  multi_aggregate.go:515	0x90005e		c644244700		MOVB $0x0, 0x47(SP)								
+  multi_aggregate.go:515	0x900063		488b9424b8000000	MOVQ 0xb8(SP), DX								
+  multi_aggregate.go:515	0x90006b		488b02			MOVQ 0(DX), AX									
+  multi_aggregate.go:515	0x90006e		ffd0			CALL AX										
+  multi_aggregate.go:515	0x900070		488b842490000000	MOVQ 0x90(SP), AX								
+  multi_aggregate.go:515	0x900078		488b9c2498000000	MOVQ 0x98(SP), BX								
+  multi_aggregate.go:515	0x900080		4881c4c0000000		ADDQ $0xc0, SP									
+  multi_aggregate.go:515	0x900087		5d			POPQ BP										
+  multi_aggregate.go:515	0x900088		c3			RET										
+  multi_aggregate.go:510	0x900089		e83255b9ff		CALL runtime.panicBounds(SB)							
+  int64_bundle.go:163		0x90008e		e82d55b9ff		CALL runtime.panicBounds(SB)							
+  multi_aggregate.go:505	0x900093		e82855b9ff		CALL runtime.panicBounds(SB)							
+  bitmap.go:72			0x900098		e82355b9ff		CALL runtime.panicBounds(SB)							
+  numeric_bundle.go:165		0x90009d		0f1f00			NOPL 0(AX)									
+  numeric_bundle.go:165		0x9000a0		e81b55b9ff		CALL runtime.panicBounds(SB)							
+  multi_aggregate.go:500	0x9000a5		e81655b9ff		CALL runtime.panicBounds(SB)							
+  multi_aggregate.go:500	0x9000aa		e81155b9ff		CALL runtime.panicBounds(SB)							
+  int64_bundle.go:163		0x9000af		e80c55b9ff		CALL runtime.panicBounds(SB)							
+  numeric_bundle.go:165		0x9000b4		e80755b9ff		CALL runtime.panicBounds(SB)							
+  numeric_bundle.go:165		0x9000b9		90			NOPL										
+  numeric_bundle.go:165		0x9000ba		e881f2b4ff		CALL runtime.deferreturn(SB)							
+  numeric_bundle.go:165		0x9000bf		488b842490000000	MOVQ 0x90(SP), AX								
+  numeric_bundle.go:165		0x9000c7		488b9c2498000000	MOVQ 0x98(SP), BX								
+  numeric_bundle.go:165		0x9000cf		4881c4c0000000		ADDQ $0xc0, SP									
+  numeric_bundle.go:165		0x9000d6		5d			POPQ BP										
+  numeric_bundle.go:165		0x9000d7		c3			RET										
+  multi_aggregate.go:475	0x9000d8		4889442408		MOVQ AX, 0x8(SP)								
+  multi_aggregate.go:475	0x9000dd		0f1f00			NOPL 0(AX)									
+  multi_aggregate.go:475	0x9000e0		e83b37b9ff		CALL runtime.morestack_noctxt.abi0(SB)						
+  multi_aggregate.go:475	0x9000e5		488b442408		MOVQ 0x8(SP), AX								
+  multi_aggregate.go:475	0x9000ea		e931f9ffff		JMP gocolumn/engine.(*sortedAggregateStream).addBundleRow(SB)			
+
+TEXT gocolumn/engine.(*sortedAggregateStream).addBundleRow.deferwrap1(SB) /workspace/scratch/ac8e1e118737/GoLume-next/engine/multi_aggregate.go
+  multi_aggregate.go:488	0x99c880		493b6610		CMPQ SP, 0x10(R14)								
+  multi_aggregate.go:488	0x99c884		7665			JBE 0x99c8eb									
+  multi_aggregate.go:488	0x99c886		55			PUSHQ BP									
+  multi_aggregate.go:488	0x99c887		4889e5			MOVQ SP, BP									
+  multi_aggregate.go:488	0x99c88a		4883ec20		SUBQ $0x20, SP									
+  multi_aggregate.go:488	0x99c88e		488b4a08		MOVQ 0x8(DX), CX								
+  multi_aggregate.go:488	0x99c892		48894c2418		MOVQ CX, 0x18(SP)								
+  bytes_statistics.go:125	0x99c897		488b5108		MOVQ 0x8(CX), DX								
+  bytes_statistics.go:125	0x99c89b		4889542410		MOVQ DX, 0x10(SP)								
+  bytes_statistics.go:125	0x99c8a0		31c0			XORL AX, AX									
+  bytes_statistics.go:125	0x99c8a2		eb2b			JMP 0x99c8cf									
+  bytes_statistics.go:125	0x99c8a4		4889442408		MOVQ AX, 0x8(SP)								
+  bytes_statistics.go:126	0x99c8a9		488b09			MOVQ 0(CX), CX									
+  bytes_statistics.go:126	0x99c8ac		488d14c0		LEAQ 0(AX)(AX*8), DX								
+  bytes_statistics.go:126	0x99c8b0		48c1e204		SHLQ $0x4, DX									
+  bytes_statistics.go:126	0x99c8b4		488d0411		LEAQ 0(CX)(DX*1), AX								
+  bytes_statistics.go:126	0x99c8b8		e8e306e4ff		CALL gocolumn/aggregate.(*BytesEndpointMutation).Abort(SB)			
+  bytes_statistics.go:125	0x99c8bd		488b442408		MOVQ 0x8(SP), AX								
+  bytes_statistics.go:125	0x99c8c2		48ffc0			INCQ AX										
+  bytes_statistics.go:126	0x99c8c5		488b4c2418		MOVQ 0x18(SP), CX								
+  bytes_statistics.go:125	0x99c8ca		488b542410		MOVQ 0x10(SP), DX								
+  bytes_statistics.go:125	0x99c8cf		4839d0			CMPQ AX, DX									
+  bytes_statistics.go:125	0x99c8d2		7d0b			JGE 0x99c8df									
+  bytes_statistics.go:126	0x99c8d4		488b5908		MOVQ 0x8(CX), BX								
+  bytes_statistics.go:126	0x99c8d8		4839d8			CMPQ AX, BX									
+  bytes_statistics.go:126	0x99c8db		72c7			JB 0x99c8a4									
+  bytes_statistics.go:126	0x99c8dd		eb06			JMP 0x99c8e5									
+  multi_aggregate.go:488	0x99c8df		4883c420		ADDQ $0x20, SP									
+  multi_aggregate.go:488	0x99c8e3		5d			POPQ BP										
+  multi_aggregate.go:488	0x99c8e4		c3			RET										
+  bytes_statistics.go:126	0x99c8e5		e8d68cafff		CALL runtime.panicBounds(SB)							
+  bytes_statistics.go:126	0x99c8ea		90			NOPL										
+  multi_aggregate.go:488	0x99c8eb		e8906eafff		CALL runtime.morestack.abi0(SB)							
+  multi_aggregate.go:488	0x99c8f0		eb8e			JMP gocolumn/engine.(*sortedAggregateStream).addBundleRow.deferwrap1(SB)	

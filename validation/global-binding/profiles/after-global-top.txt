@@ -1,0 +1,43 @@
+File: after.engine.test
+Build ID: 115ff97a7ec839e2a9378f6414b52a7eb3259f61
+Type: cpu
+Time: 2026-11-08 00:21:48 CST
+Duration: 2.79s, Total samples = 2.79s (99.89%)
+Showing nodes accounting for 2.65s, 94.98% of 2.79s total
+Dropped 51 nodes (cum <= 0.01s)
+      flat  flat%   sum%        cum   cum%
+     1.27s 45.52% 45.52%      1.38s 49.46%  gocolumn/engine.(*sortedAggregateStream).nextSelected
+     0.43s 15.41% 60.93%      2.72s 97.49%  gocolumn/engine.(*sortedAggregateStream).next
+     0.31s 11.11% 72.04%      0.43s 15.41%  gocolumn/aggregate.(*NumericVector).AddBits
+     0.21s  7.53% 79.57%      0.22s  7.89%  gocolumn/engine.(*globalAggregateLaneBinding).bits
+     0.12s  4.30% 83.87%      0.55s 19.71%  gocolumn/aggregate.(*NumericBundle).AddBits (inline)
+     0.12s  4.30% 88.17%      0.89s 31.90%  gocolumn/engine.(*sortedAggregateStream).addBundleRow
+     0.08s  2.87% 91.04%      0.08s  2.87%  gocolumn/aggregate.normalizeNumericBits (inline)
+     0.05s  1.79% 92.83%      0.05s  1.79%  gocolumn/engine.aggregateBatchBinding.key
+     0.02s  0.72% 93.55%      0.02s  0.72%  math.Float32bits (inline)
+     0.02s  0.72% 94.27%      0.02s  0.72%  runtime.asyncPreempt
+     0.01s  0.36% 94.62%      0.03s  1.08%  gocolumn/aggregate.numericSum (inline)
+     0.01s  0.36% 94.98%      0.02s  0.72%  runtime.mapaccess1_faststr
+         0     0% 94.98%      2.74s 98.21%  gocolumn/engine.(*PreparedQuery).ExecuteTyped
+         0     0% 94.98%      2.74s 98.21%  gocolumn/engine.(*PreparedQuery).executeTyped
+         0     0% 94.98%      0.03s  1.08%  gocolumn/engine.(*aggregatePredicateWorkspace).evaluate
+         0     0% 94.98%      2.72s 97.49%  gocolumn/engine.(*sortedAggregateStream).consumeRecords
+         0     0% 94.98%      0.04s  1.43%  gocolumn/engine.(*sortedAggregateStream).loadInput
+         0     0% 94.98%      2.77s 99.28%  gocolumn/engine.BenchmarkGlobalBindingWholeQuery.func1
+         0     0% 94.98%      0.03s  1.08%  gocolumn/engine.checkGlobalBindingResult
+         0     0% 94.98%      0.03s  1.08%  gocolumn/engine.globalBindingOracle
+         0     0% 94.98%      0.03s  1.08%  gocolumn/engine.verifyGlobalBindingExecution
+         0     0% 94.98%      0.03s  1.08%  gocolumn/expr.(*Workspace).EvaluateBool
+         0     0% 94.98%      0.03s  1.08%  gocolumn/expr.(*Workspace).execute
+         0     0% 94.98%      0.02s  0.72%  gocolumn/expr.(*evaluationState).prepareProgram
+         0     0% 94.98%      0.03s  1.08%  gocolumn/expr.evaluateInstructions (inline)
+         0     0% 94.98%      0.03s  1.08%  gocolumn/expr.evaluateInstructionsActive
+         0     0% 94.98%      0.02s  0.72%  gocolumn/expr.prepareScalarBuffers
+         0     0% 94.98%      0.02s  0.72%  gocolumn/expr.scalarResize[go.shape.[]uint64,go.shape.uint64]
+         0     0% 94.98%      0.02s  0.72%  runtime.gcBgMarkWorker
+         0     0% 94.98%      0.03s  1.08%  runtime.makeslice
+         0     0% 94.98%      0.04s  1.43%  runtime.mallocgc
+         0     0% 94.98%      0.02s  0.72%  runtime.mallocgcSmallNoscan
+         0     0% 94.98%      0.03s  1.08%  runtime.systemstack
+         0     0% 94.98%      2.76s 98.92%  testing.(*B).launch
+         0     0% 94.98%      2.77s 99.28%  testing.(*B).runN

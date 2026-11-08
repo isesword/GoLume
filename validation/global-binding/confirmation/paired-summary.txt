@@ -1,0 +1,2 @@
+BenchmarkGlobalBindingWholeQuery/global/lanes=4/selective/rows=63/batch=63/mode=auto: 22,136 -> 22,315 ns/op (+0.8%, 0.99x); heap 19,345 -> 19,913 B/op (+568); allocs 152 -> 156 (+4); peak 6676 -> 7124 (+448)
+BenchmarkGlobalBindingWholeQuery/minmax/lanes=2/dense/rows=32771/batch=32771/mode=auto: 2,751,408 -> 2,841,720 ns/op (+3.3%, 0.97x); heap 26,665 -> 26,665 B/op (+0); allocs 145 -> 145 (+0); peak 13718 -> 13718 (+0)

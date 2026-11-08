@@ -1,0 +1,48 @@
+goos: linux
+goarch: amd64
+pkg: gocolumn/engine
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkGlobalBindingWholeQuery/global/lanes=4/nullable/rows=262147/batch=262147/mode=auto         	      73	  16745319 ns/op	     23492 peak-charged-B	   37825 B/op	     181 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/engine
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkGlobalBindingWholeQuery/global/lanes=4/dense/rows=32771/batch=32771/mode=auto         	     565	   2058302 ns/op	     15316 peak-charged-B	   29634 B/op	     157 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/engine
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkGlobalBindingWholeQuery/global/lanes=2/dense/rows=32771/batch=32771/mode=auto         	     728	   1647721 ns/op	     13654 peak-charged-B	   26417 B/op	     145 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/engine
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkGlobalBindingWholeQuery/global/lanes=2/selective/rows=32771/batch=1021/mode=forced-simd         	    2680	    476173 ns/op	      5702 peak-charged-B	   25137 B/op	     273 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/engine
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkGlobalBindingWholeQuery/statistics/lanes=4/nullable/rows=32771/batch=1021/mode=auto         	     201	   5934602 ns/op	      8236 peak-charged-B	   33906 B/op	     358 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/engine
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkGlobalBindingWholeQuery/minmax/lanes=2/dense/rows=32771/batch=32771/mode=auto         	     392	   2870714 ns/op	     13718 peak-charged-B	   26665 B/op	     145 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/engine
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkGlobalBindingWholeQuery/grouped/lanes=2/dense/rows=32771/batch=32771/mode=auto         	     272	   4377343 ns/op	     50814 peak-charged-B	   81229 B/op	     488 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/engine
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkGlobalBindingWholeQuery/global/lanes=4/selective/rows=63/batch=63/mode=auto         	   51985	     24993 ns/op	      7124 peak-charged-B	   19913 B/op	     156 allocs/op
+PASS

@@ -1,0 +1,5 @@
+{
+  "Replace": {
+    "/workspace/scratch/ac8e1e118737/GoLume-next/engine/global_binding_benchmark_test.go": "/workspace/scratch/ac8e1e118737/GoLume-next/validation/global-binding/harness.go.txt"
+  }
+}

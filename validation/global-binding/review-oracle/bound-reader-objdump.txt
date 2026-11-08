@@ -1,0 +1,135 @@
+TEXT gocolumn/engine.(*globalAggregateLaneBinding).bits(SB) /workspace/scratch/ac8e1e118737/GoLume-next/engine/native_global_binding.go
+  native_global_binding.go:117	0x9053c0		55			PUSHQ BP			
+  native_global_binding.go:117	0x9053c1		4889e5			MOVQ SP, BP			
+  native_global_binding.go:118	0x9053c4		80780100		CMPB 0x1(AX), $0x0		
+  native_global_binding.go:118	0x9053c8		0f856f010000		JNE 0x90553d			
+  native_global_binding.go:121	0x9053ce		488b4808		MOVQ 0x8(AX), CX		
+  native_global_binding.go:121	0x9053d2		4885c9			TESTQ CX, CX			
+  native_global_binding.go:121	0x9053d5		7421			JE 0x9053f8			
+  native_global_binding.go:121	0x9053d7		488b5010		MOVQ 0x10(AX), DX		
+  bitmap.go:72			0x9053db		4889de			MOVQ BX, SI			
+  bitmap.go:72			0x9053de		48c1fb06		SARQ $0x6, BX			
+  bitmap.go:72			0x9053e2		4839da			CMPQ DX, BX			
+  bitmap.go:72			0x9053e5		0f868e010000		JBE 0x905579			
+  bitmap.go:72			0x9053eb		488b0cd9		MOVQ 0(CX)(BX*8), CX		
+  bitmap.go:72			0x9053ef		480fa3f1		BTQ SI, CX			
+  bitmap.go:72			0x9053f3		0f92c3			SETB BL				
+  native_global_binding.go:121	0x9053f6		eb08			JMP 0x905400			
+  native_global_binding.go:128	0x9053f8		4889de			MOVQ BX, SI			
+  native_global_binding.go:128	0x9053fb		bb01000000		MOVL $0x1, BX			
+  native_global_binding.go:122	0x905400		0fb608			MOVZX 0(AX), CX			
+  native_global_binding.go:122	0x905403		48ffc9			DECQ CX				
+  native_global_binding.go:122	0x905406		4883f90c		CMPQ CX, $0xc			
+  native_global_binding.go:122	0x90540a		0f8729010000		JA 0x905539			
+  native_global_binding.go:122	0x905410		488d1549388200		LEAQ 0x823849(IP), DX		
+  native_global_binding.go:122	0x905417		ff24ca			JMP 0(DX)(CX*8)			
+  native_global_binding.go:128	0x90541a		488b4830		MOVQ 0x30(AX), CX		
+  native_global_binding.go:128	0x90541e		488b5108		MOVQ 0x8(CX), DX		
+  native_global_binding.go:128	0x905422		4839d6			CMPQ SI, DX			
+  native_global_binding.go:128	0x905425		0f8349010000		JAE 0x905574			
+  native_global_binding.go:128	0x90542b		488b09			MOVQ 0(CX), CX			
+  native_global_binding.go:128	0x90542e		488d0cb1		LEAQ 0(CX)(SI*4), CX		
+  native_global_binding.go:128	0x905432		486301			MOVSXD 0(CX), AX		
+  native_global_binding.go:128	0x905435		5d			POPQ BP				
+  native_global_binding.go:128	0x905436		c3			RET				
+  native_global_binding.go:130	0x905437		488b4838		MOVQ 0x38(AX), CX		
+  native_global_binding.go:130	0x90543b		488b5108		MOVQ 0x8(CX), DX		
+  native_global_binding.go:130	0x90543f		90			NOPL				
+  native_global_binding.go:130	0x905440		4839d6			CMPQ SI, DX			
+  native_global_binding.go:130	0x905443		0f8326010000		JAE 0x90556f			
+  native_global_binding.go:130	0x905449		488b09			MOVQ 0(CX), CX			
+  native_global_binding.go:130	0x90544c		488b04f1		MOVQ 0(CX)(SI*8), AX		
+  native_global_binding.go:130	0x905450		5d			POPQ BP				
+  native_global_binding.go:130	0x905451		c3			RET				
+  native_global_binding.go:136	0x905452		488b4850		MOVQ 0x50(AX), CX		
+  native_global_binding.go:136	0x905456		488b5108		MOVQ 0x8(CX), DX		
+  native_global_binding.go:136	0x90545a		660f1f440000		NOPW 0(AX)(AX*1)		
+  native_global_binding.go:136	0x905460		4839d6			CMPQ SI, DX			
+  native_global_binding.go:136	0x905463		0f8301010000		JAE 0x90556a			
+  native_global_binding.go:136	0x905469		488b09			MOVQ 0(CX), CX			
+  native_global_binding.go:136	0x90546c		8b04b1			MOVL 0(CX)(SI*4), AX		
+  native_global_binding.go:136	0x90546f		5d			POPQ BP				
+  native_global_binding.go:136	0x905470		c3			RET				
+  native_global_binding.go:138	0x905471		488b4858		MOVQ 0x58(AX), CX		
+  native_global_binding.go:138	0x905475		488b5108		MOVQ 0x8(CX), DX		
+  native_global_binding.go:138	0x905479		0f1f8000000000		NOPL 0(AX)			
+  native_global_binding.go:138	0x905480		4839d6			CMPQ SI, DX			
+  native_global_binding.go:138	0x905483		0f83dc000000		JAE 0x905565			
+  native_global_binding.go:138	0x905489		488b09			MOVQ 0(CX), CX			
+  native_global_binding.go:138	0x90548c		488b04f1		MOVQ 0(CX)(SI*8), AX		
+  native_global_binding.go:138	0x905490		5d			POPQ BP				
+  native_global_binding.go:138	0x905491		c3			RET				
+  native_global_binding.go:142	0x905492		488b4868		MOVQ 0x68(AX), CX		
+  native_global_binding.go:142	0x905496		488b5108		MOVQ 0x8(CX), DX		
+  native_global_binding.go:142	0x90549a		660f1f440000		NOPW 0(AX)(AX*1)		
+  native_global_binding.go:142	0x9054a0		4839d6			CMPQ SI, DX			
+  native_global_binding.go:142	0x9054a3		0f83b3000000		JAE 0x90555c			
+  native_global_binding.go:142	0x9054a9		488b09			MOVQ 0(CX), CX			
+  native_global_binding.go:142	0x9054ac		f20f1004f1		MOVSD_XMM 0(CX)(SI*8), X0	
+  unsafe.go:35			0x9054b1		66480f7ec0		MOVQ X0, AX			
+  native_global_binding.go:142	0x9054b6		5d			POPQ BP				
+  native_global_binding.go:142	0x9054b7		c3			RET				
+  native_global_binding.go:124	0x9054b8		488b4820		MOVQ 0x20(AX), CX		
+  native_global_binding.go:124	0x9054bc		488b5108		MOVQ 0x8(CX), DX		
+  native_global_binding.go:124	0x9054c0		4839d6			CMPQ SI, DX			
+  native_global_binding.go:124	0x9054c3		0f838e000000		JAE 0x905557			
+  native_global_binding.go:124	0x9054c9		488b09			MOVQ 0(CX), CX			
+  native_global_binding.go:124	0x9054cc		4801f1			ADDQ SI, CX			
+  native_global_binding.go:124	0x9054cf		480fbe01		MOVSX 0(CX), AX			
+  native_global_binding.go:124	0x9054d3		5d			POPQ BP				
+  native_global_binding.go:124	0x9054d4		c3			RET				
+  native_global_binding.go:126	0x9054d5		488b4828		MOVQ 0x28(AX), CX		
+  native_global_binding.go:126	0x9054d9		488b5108		MOVQ 0x8(CX), DX		
+  native_global_binding.go:126	0x9054dd		0f1f00			NOPL 0(AX)			
+  native_global_binding.go:126	0x9054e0		4839d6			CMPQ SI, DX			
+  native_global_binding.go:126	0x9054e3		736d			JAE 0x905552			
+  native_global_binding.go:126	0x9054e5		488b09			MOVQ 0(CX), CX			
+  native_global_binding.go:126	0x9054e8		488d0c71		LEAQ 0(CX)(SI*2), CX		
+  native_global_binding.go:126	0x9054ec		480fbf01		MOVSX 0(CX), AX			
+  native_global_binding.go:126	0x9054f0		5d			POPQ BP				
+  native_global_binding.go:126	0x9054f1		c3			RET				
+  native_global_binding.go:132	0x9054f2		488b4840		MOVQ 0x40(AX), CX		
+  native_global_binding.go:132	0x9054f6		488b5108		MOVQ 0x8(CX), DX		
+  native_global_binding.go:132	0x9054fa		4839d6			CMPQ SI, DX			
+  native_global_binding.go:132	0x9054fd		734e			JAE 0x90554d			
+  native_global_binding.go:132	0x9054ff		488b09			MOVQ 0(CX), CX			
+  native_global_binding.go:132	0x905502		0fb60431		MOVZX 0(CX)(SI*1), AX		
+  native_global_binding.go:132	0x905506		5d			POPQ BP				
+  native_global_binding.go:132	0x905507		c3			RET				
+  native_global_binding.go:134	0x905508		488b4848		MOVQ 0x48(AX), CX		
+  native_global_binding.go:134	0x90550c		488b5108		MOVQ 0x8(CX), DX		
+  native_global_binding.go:134	0x905510		4839d6			CMPQ SI, DX			
+  native_global_binding.go:134	0x905513		7333			JAE 0x905548			
+  native_global_binding.go:134	0x905515		488b09			MOVQ 0(CX), CX			
+  native_global_binding.go:134	0x905518		0fb70471		MOVZX 0(CX)(SI*2), AX		
+  native_global_binding.go:134	0x90551c		5d			POPQ BP				
+  native_global_binding.go:134	0x90551d		c3			RET				
+  native_global_binding.go:140	0x90551e		488b4860		MOVQ 0x60(AX), CX		
+  native_global_binding.go:140	0x905522		488b5108		MOVQ 0x8(CX), DX		
+  native_global_binding.go:140	0x905526		4839d6			CMPQ SI, DX			
+  native_global_binding.go:140	0x905529		7318			JAE 0x905543			
+  native_global_binding.go:140	0x90552b		488b09			MOVQ 0(CX), CX			
+  native_global_binding.go:140	0x90552e		f30f1004b1		MOVSS 0(CX)(SI*4), X0		
+  unsafe.go:24			0x905533		660f7ec0		MOVD X0, AX			
+  native_global_binding.go:140	0x905537		5d			POPQ BP				
+  native_global_binding.go:140	0x905538		c3			RET				
+  native_global_binding.go:144	0x905539		31c0			XORL AX, AX			
+  native_global_binding.go:144	0x90553b		5d			POPQ BP				
+  native_global_binding.go:144	0x90553c		c3			RET				
+  native_global_binding.go:119	0x90553d		31c0			XORL AX, AX			
+  native_global_binding.go:119	0x90553f		31db			XORL BX, BX			
+  native_global_binding.go:119	0x905541		5d			POPQ BP				
+  native_global_binding.go:119	0x905542		c3			RET				
+  native_global_binding.go:140	0x905543		e87800b9ff		CALL runtime.panicBounds(SB)	
+  native_global_binding.go:134	0x905548		e87300b9ff		CALL runtime.panicBounds(SB)	
+  native_global_binding.go:132	0x90554d		e86e00b9ff		CALL runtime.panicBounds(SB)	
+  native_global_binding.go:126	0x905552		e86900b9ff		CALL runtime.panicBounds(SB)	
+  native_global_binding.go:124	0x905557		e86400b9ff		CALL runtime.panicBounds(SB)	
+  native_global_binding.go:142	0x90555c		0f1f4000		NOPL 0(AX)			
+  native_global_binding.go:142	0x905560		e85b00b9ff		CALL runtime.panicBounds(SB)	
+  native_global_binding.go:138	0x905565		e85600b9ff		CALL runtime.panicBounds(SB)	
+  native_global_binding.go:136	0x90556a		e85100b9ff		CALL runtime.panicBounds(SB)	
+  native_global_binding.go:130	0x90556f		e84c00b9ff		CALL runtime.panicBounds(SB)	
+  native_global_binding.go:128	0x905574		e84700b9ff		CALL runtime.panicBounds(SB)	
+  bitmap.go:72			0x905579		e84200b9ff		CALL runtime.panicBounds(SB)	
+  bitmap.go:72			0x90557e		90			NOPL				

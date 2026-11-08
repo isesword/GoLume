@@ -1,0 +1,253 @@
+{
+  "method": "Median ns/op; exact paired log-ratio sign-flip p is descriptive and unadjusted. No broad speedup claim from controls or microbenchmarks.",
+  "samples": {
+    "before": {
+      "BenchmarkGlobalBindingWholeQuery/global/lanes=4/selective/rows=63/batch=63/mode=auto": {
+        "1": {
+          "ns/op": 23876.0,
+          "peak-charged-B": 6676.0,
+          "B/op": 19345.0,
+          "allocs/op": 152.0
+        },
+        "2": {
+          "ns/op": 21906.0,
+          "peak-charged-B": 6676.0,
+          "B/op": 19345.0,
+          "allocs/op": 152.0
+        },
+        "3": {
+          "ns/op": 22322.0,
+          "peak-charged-B": 6676.0,
+          "B/op": 19345.0,
+          "allocs/op": 152.0
+        },
+        "4": {
+          "ns/op": 21704.0,
+          "peak-charged-B": 6676.0,
+          "B/op": 19345.0,
+          "allocs/op": 152.0
+        },
+        "5": {
+          "ns/op": 21721.0,
+          "peak-charged-B": 6676.0,
+          "B/op": 19345.0,
+          "allocs/op": 152.0
+        },
+        "6": {
+          "ns/op": 23365.0,
+          "peak-charged-B": 6676.0,
+          "B/op": 19345.0,
+          "allocs/op": 152.0
+        },
+        "7": {
+          "ns/op": 24082.0,
+          "peak-charged-B": 6676.0,
+          "B/op": 19345.0,
+          "allocs/op": 152.0
+        },
+        "8": {
+          "ns/op": 21951.0,
+          "peak-charged-B": 6676.0,
+          "B/op": 19345.0,
+          "allocs/op": 152.0
+        }
+      },
+      "BenchmarkGlobalBindingWholeQuery/minmax/lanes=2/dense/rows=32771/batch=32771/mode=auto": {
+        "1": {
+          "ns/op": 2795337.0,
+          "peak-charged-B": 13718.0,
+          "B/op": 26665.0,
+          "allocs/op": 145.0
+        },
+        "2": {
+          "ns/op": 3108939.0,
+          "peak-charged-B": 13718.0,
+          "B/op": 26665.0,
+          "allocs/op": 145.0
+        },
+        "3": {
+          "ns/op": 2687682.0,
+          "peak-charged-B": 13718.0,
+          "B/op": 26665.0,
+          "allocs/op": 145.0
+        },
+        "4": {
+          "ns/op": 2697349.0,
+          "peak-charged-B": 13718.0,
+          "B/op": 26665.0,
+          "allocs/op": 145.0
+        },
+        "5": {
+          "ns/op": 3354243.0,
+          "peak-charged-B": 13718.0,
+          "B/op": 26665.0,
+          "allocs/op": 145.0
+        },
+        "6": {
+          "ns/op": 2793717.0,
+          "peak-charged-B": 13718.0,
+          "B/op": 26665.0,
+          "allocs/op": 145.0
+        },
+        "7": {
+          "ns/op": 2660229.0,
+          "peak-charged-B": 13718.0,
+          "B/op": 26665.0,
+          "allocs/op": 145.0
+        },
+        "8": {
+          "ns/op": 2709098.0,
+          "peak-charged-B": 13718.0,
+          "B/op": 26665.0,
+          "allocs/op": 145.0
+        }
+      }
+    },
+    "after": {
+      "BenchmarkGlobalBindingWholeQuery/global/lanes=4/selective/rows=63/batch=63/mode=auto": {
+        "1": {
+          "ns/op": 22849.0,
+          "peak-charged-B": 7124.0,
+          "B/op": 19913.0,
+          "allocs/op": 156.0
+        },
+        "2": {
+          "ns/op": 21902.0,
+          "peak-charged-B": 7124.0,
+          "B/op": 19913.0,
+          "allocs/op": 156.0
+        },
+        "3": {
+          "ns/op": 22104.0,
+          "peak-charged-B": 7124.0,
+          "B/op": 19913.0,
+          "allocs/op": 156.0
+        },
+        "4": {
+          "ns/op": 22385.0,
+          "peak-charged-B": 7124.0,
+          "B/op": 19913.0,
+          "allocs/op": 156.0
+        },
+        "5": {
+          "ns/op": 22105.0,
+          "peak-charged-B": 7124.0,
+          "B/op": 19913.0,
+          "allocs/op": 156.0
+        },
+        "6": {
+          "ns/op": 22688.0,
+          "peak-charged-B": 7124.0,
+          "B/op": 19913.0,
+          "allocs/op": 156.0
+        },
+        "7": {
+          "ns/op": 22826.0,
+          "peak-charged-B": 7124.0,
+          "B/op": 19913.0,
+          "allocs/op": 156.0
+        },
+        "8": {
+          "ns/op": 22245.0,
+          "peak-charged-B": 7124.0,
+          "B/op": 19913.0,
+          "allocs/op": 156.0
+        }
+      },
+      "BenchmarkGlobalBindingWholeQuery/minmax/lanes=2/dense/rows=32771/batch=32771/mode=auto": {
+        "1": {
+          "ns/op": 16280486.0,
+          "peak-charged-B": 13718.0,
+          "B/op": 26665.0,
+          "allocs/op": 145.0
+        },
+        "2": {
+          "ns/op": 3947234.0,
+          "peak-charged-B": 13718.0,
+          "B/op": 26665.0,
+          "allocs/op": 145.0
+        },
+        "3": {
+          "ns/op": 2767576.0,
+          "peak-charged-B": 13718.0,
+          "B/op": 26665.0,
+          "allocs/op": 145.0
+        },
+        "4": {
+          "ns/op": 2855869.0,
+          "peak-charged-B": 13718.0,
+          "B/op": 26665.0,
+          "allocs/op": 145.0
+        },
+        "5": {
+          "ns/op": 2953622.0,
+          "peak-charged-B": 13718.0,
+          "B/op": 26665.0,
+          "allocs/op": 145.0
+        },
+        "6": {
+          "ns/op": 2746895.0,
+          "peak-charged-B": 13718.0,
+          "B/op": 26665.0,
+          "allocs/op": 145.0
+        },
+        "7": {
+          "ns/op": 2827572.0,
+          "peak-charged-B": 13718.0,
+          "B/op": 26665.0,
+          "allocs/op": 145.0
+        },
+        "8": {
+          "ns/op": 2803703.0,
+          "peak-charged-B": 13718.0,
+          "B/op": 26665.0,
+          "allocs/op": 145.0
+        }
+      }
+    }
+  },
+  "summary": [
+    {
+      "benchmark": "BenchmarkGlobalBindingWholeQuery/global/lanes=4/selective/rows=63/batch=63/mode=auto",
+      "pairs": 8,
+      "before_ns": 22136.5,
+      "after_ns": 22315.0,
+      "change_pct": 0.8063605357667258,
+      "speedup": 0.9920008962581224,
+      "paired_ratio_geomean": 0.9906431416936357,
+      "paired_ratio_min": 0.9478448633834399,
+      "paired_ratio_max": 1.0313767047548839,
+      "paired_signflip_p": 0.4296875,
+      "before_B": 19345.0,
+      "after_B": 19913.0,
+      "delta_B": 568.0,
+      "before_allocs": 152.0,
+      "after_allocs": 156.0,
+      "delta_allocs": 4.0,
+      "before_peak": 6676.0,
+      "after_peak": 7124.0,
+      "delta_peak": 448.0
+    },
+    {
+      "benchmark": "BenchmarkGlobalBindingWholeQuery/minmax/lanes=2/dense/rows=32771/batch=32771/mode=auto",
+      "pairs": 8,
+      "before_ns": 2751407.5,
+      "after_ns": 2841720.5,
+      "change_pct": 3.282429084023364,
+      "speedup": 0.9682189011903176,
+      "paired_ratio_geomean": 1.2902008753613372,
+      "paired_ratio_min": 0.8805629168787116,
+      "paired_ratio_max": 5.82415858982298,
+      "paired_signflip_p": 0.21875,
+      "before_B": 26665.0,
+      "after_B": 26665.0,
+      "delta_B": 0.0,
+      "before_allocs": 145.0,
+      "after_allocs": 145.0,
+      "delta_allocs": 0.0,
+      "before_peak": 13718.0,
+      "after_peak": 13718.0,
+      "delta_peak": 0.0
+    }
+  ]
+}

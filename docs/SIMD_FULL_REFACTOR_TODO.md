@@ -233,5 +233,23 @@ Portable column32 null validity is combined once per word, including all-null
 skips with cleared output. Direct portable tests prevent the amd64 overrides from
 hiding fallback regressions. See [validation/bitmap-native](../validation/bitmap-native/README.md)
 for exact review, runtime, cross-compilation, and paired measurement evidence.
-The next investigation is representative aggregation/compaction profiling; no
-new reduction or compaction backend is implied by this comparison work.
+The subsequent [aggregation/compaction investigation](../validation/aggregate-compaction-profile/README.md)
+found repeated column/key lookup and pipeline work worth addressing before new
+reduction or compaction backends.
+
+## 2026-11-08 global sum/count column bindings
+
+Eligible global native SUM/COUNT queries now bind typed vector pointers and
+validity once per input batch, removing column-name map access from their row
+reader. The existing scalar native AddBits operation and row/lane encounter
+order are unchanged. Grouped, MIN/MAX/AVG, statistics, distinct and quantile
+queries retain their existing aggregation readers.
+
+Bindings borrow only the current batch, are cleared before producer reuse and
+on EOF/error/Close, and reserve descriptor storage before allocation. On the
+measured amd64 build this costs 112 charged bytes per aggregate lane, not a
+row-sized copy. This is a profiling-driven execution improvement, not a new
+SIMD reduction or a change to kernel capability counts. See
+[validation/global-binding](../validation/global-binding/README.md) for independent
+oracles, lifetime/budget checks, whole-query timing and memory evidence. Native
+arm64 execution remains unverified; cross-compilation does not close that item.
