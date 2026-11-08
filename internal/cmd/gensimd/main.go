@@ -63,20 +63,23 @@ func main() {
 		panic(err)
 	}
 	outputs := map[string][]byte{
-		"kernel/zz_generated_widen.go":               generateWidenAPI(),
-		"kernel/zz_generated_widen_arm64.go":         generateWidenSIMD("arm64"),
-		"kernel/zz_generated_widen_amd64.go":         generateWidenSIMD("amd64"),
-		"kernel/zz_generated_widen_other.go":         generateWidenSIMD("other"),
-		"kernel/zz_generated_minmax_narrow_amd64.go": generateNarrowMinMaxSIMD("amd64"),
-		"kernel/zz_generated_minmax_narrow_arm64.go": generateNarrowMinMaxSIMD("arm64"),
-		"kernel/zz_generated_minmax_narrow_other.go": generateNarrowMinMaxSIMD("other"),
-		"kernel/zz_generated_minmax_simd.go":         generateMinMaxSIMD(),
-		"memory/zz_generated_numeric.go":             generateNumericVectors(),
-		"kernel/zz_generated_scalar.go":              generateScalar(),
-		"kernel/zz_generated_simd.go":                generatePortableSIMD(),
-		"kernel/zz_generated_simd_amd64.go":          generateAMD64SIMD(),
-		"kernel/zz_generated_simd_arm64.go":          generateArm64SIMD(),
-		"kernel/zz_generated_simd_arch_other.go":     generateOtherArch(),
+		"kernel/zz_generated_checked_integer_amd64.go": generateCheckedInteger("amd64"),
+		"kernel/zz_generated_checked_integer_arm64.go": generateCheckedInteger("arm64"),
+		"kernel/zz_generated_checked_integer_other.go": generateCheckedInteger("other"),
+		"kernel/zz_generated_widen.go":                 generateWidenAPI(),
+		"kernel/zz_generated_widen_arm64.go":           generateWidenSIMD("arm64"),
+		"kernel/zz_generated_widen_amd64.go":           generateWidenSIMD("amd64"),
+		"kernel/zz_generated_widen_other.go":           generateWidenSIMD("other"),
+		"kernel/zz_generated_minmax_narrow_amd64.go":   generateNarrowMinMaxSIMD("amd64"),
+		"kernel/zz_generated_minmax_narrow_arm64.go":   generateNarrowMinMaxSIMD("arm64"),
+		"kernel/zz_generated_minmax_narrow_other.go":   generateNarrowMinMaxSIMD("other"),
+		"kernel/zz_generated_minmax_simd.go":           generateMinMaxSIMD(),
+		"memory/zz_generated_numeric.go":               generateNumericVectors(),
+		"kernel/zz_generated_scalar.go":                generateScalar(),
+		"kernel/zz_generated_simd.go":                  generatePortableSIMD(),
+		"kernel/zz_generated_simd_amd64.go":            generateAMD64SIMD(),
+		"kernel/zz_generated_simd_arm64.go":            generateArm64SIMD(),
+		"kernel/zz_generated_simd_arch_other.go":       generateOtherArch(),
 	}
 	for path, source := range outputs {
 		formatted, err := format.Source(source)
