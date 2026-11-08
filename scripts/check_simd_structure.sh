@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+if ! command -v rg >/dev/null 2>&1; then
+	echo "SIMD structure checks require ripgrep (rg)" >&2
+	exit 1
+fi
+
 STRUCTURE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$STRUCTURE_ROOT"
 
@@ -9,7 +14,12 @@ fail_if_found() {
 	local message="$2"
 	shift 2
 	local matches
-	matches="$(rg -n "$pattern" "$@" || true)"
+	local status=0
+	matches="$(rg -n "$pattern" "$@")" || status=$?
+	if (( status > 1 )); then
+		printf 'structure search failed (exit %s): %s\n' "$status" "$pattern" >&2
+		exit "$status"
+	fi
 	if [[ -n "$matches" ]]; then
 		printf '%s\n%s\n' "$message" "$matches" >&2
 		exit 1
@@ -22,19 +32,24 @@ production_go_files() {
 
 go run ./internal/cmd/gensimd -check
 
-unexpected_new="$(production_go_files | grep -v '^engine/engine.go$' | grep -v '^cmd/kernel-info/main.go$' | xargs rg -n 'kernel\.New\(' || true)"
-if [[ -n "$unexpected_new" ]]; then
-	printf 'kernel.New is restricted to Engine initialization and cmd/kernel-info:\n%s\n' "$unexpected_new" >&2
+production_files="$(production_go_files)"
+if [[ -z "$production_files" ]]; then
+	echo 'no production Go files found' >&2
 	exit 1
 fi
+# Repository source paths do not contain whitespace.
+restricted_files="$(printf '%s\n' "$production_files" | grep -v '^engine/engine.go$' | grep -v '^cmd/kernel-info/main.go$')"
+fail_if_found 'kernel\.New\(' \
+	'kernel.New is restricted to Engine initialization and cmd/kernel-info:' \
+	$restricted_files
 
 fail_if_found '\.\.\.kernel\.Mode|WithKernelMode|syncSummary' \
 	'forbidden kernel compatibility/reconstruction API found:' \
-	$(production_go_files)
+	$production_files
 
 fail_if_found 'Groups[[:space:]]+\[\]Group|AggCount[[:space:]]*=|SumCountVector|NewSumCountVector|SumCountBytesForSlots|ErrStringTableFull|func NewTopKSource\(' \
 	'forbidden compatibility API found:' \
-	$(production_go_files)
+	$production_files
 
 fail_if_found 'type Group struct' \
 	'legacy engine.Group API found:' \

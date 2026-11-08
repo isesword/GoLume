@@ -150,3 +150,52 @@ func TestRunTextIncludesSeparateColumnCapabilities(t *testing.T) {
 		t.Fatalf("literal and column comparisons not separately reported: %s", stdout.String())
 	}
 }
+
+func TestRunCapabilityChecks(t *testing.T) {
+	for _, tc := range []struct {
+		args   []string
+		code   int
+		output string
+	}{
+		{[]string{"-mode", "scalar", "-check-scalar", "-max-native-width"}, 0, "0\n"},
+		{[]string{"-mode", "scalar", "-check-native-width", "128"}, 1, ""},
+		{[]string{"-check-native-width", "64"}, 2, ""},
+		{[]string{"-check-native-width", "-1"}, 2, ""},
+		{[]string{"-check-scalar", "-check-native-width", "128"}, 2, ""},
+		{[]string{"-json", "-max-native-width"}, 2, ""},
+	} {
+		var out, err bytes.Buffer
+		if code := run(tc.args, &out, &err); code != tc.code || out.String() != tc.output {
+			t.Fatalf("args=%v: code=%d output=%q stderr=%s", tc.args, code, out.String(), err.String())
+		}
+	}
+}
+
+func TestValidateCapabilities(t *testing.T) {
+	scalar := capabilityReport{ID: "scalar", SelectedBackend: "scalar"}
+	native := capabilityReport{ID: "native", SelectedBackend: "portable-simd", VectorBits: 256, HardwareSIMD: true}
+	for _, tc := range []struct {
+		name   string
+		scalar bool
+		width  int
+		groups [][]capabilityReport
+		want   int
+		fail   bool
+	}{
+		{"scalar", true, 0, [][]capabilityReport{{scalar}, {scalar}}, 0, false},
+		{"native", false, 256, [][]capabilityReport{{scalar}, {native}}, 256, false},
+		{"mismatch", false, 512, [][]capabilityReport{{native}}, 0, true},
+		{"scalar rejects columns", true, 0, [][]capabilityReport{{scalar}, {native}}, 0, true},
+		{"empty group", false, 0, [][]capabilityReport{{scalar}, {}}, 0, true},
+		{"emulation is not native", false, 128, [][]capabilityReport{{{ID: "emulated", SelectedBackend: "portable-simd", VectorBits: 128, Emulated: true}}}, 0, true},
+		{"invalid native", false, 0, [][]capabilityReport{{{ID: "bad", SelectedBackend: "scalar", HardwareSIMD: true}}}, 0, true},
+		{"invalid width", false, 0, [][]capabilityReport{{{ID: "bad", SelectedBackend: "native", HardwareSIMD: true, VectorBits: 64}}}, 0, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := validateCapabilities(tc.scalar, tc.width, tc.groups...)
+			if (err != nil) != tc.fail || got != tc.want {
+				t.Fatalf("got=%d err=%v", got, err)
+			}
+		})
+	}
+}

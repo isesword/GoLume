@@ -55,8 +55,15 @@ func run(args []string, stdout, stderr io.Writer) int {
 	flags := flag.NewFlagSet("kernel-info", flag.ContinueOnError)
 	flags.SetOutput(stderr)
 	modeName := flags.String("mode", "auto", "kernel dispatch mode: scalar, auto, or simd")
+	maxWidthOutput := flags.Bool("max-native-width", false, "emit only the maximum selected hardware SIMD width (zero for scalar)")
+	checkScalar := flags.Bool("check-scalar", false, "fail unless every selected capability is scalar")
+	checkWidth := flags.Int("check-native-width", 0, "fail unless the maximum selected hardware SIMD width matches (128, 256, or 512)")
 	jsonOutput := flags.Bool("json", false, "emit kernel and column-comparison capabilities as JSON")
 	if err := flags.Parse(args); err != nil {
+		return 2
+	}
+	if (*checkWidth != 0 && *checkWidth != 128 && *checkWidth != 256 && *checkWidth != 512) || (*checkScalar && *checkWidth != 0) || (*maxWidthOutput && *jsonOutput) {
+		fmt.Fprintln(stderr, "incompatible output/check flags or unsupported native width")
 		return 2
 	}
 	mode, err := parseMode(*modeName)
@@ -97,6 +104,15 @@ func run(args []string, stdout, stderr io.Writer) int {
 			columns = append(columns, reportCapability(id, capability, autoCapability, forcedCapability))
 		}
 	}
+	maxWidth, err := validateCapabilities(*checkScalar, *checkWidth, entries, columns)
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+		return 1
+	}
+	if *maxWidthOutput {
+		fmt.Fprintln(stdout, maxWidth)
+		return 0
+	}
 	if *jsonOutput {
 		if err := json.NewEncoder(stdout).Encode(report{Arch: set.Arch(), Mode: set.Mode().String(), Kernels: entries, ColumnComparisons: columns}); err != nil {
 			fmt.Fprintln(stderr, err)
@@ -126,4 +142,31 @@ func parseMode(name string) (kernel.Mode, error) {
 	default:
 		return 0, fmt.Errorf("unknown mode %q", name)
 	}
+}
+
+// validateCapabilities checks reported dispatch, not a requested GODEBUG value.
+func validateCapabilities(scalar bool, width int, groups ...[]capabilityReport) (int, error) {
+	maxWidth := 0
+	for _, group := range groups {
+		if len(group) == 0 {
+			return 0, fmt.Errorf("missing capability group")
+		}
+		for _, entry := range group {
+			if entry.HardwareSIMD {
+				if entry.Emulated || entry.SelectedBackend == "scalar" || (entry.VectorBits != 128 && entry.VectorBits != 256 && entry.VectorBits != 512) {
+					return 0, fmt.Errorf("invalid native capability for %s: %+v", entry.ID, entry)
+				}
+				if entry.VectorBits > maxWidth {
+					maxWidth = entry.VectorBits
+				}
+			}
+			if scalar && (entry.SelectedBackend != "scalar" || entry.VectorBits != 0 || entry.HardwareSIMD || entry.Emulated) {
+				return 0, fmt.Errorf("expected scalar capability for %s: %+v", entry.ID, entry)
+			}
+		}
+	}
+	if width != 0 && maxWidth != width {
+		return 0, fmt.Errorf("native SIMD width = %d, want %d", maxWidth, width)
+	}
+	return maxWidth, nil
 }

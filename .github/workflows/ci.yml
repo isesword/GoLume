@@ -8,13 +8,36 @@ on:
 
 jobs:
   validate:
-    name: validate (${{ matrix.os }})
+    name: ${{ matrix.check_name }}
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 30
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        include:
+          # Preserve existing check names for required-check compatibility,
+          # independently of the pinned runner image labels.
+          - check_name: validate (ubuntu-latest)
+            os: ubuntu-24.04
+            goos: linux
+            arch: amd64
+          # Standard ARM64 runners support private repositories. This is native
+          # execution, separate from the cross-compilation phase below.
+          - check_name: validate (ubuntu-24.04-arm, arm64)
+            os: ubuntu-24.04-arm
+            goos: linux
+            arch: arm64
+          - check_name: validate (macos-latest)
+            os: macos-15
+            goos: darwin
+            arch: arm64
+    env:
+      VALIDATE_EXPECT_ARCH: ${{ matrix.arch }}
+      VALIDATE_EXPECT_OS: ${{ matrix.goos }}
+      VALIDATE_REQUIRE_NATIVE: '1'
+    defaults:
+      run:
+        shell: bash
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -22,56 +45,33 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.27'
+          go-version: '1.27.3'
           cache: true
 
-      - name: GoDoc check
-        run: go run ./tools/checkgodoc .
-
-      - name: SIMD codegen check
-        run: GOEXPERIMENT=simd go run ./internal/cmd/gensimd -check
-        shell: bash
-
-      - name: Kernel registry consistency
-        run: GOEXPERIMENT=simd go run ./tools/kernelgate check
-        shell: bash
-
-      - name: SIMD structure check
-        run: bash scripts/check_simd_structure.sh
-
-      - name: Test (scalar)
-        run: go test ./...
-
-      - name: Test (SIMD)
-        run: GOEXPERIMENT=simd go test ./...
-        shell: bash
-
-      - name: Test (SIMD disabled at runtime)
-        run: GOEXPERIMENT=simd GODEBUG=simd=0 go test ./kernel ./expr ./physical ./engine ./lazy ./optimizer ./memory ./source/arrowrecord
-        shell: bash
-
-      - name: Vet
-        run: go vet ./...
-
-      - name: Test (race, SIMD)
-        run: GOEXPERIMENT=simd go test -race ./engine ./hashagg ./join ./radix ./scheduler ./lazy ./physical ./optimizer ./memory ./source/parquet ./source/arrowrecord
-        shell: bash
-
-      - name: Cross-compile (linux/amd64, SIMD)
-        if: runner.os == 'Linux'
-        run: GOOS=linux GOARCH=amd64 GOEXPERIMENT=simd go build ./...
-        shell: bash
-
-      - name: Test (SIMD +256, if supported)
-        if: runner.os == 'Linux'
-        shell: bash
+      - name: Ensure structural-check tools
         run: |
-          set -euo pipefail
-          if [[ "$(go env GOARCH)" == "amd64" ]]; then
-            BITS="$(GOEXPERIMENT=simd go run ./cmd/kernel-info -mode simd | awk '/hardware=true/ { split($3, p, "="); if (p[2]+0 > bits) bits = p[2]+0 } END { print bits+0 }')"
-            if [[ -n "$BITS" ]] && (( BITS >= 256 )); then
-              GOEXPERIMENT=simd GODEBUG=simd=+256 go test ./kernel ./expr ./engine ./radix
-            else
-              echo "native SIMD width ${BITS:-unknown} < 256, skipping +256 gate"
-            fi
+          if ! command -v rg >/dev/null 2>&1; then
+            case "$RUNNER_OS" in
+              Linux) sudo apt-get update; sudo apt-get install --no-install-recommends -y ripgrep ;;
+              macOS) brew install ripgrep ;;
+              *) echo "Unsupported runner: $RUNNER_OS" >&2; exit 1 ;;
+            esac
           fi
+
+      - name: Structural checks and vet
+        run: bash scripts/validate.sh checks
+
+      - name: Scalar and SIMD tests
+        run: bash scripts/validate.sh tests
+
+      - name: Native SIMD widths and CPU fallback
+        run: bash scripts/validate.sh runtime
+
+      - name: Scalar and SIMD race tests
+        run: bash scripts/validate.sh race
+
+      - name: Cross-compile linux/amd64 and linux/arm64
+        run: bash scripts/validate.sh cross
+
+      - name: Lazy execution demo
+        run: bash scripts/validate.sh demo
