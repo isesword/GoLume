@@ -547,16 +547,17 @@ func (s *JoinSource) buildRight(ctx context.Context, manager memory.Manager) (re
 		}
 		totalRows += part.Rows
 	}
-	rowsUpperBound := false
-	if s.shape == joinBytes {
-		stats, err := s.right.Stats(ctx)
-		if err != nil {
-			return err
-		}
-		rowsUpperBound = stats.RowsUpperBound
-		if rowsUpperBound && stats.Rows >= 0 && stats.Rows < totalRows {
-			totalRows = stats.Rows
-		}
+	// Filters and limits preserve partition row counts as upper bounds for
+	// every key shape. Keep exact-source validation, but admit fewer rows
+	// when the source explicitly advertises that contract. A global limit
+	// can also tighten build allocation below the sum of partition bounds.
+	stats, err := s.right.Stats(ctx)
+	if err != nil {
+		return err
+	}
+	rowsUpperBound := stats.RowsUpperBound
+	if rowsUpperBound && stats.Rows >= 0 && stats.Rows < totalRows {
+		totalRows = stats.Rows
 	}
 	if totalRows > int64(int(^uint(0)>>1)) {
 		return fmt.Errorf("join build has %d rows beyond platform capacity", totalRows)
