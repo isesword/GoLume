@@ -92,9 +92,12 @@ type scalarRegister struct {
 	listValidity    memory.Bitmap
 }
 
-// evaluationState retains logical register views and physical storage owners
-// across source reads. Column views borrow input slices. Dead fixed-width DAG
-// values may share one physical owner; only owners hold buffer reservations.
+// evaluationState retains pointer-sized logical references, physical owners,
+// and separate borrowed-column views across source reads. Dead logical values
+// may refer to a reused owner: only live inputs and roots may be consumed. The
+// storage plan never reuses an owner until its last consumer has completed.
+// Only owned registers hold buffers and reservations; borrowed columns never
+// overwrite their headers, including in scratch states shared by guarded arms.
 type evaluationState struct {
 	regionScratch     bool
 	activeRows        memory.Bitmap
@@ -102,10 +105,11 @@ type evaluationState struct {
 	fixedRows         int
 	staticReservation memory.Reservation
 	reserveHook       func(int64) (memory.Reservation, error)
-	regs              []scalarRegister
+	regs              []*scalarRegister
+	borrowed          []scalarRegister
 	owned             []scalarRegister
 	outputs           []ScalarValue
-	storage           [3]memory.Reservation
+	storage           [4]memory.Reservation
 	ensureErr         error
 	ctx               context.Context
 	manager           memory.Manager
@@ -145,8 +149,8 @@ func (w *evaluationState) Close() error {
 	w.activeRows = nil
 	w.program = nil
 	w.fixedRows = 0
-	w.regs, w.owned, w.outputs = nil, nil, nil
-	w.storage = [3]memory.Reservation{}
+	w.regs, w.borrowed, w.owned, w.outputs = nil, nil, nil, nil
+	w.storage = [4]memory.Reservation{}
 	w.ensureErr = nil
 	for len(w.reservations) > 0 {
 		w.reservations[len(w.reservations)-1].Release()
@@ -495,13 +499,20 @@ func evaluateInstructionsActive(instructions []instruction, batch *memory.Batch,
 	}
 	w.activeRows = active
 	clear(w.regs[:cap(w.regs)])
+	// Drop all old input references, including tails retained by shorter arms.
+	// Owners keep their buffers/caches and are not copied into logical slots.
+	clear(w.borrowed[:cap(w.borrowed)])
 	clear(w.outputs[:cap(w.outputs)])
+	borrowed := 0
 	for i, in := range instructions {
 		if err := w.checkContext(); err != nil {
 			return err
 		}
-		r := &w.regs[i]
-		if in.Code != scalarColumn {
+		var r *scalarRegister
+		if in.Code == scalarColumn {
+			r = &w.borrowed[borrowed]
+			borrowed++
+		} else {
 			r = w.ownedRegister(i)
 		}
 		if r.acquire == nil && in.Code != scalarColumn {
@@ -556,7 +567,7 @@ func evaluateInstructionsActive(instructions []instruction, batch *memory.Batch,
 				clear(r.Truth)
 			}
 		case scalarInSet:
-			if err := evaluateLiteralIn(r, &w.regs[in.A], in, batch.Rows); err != nil {
+			if err := evaluateLiteralIn(r, w.regs[in.A], in, batch.Rows); err != nil {
 				return err
 			}
 		case scalarConditional:
@@ -620,31 +631,31 @@ func evaluateInstructionsActive(instructions []instruction, batch *memory.Batch,
 				offsets[row+1] = uint32(len(r.data))
 			}
 		case scalarCast:
-			if err := evalCast(r, &w.regs[in.A], in.SourceType, in.Type, batch.Rows); err != nil {
+			if err := evalCast(r, w.regs[in.A], in.SourceType, in.Type, batch.Rows); err != nil {
 				return err
 			}
 		case scalarTryCast:
-			if err := evalNumericCast(r, &w.regs[in.A], in.SourceType, in.Type, batch.Rows, true); err != nil {
+			if err := evalNumericCast(r, w.regs[in.A], in.SourceType, in.Type, batch.Rows, true); err != nil {
 				return err
 			}
 		case scalarBinary:
-			if err := evalBinary(r, &w.regs[in.A], &w.regs[in.B], in.Op, in.Type, batch.Rows, kernels); err != nil {
+			if err := evalBinary(r, w.regs[in.A], w.regs[in.B], in.Op, in.Type, batch.Rows, kernels); err != nil {
 				return err
 			}
 		case scalarUnary:
-			if err := evalUnary(r, &w.regs[in.A], in.Op, in.SourceType, batch.Rows, kernels); err != nil {
+			if err := evalUnary(r, w.regs[in.A], in.Op, in.SourceType, batch.Rows, kernels); err != nil {
 				return err
 			}
 		case scalarTernary:
 			var first, second *scalarRegister
 			if in.B >= 0 && in.C >= 0 {
-				first, second = &w.regs[in.B], &w.regs[in.C]
+				first, second = w.regs[in.B], w.regs[in.C]
 			}
-			if err := evalTernary(r, &w.regs[in.A], first, second, in, batch.Rows); err != nil {
+			if err := evalTernary(r, w.regs[in.A], first, second, in, batch.Rows); err != nil {
 				return err
 			}
 		case scalarJSONDecode:
-			if err := evalJSONDecode(r, &w.regs[in.A], in.StructFields, batch.Rows); err != nil {
+			if err := evalJSONDecode(r, w.regs[in.A], in.StructFields, batch.Rows); err != nil {
 				return err
 			}
 		default:
@@ -653,9 +664,7 @@ func evaluateInstructionsActive(instructions []instruction, batch *memory.Batch,
 		if err := w.applyActive(i, r, batch.Rows); err != nil {
 			return err
 		}
-		if in.Code != scalarColumn {
-			w.regs[i] = *r
-		}
+		w.regs[i] = r
 	}
 	return w.checkContext()
 }

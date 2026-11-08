@@ -73,7 +73,7 @@ func evaluateBoolTest(p Program, batch *memory.Batch, w *evaluationState, kernel
 	if err := evaluateInstructions(p.instructions, batch, w, kernels); err != nil {
 		return BoolVector{}, err
 	}
-	r := &w.regs[p.root]
+	r := w.regs[p.root]
 	if r.typ != memory.TypeBool {
 		return BoolVector{}, fmt.Errorf("predicate result is %s, want bool", r.typ)
 	}

@@ -362,12 +362,13 @@ func gatherSelectedColumn(ctx context.Context, dst, src *memory.Batch, c selecte
 
 // clearSelectedViews invalidates logical values without discarding reusable
 // physical owners. Selected programs are fixed-width: scalarColumn binds into
-// regs, never owned; all non-column physical buffers remain workspace-owned.
+// borrowed, never owned; all non-column physical buffers remain workspace-owned.
 func (w *evaluationState) clearSelectedViews() {
 	if w == nil {
 		return
 	}
 	clear(w.regs[:cap(w.regs)])
+	clear(w.borrowed[:cap(w.borrowed)])
 	clear(w.outputs[:cap(w.outputs)])
 	w.activeRows = nil
 	for i := range w.owned[:cap(w.owned)] {

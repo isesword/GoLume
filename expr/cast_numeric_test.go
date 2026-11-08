@@ -52,7 +52,7 @@ func TestStringNumericCastBoundaries(t *testing.T) {
 			if got.Type != tc.typ {
 				t.Fatalf("got %s", got.Type)
 			}
-			r := &w.regs[p.root]
+			r := w.regs[p.root]
 			for row := range tc.good {
 				if !isValidRegister(r, row) {
 					t.Fatalf("valid input became null: %q", tc.good[row])
@@ -81,7 +81,7 @@ func TestStringNumericCastBoundaries(t *testing.T) {
 			if _, err := evaluateValueTest(tolerant, numericCastBatch(all...), &w, testKernelSet()); err != nil {
 				t.Fatal(err)
 			}
-			r = &w.regs[tolerant.root]
+			r = w.regs[tolerant.root]
 			for row := range all {
 				if isValidRegister(r, row) != (row < len(tc.good)) {
 					t.Fatalf("input %q: validity=%v", all[row], isValidRegister(r, row))
@@ -109,7 +109,7 @@ func TestStringNumericCastExactValues(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		r := &w.regs[p.root]
+		r := w.regs[p.root]
 		a, _ := registerFloat64(r, 0)
 		b, _ := registerFloat64(r, 1)
 		c, _ := registerFloat64(r, 2)
@@ -379,12 +379,12 @@ func TestTryCastCancellationAndNumericOracle(t *testing.T) {
 			single.Float64s["f"] = &memory.Float64Vector{Values: []float64{value}}
 			var sw evaluationState
 			_, err := evaluateValueTest(strict, single, &sw, testKernelSet())
-			if isValidRegister(&w.regs[try.root], row) != (err == nil) {
-				t.Fatalf("%s input=%v strict err=%v tolerant valid=%v", target, value, err, isValidRegister(&w.regs[try.root], row))
+			if isValidRegister(w.regs[try.root], row) != (err == nil) {
+				t.Fatalf("%s input=%v strict err=%v tolerant valid=%v", target, value, err, isValidRegister(w.regs[try.root], row))
 			}
 			if err == nil {
-				got, _ := appendScalarText(nil, &w.regs[try.root], row)
-				want, _ := appendScalarText(nil, &sw.regs[strict.root], 0)
+				got, _ := appendScalarText(nil, w.regs[try.root], row)
+				want, _ := appendScalarText(nil, sw.regs[strict.root], 0)
 				if string(got) != string(want) {
 					t.Fatalf("%s got=%s want=%s", target, got, want)
 				}

@@ -102,7 +102,7 @@ func evalBooleanInstruction(out *scalarRegister, in instruction, rows int, w *ev
 	if in.A < 0 || in.A >= len(w.regs) {
 		return fmt.Errorf("invalid boolean input register")
 	}
-	a := &w.regs[in.A]
+	a := w.regs[in.A]
 	out.validity = out.ownedValidity[:memory.WordsFor(rows)]
 	clear(out.Truth)
 	if in.Op == OpIsNull || in.Op == OpIsNotNull {
@@ -121,7 +121,7 @@ func evalBooleanInstruction(out *scalarRegister, in instruction, rows int, w *ev
 	if in.B < 0 || in.B >= len(w.regs) {
 		return fmt.Errorf("invalid boolean right register")
 	}
-	b := &w.regs[in.B]
+	b := w.regs[in.B]
 	switch in.Op {
 	case OpAnd:
 		kernels.BoolAnd(a.Truth, a.validity, b.Truth, b.validity, out.Truth, out.validity, rows)
@@ -293,7 +293,7 @@ func compareRegisters(a, b *scalarRegister, row int, op Op) (bool, error) {
 }
 
 func (w *evaluationState) outputValue(index, rows int) (ScalarValue, error) {
-	r := &w.regs[index]
+	r := w.regs[index]
 	if r.constant {
 		return w.materializeLiteral(index, rows)
 	}

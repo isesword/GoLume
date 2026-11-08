@@ -139,7 +139,7 @@ func (w *Workspace) EvaluateBool(ctx context.Context, batch *memory.Batch, kerne
 	if root < 0 || root >= len(w.storage.regs) {
 		return BoolVector{}, fmt.Errorf("program has no scalar root")
 	}
-	value := &w.storage.regs[root]
+	value := w.storage.regs[root]
 	if value.typ != memory.TypeBool {
 		return BoolVector{}, fmt.Errorf("expression root must be bool, got %s", value.typ)
 	}

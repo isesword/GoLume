@@ -135,3 +135,16 @@ func storageOwnerCount(instructions []instruction) int {
 	}
 	return owners
 }
+
+// borrowedRegisterCount counts input views separately from physical owners.
+// Guarded scratch programs can reuse an owner's typed capacities across arms;
+// their input slices must never overwrite those owned buffer headers.
+func borrowedRegisterCount(instructions []instruction) int {
+	count := 0
+	for _, in := range instructions {
+		if in.Code == scalarColumn {
+			count++
+		}
+	}
+	return count
+}

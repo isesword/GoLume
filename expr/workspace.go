@@ -56,11 +56,11 @@ func instructionWorkspaceBytes(instructions []instruction, rows int) (int64, err
 	if err := validWorkspaceRows(rows); err != nil {
 		return 0, err
 	}
-	n, err := scalarBytes(len(instructions), unsafe.Sizeof(scalarRegister{}))
+	n, err := scalarBytes(len(instructions), unsafe.Sizeof((*scalarRegister)(nil)))
 	if err != nil {
 		return 0, err
 	}
-	metadata, err := scalarBytes(storageOwnerCount(instructions), unsafe.Sizeof(scalarRegister{}))
+	metadata, err := scalarBytes(storageOwnerCount(instructions)+borrowedRegisterCount(instructions), unsafe.Sizeof(scalarRegister{}))
 	if err != nil || metadata > math.MaxInt64-n {
 		return 0, fmt.Errorf("expression workspace metadata size overflow")
 	}
@@ -125,33 +125,38 @@ func (w *evaluationState) prepareProgram(instructions []instruction, rows int) e
 	if err != nil {
 		return fmt.Errorf("reserve expression workspace: %w", err)
 	}
-	next := evaluationState{}
-	// Admission already owns these exact fixed capacities; individual slots use
-	// no-op tokens until a later dynamically charged replacement is needed.
-	if err = next.ensureRegisterCounts(len(instructions), storageOwnerCount(instructions)); err == nil {
-		nextOwner := 0
-		for i, in := range instructions {
-			owner := storageIndex(instructions, i)
-			if owner < nextOwner {
-				continue
+	next := evaluationState{regs: make([]*scalarRegister, len(instructions))}
+	owners, borrowed := storageOwnerCount(instructions), borrowedRegisterCount(instructions)
+	// The replacement has already been admitted in full. Coallocate the two
+	// disjoint header arrays so small column-only programs need no extra header
+	// allocation. Clip owner capacity: borrowed headers are never owners and
+	// must not be visited by payload accounting or cleanup.
+	headers := make([]scalarRegister, owners+borrowed)
+	next.owned, next.borrowed = headers[:owners:owners], headers[owners:]
+	// Individual fixed buffers use no-op tokens until a later dynamically
+	// charged replacement is needed; their capacity belongs to the admission.
+	nextOwner := 0
+	for i, in := range instructions {
+		owner := storageIndex(instructions, i)
+		if owner < nextOwner {
+			continue
+		}
+		nextOwner = owner + 1
+		r := &next.owned[owner]
+		r.typ = instructionResultType(in)
+		r.acquire = next.acquire
+		r.reserve = next.reserve
+		r.checkContext = next.checkContext
+		if in.Code != scalarColumn || in.Type == memory.TypeBool {
+			err = prepareInstructionBuffers(r, in, rows)
+			if err != nil {
+				break
 			}
-			nextOwner = owner + 1
-			r := &next.owned[owner]
-			r.typ = instructionResultType(in)
-			r.acquire = next.acquire
-			r.reserve = next.reserve
-			r.checkContext = next.checkContext
-			if in.Code != scalarColumn || in.Type == memory.TypeBool {
-				err = prepareInstructionBuffers(r, in, rows)
-				if err != nil {
-					break
-				}
-			}
-			if in.LiteralString != "" {
-				r.literal = make([]byte, len(in.LiteralString))
-				copy(r.literal, in.LiteralString)
-				r.literalKey = in.LiteralString
-			}
+		}
+		if in.LiteralString != "" {
+			r.literal = make([]byte, len(in.LiteralString))
+			copy(r.literal, in.LiteralString)
+			r.literalKey = in.LiteralString
 		}
 	}
 	if err != nil {
@@ -189,7 +194,7 @@ func (w *evaluationState) Release() { _ = w.Close() }
 
 // Register returns an immutable Boolean register view.
 func (w *evaluationState) Register(i int) BoolVector {
-	r := &w.regs[i]
+	r := w.regs[i]
 	return BoolVector{Truth: r.Truth, Validity: r.validity}
 }
 
@@ -199,7 +204,7 @@ func (w *evaluationState) MemoryBytes() int64 {
 	if w == nil {
 		return 0
 	}
-	n := int64(cap(w.regs)+cap(w.owned))*int64(unsafe.Sizeof(scalarRegister{})) + int64(cap(w.outputs))*int64(unsafe.Sizeof(ScalarValue{}))
+	n := int64(cap(w.regs))*int64(unsafe.Sizeof((*scalarRegister)(nil))) + int64(cap(w.borrowed)+cap(w.owned))*int64(unsafe.Sizeof(scalarRegister{})) + int64(cap(w.outputs))*int64(unsafe.Sizeof(ScalarValue{}))
 	// Immutable set payloads are admitted conservatively per execution, even
 	// when multiple workspaces share the same compiled program.
 	for _, in := range w.program {
@@ -255,7 +260,7 @@ func (w *evaluationState) prepareRegionScratch(instructions []instruction, rows 
 	if len(instructions) == 0 {
 		return fmt.Errorf("empty expression program")
 	}
-	if err := w.ensureRegisterCounts(len(instructions), storageOwnerCount(instructions)); err != nil {
+	if err := w.ensureRegisterCounts(len(instructions), storageOwnerCount(instructions), borrowedRegisterCount(instructions)); err != nil {
 		return err
 	}
 	w.program = instructions

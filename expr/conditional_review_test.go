@@ -100,7 +100,7 @@ func TestConditionalReviewAdmissionRetry(t *testing.T) {
 		if err = evaluateInstructions(p.instructions, b, &w, testKernelSet()); err != nil {
 			t.Fatalf("retry %d: %v", failAt, err)
 		}
-		root := &w.regs[p.root]
+		root := w.regs[p.root]
 		for row := range b.Rows {
 			if !isValidRegister(root, row) || root.i64[row] != 2*int64(row%8) {
 				t.Fatalf("retry %d row %d", failAt, row)
@@ -141,7 +141,7 @@ func TestConditionalReviewGuardFallbackAndCancellation(t *testing.T) {
 				t.Fatal(err)
 			}
 			for row := range b.Rows {
-				r := &w.regs[p.root]
+				r := w.regs[p.root]
 				if i == 0 {
 					if isValidRegister(r, row) {
 						t.Fatal("NULL CASE arm fell through")

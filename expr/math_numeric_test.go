@@ -135,7 +135,7 @@ func TestMathUint64PrecisionAndNativeWidths(t *testing.T) {
 		if got.Type != typ {
 			t.Fatalf("%s got %s", typ, got.Type)
 		}
-		v, err := registerFloat64(&state.regs[p.root], 64)
+		v, err := registerFloat64(state.regs[p.root], 64)
 		if err != nil || v != 1 {
 			t.Fatal(typ, v, err)
 		}

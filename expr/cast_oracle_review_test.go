@@ -94,7 +94,7 @@ func TestReviewNumericCastPolarsOracle(t *testing.T) {
 					t.Errorf("%s: %v", mode, err)
 					continue
 				}
-				r := &w.regs[p.root]
+				r := w.regs[p.root]
 				if len(expected.Values) != 1 {
 					t.Fatalf("%s unexpected result shape", mode)
 				}

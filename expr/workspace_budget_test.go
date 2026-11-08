@@ -46,7 +46,7 @@ func TestProgramWorkspaceBytesExactFreshCapacities(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			want := int64(len(p.instructions)+storageOwnerCount(p.instructions)) * metadata
+			want := int64(len(p.instructions))*int64(unsafe.Sizeof((*scalarRegister)(nil))) + int64(storageOwnerCount(p.instructions)+borrowedRegisterCount(p.instructions))*metadata
 			nextOwner := 0
 			for i, in := range p.instructions {
 				owner := storageIndex(p.instructions, i)

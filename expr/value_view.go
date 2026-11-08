@@ -17,7 +17,7 @@ func releaseRegisterExport(r *scalarRegister) {
 // Offset/validity rebasing storage is admitted before borrowing; input headers
 // and payloads remain untouched. Duplicate output roots reuse the same view.
 func (w *evaluationState) exportBorrowedValue(index, rows int) (ScalarValue, error) {
-	r := &w.regs[index]
+	r := w.regs[index]
 	owned := w.ownedRegister(index)
 	if owned.exportBatch == nil {
 		source := memory.NewBatch()

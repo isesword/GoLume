@@ -78,15 +78,18 @@ func prepareInstructionBuffers(r *scalarRegister, in instruction, rows int) erro
 // admitted before allocation and retained on retryable budget failures. Once
 // complete, duplicate roots borrow the same materialized view for this batch.
 func (w *evaluationState) materializeLiteral(index, rows int) (ScalarValue, error) {
-	value := &w.regs[index]
+	value := w.regs[index]
 	owned := w.ownedRegister(index)
+	// Logical results refer directly to the owner. Buffer preparation resets
+	// validity, so preserve the evaluated demand/null mask before preparing.
+	validity := value.validity
 	if err := prepareScalarBuffers(owned, rows); err != nil {
 		return ScalarValue{}, err
 	}
 	if err := w.checkContext(); err != nil {
 		return ScalarValue{}, err
 	}
-	owned.validity = value.validity
+	owned.validity = validity
 	switch familyOf(value.typ) {
 	case familyI32:
 		for row := range rows {
@@ -132,6 +135,5 @@ func (w *evaluationState) materializeLiteral(index, rows int) (ScalarValue, erro
 		return ScalarValue{}, err
 	}
 	owned.constant = false
-	*value = *owned
 	return scalarValue(value, rows), nil
 }

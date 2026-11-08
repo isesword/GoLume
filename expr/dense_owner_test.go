@@ -32,7 +32,7 @@ func TestDensePhysicalOwnerMetadata(t *testing.T) {
 			if owners != len(seen) || owners > 4 {
 				t.Fatalf("chain uses %d owners for %d instructions", owners, len(p.instructions))
 			}
-			wantMetadata := int64(len(p.instructions)+owners) * int64(unsafe.Sizeof(scalarRegister{}))
+			wantMetadata := int64(len(p.instructions))*int64(unsafe.Sizeof((*scalarRegister)(nil))) + int64(owners+borrowedRegisterCount(p.instructions))*int64(unsafe.Sizeof(scalarRegister{}))
 			if got, err := p.WorkspaceBytes(0); err != nil || got != wantMetadata {
 				t.Fatalf("zero-row metadata = %d, %v; want %d", got, err, wantMetadata)
 			}
@@ -80,5 +80,31 @@ func TestDenseOwnersDedicatedProgramCompatibility(t *testing.T) {
 	}
 	if got := w.regs[p.root].i64[1]; got != 33 {
 		t.Fatalf("result %d", got)
+	}
+}
+
+func TestLogicalRegisterMetadataScalesByPointers(t *testing.T) {
+	shallow, err := Compile(livenessSchema(), livenessChain(Col("x"), 8, false))
+	if err != nil {
+		t.Fatal(err)
+	}
+	deep, err := Compile(livenessSchema(), livenessChain(Col("x"), 128, false))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if storageOwnerCount(shallow.instructions) != storageOwnerCount(deep.instructions) || borrowedRegisterCount(shallow.instructions) != borrowedRegisterCount(deep.instructions) {
+		t.Fatal("fixture changed owner or input counts")
+	}
+	a, err := shallow.WorkspaceBytes(0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := deep.WorkspaceBytes(0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := int64(len(deep.instructions)-len(shallow.instructions)) * int64(unsafe.Sizeof((*scalarRegister)(nil)))
+	if b-a != want {
+		t.Fatalf("additional logical metadata = %d, want %d", b-a, want)
 	}
 }

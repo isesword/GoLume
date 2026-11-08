@@ -317,7 +317,7 @@ func TestSelectedGrowthDropsSkippedRegionBorrows(t *testing.T) {
 	}
 	borrowed := false
 	for _, r := range region.regs {
-		if len(r.i64) > 0 {
+		if r != nil && len(r.i64) > 0 {
 			borrowed = true
 		}
 	}
@@ -335,8 +335,13 @@ func TestSelectedGrowthDropsSkippedRegionBorrows(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, r := range region.regs {
-		if len(r.i64) > 0 {
+		if r != nil && len(r.i64) > 0 {
 			t.Fatal("skipped region retained expired selected input")
+		}
+	}
+	for _, r := range region.borrowed[:cap(region.borrowed)] {
+		if len(r.i64) > 0 {
+			t.Fatal("skipped region retained expired borrowed column")
 		}
 	}
 	if w.MemoryBytes() != manager.Used() {

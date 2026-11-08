@@ -116,7 +116,7 @@ func (w *evaluationState) evalRegion(out *scalarRegister, index int, program Pro
 	if err := evaluateInstructionsActive(program.instructions, batch, child, kernels, out.active); err != nil {
 		return nil, err
 	}
-	return &child.regs[program.root], nil
+	return child.regs[program.root], nil
 }
 
 func (w *evaluationState) evaluateConditional(out *scalarRegister, in instruction, batch *memory.Batch, kernels kernel.Set) error {
@@ -201,7 +201,7 @@ func (w *evaluationState) evaluateConditional(out *scalarRegister, in instructio
 	}
 	switch in.Kind {
 	case regionIf:
-		condition := &w.regs[in.A]
+		condition := w.regs[in.A]
 		for branch := 0; branch < 2; branch++ {
 			clear(out.active)
 			for row := 0; row < rows; row++ {
@@ -272,7 +272,7 @@ func (w *evaluationState) evaluateConditional(out *scalarRegister, in instructio
 			}
 		}
 	case regionIn:
-		needle := &w.regs[in.A]
+		needle := w.regs[in.A]
 		clear(out.Truth)
 		out.validity = out.ownedValidity
 		fillValidity(out.validity, needle.validity, rows)
@@ -327,7 +327,7 @@ func (w *evaluationState) evaluateConditional(out *scalarRegister, in instructio
 	}
 	for row, choice := range out.choices {
 		if choice >= 0 {
-			value := &out.regions[choice].regs[in.Regions[choice].root]
+			value := out.regions[choice].regs[in.Regions[choice].root]
 			if isValidRegister(value, row) {
 				if err := copyConditionalRow(out, value, row); err != nil {
 					return err
