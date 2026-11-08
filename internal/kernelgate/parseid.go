@@ -11,6 +11,7 @@ import (
 var kernelFamilies = map[string]bool{
 	"comparison":    true,
 	"arithmetic":    true,
+	"reduction":     true,
 	"math-unary":    true,
 	"math-binary":   true,
 	"boolean":       true,
@@ -42,6 +43,18 @@ func ParseKernelID(id string) (family, typ, op string, err error) {
 			return "", "", "", fmt.Errorf("kernelgate: malformed arithmetic id %q", id)
 		}
 		return "arithmetic", typ, op, nil
+	}
+	if rest, ok := strings.CutPrefix(id, "sum-"); ok {
+		typ, op, ok = cutLast(rest)
+		if !ok || op != "masked" {
+			return "", "", "", fmt.Errorf("kernelgate: malformed masked sum id %q", id)
+		}
+		switch typ {
+		case "int32", "uint32", "int64", "uint64":
+			return "reduction", typ, "sum-masked", nil
+		default:
+			return "", "", "", fmt.Errorf("kernelgate: unsupported masked sum type in %q", id)
+		}
 	}
 	if rest, ok := strings.CutPrefix(id, "math-"); ok {
 		typ, op, ok = strings.Cut(rest, "-")

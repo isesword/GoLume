@@ -1499,6 +1499,82 @@
           "updated": "2026-09-19"
         }
       }
+    },
+    {
+      "id": "sum-int32-masked",
+      "family": "reduction",
+      "type": "int32",
+      "operation": "sum-masked",
+      "source": "handwritten",
+      "arches": {
+        "linux/amd64": {
+          "state": "candidate",
+          "reason": "Native AVX512 masked sums and portable 128/256-bit SIMD passed correctness, zero-allocation and runtime-guard tests. Short benchmark smoke only; no archived statistical approval-gate evidence.",
+          "updated": "2026-11-08"
+        },
+        "linux/arm64": {
+          "state": "candidate",
+          "reason": "Portable SIMD accumulation and native horizontal reduction cross-compiled only. No ARM64 execution or benchmark approval evidence.",
+          "updated": "2026-11-08"
+        }
+      }
+    },
+    {
+      "id": "sum-int64-masked",
+      "family": "reduction",
+      "type": "int64",
+      "operation": "sum-masked",
+      "source": "handwritten",
+      "arches": {
+        "linux/amd64": {
+          "state": "candidate",
+          "reason": "Native AVX512 masked sums and portable 128/256-bit SIMD passed correctness, zero-allocation and runtime-guard tests. Short benchmark smoke only; no archived statistical approval-gate evidence.",
+          "updated": "2026-11-08"
+        },
+        "linux/arm64": {
+          "state": "candidate",
+          "reason": "Portable SIMD accumulation and native horizontal reduction cross-compiled only. No ARM64 execution or benchmark approval evidence.",
+          "updated": "2026-11-08"
+        }
+      }
+    },
+    {
+      "id": "sum-uint32-masked",
+      "family": "reduction",
+      "type": "uint32",
+      "operation": "sum-masked",
+      "source": "handwritten",
+      "arches": {
+        "linux/amd64": {
+          "state": "candidate",
+          "reason": "Native AVX512 masked sums and portable 128/256-bit SIMD passed correctness, zero-allocation and runtime-guard tests. Short benchmark smoke only; no archived statistical approval-gate evidence.",
+          "updated": "2026-11-08"
+        },
+        "linux/arm64": {
+          "state": "candidate",
+          "reason": "Portable SIMD accumulation and native horizontal reduction cross-compiled only. No ARM64 execution or benchmark approval evidence.",
+          "updated": "2026-11-08"
+        }
+      }
+    },
+    {
+      "id": "sum-uint64-masked",
+      "family": "reduction",
+      "type": "uint64",
+      "operation": "sum-masked",
+      "source": "handwritten",
+      "arches": {
+        "linux/amd64": {
+          "state": "candidate",
+          "reason": "Native AVX512 masked sums and portable 128/256-bit SIMD passed correctness, zero-allocation and runtime-guard tests. Short benchmark smoke only; no archived statistical approval-gate evidence.",
+          "updated": "2026-11-08"
+        },
+        "linux/arm64": {
+          "state": "candidate",
+          "reason": "Portable SIMD accumulation and native horizontal reduction cross-compiled only. No ARM64 execution or benchmark approval evidence.",
+          "updated": "2026-11-08"
+        }
+      }
     }
   ]
 }

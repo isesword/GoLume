@@ -127,7 +127,7 @@ func TestGlobalAggregateBindingsAllWidths(t *testing.T) {
 	s.bindGlobalAggregateInputs()
 	for lane, c := range cols[:10] {
 		for row, want := range c.bits {
-			bits, valid := s.globalBindings[lane].bits(row)
+			bits, valid := globalBindingTestBits(&s.globalBindings[lane], row)
 			if bits != want || valid != memory.IsSet(c.valid, row) {
 				t.Fatalf("%s row=%d bits=%x want=%x valid=%v", c.name, row, bits, want, valid)
 			}
@@ -135,12 +135,12 @@ func TestGlobalAggregateBindingsAllWidths(t *testing.T) {
 	}
 	// Prove the hot reader is bound rather than repeating a column map lookup.
 	clear(b.Float64s)
-	if got, valid := s.globalBindings[9].bits(1); got != math.Float64bits(7) || !valid {
+	if got, valid := globalBindingTestBits(&s.globalBindings[9], 1); got != math.Float64bits(7) || !valid {
 		t.Fatalf("bound read after map removal: %x %v", got, valid)
 	}
 	if allocs := testing.AllocsPerRun(100, func() {
 		for lane := range s.globalBindings {
-			s.globalBindings[lane].bits(0)
+			globalBindingTestBits(&s.globalBindings[lane], 0)
 		}
 	}); allocs != 0 {
 		t.Fatalf("per-row allocations=%v", allocs)
@@ -175,7 +175,7 @@ func TestGlobalAggregateBindingsCountValidityOnly(t *testing.T) {
 	s.bindGlobalAggregateInputs()
 	for lane, mask := range []uint64{5, 6, 3, 1, 7, 4, 2, 0} {
 		for row := 0; row < 3; row++ {
-			bits, valid := s.globalBindings[lane].bits(row)
+			bits, valid := globalBindingTestBits(&s.globalBindings[lane], row)
 			if bits != 0 || valid != (mask&(1<<row) != 0) {
 				t.Fatalf("lane=%d row=%d bits=%x valid=%v", lane, row, bits, valid)
 			}
@@ -368,5 +368,38 @@ func TestGlobalAggregateBindingsEmptyAndNullIdentity(t *testing.T) {
 			}
 			assertGlobalBindingsCleared(t, s)
 		})
+	}
+}
+
+// globalBindingTestBits is a test-only reader for checking borrowed column bindings independently
+// of the production masked reduction path.
+func globalBindingTestBits(b *globalAggregateLaneBinding, row int) (uint64, bool) {
+	if b.rowsOnly {
+		return 0, false
+	}
+	valid := b.validity == nil || memory.IsSet(b.validity, row)
+	switch b.typ {
+	case memory.TypeInt8:
+		return uint64(int64(b.int8s.Values[row])), valid
+	case memory.TypeInt16:
+		return uint64(int64(b.int16s.Values[row])), valid
+	case memory.TypeInt32:
+		return uint64(int64(b.int32s.Values[row])), valid
+	case memory.TypeInt64:
+		return uint64(b.int64s.Values[row]), valid
+	case memory.TypeUint8:
+		return uint64(b.uint8s.Values[row]), valid
+	case memory.TypeUint16:
+		return uint64(b.uint16s.Values[row]), valid
+	case memory.TypeUint32:
+		return uint64(b.uint32s.Values[row]), valid
+	case memory.TypeUint64:
+		return b.uint64s.Values[row], valid
+	case memory.TypeFloat32:
+		return uint64(math.Float32bits(b.float32s.Values[row])), valid
+	case memory.TypeFloat64:
+		return math.Float64bits(b.float64s.Values[row]), valid
+	default:
+		return 0, valid
 	}
 }

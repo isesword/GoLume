@@ -3,6 +3,8 @@ package engine
 import (
 	"context"
 	"fmt"
+	"gocolumn/aggregate"
+	"gocolumn/kernel"
 	"gocolumn/memory"
 	"math"
 	"math/bits"
@@ -115,40 +117,9 @@ func (s *sortedAggregateStream) bindGlobalAggregateInputs() {
 	}
 }
 
-func (b *globalAggregateLaneBinding) bits(row int) (uint64, bool) {
-	if b.rowsOnly {
-		return 0, false
-	}
-	valid := b.validity == nil || memory.IsSet(b.validity, row)
-	switch b.typ {
-	case memory.TypeInt8:
-		return uint64(int64(b.int8s.Values[row])), valid
-	case memory.TypeInt16:
-		return uint64(int64(b.int16s.Values[row])), valid
-	case memory.TypeInt32:
-		return uint64(int64(b.int32s.Values[row])), valid
-	case memory.TypeInt64:
-		return uint64(b.int64s.Values[row]), valid
-	case memory.TypeUint8:
-		return uint64(b.uint8s.Values[row]), valid
-	case memory.TypeUint16:
-		return uint64(b.uint16s.Values[row]), valid
-	case memory.TypeUint32:
-		return uint64(b.uint32s.Values[row]), valid
-	case memory.TypeUint64:
-		return b.uint64s.Values[row], valid
-	case memory.TypeFloat32:
-		return uint64(math.Float32bits(b.float32s.Values[row])), valid
-	case memory.TypeFloat64:
-		return math.Float64bits(b.float64s.Values[row]), valid
-	default:
-		return 0, valid
-	}
-}
-
 // consumeGlobalAggregateInput bypasses the adjacent-key state machine only for
 // the already-bound global SUM/COUNT lanes. Predicate evaluation still uses the
-// selected kernel set. SUM updates retain their original row and lane order:
+// selected kernel set. Each SUM retains its original encounter order:
 // horizontal floating-point reductions would change rounding and NaN results.
 // No row-sized scratch or additional retained state is required.
 func (s *sortedAggregateStream) consumeGlobalAggregateInput(ctx context.Context) error {
@@ -168,31 +139,107 @@ func (s *sortedAggregateStream) consumeGlobalAggregateInput(ctx context.Context)
 
 func (s *sortedAggregateStream) consumeGlobalAggregateBatch(ctx context.Context) error {
 	rows := s.inputBatch.Rows
+	kernels := s.query.e.kernels
 	for base := 0; base < rows; base += 64 {
 		// Check even empty selection words so sparse inputs cannot delay
 		// cancellation until a selected row or the next source batch.
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		word := s.selection[base>>6]
-		if remaining := rows - base; remaining < 64 {
-			word &= (uint64(1) << uint(remaining)) - 1
+		end := min(base+64, rows)
+		word := s.selection[base>>6] & memory.TailMask(end-base)
+		if word == 0 {
+			continue
 		}
-		for word != 0 {
-			row := base + bits.TrailingZeros64(word)
-			word &= word - 1
-			for lane := range s.globalBindings {
-				value, valid := s.globalBindings[lane].bits(row)
-				s.numeric.AddBits(0, lane, value, valid)
+		selected := uint64(bits.OnesCount64(word))
+		for lane := range s.globalBindings {
+			bound := &s.globalBindings[lane]
+			validWord := word
+			if bound.rowsOnly {
+				validWord = 0
+			} else if bound.validity != nil {
+				validWord &= bound.validity[base>>6]
 			}
-			s.selectedRows++
-			// This is the legacy Int64 diagnostic checksum, not a native
-			// reduction of arbitrary SUM lanes.
-			if value, valid := s.binding.value(row); valid {
-				s.checksum += value
+			var state aggregate.NumericSumCountState
+			if !s.numeric.BorrowSumCountState(0, lane, &state) {
+				return fmt.Errorf("global aggregate lane %d is not SUM/COUNT state", lane)
 			}
+			sum := state.SumBits()
+			if validWord != 0 {
+				sum = bound.sumWord(kernels, base, end, validWord, sum)
+			}
+			state.Update(sum, selected, uint64(bits.OnesCount64(validWord)))
+		}
+		s.selectedRows += int(selected)
+		// Preserve the legacy Int64 diagnostic checksum independently of which
+		// SUM/COUNT lanes the query requests. Its integer sum is associative.
+		if values := s.binding.values; values != nil {
+			validWord := word
+			if values.Validity != nil {
+				validWord &= values.Validity[base>>6]
+			}
+			s.checksum += kernels.SumInt64Masked(values.Values[base:end], validWord)
 		}
 	}
 	s.nextRow = rows
 	return nil
+}
+
+// sumWord dispatches once per column and selection word. Integer reductions
+// may reassociate under native SIMD because their wrapping arithmetic is exact.
+// Floating reductions continue from the previous state, never a word subtotal.
+func (b *globalAggregateLaneBinding) sumWord(kernels kernel.Set, base, end int, selected, sum uint64) uint64 {
+	switch b.typ {
+	case memory.TypeInt8:
+		return sumSelectedNarrow(b.int8s.Values[base:end], selected, sum)
+	case memory.TypeInt16:
+		return sumSelectedNarrow(b.int16s.Values[base:end], selected, sum)
+	case memory.TypeInt32:
+		return uint64(int64(int32(sum) + kernels.SumInt32Masked(b.int32s.Values[base:end], selected)))
+	case memory.TypeInt64:
+		return sum + uint64(kernels.SumInt64Masked(b.int64s.Values[base:end], selected))
+	case memory.TypeUint8:
+		return sumSelectedNarrow(b.uint8s.Values[base:end], selected, sum)
+	case memory.TypeUint16:
+		return sumSelectedNarrow(b.uint16s.Values[base:end], selected, sum)
+	case memory.TypeUint32:
+		return uint64(uint32(sum) + kernels.SumUint32Masked(b.uint32s.Values[base:end], selected))
+	case memory.TypeUint64:
+		return sum + kernels.SumUint64Masked(b.uint64s.Values[base:end], selected)
+	case memory.TypeFloat32:
+		return uint64(math.Float32bits(sumSelectedFloat(b.float32s.Values[base:end], selected, math.Float32frombits(uint32(sum)))))
+	case memory.TypeFloat64:
+		return math.Float64bits(sumSelectedFloat(b.float64s.Values[base:end], selected, math.Float64frombits(sum)))
+	default:
+		// Count-only lanes bind validity without accessing a numeric payload.
+		return sum
+	}
+}
+
+func sumSelectedNarrow[T int8 | int16 | uint8 | uint16](values []T, selected, sum uint64) uint64 {
+	if selected == memory.TailMask(len(values)) {
+		for _, value := range values {
+			sum += uint64(value)
+		}
+		return sum
+	}
+	for selected != 0 {
+		sum += uint64(values[bits.TrailingZeros64(selected)])
+		selected &= selected - 1
+	}
+	return sum
+}
+
+func sumSelectedFloat[T float32 | float64](values []T, selected uint64, sum T) T {
+	if selected == memory.TailMask(len(values)) {
+		for _, value := range values {
+			sum += value
+		}
+		return sum
+	}
+	for selected != 0 {
+		sum += values[bits.TrailingZeros64(selected)]
+		selected &= selected - 1
+	}
+	return sum
 }

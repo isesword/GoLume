@@ -9,6 +9,8 @@ func installSIMD(set *Set, mode Mode) {
 		return
 	}
 	vectorBits := simd.Int64s{}.Len() * 64
+	installSumSIMD(set, mode, vectorBits)
+	installArchSumSIMD(set, mode, vectorBits)
 	installMathSIMD(set, mode, vectorBits)
 	installGeneratedPortableSIMD(set, mode, vectorBits)
 	installArchSIMDHash(set, mode, vectorBits)

@@ -151,11 +151,15 @@ const (
 	KernelMathUnary
 	// KernelMathBinary identifies native-width binary math.
 	KernelMathBinary
+	// KernelReduction identifies bounded masked reductions.
+	KernelReduction
 )
 
 // String returns the stable kernel-family name.
 func (k KernelKind) String() string {
 	switch k {
+	case KernelReduction:
+		return "reduction"
 	case KernelMathUnary:
 		return "math-unary"
 	case KernelMathBinary:
@@ -193,6 +197,8 @@ func (id KernelID) Kind() KernelKind { return id.kind }
 // String returns the stable operation-level identifier.
 func (id KernelID) String() string {
 	switch id.kind {
+	case KernelReduction:
+		return fmt.Sprintf("sum-%s-masked", id.typ)
 	case KernelMathUnary:
 		return fmt.Sprintf("math-%s-%s", id.typ, MathUnaryOp(id.op))
 	case KernelMathBinary:
@@ -359,6 +365,10 @@ func buildKernelIDs() []KernelID {
 			ids = append(ids, id)
 		}
 	}
+	for _, typ := range []memory.DataType{memory.TypeInt32, memory.TypeUint32, memory.TypeInt64, memory.TypeUint64} {
+		id, _ := SumID(typ)
+		ids = append(ids, id)
+	}
 	return append(ids,
 		KernelBoolAnd, KernelBoolOr, KernelBoolNot,
 		KernelHash64Batch, KernelHash128Batch, KernelInt64Scale,
@@ -472,6 +482,10 @@ type uint16CompactFunc func(values []uint16, selection memory.Bitmap, out []uint
 type float32CompactFunc func(values []float32, selection memory.Bitmap, out []float32) int
 
 type dispatch struct {
+	sumInt32Masked        func([]int32, uint64) int32
+	sumUint32Masked       func([]uint32, uint64) uint32
+	sumInt64Masked        func([]int64, uint64) int64
+	sumUint64Masked       func([]uint64, uint64) uint64
 	math                  mathDispatch
 	compareInt16          [CompareEQ + 1]int16CompareFunc
 	compareUint8          [CompareEQ + 1]uint8CompareFunc
@@ -740,6 +754,7 @@ func (s Set) setCapability(id KernelID, capability KernelCapability) { s.d.caps.
 
 func newScalarSet(mode Mode) Set {
 	d := &dispatch{caps: &capabilityState{mode: mode, arch: runtimeArch(), byID: make(map[KernelID]KernelCapability, len(allKernelIDs)), columns: make(map[KernelID]KernelCapability, 50)}}
+	installSumScalar(d)
 	installMathScalar(d)
 	installGeneratedScalar(d)
 	installFloat32Scalar(d)
