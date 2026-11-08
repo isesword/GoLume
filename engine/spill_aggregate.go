@@ -958,76 +958,26 @@ func (s *spillableAggregateStream) Spill(ctx context.Context, _ memory.SpillRequ
 	return s.spillTableLocked(ctx, 0, s.partitions)
 }
 
-func (s *spillableAggregateStream) partitionHashes(ctx context.Context, table *aggregateStateTable) ([]uint64, memory.Reservation, error) {
-	groups := table.len()
-	if groups == 0 {
-		return nil, nil, nil
-	}
-	if groups > math.MaxInt/8 {
-		return nil, nil, fmt.Errorf("aggregate partition hash workspace exceeds addressable memory")
-	}
-	lease, err := s.encoder.ReserveGrowth(ctx, int64(groups)*8)
-	if err != nil {
-		return nil, nil, fmt.Errorf("reserve aggregate partition hashes: %w", err)
-	}
-	hashes := make([]uint64, groups)
-	index := 0
-	batchHash64 := s.query.cq.GroupShape == GroupShapeI32 || s.query.cq.GroupShape == GroupShapeI64 || s.query.cq.GroupShape == GroupShapeU32 || s.query.cq.GroupShape == GroupShapeDictionaryString
-	err = table.visit(func(record aggregateRecord) error {
-		if index >= len(hashes) {
-			return fmt.Errorf("aggregate table visit exceeded group count")
-		}
-		if batchHash64 {
-			if record.validMask == 0 {
-				hashes[index] = 0x9e3779b97f4a7c15
-			} else {
-				hashes[index] = record.a
-				if s.query.cq.GroupShape == GroupShapeI32 || s.query.cq.GroupShape == GroupShapeU32 || s.query.cq.GroupShape == GroupShapeDictionaryString {
-					hashes[index] = uint64(uint32(record.a))
-				}
-			}
-		} else {
-			hashes[index] = aggregateRecordHash(s.query.cq.GroupShape, record)
-		}
-		index++
-		return nil
-	})
-	if err != nil || index != groups {
-		lease.Release()
-		if err != nil {
-			return nil, nil, err
-		}
-		return nil, nil, fmt.Errorf("aggregate table visit returned %d groups, want %d", index, groups)
-	}
-	if batchHash64 {
-		// Hash64Batch is an operation-specific kernel dispatch. Auto uses it only
-		// on architectures with committed benchmark evidence; forced SIMD may
-		// correctly fall back, and string/pair keys remain scalar.
-		s.query.e.kernels.Hash64Batch(hashes, hashes)
-	}
-	return hashes, lease, nil
-}
-
 func (s *spillableAggregateStream) spillTableLocked(ctx context.Context, bitOffset uint, destinations []spillmeta.Slice[aggregateRunRef]) (int64, error) {
 	if s.table == nil || s.table.table == nil || s.table.table.len() == 0 {
 		return 0, nil
 	}
 	owner := s.table
-	hashes, hashLease, err := s.partitionHashes(ctx, owner.table)
+	directory, err := s.partitionTable(ctx, owner.table, bitOffset, len(destinations))
 	if err != nil {
 		return 0, err
 	}
-	if hashLease != nil {
-		defer hashLease.Release()
-	}
+	defer directory.close()
 	var created spillmeta.Slice[aggregateRunRef]
 	defer created.Release()
 	for partition := range destinations {
-		part := uint64(partition)
-		mask := uint64(len(destinations) - 1)
-		encoded, err := s.query.encodeAggregateRun(ctx, owner.table.visit, func(index int, _ aggregateRecord) bool {
-			return hashes[index]>>bitOffset&mask == part
-		}, s.encoder)
+		if directory.offsets[partition] == directory.offsets[partition+1] {
+			continue
+		}
+		visit := func(fn func(aggregateRecord) error) error {
+			return directory.visit(ctx, owner.table, partition, fn)
+		}
+		encoded, err := s.query.encodeAggregateRun(ctx, visit, nil, spillmeta.GrowthManager(s.encoder))
 		if err != nil {
 			s.deleteRunRefs(context.Background(), created.Values)
 			return 0, err
