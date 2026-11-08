@@ -315,6 +315,14 @@ func generatePortableSIMD() []byte {
 	floatTypes := []numericType{{"Float32", "float32", "arithmeticFloat32"}, {"Float64", "float64", "arithmeticFloat64"}}
 	arithmeticOps := []operation{{"Add", "ArithmeticAdd", "+"}, {"Sub", "ArithmeticSub", "-"}, {"Mul", "ArithmeticMul", "*"}, {"Div", "ArithmeticDiv", "/"}}
 	literalTypes := append([]numericType{{"Float32", "float32", "compareFloat32"}}, comparisonTypes...)
+	// Int32, Uint32 and Float32 keep their existing portable implementations.
+	// Every other column backend uses the same metadata as literal comparisons.
+	var columnTypes []numericType
+	for _, typ := range comparisonTypes {
+		if typ.name != "Int32" && typ.name != "Uint32" {
+			columnTypes = append(columnTypes, typ)
+		}
+	}
 	b.WriteString(`func installGeneratedPortableSIMD(set *Set, mode Mode, vectorBits int) {
  if mode == ModeScalar || !nativeSIMDAvailable() { return }
  capability := KernelCapability{HardwareSIMD: true, VectorBits: vectorBits, Backend: "portable-simd"}
@@ -331,8 +339,10 @@ func generatePortableSIMD() []byte {
 			fmt.Fprintf(b, "id%s%s, _ := ComparisonID(memory.Type%s, %s)\nset.setCapability(id%s%s, capability)\n", typ.name, op.name, typ.name, op.constant, typ.name, op.name)
 		}
 	}
-	for _, op := range comparisonOps {
-		fmt.Fprintf(b, "set.d.compareFloat64Columns[%s] = simdFloat64Columns%s\nset.d.caps.columns[idFloat64%s] = capability\n", op.constant, op.name, op.name)
+	for _, typ := range columnTypes {
+		for _, op := range comparisonOps {
+			fmt.Fprintf(b, "set.d.%sColumns[%s] = simd%sColumns%s\nset.d.caps.columns[id%s%s] = capability\n", typ.field, op.constant, typ.name, op.name, typ.name, op.name)
+		}
 	}
 	b.WriteString("}\n\n")
 	for _, typ := range floatTypes {
@@ -394,22 +404,34 @@ func generatePortableSIMD() []byte {
 `, typ.name, op.name, typ.goType, typ.goType, typ.name, typ.name, op.name, broadcast, width, vectorLoad, op.nameForArch(), width, op.symbol)
 		}
 	}
-	for _, op := range comparisonOps {
-		fmt.Fprintf(b, `func simdFloat64Columns%s(left, right []float64, leftValid, rightValid, out memory.Bitmap) int {
- if len(left) != len(right) { panic("kernel: float64 column comparison length mismatch") }
- lanes := simd.Float64s{}.Len()
- if len(left) < lanes { return scalarFloat64Columns%s(left, right, leftValid, rightValid, out) }
+	for _, typ := range columnTypes {
+		width := strings.TrimLeft(typ.name, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+		for _, op := range comparisonOps {
+			leftLoad := fmt.Sprintf("simd.Load%ss(left[base+off:])", typ.name)
+			rightLoad := fmt.Sprintf("simd.Load%ss(right[base+off:])", typ.name)
+			if typ.name == "Uint8" && op.name != "EQ" {
+				// Both operands must be mapped from unsigned to signed byte order.
+				leftLoad += ".Xor(simd.BroadcastUint8s(0x80)).BitsToInt8()"
+				rightLoad += ".Xor(simd.BroadcastUint8s(0x80)).BitsToInt8()"
+			}
+			fmt.Fprintf(b, `func simd%sColumns%s(left, right []%s, leftValid, rightValid, out memory.Bitmap) int {
+ if len(left) != len(right) { panic("kernel: %s column comparison length mismatch") }
+ lanes := simd.%ss{}.Len()
+ if len(left) < lanes { return scalar%sColumns%s(left, right, leftValid, rightValid, out) }
  words := prepareComparison(len(left), out)
- var laneMaskStorage [64]int64
+ var laneMaskStorage [64]int%s
  laneMask := laneMaskStorage[:lanes]
  selected := 0
  for wi := 0; wi < words; wi++ {
   base := wi * 64
   rows := min(64, len(left)-base)
+  validWord := bitmapWord(leftValid, wi) & bitmapWord(rightValid, wi) & memory.TailMask(rows)
+  // prepareComparison cleared every logical output word, including skipped words.
+  if validWord == 0 { continue }
   var word uint64
   off := 0
   for ; off+lanes <= rows; off += lanes {
-   simd.LoadFloat64s(left[base+off:]).%s(simd.LoadFloat64s(right[base+off:])).ToInt64s().Store(laneMask)
+   %s.%s(%s).ToInt%ss().Store(laneMask)
    for lane := 0; lane < lanes; lane++ {
     if laneMask[lane] < 0 { word |= uint64(1) << uint(off+lane) }
    }
@@ -417,14 +439,15 @@ func generatePortableSIMD() []byte {
   for ; off < rows; off++ {
    if left[base+off] %s right[base+off] { word |= uint64(1) << uint(off) }
   }
-  word &= bitmapWord(leftValid, wi) & bitmapWord(rightValid, wi) & memory.TailMask(rows)
+  word &= validWord
   out[wi] = word
   selected += bits.OnesCount64(word)
  }
  return selected
 }
 
-`, op.name, op.name, op.nameForArch(), op.symbol)
+`, typ.name, op.name, typ.goType, typ.goType, typ.name, typ.name, op.name, width, leftLoad, op.nameForArch(), rightLoad, width, op.symbol)
+		}
 	}
 	return []byte(b.String())
 }

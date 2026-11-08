@@ -189,6 +189,66 @@ func installGeneratedPortableSIMD(set *Set, mode Mode, vectorBits int) {
 	set.d.compareFloat64[CompareEQ] = simdFloat64EQ
 	idFloat64EQ, _ := ComparisonID(memory.TypeFloat64, CompareEQ)
 	set.setCapability(idFloat64EQ, capability)
+	set.d.compareInt8Columns[CompareGT] = simdInt8ColumnsGT
+	set.d.caps.columns[idInt8GT] = capability
+	set.d.compareInt8Columns[CompareGE] = simdInt8ColumnsGE
+	set.d.caps.columns[idInt8GE] = capability
+	set.d.compareInt8Columns[CompareLT] = simdInt8ColumnsLT
+	set.d.caps.columns[idInt8LT] = capability
+	set.d.compareInt8Columns[CompareLE] = simdInt8ColumnsLE
+	set.d.caps.columns[idInt8LE] = capability
+	set.d.compareInt8Columns[CompareEQ] = simdInt8ColumnsEQ
+	set.d.caps.columns[idInt8EQ] = capability
+	set.d.compareInt16Columns[CompareGT] = simdInt16ColumnsGT
+	set.d.caps.columns[idInt16GT] = capability
+	set.d.compareInt16Columns[CompareGE] = simdInt16ColumnsGE
+	set.d.caps.columns[idInt16GE] = capability
+	set.d.compareInt16Columns[CompareLT] = simdInt16ColumnsLT
+	set.d.caps.columns[idInt16LT] = capability
+	set.d.compareInt16Columns[CompareLE] = simdInt16ColumnsLE
+	set.d.caps.columns[idInt16LE] = capability
+	set.d.compareInt16Columns[CompareEQ] = simdInt16ColumnsEQ
+	set.d.caps.columns[idInt16EQ] = capability
+	set.d.compareInt64Columns[CompareGT] = simdInt64ColumnsGT
+	set.d.caps.columns[idInt64GT] = capability
+	set.d.compareInt64Columns[CompareGE] = simdInt64ColumnsGE
+	set.d.caps.columns[idInt64GE] = capability
+	set.d.compareInt64Columns[CompareLT] = simdInt64ColumnsLT
+	set.d.caps.columns[idInt64LT] = capability
+	set.d.compareInt64Columns[CompareLE] = simdInt64ColumnsLE
+	set.d.caps.columns[idInt64LE] = capability
+	set.d.compareInt64Columns[CompareEQ] = simdInt64ColumnsEQ
+	set.d.caps.columns[idInt64EQ] = capability
+	set.d.compareUint8Columns[CompareGT] = simdUint8ColumnsGT
+	set.d.caps.columns[idUint8GT] = capability
+	set.d.compareUint8Columns[CompareGE] = simdUint8ColumnsGE
+	set.d.caps.columns[idUint8GE] = capability
+	set.d.compareUint8Columns[CompareLT] = simdUint8ColumnsLT
+	set.d.caps.columns[idUint8LT] = capability
+	set.d.compareUint8Columns[CompareLE] = simdUint8ColumnsLE
+	set.d.caps.columns[idUint8LE] = capability
+	set.d.compareUint8Columns[CompareEQ] = simdUint8ColumnsEQ
+	set.d.caps.columns[idUint8EQ] = capability
+	set.d.compareUint16Columns[CompareGT] = simdUint16ColumnsGT
+	set.d.caps.columns[idUint16GT] = capability
+	set.d.compareUint16Columns[CompareGE] = simdUint16ColumnsGE
+	set.d.caps.columns[idUint16GE] = capability
+	set.d.compareUint16Columns[CompareLT] = simdUint16ColumnsLT
+	set.d.caps.columns[idUint16LT] = capability
+	set.d.compareUint16Columns[CompareLE] = simdUint16ColumnsLE
+	set.d.caps.columns[idUint16LE] = capability
+	set.d.compareUint16Columns[CompareEQ] = simdUint16ColumnsEQ
+	set.d.caps.columns[idUint16EQ] = capability
+	set.d.compareUint64Columns[CompareGT] = simdUint64ColumnsGT
+	set.d.caps.columns[idUint64GT] = capability
+	set.d.compareUint64Columns[CompareGE] = simdUint64ColumnsGE
+	set.d.caps.columns[idUint64GE] = capability
+	set.d.compareUint64Columns[CompareLT] = simdUint64ColumnsLT
+	set.d.caps.columns[idUint64LT] = capability
+	set.d.compareUint64Columns[CompareLE] = simdUint64ColumnsLE
+	set.d.caps.columns[idUint64LE] = capability
+	set.d.compareUint64Columns[CompareEQ] = simdUint64ColumnsEQ
+	set.d.caps.columns[idUint64EQ] = capability
 	set.d.compareFloat64Columns[CompareGT] = simdFloat64ColumnsGT
 	set.d.caps.columns[idFloat64GT] = capability
 	set.d.compareFloat64Columns[CompareGE] = simdFloat64ColumnsGE
@@ -2071,6 +2131,1266 @@ func simdFloat64EQ(values []float64, validity memory.Bitmap, out memory.Bitmap, 
 	return selected
 }
 
+func simdInt8ColumnsGT(left, right []int8, leftValid, rightValid, out memory.Bitmap) int {
+	if len(left) != len(right) {
+		panic("kernel: int8 column comparison length mismatch")
+	}
+	lanes := simd.Int8s{}.Len()
+	if len(left) < lanes {
+		return scalarInt8ColumnsGT(left, right, leftValid, rightValid, out)
+	}
+	words := prepareComparison(len(left), out)
+	var laneMaskStorage [64]int8
+	laneMask := laneMaskStorage[:lanes]
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		rows := min(64, len(left)-base)
+		validWord := bitmapWord(leftValid, wi) & bitmapWord(rightValid, wi) & memory.TailMask(rows)
+		// prepareComparison cleared every logical output word, including skipped words.
+		if validWord == 0 {
+			continue
+		}
+		var word uint64
+		off := 0
+		for ; off+lanes <= rows; off += lanes {
+			simd.LoadInt8s(left[base+off:]).Greater(simd.LoadInt8s(right[base+off:])).ToInt8s().Store(laneMask)
+			for lane := 0; lane < lanes; lane++ {
+				if laneMask[lane] < 0 {
+					word |= uint64(1) << uint(off+lane)
+				}
+			}
+		}
+		for ; off < rows; off++ {
+			if left[base+off] > right[base+off] {
+				word |= uint64(1) << uint(off)
+			}
+		}
+		word &= validWord
+		out[wi] = word
+		selected += bits.OnesCount64(word)
+	}
+	return selected
+}
+
+func simdInt8ColumnsGE(left, right []int8, leftValid, rightValid, out memory.Bitmap) int {
+	if len(left) != len(right) {
+		panic("kernel: int8 column comparison length mismatch")
+	}
+	lanes := simd.Int8s{}.Len()
+	if len(left) < lanes {
+		return scalarInt8ColumnsGE(left, right, leftValid, rightValid, out)
+	}
+	words := prepareComparison(len(left), out)
+	var laneMaskStorage [64]int8
+	laneMask := laneMaskStorage[:lanes]
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		rows := min(64, len(left)-base)
+		validWord := bitmapWord(leftValid, wi) & bitmapWord(rightValid, wi) & memory.TailMask(rows)
+		// prepareComparison cleared every logical output word, including skipped words.
+		if validWord == 0 {
+			continue
+		}
+		var word uint64
+		off := 0
+		for ; off+lanes <= rows; off += lanes {
+			simd.LoadInt8s(left[base+off:]).GreaterEqual(simd.LoadInt8s(right[base+off:])).ToInt8s().Store(laneMask)
+			for lane := 0; lane < lanes; lane++ {
+				if laneMask[lane] < 0 {
+					word |= uint64(1) << uint(off+lane)
+				}
+			}
+		}
+		for ; off < rows; off++ {
+			if left[base+off] >= right[base+off] {
+				word |= uint64(1) << uint(off)
+			}
+		}
+		word &= validWord
+		out[wi] = word
+		selected += bits.OnesCount64(word)
+	}
+	return selected
+}
+
+func simdInt8ColumnsLT(left, right []int8, leftValid, rightValid, out memory.Bitmap) int {
+	if len(left) != len(right) {
+		panic("kernel: int8 column comparison length mismatch")
+	}
+	lanes := simd.Int8s{}.Len()
+	if len(left) < lanes {
+		return scalarInt8ColumnsLT(left, right, leftValid, rightValid, out)
+	}
+	words := prepareComparison(len(left), out)
+	var laneMaskStorage [64]int8
+	laneMask := laneMaskStorage[:lanes]
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		rows := min(64, len(left)-base)
+		validWord := bitmapWord(leftValid, wi) & bitmapWord(rightValid, wi) & memory.TailMask(rows)
+		// prepareComparison cleared every logical output word, including skipped words.
+		if validWord == 0 {
+			continue
+		}
+		var word uint64
+		off := 0
+		for ; off+lanes <= rows; off += lanes {
+			simd.LoadInt8s(left[base+off:]).Less(simd.LoadInt8s(right[base+off:])).ToInt8s().Store(laneMask)
+			for lane := 0; lane < lanes; lane++ {
+				if laneMask[lane] < 0 {
+					word |= uint64(1) << uint(off+lane)
+				}
+			}
+		}
+		for ; off < rows; off++ {
+			if left[base+off] < right[base+off] {
+				word |= uint64(1) << uint(off)
+			}
+		}
+		word &= validWord
+		out[wi] = word
+		selected += bits.OnesCount64(word)
+	}
+	return selected
+}
+
+func simdInt8ColumnsLE(left, right []int8, leftValid, rightValid, out memory.Bitmap) int {
+	if len(left) != len(right) {
+		panic("kernel: int8 column comparison length mismatch")
+	}
+	lanes := simd.Int8s{}.Len()
+	if len(left) < lanes {
+		return scalarInt8ColumnsLE(left, right, leftValid, rightValid, out)
+	}
+	words := prepareComparison(len(left), out)
+	var laneMaskStorage [64]int8
+	laneMask := laneMaskStorage[:lanes]
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		rows := min(64, len(left)-base)
+		validWord := bitmapWord(leftValid, wi) & bitmapWord(rightValid, wi) & memory.TailMask(rows)
+		// prepareComparison cleared every logical output word, including skipped words.
+		if validWord == 0 {
+			continue
+		}
+		var word uint64
+		off := 0
+		for ; off+lanes <= rows; off += lanes {
+			simd.LoadInt8s(left[base+off:]).LessEqual(simd.LoadInt8s(right[base+off:])).ToInt8s().Store(laneMask)
+			for lane := 0; lane < lanes; lane++ {
+				if laneMask[lane] < 0 {
+					word |= uint64(1) << uint(off+lane)
+				}
+			}
+		}
+		for ; off < rows; off++ {
+			if left[base+off] <= right[base+off] {
+				word |= uint64(1) << uint(off)
+			}
+		}
+		word &= validWord
+		out[wi] = word
+		selected += bits.OnesCount64(word)
+	}
+	return selected
+}
+
+func simdInt8ColumnsEQ(left, right []int8, leftValid, rightValid, out memory.Bitmap) int {
+	if len(left) != len(right) {
+		panic("kernel: int8 column comparison length mismatch")
+	}
+	lanes := simd.Int8s{}.Len()
+	if len(left) < lanes {
+		return scalarInt8ColumnsEQ(left, right, leftValid, rightValid, out)
+	}
+	words := prepareComparison(len(left), out)
+	var laneMaskStorage [64]int8
+	laneMask := laneMaskStorage[:lanes]
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		rows := min(64, len(left)-base)
+		validWord := bitmapWord(leftValid, wi) & bitmapWord(rightValid, wi) & memory.TailMask(rows)
+		// prepareComparison cleared every logical output word, including skipped words.
+		if validWord == 0 {
+			continue
+		}
+		var word uint64
+		off := 0
+		for ; off+lanes <= rows; off += lanes {
+			simd.LoadInt8s(left[base+off:]).Equal(simd.LoadInt8s(right[base+off:])).ToInt8s().Store(laneMask)
+			for lane := 0; lane < lanes; lane++ {
+				if laneMask[lane] < 0 {
+					word |= uint64(1) << uint(off+lane)
+				}
+			}
+		}
+		for ; off < rows; off++ {
+			if left[base+off] == right[base+off] {
+				word |= uint64(1) << uint(off)
+			}
+		}
+		word &= validWord
+		out[wi] = word
+		selected += bits.OnesCount64(word)
+	}
+	return selected
+}
+
+func simdInt16ColumnsGT(left, right []int16, leftValid, rightValid, out memory.Bitmap) int {
+	if len(left) != len(right) {
+		panic("kernel: int16 column comparison length mismatch")
+	}
+	lanes := simd.Int16s{}.Len()
+	if len(left) < lanes {
+		return scalarInt16ColumnsGT(left, right, leftValid, rightValid, out)
+	}
+	words := prepareComparison(len(left), out)
+	var laneMaskStorage [64]int16
+	laneMask := laneMaskStorage[:lanes]
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		rows := min(64, len(left)-base)
+		validWord := bitmapWord(leftValid, wi) & bitmapWord(rightValid, wi) & memory.TailMask(rows)
+		// prepareComparison cleared every logical output word, including skipped words.
+		if validWord == 0 {
+			continue
+		}
+		var word uint64
+		off := 0
+		for ; off+lanes <= rows; off += lanes {
+			simd.LoadInt16s(left[base+off:]).Greater(simd.LoadInt16s(right[base+off:])).ToInt16s().Store(laneMask)
+			for lane := 0; lane < lanes; lane++ {
+				if laneMask[lane] < 0 {
+					word |= uint64(1) << uint(off+lane)
+				}
+			}
+		}
+		for ; off < rows; off++ {
+			if left[base+off] > right[base+off] {
+				word |= uint64(1) << uint(off)
+			}
+		}
+		word &= validWord
+		out[wi] = word
+		selected += bits.OnesCount64(word)
+	}
+	return selected
+}
+
+func simdInt16ColumnsGE(left, right []int16, leftValid, rightValid, out memory.Bitmap) int {
+	if len(left) != len(right) {
+		panic("kernel: int16 column comparison length mismatch")
+	}
+	lanes := simd.Int16s{}.Len()
+	if len(left) < lanes {
+		return scalarInt16ColumnsGE(left, right, leftValid, rightValid, out)
+	}
+	words := prepareComparison(len(left), out)
+	var laneMaskStorage [64]int16
+	laneMask := laneMaskStorage[:lanes]
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		rows := min(64, len(left)-base)
+		validWord := bitmapWord(leftValid, wi) & bitmapWord(rightValid, wi) & memory.TailMask(rows)
+		// prepareComparison cleared every logical output word, including skipped words.
+		if validWord == 0 {
+			continue
+		}
+		var word uint64
+		off := 0
+		for ; off+lanes <= rows; off += lanes {
+			simd.LoadInt16s(left[base+off:]).GreaterEqual(simd.LoadInt16s(right[base+off:])).ToInt16s().Store(laneMask)
+			for lane := 0; lane < lanes; lane++ {
+				if laneMask[lane] < 0 {
+					word |= uint64(1) << uint(off+lane)
+				}
+			}
+		}
+		for ; off < rows; off++ {
+			if left[base+off] >= right[base+off] {
+				word |= uint64(1) << uint(off)
+			}
+		}
+		word &= validWord
+		out[wi] = word
+		selected += bits.OnesCount64(word)
+	}
+	return selected
+}
+
+func simdInt16ColumnsLT(left, right []int16, leftValid, rightValid, out memory.Bitmap) int {
+	if len(left) != len(right) {
+		panic("kernel: int16 column comparison length mismatch")
+	}
+	lanes := simd.Int16s{}.Len()
+	if len(left) < lanes {
+		return scalarInt16ColumnsLT(left, right, leftValid, rightValid, out)
+	}
+	words := prepareComparison(len(left), out)
+	var laneMaskStorage [64]int16
+	laneMask := laneMaskStorage[:lanes]
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		rows := min(64, len(left)-base)
+		validWord := bitmapWord(leftValid, wi) & bitmapWord(rightValid, wi) & memory.TailMask(rows)
+		// prepareComparison cleared every logical output word, including skipped words.
+		if validWord == 0 {
+			continue
+		}
+		var word uint64
+		off := 0
+		for ; off+lanes <= rows; off += lanes {
+			simd.LoadInt16s(left[base+off:]).Less(simd.LoadInt16s(right[base+off:])).ToInt16s().Store(laneMask)
+			for lane := 0; lane < lanes; lane++ {
+				if laneMask[lane] < 0 {
+					word |= uint64(1) << uint(off+lane)
+				}
+			}
+		}
+		for ; off < rows; off++ {
+			if left[base+off] < right[base+off] {
+				word |= uint64(1) << uint(off)
+			}
+		}
+		word &= validWord
+		out[wi] = word
+		selected += bits.OnesCount64(word)
+	}
+	return selected
+}
+
+func simdInt16ColumnsLE(left, right []int16, leftValid, rightValid, out memory.Bitmap) int {
+	if len(left) != len(right) {
+		panic("kernel: int16 column comparison length mismatch")
+	}
+	lanes := simd.Int16s{}.Len()
+	if len(left) < lanes {
+		return scalarInt16ColumnsLE(left, right, leftValid, rightValid, out)
+	}
+	words := prepareComparison(len(left), out)
+	var laneMaskStorage [64]int16
+	laneMask := laneMaskStorage[:lanes]
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		rows := min(64, len(left)-base)
+		validWord := bitmapWord(leftValid, wi) & bitmapWord(rightValid, wi) & memory.TailMask(rows)
+		// prepareComparison cleared every logical output word, including skipped words.
+		if validWord == 0 {
+			continue
+		}
+		var word uint64
+		off := 0
+		for ; off+lanes <= rows; off += lanes {
+			simd.LoadInt16s(left[base+off:]).LessEqual(simd.LoadInt16s(right[base+off:])).ToInt16s().Store(laneMask)
+			for lane := 0; lane < lanes; lane++ {
+				if laneMask[lane] < 0 {
+					word |= uint64(1) << uint(off+lane)
+				}
+			}
+		}
+		for ; off < rows; off++ {
+			if left[base+off] <= right[base+off] {
+				word |= uint64(1) << uint(off)
+			}
+		}
+		word &= validWord
+		out[wi] = word
+		selected += bits.OnesCount64(word)
+	}
+	return selected
+}
+
+func simdInt16ColumnsEQ(left, right []int16, leftValid, rightValid, out memory.Bitmap) int {
+	if len(left) != len(right) {
+		panic("kernel: int16 column comparison length mismatch")
+	}
+	lanes := simd.Int16s{}.Len()
+	if len(left) < lanes {
+		return scalarInt16ColumnsEQ(left, right, leftValid, rightValid, out)
+	}
+	words := prepareComparison(len(left), out)
+	var laneMaskStorage [64]int16
+	laneMask := laneMaskStorage[:lanes]
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		rows := min(64, len(left)-base)
+		validWord := bitmapWord(leftValid, wi) & bitmapWord(rightValid, wi) & memory.TailMask(rows)
+		// prepareComparison cleared every logical output word, including skipped words.
+		if validWord == 0 {
+			continue
+		}
+		var word uint64
+		off := 0
+		for ; off+lanes <= rows; off += lanes {
+			simd.LoadInt16s(left[base+off:]).Equal(simd.LoadInt16s(right[base+off:])).ToInt16s().Store(laneMask)
+			for lane := 0; lane < lanes; lane++ {
+				if laneMask[lane] < 0 {
+					word |= uint64(1) << uint(off+lane)
+				}
+			}
+		}
+		for ; off < rows; off++ {
+			if left[base+off] == right[base+off] {
+				word |= uint64(1) << uint(off)
+			}
+		}
+		word &= validWord
+		out[wi] = word
+		selected += bits.OnesCount64(word)
+	}
+	return selected
+}
+
+func simdInt64ColumnsGT(left, right []int64, leftValid, rightValid, out memory.Bitmap) int {
+	if len(left) != len(right) {
+		panic("kernel: int64 column comparison length mismatch")
+	}
+	lanes := simd.Int64s{}.Len()
+	if len(left) < lanes {
+		return scalarInt64ColumnsGT(left, right, leftValid, rightValid, out)
+	}
+	words := prepareComparison(len(left), out)
+	var laneMaskStorage [64]int64
+	laneMask := laneMaskStorage[:lanes]
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		rows := min(64, len(left)-base)
+		validWord := bitmapWord(leftValid, wi) & bitmapWord(rightValid, wi) & memory.TailMask(rows)
+		// prepareComparison cleared every logical output word, including skipped words.
+		if validWord == 0 {
+			continue
+		}
+		var word uint64
+		off := 0
+		for ; off+lanes <= rows; off += lanes {
+			simd.LoadInt64s(left[base+off:]).Greater(simd.LoadInt64s(right[base+off:])).ToInt64s().Store(laneMask)
+			for lane := 0; lane < lanes; lane++ {
+				if laneMask[lane] < 0 {
+					word |= uint64(1) << uint(off+lane)
+				}
+			}
+		}
+		for ; off < rows; off++ {
+			if left[base+off] > right[base+off] {
+				word |= uint64(1) << uint(off)
+			}
+		}
+		word &= validWord
+		out[wi] = word
+		selected += bits.OnesCount64(word)
+	}
+	return selected
+}
+
+func simdInt64ColumnsGE(left, right []int64, leftValid, rightValid, out memory.Bitmap) int {
+	if len(left) != len(right) {
+		panic("kernel: int64 column comparison length mismatch")
+	}
+	lanes := simd.Int64s{}.Len()
+	if len(left) < lanes {
+		return scalarInt64ColumnsGE(left, right, leftValid, rightValid, out)
+	}
+	words := prepareComparison(len(left), out)
+	var laneMaskStorage [64]int64
+	laneMask := laneMaskStorage[:lanes]
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		rows := min(64, len(left)-base)
+		validWord := bitmapWord(leftValid, wi) & bitmapWord(rightValid, wi) & memory.TailMask(rows)
+		// prepareComparison cleared every logical output word, including skipped words.
+		if validWord == 0 {
+			continue
+		}
+		var word uint64
+		off := 0
+		for ; off+lanes <= rows; off += lanes {
+			simd.LoadInt64s(left[base+off:]).GreaterEqual(simd.LoadInt64s(right[base+off:])).ToInt64s().Store(laneMask)
+			for lane := 0; lane < lanes; lane++ {
+				if laneMask[lane] < 0 {
+					word |= uint64(1) << uint(off+lane)
+				}
+			}
+		}
+		for ; off < rows; off++ {
+			if left[base+off] >= right[base+off] {
+				word |= uint64(1) << uint(off)
+			}
+		}
+		word &= validWord
+		out[wi] = word
+		selected += bits.OnesCount64(word)
+	}
+	return selected
+}
+
+func simdInt64ColumnsLT(left, right []int64, leftValid, rightValid, out memory.Bitmap) int {
+	if len(left) != len(right) {
+		panic("kernel: int64 column comparison length mismatch")
+	}
+	lanes := simd.Int64s{}.Len()
+	if len(left) < lanes {
+		return scalarInt64ColumnsLT(left, right, leftValid, rightValid, out)
+	}
+	words := prepareComparison(len(left), out)
+	var laneMaskStorage [64]int64
+	laneMask := laneMaskStorage[:lanes]
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		rows := min(64, len(left)-base)
+		validWord := bitmapWord(leftValid, wi) & bitmapWord(rightValid, wi) & memory.TailMask(rows)
+		// prepareComparison cleared every logical output word, including skipped words.
+		if validWord == 0 {
+			continue
+		}
+		var word uint64
+		off := 0
+		for ; off+lanes <= rows; off += lanes {
+			simd.LoadInt64s(left[base+off:]).Less(simd.LoadInt64s(right[base+off:])).ToInt64s().Store(laneMask)
+			for lane := 0; lane < lanes; lane++ {
+				if laneMask[lane] < 0 {
+					word |= uint64(1) << uint(off+lane)
+				}
+			}
+		}
+		for ; off < rows; off++ {
+			if left[base+off] < right[base+off] {
+				word |= uint64(1) << uint(off)
+			}
+		}
+		word &= validWord
+		out[wi] = word
+		selected += bits.OnesCount64(word)
+	}
+	return selected
+}
+
+func simdInt64ColumnsLE(left, right []int64, leftValid, rightValid, out memory.Bitmap) int {
+	if len(left) != len(right) {
+		panic("kernel: int64 column comparison length mismatch")
+	}
+	lanes := simd.Int64s{}.Len()
+	if len(left) < lanes {
+		return scalarInt64ColumnsLE(left, right, leftValid, rightValid, out)
+	}
+	words := prepareComparison(len(left), out)
+	var laneMaskStorage [64]int64
+	laneMask := laneMaskStorage[:lanes]
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		rows := min(64, len(left)-base)
+		validWord := bitmapWord(leftValid, wi) & bitmapWord(rightValid, wi) & memory.TailMask(rows)
+		// prepareComparison cleared every logical output word, including skipped words.
+		if validWord == 0 {
+			continue
+		}
+		var word uint64
+		off := 0
+		for ; off+lanes <= rows; off += lanes {
+			simd.LoadInt64s(left[base+off:]).LessEqual(simd.LoadInt64s(right[base+off:])).ToInt64s().Store(laneMask)
+			for lane := 0; lane < lanes; lane++ {
+				if laneMask[lane] < 0 {
+					word |= uint64(1) << uint(off+lane)
+				}
+			}
+		}
+		for ; off < rows; off++ {
+			if left[base+off] <= right[base+off] {
+				word |= uint64(1) << uint(off)
+			}
+		}
+		word &= validWord
+		out[wi] = word
+		selected += bits.OnesCount64(word)
+	}
+	return selected
+}
+
+func simdInt64ColumnsEQ(left, right []int64, leftValid, rightValid, out memory.Bitmap) int {
+	if len(left) != len(right) {
+		panic("kernel: int64 column comparison length mismatch")
+	}
+	lanes := simd.Int64s{}.Len()
+	if len(left) < lanes {
+		return scalarInt64ColumnsEQ(left, right, leftValid, rightValid, out)
+	}
+	words := prepareComparison(len(left), out)
+	var laneMaskStorage [64]int64
+	laneMask := laneMaskStorage[:lanes]
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		rows := min(64, len(left)-base)
+		validWord := bitmapWord(leftValid, wi) & bitmapWord(rightValid, wi) & memory.TailMask(rows)
+		// prepareComparison cleared every logical output word, including skipped words.
+		if validWord == 0 {
+			continue
+		}
+		var word uint64
+		off := 0
+		for ; off+lanes <= rows; off += lanes {
+			simd.LoadInt64s(left[base+off:]).Equal(simd.LoadInt64s(right[base+off:])).ToInt64s().Store(laneMask)
+			for lane := 0; lane < lanes; lane++ {
+				if laneMask[lane] < 0 {
+					word |= uint64(1) << uint(off+lane)
+				}
+			}
+		}
+		for ; off < rows; off++ {
+			if left[base+off] == right[base+off] {
+				word |= uint64(1) << uint(off)
+			}
+		}
+		word &= validWord
+		out[wi] = word
+		selected += bits.OnesCount64(word)
+	}
+	return selected
+}
+
+func simdUint8ColumnsGT(left, right []uint8, leftValid, rightValid, out memory.Bitmap) int {
+	if len(left) != len(right) {
+		panic("kernel: uint8 column comparison length mismatch")
+	}
+	lanes := simd.Uint8s{}.Len()
+	if len(left) < lanes {
+		return scalarUint8ColumnsGT(left, right, leftValid, rightValid, out)
+	}
+	words := prepareComparison(len(left), out)
+	var laneMaskStorage [64]int8
+	laneMask := laneMaskStorage[:lanes]
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		rows := min(64, len(left)-base)
+		validWord := bitmapWord(leftValid, wi) & bitmapWord(rightValid, wi) & memory.TailMask(rows)
+		// prepareComparison cleared every logical output word, including skipped words.
+		if validWord == 0 {
+			continue
+		}
+		var word uint64
+		off := 0
+		for ; off+lanes <= rows; off += lanes {
+			simd.LoadUint8s(left[base+off:]).Xor(simd.BroadcastUint8s(0x80)).BitsToInt8().Greater(simd.LoadUint8s(right[base+off:]).Xor(simd.BroadcastUint8s(0x80)).BitsToInt8()).ToInt8s().Store(laneMask)
+			for lane := 0; lane < lanes; lane++ {
+				if laneMask[lane] < 0 {
+					word |= uint64(1) << uint(off+lane)
+				}
+			}
+		}
+		for ; off < rows; off++ {
+			if left[base+off] > right[base+off] {
+				word |= uint64(1) << uint(off)
+			}
+		}
+		word &= validWord
+		out[wi] = word
+		selected += bits.OnesCount64(word)
+	}
+	return selected
+}
+
+func simdUint8ColumnsGE(left, right []uint8, leftValid, rightValid, out memory.Bitmap) int {
+	if len(left) != len(right) {
+		panic("kernel: uint8 column comparison length mismatch")
+	}
+	lanes := simd.Uint8s{}.Len()
+	if len(left) < lanes {
+		return scalarUint8ColumnsGE(left, right, leftValid, rightValid, out)
+	}
+	words := prepareComparison(len(left), out)
+	var laneMaskStorage [64]int8
+	laneMask := laneMaskStorage[:lanes]
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		rows := min(64, len(left)-base)
+		validWord := bitmapWord(leftValid, wi) & bitmapWord(rightValid, wi) & memory.TailMask(rows)
+		// prepareComparison cleared every logical output word, including skipped words.
+		if validWord == 0 {
+			continue
+		}
+		var word uint64
+		off := 0
+		for ; off+lanes <= rows; off += lanes {
+			simd.LoadUint8s(left[base+off:]).Xor(simd.BroadcastUint8s(0x80)).BitsToInt8().GreaterEqual(simd.LoadUint8s(right[base+off:]).Xor(simd.BroadcastUint8s(0x80)).BitsToInt8()).ToInt8s().Store(laneMask)
+			for lane := 0; lane < lanes; lane++ {
+				if laneMask[lane] < 0 {
+					word |= uint64(1) << uint(off+lane)
+				}
+			}
+		}
+		for ; off < rows; off++ {
+			if left[base+off] >= right[base+off] {
+				word |= uint64(1) << uint(off)
+			}
+		}
+		word &= validWord
+		out[wi] = word
+		selected += bits.OnesCount64(word)
+	}
+	return selected
+}
+
+func simdUint8ColumnsLT(left, right []uint8, leftValid, rightValid, out memory.Bitmap) int {
+	if len(left) != len(right) {
+		panic("kernel: uint8 column comparison length mismatch")
+	}
+	lanes := simd.Uint8s{}.Len()
+	if len(left) < lanes {
+		return scalarUint8ColumnsLT(left, right, leftValid, rightValid, out)
+	}
+	words := prepareComparison(len(left), out)
+	var laneMaskStorage [64]int8
+	laneMask := laneMaskStorage[:lanes]
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		rows := min(64, len(left)-base)
+		validWord := bitmapWord(leftValid, wi) & bitmapWord(rightValid, wi) & memory.TailMask(rows)
+		// prepareComparison cleared every logical output word, including skipped words.
+		if validWord == 0 {
+			continue
+		}
+		var word uint64
+		off := 0
+		for ; off+lanes <= rows; off += lanes {
+			simd.LoadUint8s(left[base+off:]).Xor(simd.BroadcastUint8s(0x80)).BitsToInt8().Less(simd.LoadUint8s(right[base+off:]).Xor(simd.BroadcastUint8s(0x80)).BitsToInt8()).ToInt8s().Store(laneMask)
+			for lane := 0; lane < lanes; lane++ {
+				if laneMask[lane] < 0 {
+					word |= uint64(1) << uint(off+lane)
+				}
+			}
+		}
+		for ; off < rows; off++ {
+			if left[base+off] < right[base+off] {
+				word |= uint64(1) << uint(off)
+			}
+		}
+		word &= validWord
+		out[wi] = word
+		selected += bits.OnesCount64(word)
+	}
+	return selected
+}
+
+func simdUint8ColumnsLE(left, right []uint8, leftValid, rightValid, out memory.Bitmap) int {
+	if len(left) != len(right) {
+		panic("kernel: uint8 column comparison length mismatch")
+	}
+	lanes := simd.Uint8s{}.Len()
+	if len(left) < lanes {
+		return scalarUint8ColumnsLE(left, right, leftValid, rightValid, out)
+	}
+	words := prepareComparison(len(left), out)
+	var laneMaskStorage [64]int8
+	laneMask := laneMaskStorage[:lanes]
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		rows := min(64, len(left)-base)
+		validWord := bitmapWord(leftValid, wi) & bitmapWord(rightValid, wi) & memory.TailMask(rows)
+		// prepareComparison cleared every logical output word, including skipped words.
+		if validWord == 0 {
+			continue
+		}
+		var word uint64
+		off := 0
+		for ; off+lanes <= rows; off += lanes {
+			simd.LoadUint8s(left[base+off:]).Xor(simd.BroadcastUint8s(0x80)).BitsToInt8().LessEqual(simd.LoadUint8s(right[base+off:]).Xor(simd.BroadcastUint8s(0x80)).BitsToInt8()).ToInt8s().Store(laneMask)
+			for lane := 0; lane < lanes; lane++ {
+				if laneMask[lane] < 0 {
+					word |= uint64(1) << uint(off+lane)
+				}
+			}
+		}
+		for ; off < rows; off++ {
+			if left[base+off] <= right[base+off] {
+				word |= uint64(1) << uint(off)
+			}
+		}
+		word &= validWord
+		out[wi] = word
+		selected += bits.OnesCount64(word)
+	}
+	return selected
+}
+
+func simdUint8ColumnsEQ(left, right []uint8, leftValid, rightValid, out memory.Bitmap) int {
+	if len(left) != len(right) {
+		panic("kernel: uint8 column comparison length mismatch")
+	}
+	lanes := simd.Uint8s{}.Len()
+	if len(left) < lanes {
+		return scalarUint8ColumnsEQ(left, right, leftValid, rightValid, out)
+	}
+	words := prepareComparison(len(left), out)
+	var laneMaskStorage [64]int8
+	laneMask := laneMaskStorage[:lanes]
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		rows := min(64, len(left)-base)
+		validWord := bitmapWord(leftValid, wi) & bitmapWord(rightValid, wi) & memory.TailMask(rows)
+		// prepareComparison cleared every logical output word, including skipped words.
+		if validWord == 0 {
+			continue
+		}
+		var word uint64
+		off := 0
+		for ; off+lanes <= rows; off += lanes {
+			simd.LoadUint8s(left[base+off:]).Equal(simd.LoadUint8s(right[base+off:])).ToInt8s().Store(laneMask)
+			for lane := 0; lane < lanes; lane++ {
+				if laneMask[lane] < 0 {
+					word |= uint64(1) << uint(off+lane)
+				}
+			}
+		}
+		for ; off < rows; off++ {
+			if left[base+off] == right[base+off] {
+				word |= uint64(1) << uint(off)
+			}
+		}
+		word &= validWord
+		out[wi] = word
+		selected += bits.OnesCount64(word)
+	}
+	return selected
+}
+
+func simdUint16ColumnsGT(left, right []uint16, leftValid, rightValid, out memory.Bitmap) int {
+	if len(left) != len(right) {
+		panic("kernel: uint16 column comparison length mismatch")
+	}
+	lanes := simd.Uint16s{}.Len()
+	if len(left) < lanes {
+		return scalarUint16ColumnsGT(left, right, leftValid, rightValid, out)
+	}
+	words := prepareComparison(len(left), out)
+	var laneMaskStorage [64]int16
+	laneMask := laneMaskStorage[:lanes]
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		rows := min(64, len(left)-base)
+		validWord := bitmapWord(leftValid, wi) & bitmapWord(rightValid, wi) & memory.TailMask(rows)
+		// prepareComparison cleared every logical output word, including skipped words.
+		if validWord == 0 {
+			continue
+		}
+		var word uint64
+		off := 0
+		for ; off+lanes <= rows; off += lanes {
+			simd.LoadUint16s(left[base+off:]).Greater(simd.LoadUint16s(right[base+off:])).ToInt16s().Store(laneMask)
+			for lane := 0; lane < lanes; lane++ {
+				if laneMask[lane] < 0 {
+					word |= uint64(1) << uint(off+lane)
+				}
+			}
+		}
+		for ; off < rows; off++ {
+			if left[base+off] > right[base+off] {
+				word |= uint64(1) << uint(off)
+			}
+		}
+		word &= validWord
+		out[wi] = word
+		selected += bits.OnesCount64(word)
+	}
+	return selected
+}
+
+func simdUint16ColumnsGE(left, right []uint16, leftValid, rightValid, out memory.Bitmap) int {
+	if len(left) != len(right) {
+		panic("kernel: uint16 column comparison length mismatch")
+	}
+	lanes := simd.Uint16s{}.Len()
+	if len(left) < lanes {
+		return scalarUint16ColumnsGE(left, right, leftValid, rightValid, out)
+	}
+	words := prepareComparison(len(left), out)
+	var laneMaskStorage [64]int16
+	laneMask := laneMaskStorage[:lanes]
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		rows := min(64, len(left)-base)
+		validWord := bitmapWord(leftValid, wi) & bitmapWord(rightValid, wi) & memory.TailMask(rows)
+		// prepareComparison cleared every logical output word, including skipped words.
+		if validWord == 0 {
+			continue
+		}
+		var word uint64
+		off := 0
+		for ; off+lanes <= rows; off += lanes {
+			simd.LoadUint16s(left[base+off:]).GreaterEqual(simd.LoadUint16s(right[base+off:])).ToInt16s().Store(laneMask)
+			for lane := 0; lane < lanes; lane++ {
+				if laneMask[lane] < 0 {
+					word |= uint64(1) << uint(off+lane)
+				}
+			}
+		}
+		for ; off < rows; off++ {
+			if left[base+off] >= right[base+off] {
+				word |= uint64(1) << uint(off)
+			}
+		}
+		word &= validWord
+		out[wi] = word
+		selected += bits.OnesCount64(word)
+	}
+	return selected
+}
+
+func simdUint16ColumnsLT(left, right []uint16, leftValid, rightValid, out memory.Bitmap) int {
+	if len(left) != len(right) {
+		panic("kernel: uint16 column comparison length mismatch")
+	}
+	lanes := simd.Uint16s{}.Len()
+	if len(left) < lanes {
+		return scalarUint16ColumnsLT(left, right, leftValid, rightValid, out)
+	}
+	words := prepareComparison(len(left), out)
+	var laneMaskStorage [64]int16
+	laneMask := laneMaskStorage[:lanes]
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		rows := min(64, len(left)-base)
+		validWord := bitmapWord(leftValid, wi) & bitmapWord(rightValid, wi) & memory.TailMask(rows)
+		// prepareComparison cleared every logical output word, including skipped words.
+		if validWord == 0 {
+			continue
+		}
+		var word uint64
+		off := 0
+		for ; off+lanes <= rows; off += lanes {
+			simd.LoadUint16s(left[base+off:]).Less(simd.LoadUint16s(right[base+off:])).ToInt16s().Store(laneMask)
+			for lane := 0; lane < lanes; lane++ {
+				if laneMask[lane] < 0 {
+					word |= uint64(1) << uint(off+lane)
+				}
+			}
+		}
+		for ; off < rows; off++ {
+			if left[base+off] < right[base+off] {
+				word |= uint64(1) << uint(off)
+			}
+		}
+		word &= validWord
+		out[wi] = word
+		selected += bits.OnesCount64(word)
+	}
+	return selected
+}
+
+func simdUint16ColumnsLE(left, right []uint16, leftValid, rightValid, out memory.Bitmap) int {
+	if len(left) != len(right) {
+		panic("kernel: uint16 column comparison length mismatch")
+	}
+	lanes := simd.Uint16s{}.Len()
+	if len(left) < lanes {
+		return scalarUint16ColumnsLE(left, right, leftValid, rightValid, out)
+	}
+	words := prepareComparison(len(left), out)
+	var laneMaskStorage [64]int16
+	laneMask := laneMaskStorage[:lanes]
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		rows := min(64, len(left)-base)
+		validWord := bitmapWord(leftValid, wi) & bitmapWord(rightValid, wi) & memory.TailMask(rows)
+		// prepareComparison cleared every logical output word, including skipped words.
+		if validWord == 0 {
+			continue
+		}
+		var word uint64
+		off := 0
+		for ; off+lanes <= rows; off += lanes {
+			simd.LoadUint16s(left[base+off:]).LessEqual(simd.LoadUint16s(right[base+off:])).ToInt16s().Store(laneMask)
+			for lane := 0; lane < lanes; lane++ {
+				if laneMask[lane] < 0 {
+					word |= uint64(1) << uint(off+lane)
+				}
+			}
+		}
+		for ; off < rows; off++ {
+			if left[base+off] <= right[base+off] {
+				word |= uint64(1) << uint(off)
+			}
+		}
+		word &= validWord
+		out[wi] = word
+		selected += bits.OnesCount64(word)
+	}
+	return selected
+}
+
+func simdUint16ColumnsEQ(left, right []uint16, leftValid, rightValid, out memory.Bitmap) int {
+	if len(left) != len(right) {
+		panic("kernel: uint16 column comparison length mismatch")
+	}
+	lanes := simd.Uint16s{}.Len()
+	if len(left) < lanes {
+		return scalarUint16ColumnsEQ(left, right, leftValid, rightValid, out)
+	}
+	words := prepareComparison(len(left), out)
+	var laneMaskStorage [64]int16
+	laneMask := laneMaskStorage[:lanes]
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		rows := min(64, len(left)-base)
+		validWord := bitmapWord(leftValid, wi) & bitmapWord(rightValid, wi) & memory.TailMask(rows)
+		// prepareComparison cleared every logical output word, including skipped words.
+		if validWord == 0 {
+			continue
+		}
+		var word uint64
+		off := 0
+		for ; off+lanes <= rows; off += lanes {
+			simd.LoadUint16s(left[base+off:]).Equal(simd.LoadUint16s(right[base+off:])).ToInt16s().Store(laneMask)
+			for lane := 0; lane < lanes; lane++ {
+				if laneMask[lane] < 0 {
+					word |= uint64(1) << uint(off+lane)
+				}
+			}
+		}
+		for ; off < rows; off++ {
+			if left[base+off] == right[base+off] {
+				word |= uint64(1) << uint(off)
+			}
+		}
+		word &= validWord
+		out[wi] = word
+		selected += bits.OnesCount64(word)
+	}
+	return selected
+}
+
+func simdUint64ColumnsGT(left, right []uint64, leftValid, rightValid, out memory.Bitmap) int {
+	if len(left) != len(right) {
+		panic("kernel: uint64 column comparison length mismatch")
+	}
+	lanes := simd.Uint64s{}.Len()
+	if len(left) < lanes {
+		return scalarUint64ColumnsGT(left, right, leftValid, rightValid, out)
+	}
+	words := prepareComparison(len(left), out)
+	var laneMaskStorage [64]int64
+	laneMask := laneMaskStorage[:lanes]
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		rows := min(64, len(left)-base)
+		validWord := bitmapWord(leftValid, wi) & bitmapWord(rightValid, wi) & memory.TailMask(rows)
+		// prepareComparison cleared every logical output word, including skipped words.
+		if validWord == 0 {
+			continue
+		}
+		var word uint64
+		off := 0
+		for ; off+lanes <= rows; off += lanes {
+			simd.LoadUint64s(left[base+off:]).Greater(simd.LoadUint64s(right[base+off:])).ToInt64s().Store(laneMask)
+			for lane := 0; lane < lanes; lane++ {
+				if laneMask[lane] < 0 {
+					word |= uint64(1) << uint(off+lane)
+				}
+			}
+		}
+		for ; off < rows; off++ {
+			if left[base+off] > right[base+off] {
+				word |= uint64(1) << uint(off)
+			}
+		}
+		word &= validWord
+		out[wi] = word
+		selected += bits.OnesCount64(word)
+	}
+	return selected
+}
+
+func simdUint64ColumnsGE(left, right []uint64, leftValid, rightValid, out memory.Bitmap) int {
+	if len(left) != len(right) {
+		panic("kernel: uint64 column comparison length mismatch")
+	}
+	lanes := simd.Uint64s{}.Len()
+	if len(left) < lanes {
+		return scalarUint64ColumnsGE(left, right, leftValid, rightValid, out)
+	}
+	words := prepareComparison(len(left), out)
+	var laneMaskStorage [64]int64
+	laneMask := laneMaskStorage[:lanes]
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		rows := min(64, len(left)-base)
+		validWord := bitmapWord(leftValid, wi) & bitmapWord(rightValid, wi) & memory.TailMask(rows)
+		// prepareComparison cleared every logical output word, including skipped words.
+		if validWord == 0 {
+			continue
+		}
+		var word uint64
+		off := 0
+		for ; off+lanes <= rows; off += lanes {
+			simd.LoadUint64s(left[base+off:]).GreaterEqual(simd.LoadUint64s(right[base+off:])).ToInt64s().Store(laneMask)
+			for lane := 0; lane < lanes; lane++ {
+				if laneMask[lane] < 0 {
+					word |= uint64(1) << uint(off+lane)
+				}
+			}
+		}
+		for ; off < rows; off++ {
+			if left[base+off] >= right[base+off] {
+				word |= uint64(1) << uint(off)
+			}
+		}
+		word &= validWord
+		out[wi] = word
+		selected += bits.OnesCount64(word)
+	}
+	return selected
+}
+
+func simdUint64ColumnsLT(left, right []uint64, leftValid, rightValid, out memory.Bitmap) int {
+	if len(left) != len(right) {
+		panic("kernel: uint64 column comparison length mismatch")
+	}
+	lanes := simd.Uint64s{}.Len()
+	if len(left) < lanes {
+		return scalarUint64ColumnsLT(left, right, leftValid, rightValid, out)
+	}
+	words := prepareComparison(len(left), out)
+	var laneMaskStorage [64]int64
+	laneMask := laneMaskStorage[:lanes]
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		rows := min(64, len(left)-base)
+		validWord := bitmapWord(leftValid, wi) & bitmapWord(rightValid, wi) & memory.TailMask(rows)
+		// prepareComparison cleared every logical output word, including skipped words.
+		if validWord == 0 {
+			continue
+		}
+		var word uint64
+		off := 0
+		for ; off+lanes <= rows; off += lanes {
+			simd.LoadUint64s(left[base+off:]).Less(simd.LoadUint64s(right[base+off:])).ToInt64s().Store(laneMask)
+			for lane := 0; lane < lanes; lane++ {
+				if laneMask[lane] < 0 {
+					word |= uint64(1) << uint(off+lane)
+				}
+			}
+		}
+		for ; off < rows; off++ {
+			if left[base+off] < right[base+off] {
+				word |= uint64(1) << uint(off)
+			}
+		}
+		word &= validWord
+		out[wi] = word
+		selected += bits.OnesCount64(word)
+	}
+	return selected
+}
+
+func simdUint64ColumnsLE(left, right []uint64, leftValid, rightValid, out memory.Bitmap) int {
+	if len(left) != len(right) {
+		panic("kernel: uint64 column comparison length mismatch")
+	}
+	lanes := simd.Uint64s{}.Len()
+	if len(left) < lanes {
+		return scalarUint64ColumnsLE(left, right, leftValid, rightValid, out)
+	}
+	words := prepareComparison(len(left), out)
+	var laneMaskStorage [64]int64
+	laneMask := laneMaskStorage[:lanes]
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		rows := min(64, len(left)-base)
+		validWord := bitmapWord(leftValid, wi) & bitmapWord(rightValid, wi) & memory.TailMask(rows)
+		// prepareComparison cleared every logical output word, including skipped words.
+		if validWord == 0 {
+			continue
+		}
+		var word uint64
+		off := 0
+		for ; off+lanes <= rows; off += lanes {
+			simd.LoadUint64s(left[base+off:]).LessEqual(simd.LoadUint64s(right[base+off:])).ToInt64s().Store(laneMask)
+			for lane := 0; lane < lanes; lane++ {
+				if laneMask[lane] < 0 {
+					word |= uint64(1) << uint(off+lane)
+				}
+			}
+		}
+		for ; off < rows; off++ {
+			if left[base+off] <= right[base+off] {
+				word |= uint64(1) << uint(off)
+			}
+		}
+		word &= validWord
+		out[wi] = word
+		selected += bits.OnesCount64(word)
+	}
+	return selected
+}
+
+func simdUint64ColumnsEQ(left, right []uint64, leftValid, rightValid, out memory.Bitmap) int {
+	if len(left) != len(right) {
+		panic("kernel: uint64 column comparison length mismatch")
+	}
+	lanes := simd.Uint64s{}.Len()
+	if len(left) < lanes {
+		return scalarUint64ColumnsEQ(left, right, leftValid, rightValid, out)
+	}
+	words := prepareComparison(len(left), out)
+	var laneMaskStorage [64]int64
+	laneMask := laneMaskStorage[:lanes]
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		rows := min(64, len(left)-base)
+		validWord := bitmapWord(leftValid, wi) & bitmapWord(rightValid, wi) & memory.TailMask(rows)
+		// prepareComparison cleared every logical output word, including skipped words.
+		if validWord == 0 {
+			continue
+		}
+		var word uint64
+		off := 0
+		for ; off+lanes <= rows; off += lanes {
+			simd.LoadUint64s(left[base+off:]).Equal(simd.LoadUint64s(right[base+off:])).ToInt64s().Store(laneMask)
+			for lane := 0; lane < lanes; lane++ {
+				if laneMask[lane] < 0 {
+					word |= uint64(1) << uint(off+lane)
+				}
+			}
+		}
+		for ; off < rows; off++ {
+			if left[base+off] == right[base+off] {
+				word |= uint64(1) << uint(off)
+			}
+		}
+		word &= validWord
+		out[wi] = word
+		selected += bits.OnesCount64(word)
+	}
+	return selected
+}
+
 func simdFloat64ColumnsGT(left, right []float64, leftValid, rightValid, out memory.Bitmap) int {
 	if len(left) != len(right) {
 		panic("kernel: float64 column comparison length mismatch")
@@ -2086,6 +3406,11 @@ func simdFloat64ColumnsGT(left, right []float64, leftValid, rightValid, out memo
 	for wi := 0; wi < words; wi++ {
 		base := wi * 64
 		rows := min(64, len(left)-base)
+		validWord := bitmapWord(leftValid, wi) & bitmapWord(rightValid, wi) & memory.TailMask(rows)
+		// prepareComparison cleared every logical output word, including skipped words.
+		if validWord == 0 {
+			continue
+		}
 		var word uint64
 		off := 0
 		for ; off+lanes <= rows; off += lanes {
@@ -2101,7 +3426,7 @@ func simdFloat64ColumnsGT(left, right []float64, leftValid, rightValid, out memo
 				word |= uint64(1) << uint(off)
 			}
 		}
-		word &= bitmapWord(leftValid, wi) & bitmapWord(rightValid, wi) & memory.TailMask(rows)
+		word &= validWord
 		out[wi] = word
 		selected += bits.OnesCount64(word)
 	}
@@ -2123,6 +3448,11 @@ func simdFloat64ColumnsGE(left, right []float64, leftValid, rightValid, out memo
 	for wi := 0; wi < words; wi++ {
 		base := wi * 64
 		rows := min(64, len(left)-base)
+		validWord := bitmapWord(leftValid, wi) & bitmapWord(rightValid, wi) & memory.TailMask(rows)
+		// prepareComparison cleared every logical output word, including skipped words.
+		if validWord == 0 {
+			continue
+		}
 		var word uint64
 		off := 0
 		for ; off+lanes <= rows; off += lanes {
@@ -2138,7 +3468,7 @@ func simdFloat64ColumnsGE(left, right []float64, leftValid, rightValid, out memo
 				word |= uint64(1) << uint(off)
 			}
 		}
-		word &= bitmapWord(leftValid, wi) & bitmapWord(rightValid, wi) & memory.TailMask(rows)
+		word &= validWord
 		out[wi] = word
 		selected += bits.OnesCount64(word)
 	}
@@ -2160,6 +3490,11 @@ func simdFloat64ColumnsLT(left, right []float64, leftValid, rightValid, out memo
 	for wi := 0; wi < words; wi++ {
 		base := wi * 64
 		rows := min(64, len(left)-base)
+		validWord := bitmapWord(leftValid, wi) & bitmapWord(rightValid, wi) & memory.TailMask(rows)
+		// prepareComparison cleared every logical output word, including skipped words.
+		if validWord == 0 {
+			continue
+		}
 		var word uint64
 		off := 0
 		for ; off+lanes <= rows; off += lanes {
@@ -2175,7 +3510,7 @@ func simdFloat64ColumnsLT(left, right []float64, leftValid, rightValid, out memo
 				word |= uint64(1) << uint(off)
 			}
 		}
-		word &= bitmapWord(leftValid, wi) & bitmapWord(rightValid, wi) & memory.TailMask(rows)
+		word &= validWord
 		out[wi] = word
 		selected += bits.OnesCount64(word)
 	}
@@ -2197,6 +3532,11 @@ func simdFloat64ColumnsLE(left, right []float64, leftValid, rightValid, out memo
 	for wi := 0; wi < words; wi++ {
 		base := wi * 64
 		rows := min(64, len(left)-base)
+		validWord := bitmapWord(leftValid, wi) & bitmapWord(rightValid, wi) & memory.TailMask(rows)
+		// prepareComparison cleared every logical output word, including skipped words.
+		if validWord == 0 {
+			continue
+		}
 		var word uint64
 		off := 0
 		for ; off+lanes <= rows; off += lanes {
@@ -2212,7 +3552,7 @@ func simdFloat64ColumnsLE(left, right []float64, leftValid, rightValid, out memo
 				word |= uint64(1) << uint(off)
 			}
 		}
-		word &= bitmapWord(leftValid, wi) & bitmapWord(rightValid, wi) & memory.TailMask(rows)
+		word &= validWord
 		out[wi] = word
 		selected += bits.OnesCount64(word)
 	}
@@ -2234,6 +3574,11 @@ func simdFloat64ColumnsEQ(left, right []float64, leftValid, rightValid, out memo
 	for wi := 0; wi < words; wi++ {
 		base := wi * 64
 		rows := min(64, len(left)-base)
+		validWord := bitmapWord(leftValid, wi) & bitmapWord(rightValid, wi) & memory.TailMask(rows)
+		// prepareComparison cleared every logical output word, including skipped words.
+		if validWord == 0 {
+			continue
+		}
 		var word uint64
 		off := 0
 		for ; off+lanes <= rows; off += lanes {
@@ -2249,7 +3594,7 @@ func simdFloat64ColumnsEQ(left, right []float64, leftValid, rightValid, out memo
 				word |= uint64(1) << uint(off)
 			}
 		}
-		word &= bitmapWord(leftValid, wi) & bitmapWord(rightValid, wi) & memory.TailMask(rows)
+		word &= validWord
 		out[wi] = word
 		selected += bits.OnesCount64(word)
 	}

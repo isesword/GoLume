@@ -45,7 +45,7 @@ func installGeneratedArchSIMD(set *Set, mode Mode, vectorBits int) {
  switch vectorBits {
 `)
 	literalTypes := append([]numericType{{"Float32", "float32", "compareFloat32"}}, comparisonTypes...)
-	columnTypes := []numericType{{"Int32", "int32", "compareInt32"}, {"Uint32", "uint32", "compareUint32"}, {"Float32", "float32", "compareFloat32"}, {"Float64", "float64", "compareFloat64"}}
+	columnTypes := literalTypes
 	for _, width := range []int{128, 256, 512} {
 		fmt.Fprintf(b, "case %d:\n", width)
 		for _, typ := range literalTypes {
