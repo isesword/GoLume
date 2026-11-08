@@ -270,7 +270,11 @@ func (s *externalSortStream) makeInitialRun(ctx context.Context, batch *memory.B
 	if estimate > (math.MaxInt64-int64(rows)*16-1024)/2 {
 		return externalSortRun{}, fmt.Errorf("external sort run byte estimate overflows int64")
 	}
-	reservation, err := s.sortBudget.Reserve(ctx, estimate*2+int64(rows)*16+1024)
+	bindingBytes, err := sortBindingBytes(len(s.owner.keys))
+	if err != nil || estimate*2+int64(rows)*16+1024 > math.MaxInt64-bindingBytes {
+		return externalSortRun{}, memory.ErrBudgetExceeded
+	}
+	reservation, err := s.sortBudget.Reserve(ctx, estimate*2+int64(rows)*16+1024+bindingBytes)
 	if err != nil {
 		return externalSortRun{}, err
 	}
@@ -279,7 +283,10 @@ func (s *externalSortStream) makeInitialRun(ctx context.Context, batch *memory.B
 	for index := range indices {
 		indices[index] = start + index
 	}
-	cmp := batchComparator{batch: batch, schema: s.owner.input.Schema(), keys: s.owner.keys}
+	cmp, err := newBatchComparator(batch, s.owner.input.Schema(), s.owner.keys)
+	if err != nil {
+		return externalSortRun{}, err
+	}
 	sort.SliceStable(indices, func(i, j int) bool { return cmp.less(indices[i], indices[j]) })
 	if err := ctx.Err(); err != nil {
 		return externalSortRun{}, err

@@ -327,7 +327,18 @@ func (r *windowReader) Next(ctx context.Context, dst *memory.Batch) (bool, error
 	keys := make([]SortKey, 0, len(partitionKeys)+len(r.owner.orderBy))
 	keys = append(keys, partitionKeys...)
 	keys = append(keys, r.owner.orderBy...)
-	rows, err := sortRows(ctx, full.Rows, batchComparator{batch: full, schema: r.owner.input.Schema(), keys: keys}, 1, nil)
+	binding, err := reserveSortBinding(ctx, r.owner.manager, full.Rows, len(keys))
+	if err != nil {
+		return false, err
+	}
+	if binding != nil {
+		defer binding.Release()
+	}
+	cmp, err := newBatchComparator(full, r.owner.input.Schema(), keys)
+	if err != nil {
+		return false, err
+	}
+	rows, err := sortRows(ctx, full.Rows, cmp, 1, nil)
 	if err != nil {
 		return false, err
 	}

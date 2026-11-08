@@ -163,7 +163,17 @@ func (r *sortReader) Next(ctx context.Context, dst *memory.Batch) (bool, error) 
 		return false, err
 	}
 	defer full.ReleaseOwned()
-	cmp := batchComparator{batch: full, schema: r.owner.input.Schema(), keys: r.owner.keys}
+	binding, err := reserveSortBinding(ctx, r.owner.manager, full.Rows, len(r.owner.keys))
+	if err != nil {
+		return false, err
+	}
+	if binding != nil {
+		defer binding.Release()
+	}
+	cmp, err := newBatchComparator(full, r.owner.input.Schema(), r.owner.keys)
+	if err != nil {
+		return false, err
+	}
 	rows, err := sortRows(ctx, full.Rows, cmp, r.owner.workers, r.owner.executor)
 	if err != nil {
 		return false, err
@@ -783,14 +793,12 @@ func estimateOrderBytes(schema memory.Schema, rows int64) int64 {
 
 // batchComparator compares rows from one materialized batch.
 type batchComparator struct {
-	batch  *memory.Batch
-	schema memory.Schema
-	keys   []SortKey
+	keys []boundSortKey
 }
 
 func (c batchComparator) less(a, b int) bool {
 	for _, key := range c.keys {
-		cmp := compareBatchRows(c.batch, c.schema, key, a, b)
+		cmp := key.compareRows(a, b)
 		if cmp == 0 {
 			continue
 		}
