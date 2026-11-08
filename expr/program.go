@@ -60,6 +60,7 @@ type Program struct {
 	complexity   int
 	outputs      []programOutput
 	result       memory.Field
+	selection    *selectionPlan
 }
 
 // WorkspaceBytes returns logical register metadata and distinct physical-slot

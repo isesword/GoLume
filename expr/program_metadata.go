@@ -10,14 +10,65 @@ func (p Program) Type() memory.DataType { return p.typ }
 func (p Program) Nullable() bool { return p.nullable }
 
 // InstructionCount includes instructions in every guarded evaluation region.
+// Repeated uses of shared region code count separately, preserving logical
+// evaluation complexity. Counts that exceed the range of int saturate at MaxInt.
 func (p Program) InstructionCount() int {
-	n := len(p.instructions)
-	for _, in := range p.instructions {
-		for _, region := range in.Regions {
-			n += region.InstructionCount()
+	counts := make(map[*instruction]int)
+	var count func(Program) int
+	count = func(p Program) int {
+		if len(p.instructions) == 0 {
+			return 0
 		}
+		key := &p.instructions[0]
+		if n, ok := counts[key]; ok {
+			return n
+		}
+		n := len(p.instructions)
+		const maxInt = int(^uint(0) >> 1)
+		for _, in := range p.instructions {
+			for _, region := range in.Regions {
+				child := count(region)
+				if child > maxInt-n {
+					n = maxInt
+				} else {
+					n += child
+				}
+			}
+		}
+		counts[key] = n
+		return n
 	}
-	return n
+	return count(p)
+}
+
+// visitInstructions walks immutable program storage rather than its expanded
+// region tree. Compilation may share a complete instruction slice across many
+// domains; the first instruction identifies that independently allocated slice.
+func (p Program) visitInstructions(visit func(instruction) bool) bool {
+	seen := make(map[*instruction]struct{})
+	var walk func(Program) bool
+	walk = func(p Program) bool {
+		if len(p.instructions) == 0 {
+			return true
+		}
+		key := &p.instructions[0]
+		if _, ok := seen[key]; ok {
+			return true
+		}
+		seen[key] = struct{}{}
+		for _, in := range p.instructions {
+			if !visit(in) {
+				return false
+			}
+			for _, region := range in.Regions {
+				if !walk(region) {
+					return false
+				}
+			}
+		}
+		return true
+	}
+	return walk(p)
 }
 
 // ResultField returns an independent, complete scalar result descriptor.

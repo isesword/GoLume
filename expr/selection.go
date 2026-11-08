@@ -1,13 +1,14 @@
 package expr
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
 	"gocolumn/kernel"
 	"gocolumn/memory"
 	"math"
-	"sort"
+	"slices"
 	"unsafe"
 )
 
@@ -15,10 +16,23 @@ import (
 // selected fixed-width input domain. Unsupported programs use ordinary batch
 // evaluation. The whitelist is deliberately closed to future opcodes.
 func (p Program) SupportsSelection() bool {
+	return p.selection != nil
+}
+
+// selectionPlan is immutable compile-time metadata. Runtime initialization
+// reserves space before copying these column descriptors into mutable state;
+// neither capability checks nor execution allocate a DAG traversal map.
+type selectionPlan struct {
+	columns []selectedColumn
+}
+
+func (p *Program) planSelection() {
+	p.selection = nil
 	if len(p.instructions) == 0 {
-		return false
+		return
 	}
-	for _, in := range p.instructions {
+	columns := make(map[string]memory.DataType)
+	supported := p.visitInstructions(func(in instruction) bool {
 		if selectionWidth(instructionResultType(in)) == 0 {
 			return false
 		}
@@ -30,16 +44,26 @@ func (p Program) SupportsSelection() bool {
 		default:
 			return false
 		}
-		if in.Column != "" && selectionWidth(in.Type) == 0 {
-			return false
-		}
-		for _, region := range in.Regions {
-			if !region.SupportsSelection() {
+		if in.Column != "" {
+			if selectionWidth(in.Type) == 0 {
 				return false
 			}
+			columns[in.Column] = in.Type
 		}
+		if in.RightColumn != "" {
+			columns[in.RightColumn] = in.Type
+		}
+		return true
+	})
+	if !supported {
+		return
 	}
-	return true
+	plan := &selectionPlan{columns: make([]selectedColumn, 0, len(columns))}
+	for name, typ := range columns {
+		plan.columns = append(plan.columns, selectedColumn{name: name, typ: typ})
+	}
+	slices.SortFunc(plan.columns, func(a, b selectedColumn) int { return cmp.Compare(a.name, b.name) })
+	p.selection = plan
 }
 
 func selectionWidth(t memory.DataType) int64 {
@@ -87,11 +111,10 @@ func (s *selectedWorkspace) init(ctx context.Context, p Program, manager memory.
 	if s.initialized {
 		return nil
 	}
-	count := p.InstructionCount()
-	if count > int(^uint(0)>>1)/2 {
-		return fmt.Errorf("selected expression metadata overflow")
+	if !p.SupportsSelection() {
+		return fmt.Errorf("expression program does not support selected evaluation")
 	}
-	count *= 2
+	count := len(p.selection.columns)
 	n, err := scalarBytes(count, unsafe.Sizeof(selectedColumn{}))
 	if err != nil {
 		return err
@@ -100,30 +123,8 @@ func (s *selectedWorkspace) init(ctx context.Context, p Program, manager memory.
 	if err != nil {
 		return fmt.Errorf("reserve selected expression metadata: %w", err)
 	}
-	s.columns = make([]selectedColumn, 0, count)
-	add := func(name string, typ memory.DataType) {
-		if name == "" {
-			return
-		}
-		for _, c := range s.columns {
-			if c.name == name {
-				return
-			}
-		}
-		s.columns = append(s.columns, selectedColumn{name: name, typ: typ})
-	}
-	var visit func(Program)
-	visit = func(p Program) {
-		for _, in := range p.instructions {
-			add(in.Column, in.Type)
-			add(in.RightColumn, in.Type)
-			for _, region := range in.Regions {
-				visit(region)
-			}
-		}
-	}
-	visit(p)
-	sort.Slice(s.columns, func(i, j int) bool { return s.columns[i].name < s.columns[j].name })
+	s.columns = make([]selectedColumn, count)
+	copy(s.columns, p.selection.columns)
 	s.metadataLease, s.metadataBytes, s.initialized = lease, n, true
 	return nil
 }

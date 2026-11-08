@@ -22,6 +22,7 @@ func Compile(schema memory.Schema, e Expr) (Program, error) {
 	}
 	program := Program{instructions: compiler.instructions, root: root, typ: info.Type, nullable: info.Nullable, complexity: len(compiler.instructions), result: bound.OutputField("")}
 	program.planStorage()
+	program.planSelection()
 	return program, nil
 }
 

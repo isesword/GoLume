@@ -1,6 +1,9 @@
 package expr
 
-import "sort"
+import (
+	"reflect"
+	"sort"
+)
 
 // Columns returns the sorted, de-duplicated column names referenced by e.
 func Columns(e Expr) []string {
@@ -8,8 +11,14 @@ func Columns(e Expr) []string {
 		return nil
 	}
 	set := make(map[string]struct{})
+	seen := make(map[reflect.Value]struct{})
 	var visit func(Expr)
 	visit = func(n Expr) {
+		key := reflect.ValueOf(n)
+		if _, ok := seen[key]; ok {
+			return
+		}
+		seen[key] = struct{}{}
 		switch x := n.(type) {
 		case Column:
 			set[x.Name] = struct{}{}

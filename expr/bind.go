@@ -2,13 +2,14 @@ package expr
 
 import (
 	"fmt"
+	"reflect"
 	"sort"
 	"unicode/utf8"
 
 	"gocolumn/memory"
 )
 
-// BoundExpr is the shared, typed expression representation. The tree and all
+// BoundExpr is the shared, typed expression representation. The DAG and all
 // exposed slices are immutable after binding. Children preserve source operand
 // order; CASE contains alternating condition/value children followed by ELSE.
 // A missing CASE ELSE becomes a typed NULL child.
@@ -39,19 +40,58 @@ func (b *BoundExpr) OutputField(name string) memory.Field {
 
 // Bind resolves columns, validates every expression node, and derives the full
 // output schema, nullability, dependencies, and error effect without reading
-// data. All runtime value computations remain in the expression executor.
+// data. Repeated source nodes share immutable bound results within the call.
+// All runtime value computations remain in the expression executor.
 func Bind(schema memory.Schema, e Expr) (*BoundExpr, error) {
-	return bindExpression(schema, e)
+	return newExpressionBinder(schema).bind(e)
 }
 
-func bindExpression(schema memory.Schema, e Expr) (*BoundExpr, error) {
+// expressionBinder belongs to one binding operation and one input schema. It
+// retains source handles only until binding/compilation ends, never globally or
+// in the executable Program. A reflect.Value key compares the handle itself,
+// not the underlying expression: map[Expr] would recursively hash shared value
+// nodes and panic for slice-backed CASE/COALESCE/IN/JSON nodes. Reboxed copies
+// may have different handles; structural CSE still merges equivalent values.
+//
+// Only finished, independently owned bound nodes are shared. A nil map entry
+// marks the active DFS path, so a cycle through a caller-owned operand slice
+// fails validation rather than recursing indefinitely.
+// Source expressions and schemas must not be mutated during a bind operation.
+type expressionBinder struct {
+	schema memory.Schema
+	nodes  map[reflect.Value]*BoundExpr
+}
+
+func newExpressionBinder(schema memory.Schema) *expressionBinder {
+	return &expressionBinder{schema: schema, nodes: make(map[reflect.Value]*BoundExpr)}
+}
+
+func (b *expressionBinder) bind(e Expr) (*BoundExpr, error) {
 	if e == nil {
 		return nil, fmt.Errorf("expression is nil")
 	}
+	key := reflect.ValueOf(e)
+	if bound, ok := b.nodes[key]; ok {
+		if bound == nil {
+			return nil, fmt.Errorf("expression contains a cycle at %T", e)
+		}
+		return bound, nil
+	}
+	b.nodes[key] = nil
+	bound, err := b.bindNode(e)
+	if err != nil {
+		delete(b.nodes, key)
+		return nil, err
+	}
+	b.nodes[key] = bound
+	return bound, nil
+}
+
+func (b *expressionBinder) bindNode(e Expr) (*BoundExpr, error) {
 	bound := &BoundExpr{Expr: e}
 	bindChildren := func(values ...Expr) error {
 		for _, value := range values {
-			child, err := bindExpression(schema, value)
+			child, err := b.bind(value)
 			if err != nil {
 				return err
 			}
@@ -61,7 +101,7 @@ func bindExpression(schema memory.Schema, e Expr) (*BoundExpr, error) {
 	}
 	switch n := e.(type) {
 	case Column:
-		field, ok := schema.Field(n.Name)
+		field, ok := b.schema.Field(n.Name)
 		if !ok {
 			return nil, fmt.Errorf("column %q not found", n.Name)
 		}

@@ -170,6 +170,7 @@ type scalarCompiler struct {
 	instructions []instruction
 	memo         map[int]int
 	structures   *structuralInterner
+	regions      map[int]Program
 }
 
 // CompileExpressions compiles named outputs into one shared typed program.
@@ -178,6 +179,7 @@ func CompileExpressions(schema memory.Schema, named []NamedExpr) (Program, error
 		return Program{}, fmt.Errorf("projection requires expressions")
 	}
 	c := newScalarCompiler(schema)
+	binder := newExpressionBinder(schema)
 	out := Program{}
 	seen := make(map[string]struct{}, len(named))
 	for _, n := range named {
@@ -189,7 +191,7 @@ func CompileExpressions(schema memory.Schema, named []NamedExpr) (Program, error
 			return Program{}, fmt.Errorf("projection contains duplicate output %q", name)
 		}
 		seen[name] = struct{}{}
-		bound, err := Bind(schema, n.Expr)
+		bound, err := binder.bind(n.Expr)
 		if err != nil {
 			return Program{}, fmt.Errorf("projection %q: %w", name, err)
 		}
@@ -203,6 +205,7 @@ func CompileExpressions(schema memory.Schema, named []NamedExpr) (Program, error
 	out.complexity = len(c.instructions)
 	out.root = -1
 	out.planStorage()
+	out.planSelection()
 	return out, nil
 }
 

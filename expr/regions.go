@@ -37,18 +37,36 @@ func (c *scalarCompiler) compileConditional(bound *BoundExpr) (instruction, erro
 		children = children[1:]
 	}
 	for _, child := range children {
-		// Each guarded region has its own CSE scope. Partial values are never
-		// hoisted to a domain on which their source expression was not demanded.
-		compiler := &scalarCompiler{schema: c.schema, memo: make(map[int]int), structures: c.structures}
-		root, info, err := compiler.compileBound(child)
+		region, err := c.compileRegion(child)
 		if err != nil {
 			return in, err
 		}
-		region := Program{instructions: compiler.instructions, root: root, typ: info.Type, nullable: info.Nullable, complexity: len(compiler.instructions)}
-		region.planStorage()
 		in.Regions = append(in.Regions, region)
 	}
 	return in, nil
+}
+
+// compileRegion reuses immutable standalone code, never a register or execution
+// state from another evaluation domain. Every cache miss starts with an empty
+// register memo and finishes storage planning before publishing the program.
+// Thus shared nested branches form a program DAG without hoisting partial work.
+func (c *scalarCompiler) compileRegion(bound *BoundExpr) (Program, error) {
+	if c.regions == nil {
+		c.regions = make(map[int]Program)
+	}
+	key := c.structures.expression(bound)
+	if region, ok := c.regions[key]; ok {
+		return region, nil
+	}
+	compiler := &scalarCompiler{schema: c.schema, memo: make(map[int]int), structures: c.structures, regions: c.regions}
+	root, info, err := compiler.compileBound(bound)
+	if err != nil {
+		return Program{}, err
+	}
+	region := Program{instructions: compiler.instructions, root: root, typ: info.Type, nullable: info.Nullable, complexity: len(compiler.instructions)}
+	region.planStorage()
+	c.regions[key] = region
+	return region, nil
 }
 
 func (w *evaluationState) applyActive(index int, r *scalarRegister, rows int) error {
