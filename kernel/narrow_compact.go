@@ -2,11 +2,6 @@ package kernel
 
 import "gocolumn/memory"
 
-// The native-width compaction entry points intentionally remain scalar until
-// per-architecture measurements admit a SIMD variant. They are dispatched
-// through Set so capability reporting and future admission use the same path
-// as every other physical compact kernel.
-
 // CompactInt8 compacts selected int8 values into out and returns the output length.
 func (s Set) CompactInt8(values []int8, selection memory.Bitmap, out []int8) int {
 	return s.d.compactInt8(values, selection, out)

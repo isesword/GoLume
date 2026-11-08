@@ -31,6 +31,7 @@ func installArchSIMDCompact(set *Set, mode Mode, vectorBits int) {
 	for _, id := range []KernelID{KernelCompactInt32, KernelCompactInt64, KernelCompactUint32, KernelCompactUint64, KernelCompactFloat64} {
 		set.setCapability(id, capability)
 	}
+	installNarrowSIMDCompact(set, archsimd.X86.AVX512VBMI2())
 }
 
 func selectionBits(selection memory.Bitmap, row, lanes int) uint64 {
