@@ -12,7 +12,7 @@ func TestAutoSelectsAvailableNativeSIMD(t *testing.T) {
 	t.Logf("arch=%s emulated=%t vector_bits=%d", runtimeArch(), simd.Emulated(), simd.Int64s{}.Len()*64)
 	for _, mode := range []Mode{ModeScalar, ModeAuto, ModeSIMD} {
 		set := New(mode)
-		wantNative := mode != ModeScalar && !simd.Emulated()
+		wantNative := mode != ModeScalar && expectedNativeSIMD()
 		check := func(id KernelID, backend string) {
 			t.Helper()
 			capability, ok := set.Capability(id)
@@ -46,7 +46,7 @@ func TestAutoSelectsAvailableNativeSIMD(t *testing.T) {
 				check(id, "portable-simd")
 			}
 		}
-		if mode == ModeScalar || simd.Emulated() {
+		if mode == ModeScalar || !expectedNativeSIMD() {
 			for _, id := range KernelIDs() {
 				capability, _ := set.Capability(id)
 				if capability != (KernelCapability{Backend: "scalar"}) {

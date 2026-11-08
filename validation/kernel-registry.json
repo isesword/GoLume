@@ -410,7 +410,7 @@
       "family": "comparison",
       "type": "int16",
       "operation": "eq",
-      "source": "handwritten",
+      "source": "generated",
       "arches": {}
     },
     {
@@ -418,7 +418,7 @@
       "family": "comparison",
       "type": "int16",
       "operation": "ge",
-      "source": "handwritten",
+      "source": "generated",
       "arches": {}
     },
     {
@@ -426,7 +426,7 @@
       "family": "comparison",
       "type": "int16",
       "operation": "gt",
-      "source": "handwritten",
+      "source": "generated",
       "arches": {}
     },
     {
@@ -434,7 +434,7 @@
       "family": "comparison",
       "type": "int16",
       "operation": "le",
-      "source": "handwritten",
+      "source": "generated",
       "arches": {}
     },
     {
@@ -442,7 +442,7 @@
       "family": "comparison",
       "type": "int16",
       "operation": "lt",
-      "source": "handwritten",
+      "source": "generated",
       "arches": {}
     },
     {
@@ -606,7 +606,7 @@
       "family": "comparison",
       "type": "uint16",
       "operation": "eq",
-      "source": "handwritten",
+      "source": "generated",
       "arches": {}
     },
     {
@@ -614,7 +614,7 @@
       "family": "comparison",
       "type": "uint16",
       "operation": "ge",
-      "source": "handwritten",
+      "source": "generated",
       "arches": {}
     },
     {
@@ -622,7 +622,7 @@
       "family": "comparison",
       "type": "uint16",
       "operation": "gt",
-      "source": "handwritten",
+      "source": "generated",
       "arches": {}
     },
     {
@@ -630,7 +630,7 @@
       "family": "comparison",
       "type": "uint16",
       "operation": "le",
-      "source": "handwritten",
+      "source": "generated",
       "arches": {}
     },
     {
@@ -638,7 +638,7 @@
       "family": "comparison",
       "type": "uint16",
       "operation": "lt",
-      "source": "handwritten",
+      "source": "generated",
       "arches": {}
     },
     {
@@ -771,7 +771,7 @@
       "family": "comparison",
       "type": "uint8",
       "operation": "eq",
-      "source": "handwritten",
+      "source": "generated",
       "arches": {}
     },
     {
@@ -779,7 +779,7 @@
       "family": "comparison",
       "type": "uint8",
       "operation": "ge",
-      "source": "handwritten",
+      "source": "generated",
       "arches": {}
     },
     {
@@ -787,7 +787,7 @@
       "family": "comparison",
       "type": "uint8",
       "operation": "gt",
-      "source": "handwritten",
+      "source": "generated",
       "arches": {}
     },
     {
@@ -795,7 +795,7 @@
       "family": "comparison",
       "type": "uint8",
       "operation": "le",
-      "source": "handwritten",
+      "source": "generated",
       "arches": {}
     },
     {
@@ -803,7 +803,7 @@
       "family": "comparison",
       "type": "uint8",
       "operation": "lt",
-      "source": "handwritten",
+      "source": "generated",
       "arches": {}
     },
     {

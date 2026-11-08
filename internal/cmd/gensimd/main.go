@@ -29,8 +29,11 @@ var (
 	list            = flag.Bool("list", false, "print the kernel IDs whose scalar implementation is generated, one per line")
 	comparisonTypes = []numericType{
 		{"Int8", "int8", "compareInt8"},
+		{"Int16", "int16", "compareInt16"},
 		{"Int32", "int32", "compareInt32"},
 		{"Int64", "int64", "compareInt64"},
+		{"Uint8", "uint8", "compareUint8"},
+		{"Uint16", "uint16", "compareUint16"},
 		{"Uint32", "uint32", "compareUint32"},
 		{"Uint64", "uint64", "compareUint64"},
 		{"Float64", "float64", "compareFloat64"},
@@ -313,7 +316,7 @@ func generatePortableSIMD() []byte {
 	arithmeticOps := []operation{{"Add", "ArithmeticAdd", "+"}, {"Sub", "ArithmeticSub", "-"}, {"Mul", "ArithmeticMul", "*"}, {"Div", "ArithmeticDiv", "/"}}
 	literalTypes := append([]numericType{{"Float32", "float32", "compareFloat32"}}, comparisonTypes...)
 	b.WriteString(`func installGeneratedPortableSIMD(set *Set, mode Mode, vectorBits int) {
- if mode == ModeScalar || simd.Emulated() { return }
+ if mode == ModeScalar || !nativeSIMDAvailable() { return }
  capability := KernelCapability{HardwareSIMD: true, VectorBits: vectorBits, Backend: "portable-simd"}
 `)
 	for _, typ := range floatTypes {
@@ -351,11 +354,19 @@ func generatePortableSIMD() []byte {
 	for _, typ := range literalTypes {
 		width := strings.TrimLeft(typ.name, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 		for _, op := range comparisonOps {
+			broadcast := fmt.Sprintf("simd.Broadcast%ss(threshold)", typ.name)
+			vectorLoad := fmt.Sprintf("simd.Load%ss(values[base+off:])", typ.name)
+			if typ.name == "Uint8" && op.name != "EQ" {
+				// Portable Uint8s has equality but no ordered comparisons.
+				// Flipping the sign bit maps unsigned byte order to signed order.
+				broadcast = "simd.BroadcastInt8s(int8(threshold ^ 0x80))"
+				vectorLoad += ".Xor(simd.BroadcastUint8s(0x80)).BitsToInt8()"
+			}
 			fmt.Fprintf(b, `func simd%s%s(values []%s, validity memory.Bitmap, out memory.Bitmap, threshold %s) int {
  lanes := simd.%ss{}.Len()
  if len(values) < lanes { return scalar%s%s(values, validity, out, threshold) }
  words := prepareComparison(len(values), out)
- vectorThreshold := simd.Broadcast%ss(threshold)
+ vectorThreshold := %s
  var laneMaskStorage [64]int%s
  laneMask := laneMaskStorage[:lanes]
  selected := 0
@@ -365,7 +376,7 @@ func generatePortableSIMD() []byte {
   var selectedWord uint64
   off := 0
   for ; off+lanes <= wordRows; off += lanes {
-   simd.Load%ss(values[base+off:]).%s(vectorThreshold).ToInt%ss().Store(laneMask)
+   %s.%s(vectorThreshold).ToInt%ss().Store(laneMask)
    for lane := 0; lane < lanes; lane++ {
     if laneMask[lane] < 0 { selectedWord |= uint64(1) << uint(off+lane) }
    }
@@ -380,7 +391,7 @@ func generatePortableSIMD() []byte {
  return selected
 }
 
-`, typ.name, op.name, typ.goType, typ.goType, typ.name, typ.name, op.name, typ.name, width, typ.name, op.nameForArch(), width, op.symbol)
+`, typ.name, op.name, typ.goType, typ.goType, typ.name, typ.name, op.name, broadcast, width, vectorLoad, op.nameForArch(), width, op.symbol)
 		}
 	}
 	for _, op := range comparisonOps {

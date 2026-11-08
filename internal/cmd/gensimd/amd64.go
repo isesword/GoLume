@@ -7,8 +7,8 @@ import (
 )
 
 // generateAMD64SIMD emits fixed-width kernels: runtime width selection happens
-// only during installation, never in the vector loop. Mask16 is deliberately
-// excluded because its ToBits has stronger ISA requirements at narrow widths.
+// only during installation, never in the vector loop. At 128/256 bits Mask16
+// is reinterpreted as bytes before extraction: its own ToBits requires AVX512.
 func generateAMD64SIMD() []byte {
 	b := header("goexperiment.simd && amd64")
 	b.WriteString(`import (
@@ -19,13 +19,24 @@ func generateAMD64SIMD() []byte {
 )
 
 func amd64ComparisonWidthSupported(vectorBits int) bool {
- if simd.Emulated() || vectorBits != (simd.Int64s{}).Len()*64 { return false }
+ if !nativeSIMDAvailable() || vectorBits != (simd.Int64s{}).Len()*64 { return false }
  switch vectorBits {
- case 128: return archsimd.X86.AVX()
+ // Even 128-bit scalar broadcasts use AVX2 VPBROADCAST instructions.
+ case 128: return archsimd.X86.AVX2()
  case 256: return archsimd.X86.AVX2()
  case 512: return archsimd.X86.AVX512()
  default: return false
  }
+}
+
+// packAMD64Mask16 compresses the duplicate byte sign bits from 16-bit lanes.
+// It uses ordinary integer operations, not BMI2 or AVX512-only mask extraction.
+func packAMD64Mask16(x uint32) uint32 {
+ x &= 0x55555555
+ x = (x | x >> 1) & 0x33333333
+ x = (x | x >> 2) & 0x0f0f0f0f
+ x = (x | x >> 4) & 0x00ff00ff
+ return (x | x >> 8) & 0x0000ffff
 }
 
 func installGeneratedArchSIMD(set *Set, mode Mode, vectorBits int) {
@@ -59,6 +70,10 @@ func installGeneratedArchSIMD(set *Set, mode Mode, vectorBits int) {
 				elemBits, _ := strconv.Atoi(strings.TrimLeft(typ.name, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"))
 				lanes := width / elemBits
 				vector := fmt.Sprintf("%sx%d", typ.name, lanes)
+				maskBits := "uint64(mask.ToBits())"
+				if elemBits == 16 && width < 512 {
+					maskBits = fmt.Sprintf("uint64(packAMD64Mask16(uint32(mask.ToInt16x%d().AsInt8x%d().Less(archsimd.Int8x%d{}).ToBits())))", lanes, width/8, width/8)
+				}
 				for _, op := range comparisonOps {
 					if columns {
 						fmt.Fprintf(b, `func simdAMD%d%sColumns%s(left, right []%s, leftValid, rightValid, out memory.Bitmap) int {
@@ -76,7 +91,7 @@ func installGeneratedArchSIMD(set *Set, mode Mode, vectorBits int) {
   off := 0
   for ; off+%d <= rows; off += %d {
    mask := archsimd.Load%s(left[base+off:]).%s(archsimd.Load%s(right[base+off:]))
-   word |= uint64(mask.ToBits()) << uint(off)
+   word |= %s << uint(off)
   }
   for ; off < rows; off++ {
    if left[base+off] %s right[base+off] { word |= uint64(1) << uint(off) }
@@ -88,7 +103,7 @@ func installGeneratedArchSIMD(set *Set, mode Mode, vectorBits int) {
  return selected
 }
 
-`, width, typ.name, op.name, typ.goType, typ.goType, lanes, typ.name, op.name, lanes, lanes, vector, op.nameForArch(), vector, op.symbol)
+`, width, typ.name, op.name, typ.goType, typ.goType, lanes, typ.name, op.name, lanes, lanes, vector, op.nameForArch(), vector, maskBits, op.symbol)
 					} else {
 						fmt.Fprintf(b, `func simdAMD%d%s%s(values []%s, validity, out memory.Bitmap, threshold %s) int {
  if len(values) < %d { return scalar%s%s(values, validity, out, threshold) }
@@ -105,7 +120,7 @@ func installGeneratedArchSIMD(set *Set, mode Mode, vectorBits int) {
   off := 0
   for ; off+%d <= rows; off += %d {
    mask := archsimd.Load%s(values[base+off:]).%s(vectorThreshold)
-   word |= uint64(mask.ToBits()) << uint(off)
+   word |= %s << uint(off)
   }
   for ; off < rows; off++ {
    if values[base+off] %s threshold { word |= uint64(1) << uint(off) }
@@ -117,7 +132,7 @@ func installGeneratedArchSIMD(set *Set, mode Mode, vectorBits int) {
  return selected
 }
 
-`, width, typ.name, op.name, typ.goType, typ.goType, lanes, typ.name, op.name, vector, lanes, lanes, vector, op.nameForArch(), op.symbol)
+`, width, typ.name, op.name, typ.goType, typ.goType, lanes, typ.name, op.name, vector, lanes, lanes, vector, op.nameForArch(), maskBits, op.symbol)
 					}
 				}
 			}

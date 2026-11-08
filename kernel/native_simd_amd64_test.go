@@ -11,7 +11,7 @@ import (
 func TestAVX512AutoDispatchHonorsHardwareAndVectorWidth(t *testing.T) {
 	for _, mode := range []Mode{ModeScalar, ModeAuto, ModeSIMD} {
 		set := New(mode)
-		wantNative := mode != ModeScalar && !simd.Emulated() && simd.Int64s{}.Len()*64 >= 512 && archsimd.X86.AVX512()
+		wantNative := mode != ModeScalar && expectedNativeSIMD() && simd.Int64s{}.Len()*64 >= 512 && archsimd.X86.AVX512()
 		for _, id := range []KernelID{KernelHash64Batch, KernelCompactInt32, KernelCompactInt64, KernelCompactUint32, KernelCompactUint64, KernelCompactFloat64} {
 			capability, _ := set.Capability(id)
 			if capability.HardwareSIMD != wantNative || capability.Emulated {

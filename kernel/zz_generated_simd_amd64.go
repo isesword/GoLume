@@ -12,12 +12,13 @@ import (
 )
 
 func amd64ComparisonWidthSupported(vectorBits int) bool {
-	if simd.Emulated() || vectorBits != (simd.Int64s{}).Len()*64 {
+	if !nativeSIMDAvailable() || vectorBits != (simd.Int64s{}).Len()*64 {
 		return false
 	}
 	switch vectorBits {
+	// Even 128-bit scalar broadcasts use AVX2 VPBROADCAST instructions.
 	case 128:
-		return archsimd.X86.AVX()
+		return archsimd.X86.AVX2()
 	case 256:
 		return archsimd.X86.AVX2()
 	case 512:
@@ -25,6 +26,16 @@ func amd64ComparisonWidthSupported(vectorBits int) bool {
 	default:
 		return false
 	}
+}
+
+// packAMD64Mask16 compresses the duplicate byte sign bits from 16-bit lanes.
+// It uses ordinary integer operations, not BMI2 or AVX512-only mask extraction.
+func packAMD64Mask16(x uint32) uint32 {
+	x &= 0x55555555
+	x = (x | x>>1) & 0x33333333
+	x = (x | x>>2) & 0x0f0f0f0f
+	x = (x | x>>4) & 0x00ff00ff
+	return (x | x>>8) & 0x0000ffff
 }
 
 func installGeneratedArchSIMD(set *Set, mode Mode, vectorBits int) {
@@ -64,6 +75,21 @@ func installGeneratedArchSIMD(set *Set, mode Mode, vectorBits int) {
 		set.d.compareInt8[CompareEQ] = simdAMD128Int8EQ
 		idInt8EQ, _ := ComparisonID(memory.TypeInt8, CompareEQ)
 		set.setCapability(idInt8EQ, capability)
+		set.d.compareInt16[CompareGT] = simdAMD128Int16GT
+		idInt16GT, _ := ComparisonID(memory.TypeInt16, CompareGT)
+		set.setCapability(idInt16GT, capability)
+		set.d.compareInt16[CompareGE] = simdAMD128Int16GE
+		idInt16GE, _ := ComparisonID(memory.TypeInt16, CompareGE)
+		set.setCapability(idInt16GE, capability)
+		set.d.compareInt16[CompareLT] = simdAMD128Int16LT
+		idInt16LT, _ := ComparisonID(memory.TypeInt16, CompareLT)
+		set.setCapability(idInt16LT, capability)
+		set.d.compareInt16[CompareLE] = simdAMD128Int16LE
+		idInt16LE, _ := ComparisonID(memory.TypeInt16, CompareLE)
+		set.setCapability(idInt16LE, capability)
+		set.d.compareInt16[CompareEQ] = simdAMD128Int16EQ
+		idInt16EQ, _ := ComparisonID(memory.TypeInt16, CompareEQ)
+		set.setCapability(idInt16EQ, capability)
 		set.d.compareInt32[CompareGT] = simdAMD128Int32GT
 		idInt32GT, _ := ComparisonID(memory.TypeInt32, CompareGT)
 		set.setCapability(idInt32GT, capability)
@@ -94,6 +120,36 @@ func installGeneratedArchSIMD(set *Set, mode Mode, vectorBits int) {
 		set.d.compareInt64[CompareEQ] = simdAMD128Int64EQ
 		idInt64EQ, _ := ComparisonID(memory.TypeInt64, CompareEQ)
 		set.setCapability(idInt64EQ, capability)
+		set.d.compareUint8[CompareGT] = simdAMD128Uint8GT
+		idUint8GT, _ := ComparisonID(memory.TypeUint8, CompareGT)
+		set.setCapability(idUint8GT, capability)
+		set.d.compareUint8[CompareGE] = simdAMD128Uint8GE
+		idUint8GE, _ := ComparisonID(memory.TypeUint8, CompareGE)
+		set.setCapability(idUint8GE, capability)
+		set.d.compareUint8[CompareLT] = simdAMD128Uint8LT
+		idUint8LT, _ := ComparisonID(memory.TypeUint8, CompareLT)
+		set.setCapability(idUint8LT, capability)
+		set.d.compareUint8[CompareLE] = simdAMD128Uint8LE
+		idUint8LE, _ := ComparisonID(memory.TypeUint8, CompareLE)
+		set.setCapability(idUint8LE, capability)
+		set.d.compareUint8[CompareEQ] = simdAMD128Uint8EQ
+		idUint8EQ, _ := ComparisonID(memory.TypeUint8, CompareEQ)
+		set.setCapability(idUint8EQ, capability)
+		set.d.compareUint16[CompareGT] = simdAMD128Uint16GT
+		idUint16GT, _ := ComparisonID(memory.TypeUint16, CompareGT)
+		set.setCapability(idUint16GT, capability)
+		set.d.compareUint16[CompareGE] = simdAMD128Uint16GE
+		idUint16GE, _ := ComparisonID(memory.TypeUint16, CompareGE)
+		set.setCapability(idUint16GE, capability)
+		set.d.compareUint16[CompareLT] = simdAMD128Uint16LT
+		idUint16LT, _ := ComparisonID(memory.TypeUint16, CompareLT)
+		set.setCapability(idUint16LT, capability)
+		set.d.compareUint16[CompareLE] = simdAMD128Uint16LE
+		idUint16LE, _ := ComparisonID(memory.TypeUint16, CompareLE)
+		set.setCapability(idUint16LE, capability)
+		set.d.compareUint16[CompareEQ] = simdAMD128Uint16EQ
+		idUint16EQ, _ := ComparisonID(memory.TypeUint16, CompareEQ)
+		set.setCapability(idUint16EQ, capability)
 		set.d.compareUint32[CompareGT] = simdAMD128Uint32GT
 		idUint32GT, _ := ComparisonID(memory.TypeUint32, CompareGT)
 		set.setCapability(idUint32GT, capability)
@@ -210,6 +266,21 @@ func installGeneratedArchSIMD(set *Set, mode Mode, vectorBits int) {
 		set.d.compareInt8[CompareEQ] = simdAMD256Int8EQ
 		idInt8EQ, _ := ComparisonID(memory.TypeInt8, CompareEQ)
 		set.setCapability(idInt8EQ, capability)
+		set.d.compareInt16[CompareGT] = simdAMD256Int16GT
+		idInt16GT, _ := ComparisonID(memory.TypeInt16, CompareGT)
+		set.setCapability(idInt16GT, capability)
+		set.d.compareInt16[CompareGE] = simdAMD256Int16GE
+		idInt16GE, _ := ComparisonID(memory.TypeInt16, CompareGE)
+		set.setCapability(idInt16GE, capability)
+		set.d.compareInt16[CompareLT] = simdAMD256Int16LT
+		idInt16LT, _ := ComparisonID(memory.TypeInt16, CompareLT)
+		set.setCapability(idInt16LT, capability)
+		set.d.compareInt16[CompareLE] = simdAMD256Int16LE
+		idInt16LE, _ := ComparisonID(memory.TypeInt16, CompareLE)
+		set.setCapability(idInt16LE, capability)
+		set.d.compareInt16[CompareEQ] = simdAMD256Int16EQ
+		idInt16EQ, _ := ComparisonID(memory.TypeInt16, CompareEQ)
+		set.setCapability(idInt16EQ, capability)
 		set.d.compareInt32[CompareGT] = simdAMD256Int32GT
 		idInt32GT, _ := ComparisonID(memory.TypeInt32, CompareGT)
 		set.setCapability(idInt32GT, capability)
@@ -240,6 +311,36 @@ func installGeneratedArchSIMD(set *Set, mode Mode, vectorBits int) {
 		set.d.compareInt64[CompareEQ] = simdAMD256Int64EQ
 		idInt64EQ, _ := ComparisonID(memory.TypeInt64, CompareEQ)
 		set.setCapability(idInt64EQ, capability)
+		set.d.compareUint8[CompareGT] = simdAMD256Uint8GT
+		idUint8GT, _ := ComparisonID(memory.TypeUint8, CompareGT)
+		set.setCapability(idUint8GT, capability)
+		set.d.compareUint8[CompareGE] = simdAMD256Uint8GE
+		idUint8GE, _ := ComparisonID(memory.TypeUint8, CompareGE)
+		set.setCapability(idUint8GE, capability)
+		set.d.compareUint8[CompareLT] = simdAMD256Uint8LT
+		idUint8LT, _ := ComparisonID(memory.TypeUint8, CompareLT)
+		set.setCapability(idUint8LT, capability)
+		set.d.compareUint8[CompareLE] = simdAMD256Uint8LE
+		idUint8LE, _ := ComparisonID(memory.TypeUint8, CompareLE)
+		set.setCapability(idUint8LE, capability)
+		set.d.compareUint8[CompareEQ] = simdAMD256Uint8EQ
+		idUint8EQ, _ := ComparisonID(memory.TypeUint8, CompareEQ)
+		set.setCapability(idUint8EQ, capability)
+		set.d.compareUint16[CompareGT] = simdAMD256Uint16GT
+		idUint16GT, _ := ComparisonID(memory.TypeUint16, CompareGT)
+		set.setCapability(idUint16GT, capability)
+		set.d.compareUint16[CompareGE] = simdAMD256Uint16GE
+		idUint16GE, _ := ComparisonID(memory.TypeUint16, CompareGE)
+		set.setCapability(idUint16GE, capability)
+		set.d.compareUint16[CompareLT] = simdAMD256Uint16LT
+		idUint16LT, _ := ComparisonID(memory.TypeUint16, CompareLT)
+		set.setCapability(idUint16LT, capability)
+		set.d.compareUint16[CompareLE] = simdAMD256Uint16LE
+		idUint16LE, _ := ComparisonID(memory.TypeUint16, CompareLE)
+		set.setCapability(idUint16LE, capability)
+		set.d.compareUint16[CompareEQ] = simdAMD256Uint16EQ
+		idUint16EQ, _ := ComparisonID(memory.TypeUint16, CompareEQ)
+		set.setCapability(idUint16EQ, capability)
 		set.d.compareUint32[CompareGT] = simdAMD256Uint32GT
 		idUint32GT, _ := ComparisonID(memory.TypeUint32, CompareGT)
 		set.setCapability(idUint32GT, capability)
@@ -356,6 +457,21 @@ func installGeneratedArchSIMD(set *Set, mode Mode, vectorBits int) {
 		set.d.compareInt8[CompareEQ] = simdAMD512Int8EQ
 		idInt8EQ, _ := ComparisonID(memory.TypeInt8, CompareEQ)
 		set.setCapability(idInt8EQ, capability)
+		set.d.compareInt16[CompareGT] = simdAMD512Int16GT
+		idInt16GT, _ := ComparisonID(memory.TypeInt16, CompareGT)
+		set.setCapability(idInt16GT, capability)
+		set.d.compareInt16[CompareGE] = simdAMD512Int16GE
+		idInt16GE, _ := ComparisonID(memory.TypeInt16, CompareGE)
+		set.setCapability(idInt16GE, capability)
+		set.d.compareInt16[CompareLT] = simdAMD512Int16LT
+		idInt16LT, _ := ComparisonID(memory.TypeInt16, CompareLT)
+		set.setCapability(idInt16LT, capability)
+		set.d.compareInt16[CompareLE] = simdAMD512Int16LE
+		idInt16LE, _ := ComparisonID(memory.TypeInt16, CompareLE)
+		set.setCapability(idInt16LE, capability)
+		set.d.compareInt16[CompareEQ] = simdAMD512Int16EQ
+		idInt16EQ, _ := ComparisonID(memory.TypeInt16, CompareEQ)
+		set.setCapability(idInt16EQ, capability)
 		set.d.compareInt32[CompareGT] = simdAMD512Int32GT
 		idInt32GT, _ := ComparisonID(memory.TypeInt32, CompareGT)
 		set.setCapability(idInt32GT, capability)
@@ -386,6 +502,36 @@ func installGeneratedArchSIMD(set *Set, mode Mode, vectorBits int) {
 		set.d.compareInt64[CompareEQ] = simdAMD512Int64EQ
 		idInt64EQ, _ := ComparisonID(memory.TypeInt64, CompareEQ)
 		set.setCapability(idInt64EQ, capability)
+		set.d.compareUint8[CompareGT] = simdAMD512Uint8GT
+		idUint8GT, _ := ComparisonID(memory.TypeUint8, CompareGT)
+		set.setCapability(idUint8GT, capability)
+		set.d.compareUint8[CompareGE] = simdAMD512Uint8GE
+		idUint8GE, _ := ComparisonID(memory.TypeUint8, CompareGE)
+		set.setCapability(idUint8GE, capability)
+		set.d.compareUint8[CompareLT] = simdAMD512Uint8LT
+		idUint8LT, _ := ComparisonID(memory.TypeUint8, CompareLT)
+		set.setCapability(idUint8LT, capability)
+		set.d.compareUint8[CompareLE] = simdAMD512Uint8LE
+		idUint8LE, _ := ComparisonID(memory.TypeUint8, CompareLE)
+		set.setCapability(idUint8LE, capability)
+		set.d.compareUint8[CompareEQ] = simdAMD512Uint8EQ
+		idUint8EQ, _ := ComparisonID(memory.TypeUint8, CompareEQ)
+		set.setCapability(idUint8EQ, capability)
+		set.d.compareUint16[CompareGT] = simdAMD512Uint16GT
+		idUint16GT, _ := ComparisonID(memory.TypeUint16, CompareGT)
+		set.setCapability(idUint16GT, capability)
+		set.d.compareUint16[CompareGE] = simdAMD512Uint16GE
+		idUint16GE, _ := ComparisonID(memory.TypeUint16, CompareGE)
+		set.setCapability(idUint16GE, capability)
+		set.d.compareUint16[CompareLT] = simdAMD512Uint16LT
+		idUint16LT, _ := ComparisonID(memory.TypeUint16, CompareLT)
+		set.setCapability(idUint16LT, capability)
+		set.d.compareUint16[CompareLE] = simdAMD512Uint16LE
+		idUint16LE, _ := ComparisonID(memory.TypeUint16, CompareLE)
+		set.setCapability(idUint16LE, capability)
+		set.d.compareUint16[CompareEQ] = simdAMD512Uint16EQ
+		idUint16EQ, _ := ComparisonID(memory.TypeUint16, CompareEQ)
+		set.setCapability(idUint16EQ, capability)
 		set.d.compareUint32[CompareGT] = simdAMD512Uint32GT
 		idUint32GT, _ := ComparisonID(memory.TypeUint32, CompareGT)
 		set.setCapability(idUint32GT, capability)
@@ -804,6 +950,171 @@ func simdAMD128Int8EQ(values []int8, validity, out memory.Bitmap, threshold int8
 	return selected
 }
 
+func simdAMD128Int16GT(values []int16, validity, out memory.Bitmap, threshold int16) int {
+	if len(values) < 8 {
+		return scalarInt16GT(values, validity, out, threshold)
+	}
+	words := prepareComparison(len(values), out)
+	vectorThreshold := archsimd.BroadcastInt16x8(threshold)
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		rows := min(64, len(values)-base)
+		validWord := bitmapWord(validity, wi) & memory.TailMask(rows)
+		// prepareComparison cleared every logical output word, including skipped words.
+		if validWord == 0 {
+			continue
+		}
+		var word uint64
+		off := 0
+		for ; off+8 <= rows; off += 8 {
+			mask := archsimd.LoadInt16x8(values[base+off:]).Greater(vectorThreshold)
+			word |= uint64(packAMD64Mask16(uint32(mask.ToInt16x8().AsInt8x16().Less(archsimd.Int8x16{}).ToBits()))) << uint(off)
+		}
+		for ; off < rows; off++ {
+			if values[base+off] > threshold {
+				word |= uint64(1) << uint(off)
+			}
+		}
+		word &= validWord
+		out[wi] = word
+		selected += bits.OnesCount64(word)
+	}
+	return selected
+}
+
+func simdAMD128Int16GE(values []int16, validity, out memory.Bitmap, threshold int16) int {
+	if len(values) < 8 {
+		return scalarInt16GE(values, validity, out, threshold)
+	}
+	words := prepareComparison(len(values), out)
+	vectorThreshold := archsimd.BroadcastInt16x8(threshold)
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		rows := min(64, len(values)-base)
+		validWord := bitmapWord(validity, wi) & memory.TailMask(rows)
+		// prepareComparison cleared every logical output word, including skipped words.
+		if validWord == 0 {
+			continue
+		}
+		var word uint64
+		off := 0
+		for ; off+8 <= rows; off += 8 {
+			mask := archsimd.LoadInt16x8(values[base+off:]).GreaterEqual(vectorThreshold)
+			word |= uint64(packAMD64Mask16(uint32(mask.ToInt16x8().AsInt8x16().Less(archsimd.Int8x16{}).ToBits()))) << uint(off)
+		}
+		for ; off < rows; off++ {
+			if values[base+off] >= threshold {
+				word |= uint64(1) << uint(off)
+			}
+		}
+		word &= validWord
+		out[wi] = word
+		selected += bits.OnesCount64(word)
+	}
+	return selected
+}
+
+func simdAMD128Int16LT(values []int16, validity, out memory.Bitmap, threshold int16) int {
+	if len(values) < 8 {
+		return scalarInt16LT(values, validity, out, threshold)
+	}
+	words := prepareComparison(len(values), out)
+	vectorThreshold := archsimd.BroadcastInt16x8(threshold)
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		rows := min(64, len(values)-base)
+		validWord := bitmapWord(validity, wi) & memory.TailMask(rows)
+		// prepareComparison cleared every logical output word, including skipped words.
+		if validWord == 0 {
+			continue
+		}
+		var word uint64
+		off := 0
+		for ; off+8 <= rows; off += 8 {
+			mask := archsimd.LoadInt16x8(values[base+off:]).Less(vectorThreshold)
+			word |= uint64(packAMD64Mask16(uint32(mask.ToInt16x8().AsInt8x16().Less(archsimd.Int8x16{}).ToBits()))) << uint(off)
+		}
+		for ; off < rows; off++ {
+			if values[base+off] < threshold {
+				word |= uint64(1) << uint(off)
+			}
+		}
+		word &= validWord
+		out[wi] = word
+		selected += bits.OnesCount64(word)
+	}
+	return selected
+}
+
+func simdAMD128Int16LE(values []int16, validity, out memory.Bitmap, threshold int16) int {
+	if len(values) < 8 {
+		return scalarInt16LE(values, validity, out, threshold)
+	}
+	words := prepareComparison(len(values), out)
+	vectorThreshold := archsimd.BroadcastInt16x8(threshold)
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		rows := min(64, len(values)-base)
+		validWord := bitmapWord(validity, wi) & memory.TailMask(rows)
+		// prepareComparison cleared every logical output word, including skipped words.
+		if validWord == 0 {
+			continue
+		}
+		var word uint64
+		off := 0
+		for ; off+8 <= rows; off += 8 {
+			mask := archsimd.LoadInt16x8(values[base+off:]).LessEqual(vectorThreshold)
+			word |= uint64(packAMD64Mask16(uint32(mask.ToInt16x8().AsInt8x16().Less(archsimd.Int8x16{}).ToBits()))) << uint(off)
+		}
+		for ; off < rows; off++ {
+			if values[base+off] <= threshold {
+				word |= uint64(1) << uint(off)
+			}
+		}
+		word &= validWord
+		out[wi] = word
+		selected += bits.OnesCount64(word)
+	}
+	return selected
+}
+
+func simdAMD128Int16EQ(values []int16, validity, out memory.Bitmap, threshold int16) int {
+	if len(values) < 8 {
+		return scalarInt16EQ(values, validity, out, threshold)
+	}
+	words := prepareComparison(len(values), out)
+	vectorThreshold := archsimd.BroadcastInt16x8(threshold)
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		rows := min(64, len(values)-base)
+		validWord := bitmapWord(validity, wi) & memory.TailMask(rows)
+		// prepareComparison cleared every logical output word, including skipped words.
+		if validWord == 0 {
+			continue
+		}
+		var word uint64
+		off := 0
+		for ; off+8 <= rows; off += 8 {
+			mask := archsimd.LoadInt16x8(values[base+off:]).Equal(vectorThreshold)
+			word |= uint64(packAMD64Mask16(uint32(mask.ToInt16x8().AsInt8x16().Less(archsimd.Int8x16{}).ToBits()))) << uint(off)
+		}
+		for ; off < rows; off++ {
+			if values[base+off] == threshold {
+				word |= uint64(1) << uint(off)
+			}
+		}
+		word &= validWord
+		out[wi] = word
+		selected += bits.OnesCount64(word)
+	}
+	return selected
+}
+
 func simdAMD128Int32GT(values []int32, validity, out memory.Bitmap, threshold int32) int {
 	if len(values) < 4 {
 		return scalarInt32GT(values, validity, out, threshold)
@@ -1121,6 +1432,336 @@ func simdAMD128Int64EQ(values []int64, validity, out memory.Bitmap, threshold in
 		for ; off+2 <= rows; off += 2 {
 			mask := archsimd.LoadInt64x2(values[base+off:]).Equal(vectorThreshold)
 			word |= uint64(mask.ToBits()) << uint(off)
+		}
+		for ; off < rows; off++ {
+			if values[base+off] == threshold {
+				word |= uint64(1) << uint(off)
+			}
+		}
+		word &= validWord
+		out[wi] = word
+		selected += bits.OnesCount64(word)
+	}
+	return selected
+}
+
+func simdAMD128Uint8GT(values []uint8, validity, out memory.Bitmap, threshold uint8) int {
+	if len(values) < 16 {
+		return scalarUint8GT(values, validity, out, threshold)
+	}
+	words := prepareComparison(len(values), out)
+	vectorThreshold := archsimd.BroadcastUint8x16(threshold)
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		rows := min(64, len(values)-base)
+		validWord := bitmapWord(validity, wi) & memory.TailMask(rows)
+		// prepareComparison cleared every logical output word, including skipped words.
+		if validWord == 0 {
+			continue
+		}
+		var word uint64
+		off := 0
+		for ; off+16 <= rows; off += 16 {
+			mask := archsimd.LoadUint8x16(values[base+off:]).Greater(vectorThreshold)
+			word |= uint64(mask.ToBits()) << uint(off)
+		}
+		for ; off < rows; off++ {
+			if values[base+off] > threshold {
+				word |= uint64(1) << uint(off)
+			}
+		}
+		word &= validWord
+		out[wi] = word
+		selected += bits.OnesCount64(word)
+	}
+	return selected
+}
+
+func simdAMD128Uint8GE(values []uint8, validity, out memory.Bitmap, threshold uint8) int {
+	if len(values) < 16 {
+		return scalarUint8GE(values, validity, out, threshold)
+	}
+	words := prepareComparison(len(values), out)
+	vectorThreshold := archsimd.BroadcastUint8x16(threshold)
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		rows := min(64, len(values)-base)
+		validWord := bitmapWord(validity, wi) & memory.TailMask(rows)
+		// prepareComparison cleared every logical output word, including skipped words.
+		if validWord == 0 {
+			continue
+		}
+		var word uint64
+		off := 0
+		for ; off+16 <= rows; off += 16 {
+			mask := archsimd.LoadUint8x16(values[base+off:]).GreaterEqual(vectorThreshold)
+			word |= uint64(mask.ToBits()) << uint(off)
+		}
+		for ; off < rows; off++ {
+			if values[base+off] >= threshold {
+				word |= uint64(1) << uint(off)
+			}
+		}
+		word &= validWord
+		out[wi] = word
+		selected += bits.OnesCount64(word)
+	}
+	return selected
+}
+
+func simdAMD128Uint8LT(values []uint8, validity, out memory.Bitmap, threshold uint8) int {
+	if len(values) < 16 {
+		return scalarUint8LT(values, validity, out, threshold)
+	}
+	words := prepareComparison(len(values), out)
+	vectorThreshold := archsimd.BroadcastUint8x16(threshold)
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		rows := min(64, len(values)-base)
+		validWord := bitmapWord(validity, wi) & memory.TailMask(rows)
+		// prepareComparison cleared every logical output word, including skipped words.
+		if validWord == 0 {
+			continue
+		}
+		var word uint64
+		off := 0
+		for ; off+16 <= rows; off += 16 {
+			mask := archsimd.LoadUint8x16(values[base+off:]).Less(vectorThreshold)
+			word |= uint64(mask.ToBits()) << uint(off)
+		}
+		for ; off < rows; off++ {
+			if values[base+off] < threshold {
+				word |= uint64(1) << uint(off)
+			}
+		}
+		word &= validWord
+		out[wi] = word
+		selected += bits.OnesCount64(word)
+	}
+	return selected
+}
+
+func simdAMD128Uint8LE(values []uint8, validity, out memory.Bitmap, threshold uint8) int {
+	if len(values) < 16 {
+		return scalarUint8LE(values, validity, out, threshold)
+	}
+	words := prepareComparison(len(values), out)
+	vectorThreshold := archsimd.BroadcastUint8x16(threshold)
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		rows := min(64, len(values)-base)
+		validWord := bitmapWord(validity, wi) & memory.TailMask(rows)
+		// prepareComparison cleared every logical output word, including skipped words.
+		if validWord == 0 {
+			continue
+		}
+		var word uint64
+		off := 0
+		for ; off+16 <= rows; off += 16 {
+			mask := archsimd.LoadUint8x16(values[base+off:]).LessEqual(vectorThreshold)
+			word |= uint64(mask.ToBits()) << uint(off)
+		}
+		for ; off < rows; off++ {
+			if values[base+off] <= threshold {
+				word |= uint64(1) << uint(off)
+			}
+		}
+		word &= validWord
+		out[wi] = word
+		selected += bits.OnesCount64(word)
+	}
+	return selected
+}
+
+func simdAMD128Uint8EQ(values []uint8, validity, out memory.Bitmap, threshold uint8) int {
+	if len(values) < 16 {
+		return scalarUint8EQ(values, validity, out, threshold)
+	}
+	words := prepareComparison(len(values), out)
+	vectorThreshold := archsimd.BroadcastUint8x16(threshold)
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		rows := min(64, len(values)-base)
+		validWord := bitmapWord(validity, wi) & memory.TailMask(rows)
+		// prepareComparison cleared every logical output word, including skipped words.
+		if validWord == 0 {
+			continue
+		}
+		var word uint64
+		off := 0
+		for ; off+16 <= rows; off += 16 {
+			mask := archsimd.LoadUint8x16(values[base+off:]).Equal(vectorThreshold)
+			word |= uint64(mask.ToBits()) << uint(off)
+		}
+		for ; off < rows; off++ {
+			if values[base+off] == threshold {
+				word |= uint64(1) << uint(off)
+			}
+		}
+		word &= validWord
+		out[wi] = word
+		selected += bits.OnesCount64(word)
+	}
+	return selected
+}
+
+func simdAMD128Uint16GT(values []uint16, validity, out memory.Bitmap, threshold uint16) int {
+	if len(values) < 8 {
+		return scalarUint16GT(values, validity, out, threshold)
+	}
+	words := prepareComparison(len(values), out)
+	vectorThreshold := archsimd.BroadcastUint16x8(threshold)
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		rows := min(64, len(values)-base)
+		validWord := bitmapWord(validity, wi) & memory.TailMask(rows)
+		// prepareComparison cleared every logical output word, including skipped words.
+		if validWord == 0 {
+			continue
+		}
+		var word uint64
+		off := 0
+		for ; off+8 <= rows; off += 8 {
+			mask := archsimd.LoadUint16x8(values[base+off:]).Greater(vectorThreshold)
+			word |= uint64(packAMD64Mask16(uint32(mask.ToInt16x8().AsInt8x16().Less(archsimd.Int8x16{}).ToBits()))) << uint(off)
+		}
+		for ; off < rows; off++ {
+			if values[base+off] > threshold {
+				word |= uint64(1) << uint(off)
+			}
+		}
+		word &= validWord
+		out[wi] = word
+		selected += bits.OnesCount64(word)
+	}
+	return selected
+}
+
+func simdAMD128Uint16GE(values []uint16, validity, out memory.Bitmap, threshold uint16) int {
+	if len(values) < 8 {
+		return scalarUint16GE(values, validity, out, threshold)
+	}
+	words := prepareComparison(len(values), out)
+	vectorThreshold := archsimd.BroadcastUint16x8(threshold)
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		rows := min(64, len(values)-base)
+		validWord := bitmapWord(validity, wi) & memory.TailMask(rows)
+		// prepareComparison cleared every logical output word, including skipped words.
+		if validWord == 0 {
+			continue
+		}
+		var word uint64
+		off := 0
+		for ; off+8 <= rows; off += 8 {
+			mask := archsimd.LoadUint16x8(values[base+off:]).GreaterEqual(vectorThreshold)
+			word |= uint64(packAMD64Mask16(uint32(mask.ToInt16x8().AsInt8x16().Less(archsimd.Int8x16{}).ToBits()))) << uint(off)
+		}
+		for ; off < rows; off++ {
+			if values[base+off] >= threshold {
+				word |= uint64(1) << uint(off)
+			}
+		}
+		word &= validWord
+		out[wi] = word
+		selected += bits.OnesCount64(word)
+	}
+	return selected
+}
+
+func simdAMD128Uint16LT(values []uint16, validity, out memory.Bitmap, threshold uint16) int {
+	if len(values) < 8 {
+		return scalarUint16LT(values, validity, out, threshold)
+	}
+	words := prepareComparison(len(values), out)
+	vectorThreshold := archsimd.BroadcastUint16x8(threshold)
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		rows := min(64, len(values)-base)
+		validWord := bitmapWord(validity, wi) & memory.TailMask(rows)
+		// prepareComparison cleared every logical output word, including skipped words.
+		if validWord == 0 {
+			continue
+		}
+		var word uint64
+		off := 0
+		for ; off+8 <= rows; off += 8 {
+			mask := archsimd.LoadUint16x8(values[base+off:]).Less(vectorThreshold)
+			word |= uint64(packAMD64Mask16(uint32(mask.ToInt16x8().AsInt8x16().Less(archsimd.Int8x16{}).ToBits()))) << uint(off)
+		}
+		for ; off < rows; off++ {
+			if values[base+off] < threshold {
+				word |= uint64(1) << uint(off)
+			}
+		}
+		word &= validWord
+		out[wi] = word
+		selected += bits.OnesCount64(word)
+	}
+	return selected
+}
+
+func simdAMD128Uint16LE(values []uint16, validity, out memory.Bitmap, threshold uint16) int {
+	if len(values) < 8 {
+		return scalarUint16LE(values, validity, out, threshold)
+	}
+	words := prepareComparison(len(values), out)
+	vectorThreshold := archsimd.BroadcastUint16x8(threshold)
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		rows := min(64, len(values)-base)
+		validWord := bitmapWord(validity, wi) & memory.TailMask(rows)
+		// prepareComparison cleared every logical output word, including skipped words.
+		if validWord == 0 {
+			continue
+		}
+		var word uint64
+		off := 0
+		for ; off+8 <= rows; off += 8 {
+			mask := archsimd.LoadUint16x8(values[base+off:]).LessEqual(vectorThreshold)
+			word |= uint64(packAMD64Mask16(uint32(mask.ToInt16x8().AsInt8x16().Less(archsimd.Int8x16{}).ToBits()))) << uint(off)
+		}
+		for ; off < rows; off++ {
+			if values[base+off] <= threshold {
+				word |= uint64(1) << uint(off)
+			}
+		}
+		word &= validWord
+		out[wi] = word
+		selected += bits.OnesCount64(word)
+	}
+	return selected
+}
+
+func simdAMD128Uint16EQ(values []uint16, validity, out memory.Bitmap, threshold uint16) int {
+	if len(values) < 8 {
+		return scalarUint16EQ(values, validity, out, threshold)
+	}
+	words := prepareComparison(len(values), out)
+	vectorThreshold := archsimd.BroadcastUint16x8(threshold)
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		rows := min(64, len(values)-base)
+		validWord := bitmapWord(validity, wi) & memory.TailMask(rows)
+		// prepareComparison cleared every logical output word, including skipped words.
+		if validWord == 0 {
+			continue
+		}
+		var word uint64
+		off := 0
+		for ; off+8 <= rows; off += 8 {
+			mask := archsimd.LoadUint16x8(values[base+off:]).Equal(vectorThreshold)
+			word |= uint64(packAMD64Mask16(uint32(mask.ToInt16x8().AsInt8x16().Less(archsimd.Int8x16{}).ToBits()))) << uint(off)
 		}
 		for ; off < rows; off++ {
 			if values[base+off] == threshold {
@@ -2659,6 +3300,171 @@ func simdAMD256Int8EQ(values []int8, validity, out memory.Bitmap, threshold int8
 	return selected
 }
 
+func simdAMD256Int16GT(values []int16, validity, out memory.Bitmap, threshold int16) int {
+	if len(values) < 16 {
+		return scalarInt16GT(values, validity, out, threshold)
+	}
+	words := prepareComparison(len(values), out)
+	vectorThreshold := archsimd.BroadcastInt16x16(threshold)
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		rows := min(64, len(values)-base)
+		validWord := bitmapWord(validity, wi) & memory.TailMask(rows)
+		// prepareComparison cleared every logical output word, including skipped words.
+		if validWord == 0 {
+			continue
+		}
+		var word uint64
+		off := 0
+		for ; off+16 <= rows; off += 16 {
+			mask := archsimd.LoadInt16x16(values[base+off:]).Greater(vectorThreshold)
+			word |= uint64(packAMD64Mask16(uint32(mask.ToInt16x16().AsInt8x32().Less(archsimd.Int8x32{}).ToBits()))) << uint(off)
+		}
+		for ; off < rows; off++ {
+			if values[base+off] > threshold {
+				word |= uint64(1) << uint(off)
+			}
+		}
+		word &= validWord
+		out[wi] = word
+		selected += bits.OnesCount64(word)
+	}
+	return selected
+}
+
+func simdAMD256Int16GE(values []int16, validity, out memory.Bitmap, threshold int16) int {
+	if len(values) < 16 {
+		return scalarInt16GE(values, validity, out, threshold)
+	}
+	words := prepareComparison(len(values), out)
+	vectorThreshold := archsimd.BroadcastInt16x16(threshold)
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		rows := min(64, len(values)-base)
+		validWord := bitmapWord(validity, wi) & memory.TailMask(rows)
+		// prepareComparison cleared every logical output word, including skipped words.
+		if validWord == 0 {
+			continue
+		}
+		var word uint64
+		off := 0
+		for ; off+16 <= rows; off += 16 {
+			mask := archsimd.LoadInt16x16(values[base+off:]).GreaterEqual(vectorThreshold)
+			word |= uint64(packAMD64Mask16(uint32(mask.ToInt16x16().AsInt8x32().Less(archsimd.Int8x32{}).ToBits()))) << uint(off)
+		}
+		for ; off < rows; off++ {
+			if values[base+off] >= threshold {
+				word |= uint64(1) << uint(off)
+			}
+		}
+		word &= validWord
+		out[wi] = word
+		selected += bits.OnesCount64(word)
+	}
+	return selected
+}
+
+func simdAMD256Int16LT(values []int16, validity, out memory.Bitmap, threshold int16) int {
+	if len(values) < 16 {
+		return scalarInt16LT(values, validity, out, threshold)
+	}
+	words := prepareComparison(len(values), out)
+	vectorThreshold := archsimd.BroadcastInt16x16(threshold)
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		rows := min(64, len(values)-base)
+		validWord := bitmapWord(validity, wi) & memory.TailMask(rows)
+		// prepareComparison cleared every logical output word, including skipped words.
+		if validWord == 0 {
+			continue
+		}
+		var word uint64
+		off := 0
+		for ; off+16 <= rows; off += 16 {
+			mask := archsimd.LoadInt16x16(values[base+off:]).Less(vectorThreshold)
+			word |= uint64(packAMD64Mask16(uint32(mask.ToInt16x16().AsInt8x32().Less(archsimd.Int8x32{}).ToBits()))) << uint(off)
+		}
+		for ; off < rows; off++ {
+			if values[base+off] < threshold {
+				word |= uint64(1) << uint(off)
+			}
+		}
+		word &= validWord
+		out[wi] = word
+		selected += bits.OnesCount64(word)
+	}
+	return selected
+}
+
+func simdAMD256Int16LE(values []int16, validity, out memory.Bitmap, threshold int16) int {
+	if len(values) < 16 {
+		return scalarInt16LE(values, validity, out, threshold)
+	}
+	words := prepareComparison(len(values), out)
+	vectorThreshold := archsimd.BroadcastInt16x16(threshold)
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		rows := min(64, len(values)-base)
+		validWord := bitmapWord(validity, wi) & memory.TailMask(rows)
+		// prepareComparison cleared every logical output word, including skipped words.
+		if validWord == 0 {
+			continue
+		}
+		var word uint64
+		off := 0
+		for ; off+16 <= rows; off += 16 {
+			mask := archsimd.LoadInt16x16(values[base+off:]).LessEqual(vectorThreshold)
+			word |= uint64(packAMD64Mask16(uint32(mask.ToInt16x16().AsInt8x32().Less(archsimd.Int8x32{}).ToBits()))) << uint(off)
+		}
+		for ; off < rows; off++ {
+			if values[base+off] <= threshold {
+				word |= uint64(1) << uint(off)
+			}
+		}
+		word &= validWord
+		out[wi] = word
+		selected += bits.OnesCount64(word)
+	}
+	return selected
+}
+
+func simdAMD256Int16EQ(values []int16, validity, out memory.Bitmap, threshold int16) int {
+	if len(values) < 16 {
+		return scalarInt16EQ(values, validity, out, threshold)
+	}
+	words := prepareComparison(len(values), out)
+	vectorThreshold := archsimd.BroadcastInt16x16(threshold)
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		rows := min(64, len(values)-base)
+		validWord := bitmapWord(validity, wi) & memory.TailMask(rows)
+		// prepareComparison cleared every logical output word, including skipped words.
+		if validWord == 0 {
+			continue
+		}
+		var word uint64
+		off := 0
+		for ; off+16 <= rows; off += 16 {
+			mask := archsimd.LoadInt16x16(values[base+off:]).Equal(vectorThreshold)
+			word |= uint64(packAMD64Mask16(uint32(mask.ToInt16x16().AsInt8x32().Less(archsimd.Int8x32{}).ToBits()))) << uint(off)
+		}
+		for ; off < rows; off++ {
+			if values[base+off] == threshold {
+				word |= uint64(1) << uint(off)
+			}
+		}
+		word &= validWord
+		out[wi] = word
+		selected += bits.OnesCount64(word)
+	}
+	return selected
+}
+
 func simdAMD256Int32GT(values []int32, validity, out memory.Bitmap, threshold int32) int {
 	if len(values) < 8 {
 		return scalarInt32GT(values, validity, out, threshold)
@@ -2976,6 +3782,336 @@ func simdAMD256Int64EQ(values []int64, validity, out memory.Bitmap, threshold in
 		for ; off+4 <= rows; off += 4 {
 			mask := archsimd.LoadInt64x4(values[base+off:]).Equal(vectorThreshold)
 			word |= uint64(mask.ToBits()) << uint(off)
+		}
+		for ; off < rows; off++ {
+			if values[base+off] == threshold {
+				word |= uint64(1) << uint(off)
+			}
+		}
+		word &= validWord
+		out[wi] = word
+		selected += bits.OnesCount64(word)
+	}
+	return selected
+}
+
+func simdAMD256Uint8GT(values []uint8, validity, out memory.Bitmap, threshold uint8) int {
+	if len(values) < 32 {
+		return scalarUint8GT(values, validity, out, threshold)
+	}
+	words := prepareComparison(len(values), out)
+	vectorThreshold := archsimd.BroadcastUint8x32(threshold)
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		rows := min(64, len(values)-base)
+		validWord := bitmapWord(validity, wi) & memory.TailMask(rows)
+		// prepareComparison cleared every logical output word, including skipped words.
+		if validWord == 0 {
+			continue
+		}
+		var word uint64
+		off := 0
+		for ; off+32 <= rows; off += 32 {
+			mask := archsimd.LoadUint8x32(values[base+off:]).Greater(vectorThreshold)
+			word |= uint64(mask.ToBits()) << uint(off)
+		}
+		for ; off < rows; off++ {
+			if values[base+off] > threshold {
+				word |= uint64(1) << uint(off)
+			}
+		}
+		word &= validWord
+		out[wi] = word
+		selected += bits.OnesCount64(word)
+	}
+	return selected
+}
+
+func simdAMD256Uint8GE(values []uint8, validity, out memory.Bitmap, threshold uint8) int {
+	if len(values) < 32 {
+		return scalarUint8GE(values, validity, out, threshold)
+	}
+	words := prepareComparison(len(values), out)
+	vectorThreshold := archsimd.BroadcastUint8x32(threshold)
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		rows := min(64, len(values)-base)
+		validWord := bitmapWord(validity, wi) & memory.TailMask(rows)
+		// prepareComparison cleared every logical output word, including skipped words.
+		if validWord == 0 {
+			continue
+		}
+		var word uint64
+		off := 0
+		for ; off+32 <= rows; off += 32 {
+			mask := archsimd.LoadUint8x32(values[base+off:]).GreaterEqual(vectorThreshold)
+			word |= uint64(mask.ToBits()) << uint(off)
+		}
+		for ; off < rows; off++ {
+			if values[base+off] >= threshold {
+				word |= uint64(1) << uint(off)
+			}
+		}
+		word &= validWord
+		out[wi] = word
+		selected += bits.OnesCount64(word)
+	}
+	return selected
+}
+
+func simdAMD256Uint8LT(values []uint8, validity, out memory.Bitmap, threshold uint8) int {
+	if len(values) < 32 {
+		return scalarUint8LT(values, validity, out, threshold)
+	}
+	words := prepareComparison(len(values), out)
+	vectorThreshold := archsimd.BroadcastUint8x32(threshold)
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		rows := min(64, len(values)-base)
+		validWord := bitmapWord(validity, wi) & memory.TailMask(rows)
+		// prepareComparison cleared every logical output word, including skipped words.
+		if validWord == 0 {
+			continue
+		}
+		var word uint64
+		off := 0
+		for ; off+32 <= rows; off += 32 {
+			mask := archsimd.LoadUint8x32(values[base+off:]).Less(vectorThreshold)
+			word |= uint64(mask.ToBits()) << uint(off)
+		}
+		for ; off < rows; off++ {
+			if values[base+off] < threshold {
+				word |= uint64(1) << uint(off)
+			}
+		}
+		word &= validWord
+		out[wi] = word
+		selected += bits.OnesCount64(word)
+	}
+	return selected
+}
+
+func simdAMD256Uint8LE(values []uint8, validity, out memory.Bitmap, threshold uint8) int {
+	if len(values) < 32 {
+		return scalarUint8LE(values, validity, out, threshold)
+	}
+	words := prepareComparison(len(values), out)
+	vectorThreshold := archsimd.BroadcastUint8x32(threshold)
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		rows := min(64, len(values)-base)
+		validWord := bitmapWord(validity, wi) & memory.TailMask(rows)
+		// prepareComparison cleared every logical output word, including skipped words.
+		if validWord == 0 {
+			continue
+		}
+		var word uint64
+		off := 0
+		for ; off+32 <= rows; off += 32 {
+			mask := archsimd.LoadUint8x32(values[base+off:]).LessEqual(vectorThreshold)
+			word |= uint64(mask.ToBits()) << uint(off)
+		}
+		for ; off < rows; off++ {
+			if values[base+off] <= threshold {
+				word |= uint64(1) << uint(off)
+			}
+		}
+		word &= validWord
+		out[wi] = word
+		selected += bits.OnesCount64(word)
+	}
+	return selected
+}
+
+func simdAMD256Uint8EQ(values []uint8, validity, out memory.Bitmap, threshold uint8) int {
+	if len(values) < 32 {
+		return scalarUint8EQ(values, validity, out, threshold)
+	}
+	words := prepareComparison(len(values), out)
+	vectorThreshold := archsimd.BroadcastUint8x32(threshold)
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		rows := min(64, len(values)-base)
+		validWord := bitmapWord(validity, wi) & memory.TailMask(rows)
+		// prepareComparison cleared every logical output word, including skipped words.
+		if validWord == 0 {
+			continue
+		}
+		var word uint64
+		off := 0
+		for ; off+32 <= rows; off += 32 {
+			mask := archsimd.LoadUint8x32(values[base+off:]).Equal(vectorThreshold)
+			word |= uint64(mask.ToBits()) << uint(off)
+		}
+		for ; off < rows; off++ {
+			if values[base+off] == threshold {
+				word |= uint64(1) << uint(off)
+			}
+		}
+		word &= validWord
+		out[wi] = word
+		selected += bits.OnesCount64(word)
+	}
+	return selected
+}
+
+func simdAMD256Uint16GT(values []uint16, validity, out memory.Bitmap, threshold uint16) int {
+	if len(values) < 16 {
+		return scalarUint16GT(values, validity, out, threshold)
+	}
+	words := prepareComparison(len(values), out)
+	vectorThreshold := archsimd.BroadcastUint16x16(threshold)
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		rows := min(64, len(values)-base)
+		validWord := bitmapWord(validity, wi) & memory.TailMask(rows)
+		// prepareComparison cleared every logical output word, including skipped words.
+		if validWord == 0 {
+			continue
+		}
+		var word uint64
+		off := 0
+		for ; off+16 <= rows; off += 16 {
+			mask := archsimd.LoadUint16x16(values[base+off:]).Greater(vectorThreshold)
+			word |= uint64(packAMD64Mask16(uint32(mask.ToInt16x16().AsInt8x32().Less(archsimd.Int8x32{}).ToBits()))) << uint(off)
+		}
+		for ; off < rows; off++ {
+			if values[base+off] > threshold {
+				word |= uint64(1) << uint(off)
+			}
+		}
+		word &= validWord
+		out[wi] = word
+		selected += bits.OnesCount64(word)
+	}
+	return selected
+}
+
+func simdAMD256Uint16GE(values []uint16, validity, out memory.Bitmap, threshold uint16) int {
+	if len(values) < 16 {
+		return scalarUint16GE(values, validity, out, threshold)
+	}
+	words := prepareComparison(len(values), out)
+	vectorThreshold := archsimd.BroadcastUint16x16(threshold)
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		rows := min(64, len(values)-base)
+		validWord := bitmapWord(validity, wi) & memory.TailMask(rows)
+		// prepareComparison cleared every logical output word, including skipped words.
+		if validWord == 0 {
+			continue
+		}
+		var word uint64
+		off := 0
+		for ; off+16 <= rows; off += 16 {
+			mask := archsimd.LoadUint16x16(values[base+off:]).GreaterEqual(vectorThreshold)
+			word |= uint64(packAMD64Mask16(uint32(mask.ToInt16x16().AsInt8x32().Less(archsimd.Int8x32{}).ToBits()))) << uint(off)
+		}
+		for ; off < rows; off++ {
+			if values[base+off] >= threshold {
+				word |= uint64(1) << uint(off)
+			}
+		}
+		word &= validWord
+		out[wi] = word
+		selected += bits.OnesCount64(word)
+	}
+	return selected
+}
+
+func simdAMD256Uint16LT(values []uint16, validity, out memory.Bitmap, threshold uint16) int {
+	if len(values) < 16 {
+		return scalarUint16LT(values, validity, out, threshold)
+	}
+	words := prepareComparison(len(values), out)
+	vectorThreshold := archsimd.BroadcastUint16x16(threshold)
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		rows := min(64, len(values)-base)
+		validWord := bitmapWord(validity, wi) & memory.TailMask(rows)
+		// prepareComparison cleared every logical output word, including skipped words.
+		if validWord == 0 {
+			continue
+		}
+		var word uint64
+		off := 0
+		for ; off+16 <= rows; off += 16 {
+			mask := archsimd.LoadUint16x16(values[base+off:]).Less(vectorThreshold)
+			word |= uint64(packAMD64Mask16(uint32(mask.ToInt16x16().AsInt8x32().Less(archsimd.Int8x32{}).ToBits()))) << uint(off)
+		}
+		for ; off < rows; off++ {
+			if values[base+off] < threshold {
+				word |= uint64(1) << uint(off)
+			}
+		}
+		word &= validWord
+		out[wi] = word
+		selected += bits.OnesCount64(word)
+	}
+	return selected
+}
+
+func simdAMD256Uint16LE(values []uint16, validity, out memory.Bitmap, threshold uint16) int {
+	if len(values) < 16 {
+		return scalarUint16LE(values, validity, out, threshold)
+	}
+	words := prepareComparison(len(values), out)
+	vectorThreshold := archsimd.BroadcastUint16x16(threshold)
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		rows := min(64, len(values)-base)
+		validWord := bitmapWord(validity, wi) & memory.TailMask(rows)
+		// prepareComparison cleared every logical output word, including skipped words.
+		if validWord == 0 {
+			continue
+		}
+		var word uint64
+		off := 0
+		for ; off+16 <= rows; off += 16 {
+			mask := archsimd.LoadUint16x16(values[base+off:]).LessEqual(vectorThreshold)
+			word |= uint64(packAMD64Mask16(uint32(mask.ToInt16x16().AsInt8x32().Less(archsimd.Int8x32{}).ToBits()))) << uint(off)
+		}
+		for ; off < rows; off++ {
+			if values[base+off] <= threshold {
+				word |= uint64(1) << uint(off)
+			}
+		}
+		word &= validWord
+		out[wi] = word
+		selected += bits.OnesCount64(word)
+	}
+	return selected
+}
+
+func simdAMD256Uint16EQ(values []uint16, validity, out memory.Bitmap, threshold uint16) int {
+	if len(values) < 16 {
+		return scalarUint16EQ(values, validity, out, threshold)
+	}
+	words := prepareComparison(len(values), out)
+	vectorThreshold := archsimd.BroadcastUint16x16(threshold)
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		rows := min(64, len(values)-base)
+		validWord := bitmapWord(validity, wi) & memory.TailMask(rows)
+		// prepareComparison cleared every logical output word, including skipped words.
+		if validWord == 0 {
+			continue
+		}
+		var word uint64
+		off := 0
+		for ; off+16 <= rows; off += 16 {
+			mask := archsimd.LoadUint16x16(values[base+off:]).Equal(vectorThreshold)
+			word |= uint64(packAMD64Mask16(uint32(mask.ToInt16x16().AsInt8x32().Less(archsimd.Int8x32{}).ToBits()))) << uint(off)
 		}
 		for ; off < rows; off++ {
 			if values[base+off] == threshold {
@@ -4514,6 +5650,171 @@ func simdAMD512Int8EQ(values []int8, validity, out memory.Bitmap, threshold int8
 	return selected
 }
 
+func simdAMD512Int16GT(values []int16, validity, out memory.Bitmap, threshold int16) int {
+	if len(values) < 32 {
+		return scalarInt16GT(values, validity, out, threshold)
+	}
+	words := prepareComparison(len(values), out)
+	vectorThreshold := archsimd.BroadcastInt16x32(threshold)
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		rows := min(64, len(values)-base)
+		validWord := bitmapWord(validity, wi) & memory.TailMask(rows)
+		// prepareComparison cleared every logical output word, including skipped words.
+		if validWord == 0 {
+			continue
+		}
+		var word uint64
+		off := 0
+		for ; off+32 <= rows; off += 32 {
+			mask := archsimd.LoadInt16x32(values[base+off:]).Greater(vectorThreshold)
+			word |= uint64(mask.ToBits()) << uint(off)
+		}
+		for ; off < rows; off++ {
+			if values[base+off] > threshold {
+				word |= uint64(1) << uint(off)
+			}
+		}
+		word &= validWord
+		out[wi] = word
+		selected += bits.OnesCount64(word)
+	}
+	return selected
+}
+
+func simdAMD512Int16GE(values []int16, validity, out memory.Bitmap, threshold int16) int {
+	if len(values) < 32 {
+		return scalarInt16GE(values, validity, out, threshold)
+	}
+	words := prepareComparison(len(values), out)
+	vectorThreshold := archsimd.BroadcastInt16x32(threshold)
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		rows := min(64, len(values)-base)
+		validWord := bitmapWord(validity, wi) & memory.TailMask(rows)
+		// prepareComparison cleared every logical output word, including skipped words.
+		if validWord == 0 {
+			continue
+		}
+		var word uint64
+		off := 0
+		for ; off+32 <= rows; off += 32 {
+			mask := archsimd.LoadInt16x32(values[base+off:]).GreaterEqual(vectorThreshold)
+			word |= uint64(mask.ToBits()) << uint(off)
+		}
+		for ; off < rows; off++ {
+			if values[base+off] >= threshold {
+				word |= uint64(1) << uint(off)
+			}
+		}
+		word &= validWord
+		out[wi] = word
+		selected += bits.OnesCount64(word)
+	}
+	return selected
+}
+
+func simdAMD512Int16LT(values []int16, validity, out memory.Bitmap, threshold int16) int {
+	if len(values) < 32 {
+		return scalarInt16LT(values, validity, out, threshold)
+	}
+	words := prepareComparison(len(values), out)
+	vectorThreshold := archsimd.BroadcastInt16x32(threshold)
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		rows := min(64, len(values)-base)
+		validWord := bitmapWord(validity, wi) & memory.TailMask(rows)
+		// prepareComparison cleared every logical output word, including skipped words.
+		if validWord == 0 {
+			continue
+		}
+		var word uint64
+		off := 0
+		for ; off+32 <= rows; off += 32 {
+			mask := archsimd.LoadInt16x32(values[base+off:]).Less(vectorThreshold)
+			word |= uint64(mask.ToBits()) << uint(off)
+		}
+		for ; off < rows; off++ {
+			if values[base+off] < threshold {
+				word |= uint64(1) << uint(off)
+			}
+		}
+		word &= validWord
+		out[wi] = word
+		selected += bits.OnesCount64(word)
+	}
+	return selected
+}
+
+func simdAMD512Int16LE(values []int16, validity, out memory.Bitmap, threshold int16) int {
+	if len(values) < 32 {
+		return scalarInt16LE(values, validity, out, threshold)
+	}
+	words := prepareComparison(len(values), out)
+	vectorThreshold := archsimd.BroadcastInt16x32(threshold)
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		rows := min(64, len(values)-base)
+		validWord := bitmapWord(validity, wi) & memory.TailMask(rows)
+		// prepareComparison cleared every logical output word, including skipped words.
+		if validWord == 0 {
+			continue
+		}
+		var word uint64
+		off := 0
+		for ; off+32 <= rows; off += 32 {
+			mask := archsimd.LoadInt16x32(values[base+off:]).LessEqual(vectorThreshold)
+			word |= uint64(mask.ToBits()) << uint(off)
+		}
+		for ; off < rows; off++ {
+			if values[base+off] <= threshold {
+				word |= uint64(1) << uint(off)
+			}
+		}
+		word &= validWord
+		out[wi] = word
+		selected += bits.OnesCount64(word)
+	}
+	return selected
+}
+
+func simdAMD512Int16EQ(values []int16, validity, out memory.Bitmap, threshold int16) int {
+	if len(values) < 32 {
+		return scalarInt16EQ(values, validity, out, threshold)
+	}
+	words := prepareComparison(len(values), out)
+	vectorThreshold := archsimd.BroadcastInt16x32(threshold)
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		rows := min(64, len(values)-base)
+		validWord := bitmapWord(validity, wi) & memory.TailMask(rows)
+		// prepareComparison cleared every logical output word, including skipped words.
+		if validWord == 0 {
+			continue
+		}
+		var word uint64
+		off := 0
+		for ; off+32 <= rows; off += 32 {
+			mask := archsimd.LoadInt16x32(values[base+off:]).Equal(vectorThreshold)
+			word |= uint64(mask.ToBits()) << uint(off)
+		}
+		for ; off < rows; off++ {
+			if values[base+off] == threshold {
+				word |= uint64(1) << uint(off)
+			}
+		}
+		word &= validWord
+		out[wi] = word
+		selected += bits.OnesCount64(word)
+	}
+	return selected
+}
+
 func simdAMD512Int32GT(values []int32, validity, out memory.Bitmap, threshold int32) int {
 	if len(values) < 16 {
 		return scalarInt32GT(values, validity, out, threshold)
@@ -4830,6 +6131,336 @@ func simdAMD512Int64EQ(values []int64, validity, out memory.Bitmap, threshold in
 		off := 0
 		for ; off+8 <= rows; off += 8 {
 			mask := archsimd.LoadInt64x8(values[base+off:]).Equal(vectorThreshold)
+			word |= uint64(mask.ToBits()) << uint(off)
+		}
+		for ; off < rows; off++ {
+			if values[base+off] == threshold {
+				word |= uint64(1) << uint(off)
+			}
+		}
+		word &= validWord
+		out[wi] = word
+		selected += bits.OnesCount64(word)
+	}
+	return selected
+}
+
+func simdAMD512Uint8GT(values []uint8, validity, out memory.Bitmap, threshold uint8) int {
+	if len(values) < 64 {
+		return scalarUint8GT(values, validity, out, threshold)
+	}
+	words := prepareComparison(len(values), out)
+	vectorThreshold := archsimd.BroadcastUint8x64(threshold)
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		rows := min(64, len(values)-base)
+		validWord := bitmapWord(validity, wi) & memory.TailMask(rows)
+		// prepareComparison cleared every logical output word, including skipped words.
+		if validWord == 0 {
+			continue
+		}
+		var word uint64
+		off := 0
+		for ; off+64 <= rows; off += 64 {
+			mask := archsimd.LoadUint8x64(values[base+off:]).Greater(vectorThreshold)
+			word |= uint64(mask.ToBits()) << uint(off)
+		}
+		for ; off < rows; off++ {
+			if values[base+off] > threshold {
+				word |= uint64(1) << uint(off)
+			}
+		}
+		word &= validWord
+		out[wi] = word
+		selected += bits.OnesCount64(word)
+	}
+	return selected
+}
+
+func simdAMD512Uint8GE(values []uint8, validity, out memory.Bitmap, threshold uint8) int {
+	if len(values) < 64 {
+		return scalarUint8GE(values, validity, out, threshold)
+	}
+	words := prepareComparison(len(values), out)
+	vectorThreshold := archsimd.BroadcastUint8x64(threshold)
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		rows := min(64, len(values)-base)
+		validWord := bitmapWord(validity, wi) & memory.TailMask(rows)
+		// prepareComparison cleared every logical output word, including skipped words.
+		if validWord == 0 {
+			continue
+		}
+		var word uint64
+		off := 0
+		for ; off+64 <= rows; off += 64 {
+			mask := archsimd.LoadUint8x64(values[base+off:]).GreaterEqual(vectorThreshold)
+			word |= uint64(mask.ToBits()) << uint(off)
+		}
+		for ; off < rows; off++ {
+			if values[base+off] >= threshold {
+				word |= uint64(1) << uint(off)
+			}
+		}
+		word &= validWord
+		out[wi] = word
+		selected += bits.OnesCount64(word)
+	}
+	return selected
+}
+
+func simdAMD512Uint8LT(values []uint8, validity, out memory.Bitmap, threshold uint8) int {
+	if len(values) < 64 {
+		return scalarUint8LT(values, validity, out, threshold)
+	}
+	words := prepareComparison(len(values), out)
+	vectorThreshold := archsimd.BroadcastUint8x64(threshold)
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		rows := min(64, len(values)-base)
+		validWord := bitmapWord(validity, wi) & memory.TailMask(rows)
+		// prepareComparison cleared every logical output word, including skipped words.
+		if validWord == 0 {
+			continue
+		}
+		var word uint64
+		off := 0
+		for ; off+64 <= rows; off += 64 {
+			mask := archsimd.LoadUint8x64(values[base+off:]).Less(vectorThreshold)
+			word |= uint64(mask.ToBits()) << uint(off)
+		}
+		for ; off < rows; off++ {
+			if values[base+off] < threshold {
+				word |= uint64(1) << uint(off)
+			}
+		}
+		word &= validWord
+		out[wi] = word
+		selected += bits.OnesCount64(word)
+	}
+	return selected
+}
+
+func simdAMD512Uint8LE(values []uint8, validity, out memory.Bitmap, threshold uint8) int {
+	if len(values) < 64 {
+		return scalarUint8LE(values, validity, out, threshold)
+	}
+	words := prepareComparison(len(values), out)
+	vectorThreshold := archsimd.BroadcastUint8x64(threshold)
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		rows := min(64, len(values)-base)
+		validWord := bitmapWord(validity, wi) & memory.TailMask(rows)
+		// prepareComparison cleared every logical output word, including skipped words.
+		if validWord == 0 {
+			continue
+		}
+		var word uint64
+		off := 0
+		for ; off+64 <= rows; off += 64 {
+			mask := archsimd.LoadUint8x64(values[base+off:]).LessEqual(vectorThreshold)
+			word |= uint64(mask.ToBits()) << uint(off)
+		}
+		for ; off < rows; off++ {
+			if values[base+off] <= threshold {
+				word |= uint64(1) << uint(off)
+			}
+		}
+		word &= validWord
+		out[wi] = word
+		selected += bits.OnesCount64(word)
+	}
+	return selected
+}
+
+func simdAMD512Uint8EQ(values []uint8, validity, out memory.Bitmap, threshold uint8) int {
+	if len(values) < 64 {
+		return scalarUint8EQ(values, validity, out, threshold)
+	}
+	words := prepareComparison(len(values), out)
+	vectorThreshold := archsimd.BroadcastUint8x64(threshold)
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		rows := min(64, len(values)-base)
+		validWord := bitmapWord(validity, wi) & memory.TailMask(rows)
+		// prepareComparison cleared every logical output word, including skipped words.
+		if validWord == 0 {
+			continue
+		}
+		var word uint64
+		off := 0
+		for ; off+64 <= rows; off += 64 {
+			mask := archsimd.LoadUint8x64(values[base+off:]).Equal(vectorThreshold)
+			word |= uint64(mask.ToBits()) << uint(off)
+		}
+		for ; off < rows; off++ {
+			if values[base+off] == threshold {
+				word |= uint64(1) << uint(off)
+			}
+		}
+		word &= validWord
+		out[wi] = word
+		selected += bits.OnesCount64(word)
+	}
+	return selected
+}
+
+func simdAMD512Uint16GT(values []uint16, validity, out memory.Bitmap, threshold uint16) int {
+	if len(values) < 32 {
+		return scalarUint16GT(values, validity, out, threshold)
+	}
+	words := prepareComparison(len(values), out)
+	vectorThreshold := archsimd.BroadcastUint16x32(threshold)
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		rows := min(64, len(values)-base)
+		validWord := bitmapWord(validity, wi) & memory.TailMask(rows)
+		// prepareComparison cleared every logical output word, including skipped words.
+		if validWord == 0 {
+			continue
+		}
+		var word uint64
+		off := 0
+		for ; off+32 <= rows; off += 32 {
+			mask := archsimd.LoadUint16x32(values[base+off:]).Greater(vectorThreshold)
+			word |= uint64(mask.ToBits()) << uint(off)
+		}
+		for ; off < rows; off++ {
+			if values[base+off] > threshold {
+				word |= uint64(1) << uint(off)
+			}
+		}
+		word &= validWord
+		out[wi] = word
+		selected += bits.OnesCount64(word)
+	}
+	return selected
+}
+
+func simdAMD512Uint16GE(values []uint16, validity, out memory.Bitmap, threshold uint16) int {
+	if len(values) < 32 {
+		return scalarUint16GE(values, validity, out, threshold)
+	}
+	words := prepareComparison(len(values), out)
+	vectorThreshold := archsimd.BroadcastUint16x32(threshold)
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		rows := min(64, len(values)-base)
+		validWord := bitmapWord(validity, wi) & memory.TailMask(rows)
+		// prepareComparison cleared every logical output word, including skipped words.
+		if validWord == 0 {
+			continue
+		}
+		var word uint64
+		off := 0
+		for ; off+32 <= rows; off += 32 {
+			mask := archsimd.LoadUint16x32(values[base+off:]).GreaterEqual(vectorThreshold)
+			word |= uint64(mask.ToBits()) << uint(off)
+		}
+		for ; off < rows; off++ {
+			if values[base+off] >= threshold {
+				word |= uint64(1) << uint(off)
+			}
+		}
+		word &= validWord
+		out[wi] = word
+		selected += bits.OnesCount64(word)
+	}
+	return selected
+}
+
+func simdAMD512Uint16LT(values []uint16, validity, out memory.Bitmap, threshold uint16) int {
+	if len(values) < 32 {
+		return scalarUint16LT(values, validity, out, threshold)
+	}
+	words := prepareComparison(len(values), out)
+	vectorThreshold := archsimd.BroadcastUint16x32(threshold)
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		rows := min(64, len(values)-base)
+		validWord := bitmapWord(validity, wi) & memory.TailMask(rows)
+		// prepareComparison cleared every logical output word, including skipped words.
+		if validWord == 0 {
+			continue
+		}
+		var word uint64
+		off := 0
+		for ; off+32 <= rows; off += 32 {
+			mask := archsimd.LoadUint16x32(values[base+off:]).Less(vectorThreshold)
+			word |= uint64(mask.ToBits()) << uint(off)
+		}
+		for ; off < rows; off++ {
+			if values[base+off] < threshold {
+				word |= uint64(1) << uint(off)
+			}
+		}
+		word &= validWord
+		out[wi] = word
+		selected += bits.OnesCount64(word)
+	}
+	return selected
+}
+
+func simdAMD512Uint16LE(values []uint16, validity, out memory.Bitmap, threshold uint16) int {
+	if len(values) < 32 {
+		return scalarUint16LE(values, validity, out, threshold)
+	}
+	words := prepareComparison(len(values), out)
+	vectorThreshold := archsimd.BroadcastUint16x32(threshold)
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		rows := min(64, len(values)-base)
+		validWord := bitmapWord(validity, wi) & memory.TailMask(rows)
+		// prepareComparison cleared every logical output word, including skipped words.
+		if validWord == 0 {
+			continue
+		}
+		var word uint64
+		off := 0
+		for ; off+32 <= rows; off += 32 {
+			mask := archsimd.LoadUint16x32(values[base+off:]).LessEqual(vectorThreshold)
+			word |= uint64(mask.ToBits()) << uint(off)
+		}
+		for ; off < rows; off++ {
+			if values[base+off] <= threshold {
+				word |= uint64(1) << uint(off)
+			}
+		}
+		word &= validWord
+		out[wi] = word
+		selected += bits.OnesCount64(word)
+	}
+	return selected
+}
+
+func simdAMD512Uint16EQ(values []uint16, validity, out memory.Bitmap, threshold uint16) int {
+	if len(values) < 32 {
+		return scalarUint16EQ(values, validity, out, threshold)
+	}
+	words := prepareComparison(len(values), out)
+	vectorThreshold := archsimd.BroadcastUint16x32(threshold)
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		rows := min(64, len(values)-base)
+		validWord := bitmapWord(validity, wi) & memory.TailMask(rows)
+		// prepareComparison cleared every logical output word, including skipped words.
+		if validWord == 0 {
+			continue
+		}
+		var word uint64
+		off := 0
+		for ; off+32 <= rows; off += 32 {
+			mask := archsimd.LoadUint16x32(values[base+off:]).Equal(vectorThreshold)
 			word |= uint64(mask.ToBits()) << uint(off)
 		}
 		for ; off < rows; off++ {

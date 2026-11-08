@@ -11,7 +11,7 @@ import (
 )
 
 type literalNumber interface {
-	~int8 | ~int32 | ~int64 | ~uint32 | ~uint64
+	~int8 | ~int16 | ~int32 | ~int64 | ~uint8 | ~uint16 | ~uint32 | ~uint64
 }
 type literalCompare[T literalNumber] func([]T, memory.Bitmap, memory.Bitmap, T, CompareOp) int
 
@@ -43,7 +43,8 @@ func checkNumericLiterals[T literalNumber](t *testing.T, edge []T, compare func(
 		lengths = append(lengths, n)
 	}
 	for _, n := range lengths {
-		v := make([]T, n)
+		storage := make([]T, n+3)
+		v := storage[3:] // Exercise unaligned slices without copying or widening.
 		for i := range v {
 			if i < len(edge)*len(edge) {
 				v[i] = edge[i%len(edge)]
@@ -93,6 +94,15 @@ func TestNativeIntegerLiteralComparisons(t *testing.T) {
 	t.Run("int8", func(t *testing.T) {
 		checkNumericLiterals(t, []int8{-128, -127, -1, 0, 1, 126, 127}, func(s Set) literalCompare[int8] { return s.CompareInt8 })
 	})
+	t.Run("int16", func(t *testing.T) {
+		checkNumericLiterals(t, []int16{math.MinInt16, math.MinInt16 + 1, -1, 0, 1, math.MaxInt16 - 1, math.MaxInt16}, func(s Set) literalCompare[int16] { return s.CompareInt16 })
+	})
+	t.Run("uint8", func(t *testing.T) {
+		checkNumericLiterals(t, []uint8{0, 1, 127, 128, 254, 255}, func(s Set) literalCompare[uint8] { return s.CompareUint8 })
+	})
+	t.Run("uint16", func(t *testing.T) {
+		checkNumericLiterals(t, []uint16{0, 1, 32767, 32768, 65534, 65535}, func(s Set) literalCompare[uint16] { return s.CompareUint16 })
+	})
 	t.Run("int32", func(t *testing.T) {
 		checkNumericLiterals(t, []int32{math.MinInt32, -1, 0, 1, math.MaxInt32}, func(s Set) literalCompare[int32] { return s.CompareInt32 })
 	})
@@ -141,6 +151,15 @@ func benchmarkNumericLiteral[T literalNumber](b *testing.B, selectCompare func(S
 func BenchmarkNativeNumericLiteral(b *testing.B) {
 	b.Run("int8", func(b *testing.B) {
 		benchmarkNumericLiteral(b, func(s Set) literalCompare[int8] { return s.CompareInt8 })
+	})
+	b.Run("int16", func(b *testing.B) {
+		benchmarkNumericLiteral(b, func(s Set) literalCompare[int16] { return s.CompareInt16 })
+	})
+	b.Run("uint8", func(b *testing.B) {
+		benchmarkNumericLiteral(b, func(s Set) literalCompare[uint8] { return s.CompareUint8 })
+	})
+	b.Run("uint16", func(b *testing.B) {
+		benchmarkNumericLiteral(b, func(s Set) literalCompare[uint16] { return s.CompareUint16 })
 	})
 	b.Run("int32", func(b *testing.B) {
 		benchmarkNumericLiteral(b, func(s Set) literalCompare[int32] { return s.CompareInt32 })

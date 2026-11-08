@@ -4,7 +4,6 @@ package kernel
 
 import (
 	"gocolumn/memory"
-	"simd"
 	"testing"
 )
 
@@ -17,7 +16,7 @@ func TestMathNativeSIMDCapability(t *testing.T) {
 				if !ok {
 					t.Fatal(id)
 				}
-				if simd.Emulated() {
+				if !expectedNativeSIMD() {
 					if cap.HardwareSIMD {
 						t.Fatalf("emulated runtime claims hardware %s", id)
 					}

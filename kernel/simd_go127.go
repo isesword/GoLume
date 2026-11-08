@@ -5,7 +5,7 @@ package kernel
 import "simd"
 
 func installSIMD(set *Set, mode Mode) {
-	if mode == ModeScalar || simd.Emulated() {
+	if mode == ModeScalar || !nativeSIMDAvailable() {
 		return
 	}
 	vectorBits := simd.Int64s{}.Len() * 64
@@ -19,3 +19,7 @@ func installSIMD(set *Set, mode Mode) {
 	// Native overrides must follow every portable installer.
 	installGeneratedArchSIMD(set, mode, vectorBits)
 }
+
+// The current experimental amd64 lowering uses AVX2 scalar broadcasts even at
+// 128 bits. Runtime width selection alone is not a sufficient hardware guard.
+func nativeSIMDAvailable() bool { return !simd.Emulated() && archSIMDSupported() }

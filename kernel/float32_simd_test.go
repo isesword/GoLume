@@ -4,12 +4,11 @@ package kernel
 
 import (
 	"gocolumn/memory"
-	"simd"
 	"testing"
 )
 
 func TestFloat32ForcedSIMDRegistrationAndDifferential(t *testing.T) {
-	if simd.Emulated() {
+	if !expectedNativeSIMD() {
 		t.Skip("Go SIMD is emulated on this host")
 	}
 	set := New(ModeSIMD)
@@ -32,7 +31,7 @@ func TestFloat32ForcedSIMDRegistrationAndDifferential(t *testing.T) {
 }
 
 func TestFloat32ArithmeticHasHonestNativeCapability(t *testing.T) {
-	if simd.Emulated() {
+	if !expectedNativeSIMD() {
 		t.Skip("Go SIMD is emulated on this host")
 	}
 	set := New(ModeSIMD)

@@ -14,6 +14,11 @@ func installGeneratedScalar(d *dispatch) {
 	d.compareInt8[CompareLT] = scalarInt8LT
 	d.compareInt8[CompareLE] = scalarInt8LE
 	d.compareInt8[CompareEQ] = scalarInt8EQ
+	d.compareInt16[CompareGT] = scalarInt16GT
+	d.compareInt16[CompareGE] = scalarInt16GE
+	d.compareInt16[CompareLT] = scalarInt16LT
+	d.compareInt16[CompareLE] = scalarInt16LE
+	d.compareInt16[CompareEQ] = scalarInt16EQ
 	d.compareInt32[CompareGT] = scalarInt32GT
 	d.compareInt32[CompareGE] = scalarInt32GE
 	d.compareInt32[CompareLT] = scalarInt32LT
@@ -24,6 +29,16 @@ func installGeneratedScalar(d *dispatch) {
 	d.compareInt64[CompareLT] = scalarInt64LT
 	d.compareInt64[CompareLE] = scalarInt64LE
 	d.compareInt64[CompareEQ] = scalarInt64EQ
+	d.compareUint8[CompareGT] = scalarUint8GT
+	d.compareUint8[CompareGE] = scalarUint8GE
+	d.compareUint8[CompareLT] = scalarUint8LT
+	d.compareUint8[CompareLE] = scalarUint8LE
+	d.compareUint8[CompareEQ] = scalarUint8EQ
+	d.compareUint16[CompareGT] = scalarUint16GT
+	d.compareUint16[CompareGE] = scalarUint16GE
+	d.compareUint16[CompareLT] = scalarUint16LT
+	d.compareUint16[CompareLE] = scalarUint16LE
+	d.compareUint16[CompareEQ] = scalarUint16EQ
 	d.compareUint32[CompareGT] = scalarUint32GT
 	d.compareUint32[CompareGE] = scalarUint32GE
 	d.compareUint32[CompareLT] = scalarUint32LT
@@ -116,6 +131,61 @@ func scalarInt8LE(values []int8, validity memory.Bitmap, out memory.Bitmap, thre
 }
 
 func scalarInt8EQ(values []int8, validity memory.Bitmap, out memory.Bitmap, threshold int8) int {
+	prepareComparison(len(values), out)
+	selected := 0
+	for row, value := range values {
+		if validAt(validity, row) && value == threshold {
+			setSelected(out, row, &selected)
+		}
+	}
+	return selected
+}
+
+func scalarInt16GT(values []int16, validity memory.Bitmap, out memory.Bitmap, threshold int16) int {
+	prepareComparison(len(values), out)
+	selected := 0
+	for row, value := range values {
+		if validAt(validity, row) && value > threshold {
+			setSelected(out, row, &selected)
+		}
+	}
+	return selected
+}
+
+func scalarInt16GE(values []int16, validity memory.Bitmap, out memory.Bitmap, threshold int16) int {
+	prepareComparison(len(values), out)
+	selected := 0
+	for row, value := range values {
+		if validAt(validity, row) && value >= threshold {
+			setSelected(out, row, &selected)
+		}
+	}
+	return selected
+}
+
+func scalarInt16LT(values []int16, validity memory.Bitmap, out memory.Bitmap, threshold int16) int {
+	prepareComparison(len(values), out)
+	selected := 0
+	for row, value := range values {
+		if validAt(validity, row) && value < threshold {
+			setSelected(out, row, &selected)
+		}
+	}
+	return selected
+}
+
+func scalarInt16LE(values []int16, validity memory.Bitmap, out memory.Bitmap, threshold int16) int {
+	prepareComparison(len(values), out)
+	selected := 0
+	for row, value := range values {
+		if validAt(validity, row) && value <= threshold {
+			setSelected(out, row, &selected)
+		}
+	}
+	return selected
+}
+
+func scalarInt16EQ(values []int16, validity memory.Bitmap, out memory.Bitmap, threshold int16) int {
 	prepareComparison(len(values), out)
 	selected := 0
 	for row, value := range values {
@@ -226,6 +296,116 @@ func scalarInt64LE(values []int64, validity memory.Bitmap, out memory.Bitmap, th
 }
 
 func scalarInt64EQ(values []int64, validity memory.Bitmap, out memory.Bitmap, threshold int64) int {
+	prepareComparison(len(values), out)
+	selected := 0
+	for row, value := range values {
+		if validAt(validity, row) && value == threshold {
+			setSelected(out, row, &selected)
+		}
+	}
+	return selected
+}
+
+func scalarUint8GT(values []uint8, validity memory.Bitmap, out memory.Bitmap, threshold uint8) int {
+	prepareComparison(len(values), out)
+	selected := 0
+	for row, value := range values {
+		if validAt(validity, row) && value > threshold {
+			setSelected(out, row, &selected)
+		}
+	}
+	return selected
+}
+
+func scalarUint8GE(values []uint8, validity memory.Bitmap, out memory.Bitmap, threshold uint8) int {
+	prepareComparison(len(values), out)
+	selected := 0
+	for row, value := range values {
+		if validAt(validity, row) && value >= threshold {
+			setSelected(out, row, &selected)
+		}
+	}
+	return selected
+}
+
+func scalarUint8LT(values []uint8, validity memory.Bitmap, out memory.Bitmap, threshold uint8) int {
+	prepareComparison(len(values), out)
+	selected := 0
+	for row, value := range values {
+		if validAt(validity, row) && value < threshold {
+			setSelected(out, row, &selected)
+		}
+	}
+	return selected
+}
+
+func scalarUint8LE(values []uint8, validity memory.Bitmap, out memory.Bitmap, threshold uint8) int {
+	prepareComparison(len(values), out)
+	selected := 0
+	for row, value := range values {
+		if validAt(validity, row) && value <= threshold {
+			setSelected(out, row, &selected)
+		}
+	}
+	return selected
+}
+
+func scalarUint8EQ(values []uint8, validity memory.Bitmap, out memory.Bitmap, threshold uint8) int {
+	prepareComparison(len(values), out)
+	selected := 0
+	for row, value := range values {
+		if validAt(validity, row) && value == threshold {
+			setSelected(out, row, &selected)
+		}
+	}
+	return selected
+}
+
+func scalarUint16GT(values []uint16, validity memory.Bitmap, out memory.Bitmap, threshold uint16) int {
+	prepareComparison(len(values), out)
+	selected := 0
+	for row, value := range values {
+		if validAt(validity, row) && value > threshold {
+			setSelected(out, row, &selected)
+		}
+	}
+	return selected
+}
+
+func scalarUint16GE(values []uint16, validity memory.Bitmap, out memory.Bitmap, threshold uint16) int {
+	prepareComparison(len(values), out)
+	selected := 0
+	for row, value := range values {
+		if validAt(validity, row) && value >= threshold {
+			setSelected(out, row, &selected)
+		}
+	}
+	return selected
+}
+
+func scalarUint16LT(values []uint16, validity memory.Bitmap, out memory.Bitmap, threshold uint16) int {
+	prepareComparison(len(values), out)
+	selected := 0
+	for row, value := range values {
+		if validAt(validity, row) && value < threshold {
+			setSelected(out, row, &selected)
+		}
+	}
+	return selected
+}
+
+func scalarUint16LE(values []uint16, validity memory.Bitmap, out memory.Bitmap, threshold uint16) int {
+	prepareComparison(len(values), out)
+	selected := 0
+	for row, value := range values {
+		if validAt(validity, row) && value <= threshold {
+			setSelected(out, row, &selected)
+		}
+	}
+	return selected
+}
+
+func scalarUint16EQ(values []uint16, validity memory.Bitmap, out memory.Bitmap, threshold uint16) int {
 	prepareComparison(len(values), out)
 	selected := 0
 	for row, value := range values {

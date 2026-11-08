@@ -19,7 +19,7 @@ func TestAMD64ComparisonMaskInstallation(t *testing.T) {
 		for _, width := range []int{-1, 0, 64, 127, 128, 256, 512, 1024} {
 			s, scalar := newScalarSet(mode), newScalarSet(ModeScalar)
 			installGeneratedArchSIMD(&s, mode, width)
-			supported := !simd.Emulated() && width == actual && ((width == 128 && archsimd.X86.AVX()) || (width == 256 && archsimd.X86.AVX2()) || (width == 512 && archsimd.X86.AVX512()))
+			supported := expectedNativeSIMD() && width == actual && ((width == 128 && archsimd.X86.AVX2()) || (width == 256 && archsimd.X86.AVX2()) || (width == 512 && archsimd.X86.AVX512()))
 			wantNative := mode != ModeScalar && supported
 			if got := amd64ComparisonWidthSupported(width); got != supported {
 				t.Fatalf("width=%d supported=%t want=%t", width, got, supported)
@@ -48,6 +48,9 @@ func TestAMD64ComparisonMaskInstallation(t *testing.T) {
 					}
 				}
 				check(memory.TypeInt8, false, s.d.compareInt8[op], scalar.d.compareInt8[op], "Int8")
+				check(memory.TypeInt16, false, s.d.compareInt16[op], scalar.d.compareInt16[op], "Int16")
+				check(memory.TypeUint8, false, s.d.compareUint8[op], scalar.d.compareUint8[op], "Uint8")
+				check(memory.TypeUint16, false, s.d.compareUint16[op], scalar.d.compareUint16[op], "Uint16")
 				check(memory.TypeInt32, false, s.d.compareInt32[op], scalar.d.compareInt32[op], "Int32")
 				check(memory.TypeInt64, false, s.d.compareInt64[op], scalar.d.compareInt64[op], "Int64")
 				check(memory.TypeUint32, false, s.d.compareUint32[op], scalar.d.compareUint32[op], "Uint32")
@@ -60,6 +63,21 @@ func TestAMD64ComparisonMaskInstallation(t *testing.T) {
 				check(memory.TypeFloat64, true, s.d.compareFloat64Columns[op], scalar.d.compareFloat64Columns[op], "Float64Columns")
 
 			}
+		}
+	}
+}
+
+func TestAMD64PackMask16(t *testing.T) {
+	// Exhaust every possible 256-bit predicate mask. The 128-bit domain is a subset.
+	for want := uint32(0); want <= 0xffff; want++ {
+		var duplicated uint32
+		for lane := uint(0); lane < 16; lane++ {
+			if want&(1<<lane) != 0 {
+				duplicated |= 3 << (2 * lane)
+			}
+		}
+		if got := packAMD64Mask16(duplicated); got != want {
+			t.Fatalf("input=%08x got=%04x want=%04x", duplicated, got, want)
 		}
 	}
 }

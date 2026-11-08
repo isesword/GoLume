@@ -12,7 +12,7 @@ import (
 func TestExpandedNumericNativeDispatch(t *testing.T) {
 	for _, mode := range []Mode{ModeScalar, ModeAuto, ModeSIMD} {
 		s := New(mode)
-		native := mode != ModeScalar && !simd.Emulated()
+		native := mode != ModeScalar && expectedNativeSIMD()
 		check := func(typ memory.DataType, op CompareOp, got, portable, scalar any) {
 			t.Helper()
 			id, _ := ComparisonID(typ, op)
@@ -41,6 +41,9 @@ func TestExpandedNumericNativeDispatch(t *testing.T) {
 			installGeneratedPortableSIMD(&portable, mode, simd.Int64s{}.Len()*64)
 			installGeneratedArchSIMD(&portable, mode, simd.Int64s{}.Len()*64)
 			check(memory.TypeInt8, op, s.d.compareInt8[op], portable.d.compareInt8[op], scalar.d.compareInt8[op])
+			check(memory.TypeInt16, op, s.d.compareInt16[op], portable.d.compareInt16[op], scalar.d.compareInt16[op])
+			check(memory.TypeUint8, op, s.d.compareUint8[op], portable.d.compareUint8[op], scalar.d.compareUint8[op])
+			check(memory.TypeUint16, op, s.d.compareUint16[op], portable.d.compareUint16[op], scalar.d.compareUint16[op])
 			check(memory.TypeInt64, op, s.d.compareInt64[op], portable.d.compareInt64[op], scalar.d.compareInt64[op])
 			check(memory.TypeUint64, op, s.d.compareUint64[op], portable.d.compareUint64[op], scalar.d.compareUint64[op])
 			check(memory.TypeFloat64, op, s.d.compareFloat64[op], portable.d.compareFloat64[op], scalar.d.compareFloat64[op])

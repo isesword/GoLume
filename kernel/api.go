@@ -428,6 +428,9 @@ func (c Capabilities) ForColumns(typ memory.DataType, op CompareOp) (KernelCapab
 }
 
 type int32CompareFunc func([]int32, memory.Bitmap, memory.Bitmap, int32) int
+type int16CompareFunc func([]int16, memory.Bitmap, memory.Bitmap, int16) int
+type uint8CompareFunc func([]uint8, memory.Bitmap, memory.Bitmap, uint8) int
+type uint16CompareFunc func([]uint16, memory.Bitmap, memory.Bitmap, uint16) int
 type int8CompareFunc func([]int8, memory.Bitmap, memory.Bitmap, int8) int
 type int64CompareFunc func([]int64, memory.Bitmap, memory.Bitmap, int64) int
 type uint32CompareFunc func([]uint32, memory.Bitmap, memory.Bitmap, uint32) int
@@ -470,6 +473,9 @@ type float32CompactFunc func(values []float32, selection memory.Bitmap, out []fl
 
 type dispatch struct {
 	math                  mathDispatch
+	compareInt16          [CompareEQ + 1]int16CompareFunc
+	compareUint8          [CompareEQ + 1]uint8CompareFunc
+	compareUint16         [CompareEQ + 1]uint16CompareFunc
 	compareInt8           [CompareEQ + 1]int8CompareFunc
 	compareInt32          [CompareEQ + 1]int32CompareFunc
 	compareInt64          [CompareEQ + 1]int64CompareFunc
@@ -553,8 +559,7 @@ func (s Set) CompareInt32(v []int32, valid, out memory.Bitmap, lit int32, op Com
 }
 
 // CompareInt8 compares nullable native int8 values and writes a packed
-// selection bitmap. The scalar implementation is the reference backend;
-// no native SIMD implementation is currently available.
+// selection bitmap. The scalar implementation is the reference backend.
 func (s Set) CompareInt8(v []int8, valid, out memory.Bitmap, lit int8, op CompareOp) int {
 	return s.d.compareInt8[op](v, valid, out, lit)
 }
