@@ -63,6 +63,10 @@ func main() {
 		panic(err)
 	}
 	outputs := map[string][]byte{
+		"kernel/zz_generated_widen.go":               generateWidenAPI(),
+		"kernel/zz_generated_widen_arm64.go":         generateWidenSIMD("arm64"),
+		"kernel/zz_generated_widen_amd64.go":         generateWidenSIMD("amd64"),
+		"kernel/zz_generated_widen_other.go":         generateWidenSIMD("other"),
 		"kernel/zz_generated_minmax_narrow_amd64.go": generateNarrowMinMaxSIMD("amd64"),
 		"kernel/zz_generated_minmax_narrow_arm64.go": generateNarrowMinMaxSIMD("arm64"),
 		"kernel/zz_generated_minmax_narrow_other.go": generateNarrowMinMaxSIMD("other"),

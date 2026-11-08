@@ -1030,6 +1030,9 @@ func evalBinary(out, a, b *scalarRegister, op Op, result memory.DataType, rows i
 			kernels.Float64Arithmetic(a.f64[:rows], b.f64[:rows], values, out.validity, arithmetic)
 			return nil
 		}
+		if arithmetic, ok := physicalArithmeticOp(op); ok && evalWidenBinary(out, a, b, rows, arithmetic, kernels) {
+			return nil
+		}
 		for row := 0; row < rows; row++ {
 			if !isValidRegister(out, row) {
 				values[row] = 0

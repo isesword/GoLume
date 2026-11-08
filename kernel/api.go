@@ -489,6 +489,7 @@ type uint16CompactFunc func(values []uint16, selection memory.Bitmap, out []uint
 type float32CompactFunc func(values []float32, selection memory.Bitmap, out []float32) int
 
 type dispatch struct {
+	widen                 widenDispatch
 	minMaxInt32Masked     func([]int32, uint64) (int32, int32)
 	minMaxInt64Masked     func([]int64, uint64) (int64, int64)
 	minMaxUint32Masked    func([]uint32, uint64) (uint32, uint32)
@@ -778,6 +779,7 @@ func newScalarSet(mode Mode) Set {
 	installSumScalar(d)
 	installMinMaxScalar(d)
 	installMathScalar(d)
+	installWidenScalar(d)
 	installGeneratedScalar(d)
 	installFloat32Scalar(d)
 	installInt32ColumnScalar(d)
