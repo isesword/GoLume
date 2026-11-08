@@ -402,6 +402,11 @@ func (s *sortedAggregateStream) loadInput(ctx context.Context) error {
 		s.binding = binding
 		s.bindGlobalAggregateInputs()
 		s.nextRow = 0
+		if s.globalBindings != nil {
+			// The global consumer walks selection words itself, including empty
+			// batches. Every batch has still been validated and bound above.
+			return nil
+		}
 		for row := 0; row < s.inputBatch.Rows; row++ {
 			if memory.IsSet(s.selection, row) {
 				return nil
@@ -544,6 +549,12 @@ func (s *sortedAggregateStream) next(ctx context.Context, dst *memory.Batch) (bo
 		s.outputLease = lease
 		s.outputDst = dst
 		if err := formatter.allocateOutputBatch(dst, s.outputRows, 0); err != nil {
+			return false, s.fail(err)
+		}
+	}
+	if s.globalBindings != nil {
+		if err := s.consumeGlobalAggregateInput(ctx); err != nil {
+			clearAggregateOutput(dst)
 			return false, s.fail(err)
 		}
 	}

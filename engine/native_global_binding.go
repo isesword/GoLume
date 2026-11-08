@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"gocolumn/memory"
 	"math"
+	"math/bits"
 	"unsafe"
 )
 
@@ -143,4 +144,55 @@ func (b *globalAggregateLaneBinding) bits(row int) (uint64, bool) {
 	default:
 		return 0, valid
 	}
+}
+
+// consumeGlobalAggregateInput bypasses the adjacent-key state machine only for
+// the already-bound global SUM/COUNT lanes. Predicate evaluation still uses the
+// selected kernel set. SUM updates retain their original row and lane order:
+// horizontal floating-point reductions would change rounding and NaN results.
+// No row-sized scratch or additional retained state is required.
+func (s *sortedAggregateStream) consumeGlobalAggregateInput(ctx context.Context) error {
+	for !s.inputDone {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		if err := s.loadInput(ctx); err != nil {
+			return err
+		}
+		if err := s.consumeGlobalAggregateBatch(ctx); err != nil {
+			return err
+		}
+	}
+	return ctx.Err()
+}
+
+func (s *sortedAggregateStream) consumeGlobalAggregateBatch(ctx context.Context) error {
+	rows := s.inputBatch.Rows
+	for base := 0; base < rows; base += 64 {
+		// Check even empty selection words so sparse inputs cannot delay
+		// cancellation until a selected row or the next source batch.
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		word := s.selection[base>>6]
+		if remaining := rows - base; remaining < 64 {
+			word &= (uint64(1) << uint(remaining)) - 1
+		}
+		for word != 0 {
+			row := base + bits.TrailingZeros64(word)
+			word &= word - 1
+			for lane := range s.globalBindings {
+				value, valid := s.globalBindings[lane].bits(row)
+				s.numeric.AddBits(0, lane, value, valid)
+			}
+			s.selectedRows++
+			// This is the legacy Int64 diagnostic checksum, not a native
+			// reduction of arbitrary SUM lanes.
+			if value, valid := s.binding.value(row); valid {
+				s.checksum += value
+			}
+		}
+	}
+	s.nextRow = rows
+	return nil
 }
