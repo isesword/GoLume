@@ -26,23 +26,33 @@ floating-point storage. All ten numeric widths have scalar reference backends.
   Polars version returns zero for both. The accurate remainder is tested
   explicitly and is not presented as bitwise Polars compatibility.
 - Float32 transcendental reference evaluation uses Go math at float64 precision
-  and rounds to float32 storage. Pow uses math.Pow, not exp(y*log(x)).
+  and rounds to float32 storage. Pow uses math.Pow, not exp(y*log(x)). SIMD
+  Abs/Sqrt preserve finite results and signed-zero semantics; active NaNs are
+  compared by NaN class, not payload or signaling-bit identity, as in the
+  existing dense SIMD path. Invalid outputs are always positive zero.
 - The caller supplies the combined validity/selection bitmap. Invalid lanes
   are zeroed and not evaluated. Output buffers and failure masks are supplied
   by the caller; kernels allocate no memory. A nil validity mask means dense.
 
 ## SIMD dispatch and historical evidence
 
-Portable native SIMD for dense Float32/Float64 abs and sqrt is selected by
-both default `ModeAuto` and diagnostic `ModeSIMD` on SIMD-enabled,
+Portable native SIMD for dense and nullable/selected Float32/Float64 abs and sqrt
+is selected by both default `ModeAuto` and diagnostic `ModeSIMD` on SIMD-enabled,
 non-emulated runtimes. `ModeScalar` remains the explicit reference. The supported
 `./scripts/build.sh` defaults an unset `GOEXPERIMENT` to `simd`; direct Go
 commands must opt into the experiment themselves.
 
-Nullable/selected batches, short inputs, and vector tails retain scalar
-reference execution. Diagnostics describe a selected backend with a dense
-vector path, not a promise that every invocation vectorizes. Other math
-operations remain scalar because no retained native SIMD implementation exists.
+Nullable/selected batches expand packed validity bits in vector registers and
+replace inactive inputs with positive zero before Abs/Sqrt; invalid negative
+values and NaNs never reach the floating operation. All-invalid words are
+cleared without reading input, and all-valid words use the dense loop. Nullable
+short inputs and tails use one fixed 64-byte stack buffer, bounded integer-bit
+copies, and the same vector input mask. This avoids the experimental toolchain
+partial-load boundary issue without allocating row-sized scratch. Dense
+(nil-mask) tails retain scalar reference execution. The kernels use no
+row-sized scratch or heap allocations, support exact in-place output, and leave
+the output suffix untouched. Diagnostics describe a selected backend, not a
+promise that every invocation vectorizes. Other math operations remain scalar because no retained native SIMD implementation exists.
 Kernel Auto selection no longer waits for historical performance admission;
 planner strategy decisions retain their separate measurement policy.
 

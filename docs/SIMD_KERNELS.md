@@ -46,7 +46,7 @@ its Auto backend can differ from the explicit-SIMD `available_backend`.
 
 - Portable native SIMD in Auto and explicit SIMD: literal `GT/GE/LT/LE/EQ`
   for Int8/Int32/Int64/Uint32/Uint64/Float32/Float64; column comparisons for
-  Int32/Uint32/Float32/Float64; Float32/Float64 `Add/Sub/Mul/Div`; dense
+  Int32/Uint32/Float32/Float64; Float32/Float64 `Add/Sub/Mul/Div`; dense and masked
   Float32/Float64 `Abs/Sqrt`.
 - arm64 retains `archsimd-arm64-mask` overrides for literal Int32
   `GT/GE/LT/LE` and Uint32 `GT/GE/LT/LE/EQ`, at 128 bits. Int32 literal EQ now

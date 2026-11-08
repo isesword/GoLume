@@ -39,8 +39,8 @@ literal comparisons and `ColumnComparisonCapability(type, op)` for columns.
 ## Current operation matrix
 
 All native entries below require a SIMD-enabled, non-emulated runtime. Short
-inputs and vector tails may execute scalar. Nullable/selected Abs/Sqrt uses
-scalar reference evaluation even when the reported backend offers dense SIMD.
+inputs and vector tails may execute scalar. Nullable/selected Abs/Sqrt masks
+inactive inputs to positive zero before native floating operations.
 
 | Family | Physical operations | Auto native backend / guard | Remaining scalar boundary |
 |---|---|---|---|
@@ -51,7 +51,7 @@ scalar reference evaluation even when the reported backend offers dense SIMD.
 | Arithmetic kernels | Float32/Float64 Add/Sub/Mul/Div | portable SIMD | unavailable native runtime, tails |
 | Expression arithmetic | Float32 operands | promotes to Float64, existing scalar conversion path | native Float32 arithmetic API is not reached |
 | Arithmetic | checked integers | none | scalar with existing numerical/overflow semantics |
-| Unary math | Float32/Float64 Abs/Sqrt | portable SIMD, dense inputs | nullable/selected inputs, tails |
+| Unary math | Float32/Float64 Abs/Sqrt | portable SIMD, dense and nullable/selected inputs; mask before math, bounded fixed-stack nullable tails | dense nil-mask tails, unavailable native runtime |
 | Other math | integer math, Round/Floor/Ceil/Log/Mod/FloorDiv/Pow | none | typed scalar; no approximate replacements |
 | Boolean | bitmap AND/OR/NOT | none | word scalar |
 | Hash | Hash64 batch | amd64 AVX-512 with native width >=512 | arm64 Auto retains non-SIMD four-way unroll; other cases scalar |
