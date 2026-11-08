@@ -72,7 +72,7 @@ func instructionInputs(in instruction) []int {
 		return []int{in.A}
 	case scalarTernary:
 		return []int{in.A, in.B, in.C}
-	case scalarConditional:
+	case scalarConditional, scalarInSet:
 		return []int{in.A}
 	default:
 		return nil
@@ -82,7 +82,7 @@ func instructionInputs(in instruction) []int {
 func reusableInstruction(in instruction) bool {
 	// Borrowed columns, nested regions, and instruction-specific caches retain
 	// dedicated owners. Variable-width results are deliberately not pooled.
-	if in.Code == scalarColumn || in.Code == scalarConditional || in.Code == scalarJSONDecode || in.LiteralString != "" {
+	if in.Code == scalarColumn || in.Code == scalarConditional || in.Code == scalarInSet || in.Code == scalarJSONDecode || in.LiteralString != "" {
 		return false
 	}
 	if in.Code == codeStringMatch || (in.Code == codeCmpScalar && (in.Type == memory.TypeString || in.Type == memory.TypeBinary)) || in.Code == codeCmpExtract {

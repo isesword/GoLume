@@ -33,6 +33,7 @@ const (
 	scalarStringMatch
 	scalarConditional
 	scalarTryCast
+	scalarInSet
 )
 
 // ProjectionOutput maps one compiled root register to a named output column.
@@ -552,6 +553,10 @@ func evaluateInstructionsActive(instructions []instruction, batch *memory.Batch,
 			clear(r.validity)
 			if r.typ == memory.TypeBool {
 				clear(r.Truth)
+			}
+		case scalarInSet:
+			if err := evaluateLiteralIn(r, &w.regs[in.A], in, batch.Rows); err != nil {
+				return err
 			}
 		case scalarConditional:
 			if err := w.evaluateConditional(r, in, batch, kernels); err != nil {

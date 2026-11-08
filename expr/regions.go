@@ -16,6 +16,12 @@ const (
 )
 
 func (c *scalarCompiler) compileConditional(bound *BoundExpr) (instruction, error) {
+	if _, ok := bound.Expr.(InExpr); ok {
+		if set := compileLiteralIn(bound); set != nil {
+			root, _, err := c.compileBound(bound.Children[0])
+			return set.instruction(root), err
+		}
+	}
 	in := instruction{Code: scalarConditional, Type: bound.Field.Type, A: -1, B: -1, C: -1}
 	children := bound.Children
 	switch bound.Expr.(type) {

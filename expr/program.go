@@ -47,7 +47,7 @@ type instruction struct {
 	StructFields        []memory.Field
 	Extract             Op
 	A, B, C             int
-	Children            []int
+	InSet               []uint64 // Numeric keys or packed string offsets, selected by SourceType.
 }
 
 // Program is an immutable typed expression program. Predicate and projection
@@ -64,7 +64,8 @@ type Program struct {
 }
 
 // WorkspaceBytes returns logical register metadata and distinct physical-slot
-// storage for a fresh execution. Dynamic string, JSON, list and dictionary
+// storage for a fresh execution, plus conservative per-execution allowances
+// for immutable literal IN sets. Dynamic string, JSON, list and dictionary
 // payloads are admitted separately.
 func (p Program) WorkspaceBytes(rows int) (int64, error) {
 	return instructionWorkspaceBytes(p.instructions, rows)

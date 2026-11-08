@@ -63,6 +63,13 @@ func instructionWorkspaceBytes(instructions []instruction, rows int) (int64, err
 	// Reused owners already have their fixed buffers accounted for.
 	nextOwner := 0
 	for i, in := range instructions {
+		if in.InSet != nil {
+			size := literalInBytes(in)
+			if size > math.MaxInt64-n {
+				return 0, fmt.Errorf("expression literal set size overflow")
+			}
+			n += size
+		}
 		owner := storageIndex(instructions, i)
 		if owner < nextOwner {
 			continue
@@ -180,12 +187,20 @@ func (w *evaluationState) Register(i int) BoolVector {
 	return BoolVector{Truth: r.Truth, Validity: r.validity}
 }
 
-// MemoryBytes counts retained private register and nested payload capacities.
+// MemoryBytes counts retained private register/nested payload capacities and
+// conservative per-execution allowances for immutable literal IN sets.
 func (w *evaluationState) MemoryBytes() int64 {
 	if w == nil {
 		return 0
 	}
 	n := int64(cap(w.regs)+cap(w.owned))*int64(unsafe.Sizeof(scalarRegister{})) + int64(cap(w.outputs))*int64(unsafe.Sizeof(ScalarValue{}))
+	// Immutable set payloads are admitted conservatively per execution, even
+	// when multiple workspaces share the same compiled program.
+	for _, in := range w.program {
+		if in.InSet != nil {
+			n += literalInBytes(in)
+		}
+	}
 	for _, r := range w.owned[:cap(w.owned)] {
 		if r.exportReservation != nil {
 			n += r.exportReservation.Bytes()
