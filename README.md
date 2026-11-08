@@ -234,13 +234,18 @@ Top-K
   -> 扫描排序键
   -> bounded worst-first heap
   -> 只保留 K 个候选
-  -> 可重放输入二次扫描，按 row ordinal 收集 winner payload
-  -> 只 materialize K 行 payload
-  -> O(K) retained state, MemoryManager 计费
+  -> 可重放输入二次扫描，按 row ordinal 收集 K 行 winner payload
+  -> 不可重放输入单次扫描，仅保留 K 个自有 winner snapshots
+  -> snapshot 路径逐行输出，不再物化全部输入或额外拼接 K 行
+  -> 候选及 payload / backing storage 均先申请 MemoryManager 预算
 ```
 
-Top-K 的 O(K) 指候选状态，不是对任意输入的总内存承诺；不可重放输入需要受预算
-约束的快照。Collect 的完整输出仍另占内存。
+Top-K 的 O(K) 指候选数量，不是固定字节上界。不可重放输入（包括 Parquet）不依赖
+Stats 估计，也不会为了二次扫描保留全部输入；新 winner 在分配前按真实 payload
+申请预算，淘汰的 snapshot 立即释放。字符串、字典和 opaque Arrow 的完整 backing
+（含 buffer parent、保留容量及嵌套元数据）均计费，因此单个过宽的 winner 仍可能
+触发预算错误。此路径不会隐式 spill。Explain 区分 two-pass-replay 与
+one-pass-snapshots。Collect 的完整输出仍另占内存。
 
 历史 Phase 2.8 单核验证机 benchmark 中位数（262,144 行、Top100）：
 

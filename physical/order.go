@@ -322,8 +322,9 @@ func (s *SortSource) Dictionary(ctx context.Context, column string) (source.Dict
 	return dp.Dictionary(ctx, column)
 }
 
-// TopKSource keeps only the best K ordering keys in O(K) heap memory, then
-// re-reads only partitions containing winners to materialize payload columns.
+// TopKSource retains at most K candidates. Replay-stable inputs use a narrow
+// key pass and a payload replay; other inputs retain owned winner snapshots in
+// one pass, charging their actual payload and opaque backing storage.
 type TopKSource struct {
 	input    source.Source
 	keyInput source.Source
@@ -343,7 +344,9 @@ func NewTopKSourceWithManager(input source.Source, k int, keys []SortKey, manage
 // Both inputs must expose the same logical row sequence; native batch
 // boundaries may differ between passes. keyInput may
 // omit every column except the ordering keys, which avoids decoding payload
-// columns while the bounded heap is being built.
+// columns while the bounded heap is being built. When either input cannot
+// promise stable replay, only input is scanned and winner payloads are retained
+// as budget-admitted snapshots; keyInput is not opened.
 func NewTopKSourceWithKeyInput(input, keyInput source.Source, k int, keys []SortKey, manager memory.Manager) (source.Source, error) {
 	if input == nil {
 		return nil, fmt.Errorf("top-k input is nil")
@@ -369,12 +372,16 @@ func NewTopKSourceWithKeyInput(input, keyInput source.Source, k int, keys []Sort
 // Schema preserves the input schema.
 func (s *TopKSource) Schema() memory.Schema { return s.input.Schema() }
 
-// StreamPlan reports the explicit O(K) state bound.
+// StreamPlan reports the bounded candidate count and selected payload strategy.
 func (s *TopKSource) StreamPlan() source.StreamPlanNode {
+	strategy := "two-pass-replay"
+	if !s.canReplay() {
+		strategy = "one-pass-snapshots"
+	}
 	return source.StreamPlanNode{
 		Operator: "TopK",
 		Class:    source.StreamBounded,
-		Detail:   fmt.Sprintf("k=%d", s.k),
+		Detail:   fmt.Sprintf("k=%d strategy=%s retained=keys+payload+backing", s.k, strategy),
 		Children: []source.StreamPlanNode{source.StreamPlanOf(s.input)},
 	}
 }
@@ -403,27 +410,24 @@ func (s *TopKSource) Partitions(context.Context) ([]source.Partition, error) {
 // sequence and replays identically whenever the input does.
 func (s *TopKSource) Replayability() source.Replayability { return source.ReplayabilityOf(s.input) }
 
-// NewBatchStream creates an independent two-pass O(K) stream. When both inputs
-// promise stable replay the first pass scans only ordering keys and the second
-// pass replays the payload source for winner batches. Otherwise the payload
-// input is materialized exactly once inside the stream and both passes run
-// over that snapshot, so Top-K never depends on replay the input cannot
-// provide.
+func (s *TopKSource) canReplay() bool {
+	return source.ReplayabilityOf(s.input) == source.ReplayStable && source.ReplayabilityOf(s.keyInput) == source.ReplayStable
+}
+
+// NewBatchStream uses two passes only when both sources promise stable replay.
+// Otherwise it scans the payload once and retains at most K owned row snapshots.
 func (s *TopKSource) NewBatchStream(ctx context.Context, opts source.ReadOptions) (source.BatchStream, error) {
+	if ctx == nil {
+		return nil, fmt.Errorf("top-k context is nil")
+	}
 	if err := opts.Validate(); err != nil {
 		return nil, err
 	}
-	r := &topKReader{owner: s, scratch: memory.NewBatch(), readOpts: opts}
-	passInput := s.keyInput
-	if source.ReplayabilityOf(s.input) != source.ReplayStable || source.ReplayabilityOf(s.keyInput) != source.ReplayStable {
-		// Two passes require identical logical row ordinals, not identical
-		// native batch boundaries. A non-replayable input is snapshotted once
-		// and supplies both passes, trading the O(K) first pass for one
-		// full-payload materialization.
-		passInput = s.input
-		r.materialize = true
+	if !s.canReplay() {
+		return newTopKSnapshotStream(ctx, s, opts)
 	}
-	first, err := source.OpenBatchStream(ctx, passInput, opts)
+	r := &topKReader{owner: s, scratch: memory.NewBatch(), readOpts: opts}
+	first, err := source.OpenBatchStream(ctx, s.keyInput, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -441,7 +445,6 @@ type topKReader struct {
 	reservedBytes int64
 	candidateText int64
 	done          bool
-	materialize   bool
 	readOpts      source.ReadOptions
 }
 
@@ -462,9 +465,7 @@ func (r *topKReader) Close() error {
 }
 
 // Next scans ordering keys, maintains a bounded heap, then replays only the
-// selected rows from winning source batches. For a non-replayable input the
-// reader first snapshots the payload input into one materialized batch and
-// runs both passes over that snapshot.
+// selected rows from winning source batches of a replay-stable input.
 func (r *topKReader) Next(ctx context.Context, dst *memory.Batch) (produced bool, resultErr error) {
 	if r.done || r.owner.k == 0 {
 		r.done = true
@@ -476,16 +477,6 @@ func (r *topKReader) Next(ctx context.Context, dst *memory.Batch) (produced bool
 		return false, err
 	}
 	first := r.first
-	var snapshot *memory.Batch
-	if r.materialize {
-		var err error
-		snapshot, err = materializeStream(ctx, r.owner.input.Schema(), r.first, r.scratch)
-		if err != nil {
-			return false, err
-		}
-		defer snapshot.ReleaseOwned()
-		first = &materializedBatchStream{batch: snapshot}
-	}
 	h := &candidateHeap{keys: r.owner.keys}
 	heap.Init(h)
 	trackActual := r.tracksActualMemory()
@@ -555,15 +546,9 @@ func (r *topKReader) Next(ctx context.Context, dst *memory.Batch) (produced bool
 		dst.ClearColumns()
 		return false, nil
 	}
-	var second source.BatchStream
-	if r.materialize {
-		second = &materializedBatchStream{batch: snapshot}
-	} else {
-		replayed, err := source.OpenBatchStream(ctx, r.owner.input, r.readOpts)
-		if err != nil {
-			return false, err
-		}
-		second = replayed
+	second, err := source.OpenBatchStream(ctx, r.owner.input, r.readOpts)
+	if err != nil {
+		return false, err
 	}
 	defer func() {
 		if closeErr := second.Close(); closeErr != nil {
@@ -688,23 +673,6 @@ func (r *topKReader) reserve(ctx context.Context) error {
 		bytes += int64(r.owner.k) * keyWidth
 	} else {
 		bytes = math.MaxInt64
-	}
-	if r.materialize {
-		// The single-snapshot fallback retains the full payload input instead
-		// of rescanning it, so charge the materialization like a resident sort.
-		st, err := r.owner.input.Stats(ctx)
-		if err != nil {
-			return err
-		}
-		full := estimateOrderBytes(r.owner.input.Schema(), st.Rows)
-		if st.Bytes > full {
-			full = st.Bytes
-		}
-		if full > math.MaxInt64-bytes {
-			bytes = math.MaxInt64
-		} else {
-			bytes += full
-		}
 	}
 	res, err := r.owner.manager.Reserve(ctx, bytes)
 	if err != nil {
@@ -1412,34 +1380,5 @@ func materializeStream(ctx context.Context, schema memory.Schema, stream source.
 	return acc.finish()
 }
 
-// materializedBatchStream replays one owned materialized batch as a
-// single-batch stream. It gives the two-pass Top-K winner gather a
-// replay-stable view of an input that cannot rescan itself.
-type materializedBatchStream struct {
-	batch *memory.Batch
-	done  bool
-}
-
-// Next binds the snapshot columns into dst exactly once.
-func (s *materializedBatchStream) Next(ctx context.Context, dst *memory.Batch) (bool, error) {
-	if err := ctx.Err(); err != nil {
-		dst.ClearColumns()
-		return false, err
-	}
-	if s.done {
-		dst.ClearColumns()
-		return false, nil
-	}
-	s.done = true
-	dst.ClearColumns()
-	bindAll(dst, s.batch)
-	dst.Reset(s.batch.Rows)
-	return true, nil
-}
-
-// Close is a no-op; the snapshot is owned and released by the caller.
-func (s *materializedBatchStream) Close() error { return nil }
-
 var _ source.ReplayabilityProvider = (*SortSource)(nil)
 var _ source.ReplayabilityProvider = (*TopKSource)(nil)
-var _ source.BatchStream = (*materializedBatchStream)(nil)

@@ -83,7 +83,7 @@ func TestTopKOverSortedInput(t *testing.T) {
 	checkBoolColumn(t, out, "b", []uint32{0, 0, 1}, []bool{true, true, true})
 }
 
-func TestTopKOverNonReplayableInputMaterializesOnce(t *testing.T) {
+func TestTopKOverNonReplayableInputSnapshotsWinners(t *testing.T) {
 	base := boolOrderTestSource(t)
 	stable, err := NewTopKSourceWithManager(base, 3, []SortKey{{Column: "key"}}, nil)
 	if err != nil {
