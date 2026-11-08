@@ -373,7 +373,8 @@ func (p *PreparedQuery) bindMultiValues(batch *memory.Batch) error {
 }
 
 func (p *PreparedQuery) aggregateMultiResidentBatch(ctx context.Context, batch *memory.Batch, table *aggregateStateTable, workspace *aggregatePredicateWorkspace) (selected, groups int, checksum int64, err error) {
-	binding, err := p.bindSortedBatch(batch)
+	defer workspace.keys.clear()
+	binding, err := p.bindSortedBatch(ctx, batch, workspace)
 	if err != nil {
 		return 0, 0, 0, err
 	}

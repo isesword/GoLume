@@ -373,6 +373,7 @@ func (s *sortedAggregateStream) loadInput(ctx context.Context) error {
 	for !s.inputDone {
 		// The producer may recycle the previous borrowed batch on Next.
 		clear(s.globalBindings)
+		s.predicate.keys.clear()
 		s.binding = aggregateBatchBinding{}
 		s.selection = nil
 		ok, err := s.input.Next(ctx, s.inputBatch)
@@ -389,7 +390,7 @@ func (s *sortedAggregateStream) loadInput(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		binding, err := s.query.bindSortedBatch(s.inputBatch)
+		binding, err := s.query.bindSortedBatch(ctx, s.inputBatch, &s.predicate)
 		if err != nil {
 			return err
 		}

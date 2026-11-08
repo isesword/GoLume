@@ -176,8 +176,12 @@ func (s *distinctAggregateStream) ingest(ctx context.Context) (err error) {
 	defer batch.ReleaseOwned()
 	workspace := aggregatePredicateWorkspace{manager: s.budget.Operator("DistinctPredicate", memory.MemoryWorkspace), operator: "DistinctPredicate"}
 	defer workspace.close()
+	var valueKeys canonicalGroupWorkspace
+	defer valueKeys.close()
 	m := s.p.cq.MultiAggregate
 	for {
+		workspace.keys.clear()
+		valueKeys.clear()
 		ok, e := input.Next(ctx, batch)
 		if e != nil {
 			return e
@@ -193,7 +197,7 @@ func (s *distinctAggregateStream) ingest(ctx context.Context) (err error) {
 		if e != nil {
 			return e
 		}
-		groups, e := bindCanonicalGroupKeys(s.p.cq.GenericFields, batch)
+		groups, e := workspace.bindKeys(ctx, s.p.cq.GenericFields, batch)
 		if e != nil {
 			return e
 		}
@@ -205,10 +209,11 @@ func (s *distinctAggregateStream) ingest(ctx context.Context) (err error) {
 			}
 		}
 		// Validate every input vector before indexing or accepting spill records.
-		for i := range m.Distinct.Fields {
-			if _, e = bindCanonicalGroupKeys(m.Distinct.Fields[i:i+1], batch); e != nil {
-				return e
-			}
+		if e = valueKeys.ensure(m.Distinct.Fields, func(n int64) (memory.Reservation, error) { return s.manager.Reserve(ctx, n) }); e != nil {
+			return e
+		}
+		if _, e = valueKeys.bind(m.Distinct.Fields, batch); e != nil {
+			return e
 		}
 		for lane, name := range m.Columns {
 			if name != "" {
@@ -248,7 +253,7 @@ func (s *distinctAggregateStream) ingest(ctx context.Context) (err error) {
 				return err
 			}
 			binary.BigEndian.PutUint32(s.scratch[:4], uint32(keySize))
-			encoded, err := groups.AppendKey(s.scratch[:4], row)
+			encoded, err := groups.appendSizedKey(s.scratch[:4], row, keySize)
 			if err != nil {
 				return err
 			}
@@ -322,7 +327,7 @@ func (s *distinctAggregateStream) ingest(ctx context.Context) (err error) {
 				}
 			}
 			for lane := range m.Distinct.Fields {
-				values := canonicalGroupBinding{fields: m.Distinct.Fields[lane : lane+1], batch: batch}
+				values := canonicalGroupBinding{fields: m.Distinct.Fields[lane : lane+1], batch: batch, components: valueKeys.binding.components[lane : lane+1]}
 				n, err := values.KeySize(row)
 				if err != nil {
 					return err
@@ -335,7 +340,7 @@ func (s *distinctAggregateStream) ingest(ctx context.Context) (err error) {
 				}
 				s.scratch[prefix] = 1
 				binary.BigEndian.PutUint32(s.scratch[prefix+1:prefix+5], uint32(lane))
-				tuple, err := values.AppendKey(s.scratch[:prefix+5], row)
+				tuple, err := values.appendSizedKey(s.scratch[:prefix+5], row, n)
 				if err != nil {
 					return err
 				}

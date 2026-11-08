@@ -2,6 +2,7 @@ package engine
 
 import (
 	"bytes"
+	"context"
 	"gocolumn/memory"
 )
 
@@ -19,7 +20,7 @@ func aggregateKeysEqual(shape GroupShape, left, right aggregateRecord) bool {
 	}
 }
 
-func (p *PreparedQuery) bindSortedBatch(batch *memory.Batch) (aggregateBatchBinding, error) {
+func (p *PreparedQuery) bindSortedBatch(ctx context.Context, batch *memory.Batch, workspace *aggregatePredicateWorkspace) (aggregateBatchBinding, error) {
 	binding := aggregateBatchBinding{batch: batch}
 	if err := p.bindMultiValues(batch); err != nil {
 		return binding, err
@@ -35,8 +36,8 @@ func (p *PreparedQuery) bindSortedBatch(batch *memory.Batch) (aggregateBatchBind
 		return binding, nil
 	}
 	if p.cq.GroupShape == GroupShapeGeneric {
-		canonical, bindErr := bindCanonicalGroupKeys(p.cq.GenericFields, batch)
-		binding.canonical = &canonical
+		canonical, bindErr := workspace.bindKeys(ctx, p.cq.GenericFields, batch)
+		binding.canonical = canonical
 		return binding, bindErr
 	}
 	if p.cq.GroupShape == GroupShapeStringView {

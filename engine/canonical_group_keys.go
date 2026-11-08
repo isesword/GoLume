@@ -18,8 +18,27 @@ const canonicalGroupHashPrime uint64 = 1099511628211
 // Logical metadata (such as timestamp units) belongs to the fixed descriptors,
 // not the key bytes; keys are compared only within the same descriptor schema.
 type canonicalGroupBinding struct {
-	fields []memory.Field
-	batch  *memory.Batch
+	fields     []memory.Field
+	batch      *memory.Batch
+	components []canonicalGroupComponent
+}
+
+// canonicalGroupComponent resolves each column once per batch, never per row.
+type canonicalGroupComponent struct {
+	width       int
+	validity    memory.Bitmap
+	int8        *memory.Int8Vector
+	int16       *memory.Int16Vector
+	int32       *memory.Int32Vector
+	int64       *memory.Int64Vector
+	uint8       *memory.Uint8Vector
+	uint16      *memory.Uint16Vector
+	uint32      *memory.Uint32Vector
+	uint64      *memory.Uint64Vector
+	float32     *memory.Float32Vector
+	float64     *memory.Float64Vector
+	strings     *memory.StringViewVector
+	dictStrings *memory.DictionaryStringVector
 }
 
 func canonicalGroupWidth(typ memory.DataType) (int, bool) {
@@ -39,12 +58,12 @@ func canonicalGroupWidth(typ memory.DataType) (int, bool) {
 	}
 }
 
-func bindCanonicalGroupKeys(fields []memory.Field, batch *memory.Batch) (canonicalGroupBinding, error) {
-	binding := canonicalGroupBinding{fields: fields, batch: batch}
+func bindCanonicalGroupComponents(fields []memory.Field, batch *memory.Batch, components []canonicalGroupComponent) (canonicalGroupBinding, error) {
+	binding := canonicalGroupBinding{fields: fields, batch: batch, components: components}
 	if batch == nil || batch.Rows < 0 {
 		return canonicalGroupBinding{}, fmt.Errorf("canonical group keys require a nonnegative batch")
 	}
-	for _, field := range fields {
+	for index, field := range fields {
 		if _, ok := canonicalGroupWidth(field.Type); !ok {
 			return canonicalGroupBinding{}, fmt.Errorf("canonical group key %q has unsupported type %s", field.Name, field.Type)
 		}
@@ -77,6 +96,36 @@ func bindCanonicalGroupKeys(fields []memory.Field, batch *memory.Batch) (canonic
 				if v.IsValid(row) && value > 1 {
 					return canonicalGroupBinding{}, fmt.Errorf("canonical boolean key %q is not boolean at row %d", field.Name, row)
 				}
+			}
+		}
+		c := &components[index]
+		c.width, _ = canonicalGroupWidth(field.Type)
+		c.validity = validity
+		switch field.Type {
+		case memory.TypeInt8:
+			c.int8 = batch.Int8s[field.Name]
+		case memory.TypeInt16:
+			c.int16 = batch.Int16s[field.Name]
+		case memory.TypeInt32, memory.TypeDate32, memory.TypeTime32:
+			c.int32 = batch.Int32s[field.Name]
+		case memory.TypeInt64, memory.TypeDate64, memory.TypeTimestamp, memory.TypeTime64, memory.TypeDuration:
+			c.int64 = batch.Int64s[field.Name]
+		case memory.TypeUint8:
+			c.uint8 = batch.Uint8s[field.Name]
+		case memory.TypeUint16:
+			c.uint16 = batch.Uint16s[field.Name]
+		case memory.TypeUint32, memory.TypeBool:
+			c.uint32 = batch.Uint32s[field.Name]
+		case memory.TypeUint64:
+			c.uint64 = batch.Uint64s[field.Name]
+		case memory.TypeFloat32:
+			c.float32 = batch.Float32s[field.Name]
+		case memory.TypeFloat64:
+			c.float64 = batch.Float64s[field.Name]
+		case memory.TypeString, memory.TypeBinary:
+			c.strings = batch.Strings[field.Name]
+			if c.strings == nil {
+				c.dictStrings = batch.DictStrings[field.Name]
 			}
 		}
 	}
@@ -119,70 +168,70 @@ func canonicalFloatBits(typ memory.DataType, bits uint64) uint64 {
 	return bits
 }
 
-func (b canonicalGroupBinding) component(field memory.Field, row int) (bits uint64, data []byte, valid bool, err error) {
+func (c *canonicalGroupComponent) value(field memory.Field, row int) (bits uint64, data []byte, valid bool, err error) {
 	switch field.Type {
 	case memory.TypeInt8:
-		v := b.batch.Int8s[field.Name]
+		v := c.int8
 		if !v.IsValid(row) {
 			return 0, nil, false, nil
 		}
 		return uint64(uint8(v.Values[row])), nil, true, nil
 	case memory.TypeInt16:
-		v := b.batch.Int16s[field.Name]
+		v := c.int16
 		if !v.IsValid(row) {
 			return 0, nil, false, nil
 		}
 		return uint64(uint16(v.Values[row])), nil, true, nil
 	case memory.TypeInt32, memory.TypeDate32, memory.TypeTime32:
-		v := b.batch.Int32s[field.Name]
+		v := c.int32
 		if !v.IsValid(row) {
 			return 0, nil, false, nil
 		}
 		return uint64(uint32(v.Values[row])), nil, true, nil
 	case memory.TypeInt64, memory.TypeDate64, memory.TypeTimestamp, memory.TypeTime64, memory.TypeDuration:
-		v := b.batch.Int64s[field.Name]
+		v := c.int64
 		if !v.IsValid(row) {
 			return 0, nil, false, nil
 		}
 		return uint64(v.Values[row]), nil, true, nil
 	case memory.TypeUint8:
-		v := b.batch.Uint8s[field.Name]
+		v := c.uint8
 		if !v.IsValid(row) {
 			return 0, nil, false, nil
 		}
 		return uint64(v.Values[row]), nil, true, nil
 	case memory.TypeUint16:
-		v := b.batch.Uint16s[field.Name]
+		v := c.uint16
 		if !v.IsValid(row) {
 			return 0, nil, false, nil
 		}
 		return uint64(v.Values[row]), nil, true, nil
 	case memory.TypeUint32, memory.TypeBool:
-		v := b.batch.Uint32s[field.Name]
+		v := c.uint32
 		if !v.IsValid(row) {
 			return 0, nil, false, nil
 		}
 		return uint64(v.Values[row]), nil, true, nil
 	case memory.TypeUint64:
-		v := b.batch.Uint64s[field.Name]
+		v := c.uint64
 		if !v.IsValid(row) {
 			return 0, nil, false, nil
 		}
 		return v.Values[row], nil, true, nil
 	case memory.TypeFloat32:
-		v := b.batch.Float32s[field.Name]
+		v := c.float32
 		if !v.IsValid(row) {
 			return 0, nil, false, nil
 		}
 		return canonicalFloatBits(field.Type, uint64(math.Float32bits(v.Values[row]))), nil, true, nil
 	case memory.TypeFloat64:
-		v := b.batch.Float64s[field.Name]
+		v := c.float64
 		if !v.IsValid(row) {
 			return 0, nil, false, nil
 		}
 		return canonicalFloatBits(field.Type, math.Float64bits(v.Values[row])), nil, true, nil
 	case memory.TypeString, memory.TypeBinary:
-		if v := b.batch.Strings[field.Name]; v != nil {
+		if v := c.strings; v != nil {
 			if !v.IsValid(row) {
 				return 0, nil, false, nil
 			}
@@ -192,7 +241,7 @@ func (b canonicalGroupBinding) component(field memory.Field, row int) (bits uint
 			}
 			return 0, v.Data[lo:hi], true, nil
 		}
-		v := b.batch.DictStrings[field.Name]
+		v := c.dictStrings
 		if !v.IsValid(row) {
 			return 0, nil, false, nil
 		}
@@ -223,15 +272,16 @@ func (b canonicalGroupBinding) KeySize(row int) (int, error) {
 		return 0, err
 	}
 	total := 0
-	for _, field := range b.fields {
-		_, data, valid, err := b.component(field, row)
-		if err != nil {
-			return 0, err
-		}
-		width, _ := canonicalGroupWidth(field.Type)
-		if !valid {
+	for index, field := range b.fields {
+		c := &b.components[index]
+		width := c.width
+		if c.validity != nil && !memory.IsSet(c.validity, row) {
 			width = 0
 		} else if width == 0 {
+			_, data, _, err := c.value(field, row)
+			if err != nil {
+				return 0, err
+			}
 			width = len(data)
 		}
 		if uint64(width) > math.MaxUint32 || total > math.MaxInt-canonicalGroupHeaderBytes || width > math.MaxInt-total-canonicalGroupHeaderBytes {
@@ -250,22 +300,37 @@ func (b canonicalGroupBinding) AppendKey(dst []byte, row int) ([]byte, error) {
 	if err != nil {
 		return dst, err
 	}
+	return b.appendSizedKey(dst, row, size)
+}
+
+// appendSizedKey uses a size previously obtained from KeySize for the same row
+// and immutable binding. It avoids repeating the sizing pass in trusted callers.
+func (b canonicalGroupBinding) appendSizedKey(dst []byte, row, size int) ([]byte, error) {
+	if err := b.checkRow(row); err != nil {
+		return dst, err
+	}
+	if size < 0 {
+		return dst, fmt.Errorf("canonical group key size is negative")
+	}
 	if size > cap(dst)-len(dst) {
 		return dst, fmt.Errorf("canonical group key destination needs %d spare bytes", size)
 	}
 	base := len(dst)
 	out := dst[:base+size]
 	pos := base
-	for _, field := range b.fields {
-		bits, data, valid, err := b.component(field, row)
+	for index, field := range b.fields {
+		bits, data, valid, err := b.components[index].value(field, row)
 		if err != nil {
 			return dst, err
 		}
-		width, _ := canonicalGroupWidth(field.Type)
+		width := b.components[index].width
 		if !valid {
 			width = 0
 		} else if width == 0 {
 			width = len(data)
+		}
+		if len(out)-pos < canonicalGroupHeaderBytes || width > len(out)-pos-canonicalGroupHeaderBytes {
+			return dst, fmt.Errorf("canonical group key size mismatch")
 		}
 		out[pos] = byte(field.Type)
 		out[pos+1] = 0
@@ -284,6 +349,9 @@ func (b canonicalGroupBinding) AppendKey(dst []byte, row int) ([]byte, error) {
 			}
 		}
 		pos += width
+	}
+	if pos != len(out) {
+		return dst, fmt.Errorf("canonical group key size mismatch")
 	}
 	return out, nil
 }
@@ -307,12 +375,12 @@ func (b canonicalGroupBinding) HashRow(row int) (uint64, error) {
 		return 0, err
 	}
 	hash := canonicalGroupHashOffset
-	for _, field := range b.fields {
-		bits, data, valid, err := b.component(field, row)
+	for index, field := range b.fields {
+		bits, data, valid, err := b.components[index].value(field, row)
 		if err != nil {
 			return 0, err
 		}
-		width, _ := canonicalGroupWidth(field.Type)
+		width := b.components[index].width
 		if !valid {
 			width = 0
 		} else if width == 0 {

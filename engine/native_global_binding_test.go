@@ -120,7 +120,7 @@ func TestGlobalAggregateBindingsAllWidths(t *testing.T) {
 		m.Layouts = append(m.Layouts, aggregate.Layout{Sum: true, CountValues: true})
 	}
 	p := &PreparedQuery{cq: CompiledQuery{GroupShape: GroupShapeGlobal, MultiAggregate: m}}
-	if _, err := p.bindSortedBatch(b); err != nil {
+	if _, err := p.bindSortedBatch(context.Background(), b, nil); err != nil {
 		t.Fatal(err)
 	}
 	s := &sortedAggregateStream{query: p, inputBatch: b, globalBindings: make([]globalAggregateLaneBinding, len(m.Columns))}
@@ -168,7 +168,7 @@ func TestGlobalAggregateBindingsCountValidityOnly(t *testing.T) {
 	}
 	m.Layouts[7] = aggregate.Layout{CountRows: true}
 	p := &PreparedQuery{cq: CompiledQuery{GroupShape: GroupShapeGlobal, MultiAggregate: m}}
-	if _, err := p.bindSortedBatch(b); err != nil {
+	if _, err := p.bindSortedBatch(context.Background(), b, nil); err != nil {
 		t.Fatal(err)
 	}
 	s := &sortedAggregateStream{query: p, inputBatch: b, globalBindings: make([]globalAggregateLaneBinding, 8)}

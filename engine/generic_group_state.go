@@ -24,7 +24,7 @@ func (m *multiAggregateState) canonicalKey(record aggregateRecord) ([]byte, erro
 		}
 		m.scratchLease = lease
 	}
-	return record.canonical.AppendKey(m.scratch[:0], int(record.a))
+	return record.canonical.appendSizedKey(m.scratch[:0], int(record.a), n)
 }
 
 func (s *sortedAggregateStream) canonicalRowKey(ctx context.Context, row int) ([]byte, error) {
@@ -44,5 +44,5 @@ func (s *sortedAggregateStream) canonicalRowKey(ctx context.Context, row int) ([
 		}
 		s.canonicalLease = lease
 	}
-	return s.binding.canonical.AppendKey(s.canonicalScratch[:0], row)
+	return s.binding.canonical.appendSizedKey(s.canonicalScratch[:0], row, n)
 }

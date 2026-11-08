@@ -1065,37 +1065,6 @@ type aggregateBatchBinding struct {
 	values  *memory.Int64Vector
 }
 
-func (s *spillableAggregateStream) bindBatch(batch *memory.Batch) (aggregateBatchBinding, error) {
-	binding := aggregateBatchBinding{batch: batch}
-	if err := s.query.bindMultiValues(batch); err != nil {
-		return binding, err
-	}
-	var err error
-	if s.query.cq.ValueColumn != "" && (!s.query.nativeAggregate() || s.query.cq.MultiAggregate.Types[0] == memory.TypeInt64) {
-		binding.values, err = batch.Int64(s.query.cq.ValueColumn)
-		if err != nil {
-			return binding, err
-		}
-	}
-	if s.query.cq.GroupShape == GroupShapeGeneric {
-		canonical, bindErr := bindCanonicalGroupKeys(s.query.cq.GenericFields, batch)
-		binding.canonical = &canonical
-		return binding, bindErr
-	}
-	if s.query.cq.GroupShape == GroupShapeStringView {
-		binding.strings, err = batch.String(s.query.cq.GroupBy[0].Name)
-		return binding, err
-	}
-	binding.first, err = fixedFromBatch(batch, s.query.cq.GroupBy[0])
-	if err != nil {
-		return binding, err
-	}
-	if s.query.cq.GroupShape == GroupShapePairFixed {
-		binding.second, err = fixedFromBatch(batch, s.query.cq.GroupBy[1])
-	}
-	return binding, err
-}
-
 type aggregateKey struct {
 	a, b      uint64
 	validMask uint8
@@ -1188,7 +1157,8 @@ func bitsTrailingZeros64(value uint64) int {
 }
 
 func (s *spillableAggregateStream) aggregateBatch(ctx context.Context, batch *memory.Batch, workspace *aggregatePredicateWorkspace) error {
-	binding, err := s.bindBatch(batch)
+	defer workspace.keys.clear()
+	binding, err := s.query.bindSortedBatch(ctx, batch, workspace)
 	if err != nil {
 		return err
 	}

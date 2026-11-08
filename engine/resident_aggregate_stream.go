@@ -172,6 +172,7 @@ type residentAggregateStream struct {
 }
 
 func (s *residentAggregateStream) consume(ctx context.Context) (err error) {
+	defer s.predicate.keys.clear()
 	defer func() {
 		if s.input != nil {
 			err = errors.Join(err, s.input.Close())
@@ -179,6 +180,7 @@ func (s *residentAggregateStream) consume(ctx context.Context) (err error) {
 		}
 	}()
 	for {
+		s.predicate.keys.clear()
 		ok, err := s.input.Next(ctx, s.inputBatch)
 		if err != nil {
 			return err
@@ -194,7 +196,7 @@ func (s *residentAggregateStream) consume(ctx context.Context) (err error) {
 		var selected int
 		var checksum int64
 		if s.partitioned != nil {
-			binding, bindErr := s.formatter.bindBatch(s.inputBatch)
+			binding, bindErr := s.query.bindSortedBatch(ctx, s.inputBatch, &s.predicate)
 			if bindErr != nil {
 				return bindErr
 			}

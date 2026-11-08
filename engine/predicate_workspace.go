@@ -9,8 +9,10 @@ import (
 )
 
 // aggregatePredicateWorkspace delegates normal predicate ownership to the same
-// workspace used by physical filters, with one separately charged fused word.
+// workspace used by physical filters, with one separately charged fused word
+// and reusable, batch-scoped canonical group-key descriptors.
 type aggregatePredicateWorkspace struct {
+	keys             canonicalGroupWorkspace
 	ordinal          uint64
 	fusedMask        memory.Bitmap
 	fusedReservation memory.Reservation
@@ -52,6 +54,7 @@ func (w *aggregatePredicateWorkspace) ensureFused(ctx context.Context) error {
 }
 
 func (w *aggregatePredicateWorkspace) close() {
+	w.keys.close()
 	w.fusedMask = nil
 	if w.fusedReservation != nil {
 		w.fusedReservation.Release()
@@ -65,10 +68,29 @@ func (w *aggregatePredicateWorkspace) close() {
 }
 
 func (w *aggregatePredicateWorkspace) memoryBytes() int64 {
-	if w.workspace == nil {
-		return 0
+	var bytes int64
+	if w.keys.lease != nil {
+		bytes = w.keys.lease.Bytes()
 	}
-	return w.workspace.MemoryBytes()
+	if w.workspace == nil {
+		return bytes
+	}
+	return bytes + w.workspace.MemoryBytes()
+}
+
+// bindKeys owns reusable per-key descriptors, never row-sized storage. Readers
+// must finish before clear/rebind or the producer's next batch transition.
+func (w *aggregatePredicateWorkspace) bindKeys(ctx context.Context, fields []memory.Field, batch *memory.Batch) (*canonicalGroupBinding, error) {
+	if w == nil || w.manager == nil {
+		return nil, fmt.Errorf("canonical group workspace has no memory owner")
+	}
+	if err := w.keys.ensure(fields, func(n int64) (memory.Reservation, error) { return w.manager.Reserve(ctx, n) }); err != nil {
+		return nil, err
+	}
+	if _, err := w.keys.bind(fields, batch); err != nil {
+		return nil, err
+	}
+	return &w.keys.binding, nil
 }
 
 // aggregateStreamContext preserves the stream's bound owner while allowing a
