@@ -111,7 +111,7 @@ type JoinKey struct {
 	Right string
 }
 
-// Join combines two logical inputs using one or two equality keys. Physical
+// Join combines two logical inputs using one or more equality keys. Physical
 // lowering can either return terminal row references or stream materialized
 // columnar join batches into downstream lazy operators.
 type Join struct {

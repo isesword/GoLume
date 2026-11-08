@@ -476,6 +476,9 @@ func materializeJoinBatch(dst *memory.Batch, s *JoinSource, left *memory.Batch, 
 						return err
 					}
 					if valid {
+						if uint64(len(out.Data))+uint64(len(v)) > math.MaxUint32 {
+							return fmt.Errorf("join string output exceeds uint32 offset capacity")
+						}
 						out.Data = append(out.Data, v...)
 						if out.Validity != nil {
 							memory.Set(out.Validity, i)

@@ -119,8 +119,8 @@ func InferSchema(plan Plan) (memory.Schema, error) {
 		if n == nil || n.Left == nil || n.Right == nil {
 			return memory.Schema{}, fmt.Errorf("logical join requires left and right inputs")
 		}
-		if len(n.Keys) < 1 || len(n.Keys) > 2 {
-			return memory.Schema{}, fmt.Errorf("phase-2.4 join requires one or two equality keys")
+		if len(n.Keys) < 1 {
+			return memory.Schema{}, fmt.Errorf("join requires at least one equality key")
 		}
 		left, err := InferSchema(n.Left)
 		if err != nil {
@@ -144,6 +144,11 @@ func InferSchema(plan Plan) (memory.Schema, error) {
 			}
 		}
 		fields := append([]memory.Field(nil), left.Fields...)
+		if n.Type == join.Right || n.Type == join.Full {
+			for i := range fields {
+				fields[i].Nullable = true
+			}
+		}
 		if n.Type == join.Semi || n.Type == join.Anti {
 			return memory.NewSchema(fields...), nil
 		}
@@ -157,7 +162,7 @@ func InferSchema(plan Plan) (memory.Schema, error) {
 		}
 		for _, f := range right.Fields {
 			out := f
-			if n.Type == join.Left {
+			if n.Type == join.Left || n.Type == join.Full {
 				out.Nullable = true
 			}
 			if _, exists := seen[out.Name]; exists {

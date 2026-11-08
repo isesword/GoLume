@@ -52,6 +52,11 @@ type residentJoinBatchStream struct {
 	state              *memory.OperatorBudget
 	outputReservation  memory.Reservation
 	matchedReservation memory.Reservation
+	byteOutput         *memory.Batch
+	terminalErr        error
+	byteQuery          *memory.QueryBudget
+	bytePartitions     []source.Partition
+	bytePartitionMem   memory.Reservation
 }
 
 // NewBatchStream opens either the execution-scoped spill implementation or a
@@ -71,6 +76,29 @@ func (s *JoinSource) NewBatchStreamWithPartitions(ctx context.Context, opts sour
 	if !s.partitionParallel() {
 		return nil, fmt.Errorf("join strategy %s type %s does not support partition subsets", s.Strategy(), s.typ)
 	}
+	var partitionMem memory.Reservation
+	if s.shape == joinBytes {
+		if ctx == nil {
+			return nil, fmt.Errorf("join stream context is nil")
+		}
+		if manager := s.byteExecutionManager(ctx, opts); manager != nil {
+			bytes, err := safeMulRows(int64(len(parts)), 16)
+			if err != nil {
+				return nil, err
+			}
+			reservation, err := manager.Reserve(ctx, bytes)
+			if err != nil {
+				return nil, err
+			}
+			partitionMem = reservation
+		}
+	}
+	success := false
+	defer func() {
+		if !success && partitionMem != nil {
+			partitionMem.Release()
+		}
+	}()
 	selected := make([]source.Partition, len(parts))
 	for i, part := range parts {
 		if part.ID < 0 || part.ID >= len(s.leftParts) {
@@ -78,10 +106,25 @@ func (s *JoinSource) NewBatchStreamWithPartitions(ctx context.Context, opts sour
 		}
 		selected[i] = s.leftParts[part.ID]
 	}
-	return s.newBatchStream(ctx, opts, selected, true)
+	stream, err := s.newBatchStream(ctx, opts, selected, true)
+	if err != nil {
+		return nil, err
+	}
+	if s.shape == joinBytes {
+		resident := stream.(*residentJoinBatchStream)
+		resident.bytePartitions, resident.bytePartitionMem = selected, partitionMem
+	}
+	success = true
+	return stream, nil
 }
 
 func (s *JoinSource) newBatchStream(ctx context.Context, opts source.ReadOptions, probeParts []source.Partition, subset bool) (source.BatchStream, error) {
+	if ctx == nil {
+		return nil, fmt.Errorf("join stream context is nil")
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	if err := opts.Validate(); err != nil {
 		return nil, err
 	}
@@ -96,6 +139,11 @@ func (s *JoinSource) newBatchStream(ctx context.Context, opts source.ReadOptions
 	}
 	if s.merge {
 		return newMergeJoinStream(ctx, s, opts)
+	}
+	if s.shape == joinBytes {
+		if query := memory.QueryBudgetFromContext(ctx); query != nil {
+			opts.MemoryManager = query.Operator("SourceScan", memory.MemoryWorkspace)
+		}
 	}
 	var left source.BatchStream
 	var err error
@@ -112,14 +160,27 @@ func (s *JoinSource) newBatchStream(ctx context.Context, opts source.ReadOptions
 		started:          time.Now(),
 		feedbackEligible: !subset,
 	}
+	if s.shape == joinBytes {
+		stream.byteQuery = memory.QueryBudgetFromContext(ctx)
+		stream.reader.byteManager = s.byteExecutionManager(ctx, opts)
+	}
 	if query := memory.QueryBudgetFromContext(ctx); query != nil && query.Limit() > 0 {
 		stream.workspace = query.Operator("BroadcastJoinWorkspace", memory.MemoryWorkspace)
 		stream.state = query.Operator("BroadcastJoinMatchedBuild", memory.MemoryRetainedState)
 	}
 	if s.typ == join.Right || s.typ == join.Full {
+		if stream.state == nil && s.shape == joinBytes && stream.reader.byteManager != nil {
+			stream.matchedReservation, err = stream.reader.byteManager.Reserve(ctx, int64(len(s.buildLoc)))
+			if err != nil {
+				return nil, errors.Join(err, left.Close())
+			}
+		}
 		if stream.state != nil {
 			stream.matchedReservation, err = stream.state.Reserve(ctx, int64(len(s.buildLoc)))
 			if err != nil {
+				if s.shape == joinBytes {
+					return nil, errors.Join(err, left.Close())
+				}
 				_ = left.Close()
 				return nil, err
 			}
@@ -131,9 +192,50 @@ func (s *JoinSource) newBatchStream(ctx context.Context, opts source.ReadOptions
 
 // Next probes one native child batch. Bounded high-multiplicity output is
 // handled by spillableJoinStream; MemoryOnly keeps the broadcast fast path.
-func (s *residentJoinBatchStream) Next(ctx context.Context, dst *memory.Batch) (bool, error) {
+func (s *residentJoinBatchStream) Next(ctx context.Context, dst *memory.Batch) (ok bool, resultErr error) {
 	if dst == nil {
-		return false, fmt.Errorf("join stream destination is nil")
+		err := fmt.Errorf("join stream destination is nil")
+		if s.reader.owner.shape == joinBytes {
+			if s.terminalErr != nil {
+				return false, s.terminalErr
+			}
+			err = errors.Join(err, s.Close())
+			s.terminalErr = err
+		}
+		return false, err
+	}
+	if s.reader.owner.shape == joinBytes {
+		if s.byteOutput != nil {
+			s.byteOutput.ClearColumns()
+			s.byteOutput = nil
+		}
+		dst.ClearColumns()
+		if s.terminalErr != nil {
+			return false, s.terminalErr
+		}
+		defer func() {
+			if resultErr != nil && !s.closed {
+				dst.ClearColumns()
+				resultErr = errors.Join(resultErr, s.Close())
+				s.terminalErr = resultErr
+			} else if ok {
+				s.byteOutput = dst
+			}
+		}()
+		if s.closed {
+			return false, source.ErrBatchStreamClosed
+		}
+		if ctx == nil {
+			return false, fmt.Errorf("generic join context is nil")
+		}
+		if query := memory.QueryBudgetFromContext(ctx); query != nil && query != s.byteQuery {
+			return false, fmt.Errorf("generic join stream cannot change query ownership")
+		} else if query == nil && s.byteQuery != nil {
+			ctx = memory.WithQueryBudget(ctx, s.byteQuery)
+		}
+		if err := ctx.Err(); err != nil {
+			return false, err
+		}
 	}
 	if s.outputReservation != nil {
 		s.outputReservation.Release()
@@ -150,10 +252,18 @@ func (s *residentJoinBatchStream) Next(ctx context.Context, dst *memory.Batch) (
 	if s.probeExhausted {
 		if len(s.matchedBuild) != 0 {
 			capacity := minInt(4096, len(s.matchedBuild)-s.unmatchedNext)
-			if err := s.reserveOutput(ctx, int64(capacity), 0); err != nil {
-				return false, err
+			var pairs []join.Pair
+			if s.reader.owner.shape == joinBytes {
+				if err := s.reader.resetBytePairs(ctx, int64(capacity)); err != nil {
+					return false, err
+				}
+				pairs = s.reader.pairs
+			} else {
+				if err := s.reserveOutput(ctx, int64(capacity), 0); err != nil {
+					return false, err
+				}
+				pairs = make([]join.Pair, 0, capacity)
 			}
-			pairs := make([]join.Pair, 0, capacity)
 			for s.unmatchedNext < len(s.matchedBuild) && len(pairs) < cap(pairs) {
 				buildRow := s.unmatchedNext
 				s.unmatchedNext++
@@ -162,6 +272,11 @@ func (s *residentJoinBatchStream) Next(ctx context.Context, dst *memory.Batch) (
 				}
 			}
 			if len(pairs) != 0 {
+				if s.reader.owner.shape == joinBytes {
+					if err := s.reserveByteOutput(ctx, nil, pairs); err != nil {
+						return false, err
+					}
+				}
 				if err := materializeJoinBatch(dst, s.reader.owner, nil, pairs); err != nil {
 					return false, err
 				}
@@ -193,8 +308,10 @@ func (s *residentJoinBatchStream) Next(ctx context.Context, dst *memory.Batch) (
 		return false, err
 	}
 	if err := materializeJoinBatch(dst, s.reader.owner, s.reader.leftBatch, s.reader.pairs); err != nil {
-		s.outputReservation.Release()
-		s.outputReservation = nil
+		if s.outputReservation != nil {
+			s.outputReservation.Release()
+			s.outputReservation = nil
+		}
 		return false, err
 	}
 	s.probeRows += int64(s.reader.lastSummary.ProbeRows)
@@ -213,6 +330,9 @@ func (s *residentJoinBatchStream) Next(ctx context.Context, dst *memory.Batch) (
 }
 
 func (s *residentJoinBatchStream) reserveOutput(ctx context.Context, outputRows, probeRows int64) error {
+	if s.reader.owner.shape == joinBytes {
+		return s.reserveByteOutput(ctx, s.reader.leftBatch, s.reader.pairs)
+	}
 	if s.workspace == nil {
 		return nil
 	}
@@ -245,6 +365,14 @@ func (s *residentJoinBatchStream) Close() error {
 	}
 	s.closed = true
 	s.recordStats()
+	if s.reader.owner.shape == joinBytes {
+		if s.byteOutput != nil {
+			s.byteOutput.ClearColumns()
+			s.byteOutput = nil
+		}
+		s.matchedBuild = nil
+		s.byteQuery = nil
+	}
 	if s.outputReservation != nil {
 		s.outputReservation.Release()
 		s.outputReservation = nil
@@ -253,7 +381,17 @@ func (s *residentJoinBatchStream) Close() error {
 		s.matchedReservation.Release()
 		s.matchedReservation = nil
 	}
-	return s.reader.Close()
+	closeErr := s.reader.Close()
+	// The child may retain the selected partition slice until Close returns.
+	// Drop its references before returning our metadata admission.
+	if s.reader.owner.shape == joinBytes {
+		s.bytePartitions = nil
+		if s.bytePartitionMem != nil {
+			s.bytePartitionMem.Release()
+			s.bytePartitionMem = nil
+		}
+	}
+	return closeErr
 }
 
 // StreamDiagnostics reports broadcast build/probe and multiplicity metrics.

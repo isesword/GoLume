@@ -25,7 +25,8 @@ const (
 )
 
 // JoinOptions configures a lazy equality join. LeftOn and RightOn must contain
-// one or two corresponding key columns. Suffix disambiguates duplicate right
+// one or more corresponding key columns. Ordinary strings and composites with
+// more than two keys currently require MemoryOnly execution. Suffix disambiguates duplicate right
 // output column names in the logical schema.
 type JoinOptions struct {
 	Type    JoinType
@@ -53,8 +54,8 @@ func (f LazyFrame) Join(right LazyFrame, opts JoinOptions) LazyFrame {
 		f.err = fmt.Errorf("lazy join inputs must belong to the same Session")
 		return f
 	}
-	if len(opts.LeftOn) != len(opts.RightOn) || len(opts.LeftOn) < 1 || len(opts.LeftOn) > 2 {
-		f.err = fmt.Errorf("lazy join requires one or two corresponding key columns")
+	if len(opts.LeftOn) != len(opts.RightOn) || len(opts.LeftOn) < 1 {
+		f.err = fmt.Errorf("lazy join requires one or more corresponding key columns")
 		return f
 	}
 	keys := make([]logical.JoinKey, len(opts.LeftOn))
