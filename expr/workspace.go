@@ -20,6 +20,12 @@ func fixedRegisterBytes(in instruction, rows int) (int64, error) {
 		return 0, nil
 	}
 	n := int64(memory.WordsFor(rows)) * 8
+	if in.compactLiteral {
+		if int64(len(in.String)) > math.MaxInt64-n {
+			return 0, fmt.Errorf("expression literal size overflow")
+		}
+		return n + int64(len(in.String)), nil
+	}
 	typ := instructionResultType(in)
 	width := int64(0)
 	switch typ {
@@ -136,7 +142,7 @@ func (w *evaluationState) prepareProgram(instructions []instruction, rows int) e
 			r.reserve = next.reserve
 			r.checkContext = next.checkContext
 			if in.Code != scalarColumn || in.Type == memory.TypeBool {
-				err = prepareScalarBuffers(r, rows)
+				err = prepareInstructionBuffers(r, in, rows)
 				if err != nil {
 					break
 				}

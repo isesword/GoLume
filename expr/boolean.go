@@ -294,6 +294,9 @@ func compareRegisters(a, b *scalarRegister, row int, op Op) (bool, error) {
 
 func (w *evaluationState) outputValue(index, rows int) (ScalarValue, error) {
 	r := &w.regs[index]
+	if r.constant {
+		return w.materializeLiteral(index, rows)
+	}
 	if w.program[index].Code == scalarColumn && (r.strView != nil || r.strDict != nil || r.strList != nil || r.strct != nil || r.opaque != nil) {
 		return w.exportBorrowedValue(index, rows)
 	}

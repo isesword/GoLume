@@ -9,6 +9,7 @@ import "gocolumn/memory"
 // Physical owners are dense, with first introductions in increasing order,
 // so workspace metadata never needs holes for dead logical registers.
 func (p *Program) planStorage() {
+	p.planLiterals()
 	n := len(p.instructions)
 	last := make([]int, n)
 	for i := range last {
@@ -31,14 +32,26 @@ func (p *Program) planStorage() {
 	// instruction count. Slot types are exact, including temporal units; no
 	// unsafe reinterpretation or aliasing of borrowed columns is involved.
 	release := make([][]int, n)
-	free := make(map[memory.DataType][]int)
+	type storageClass struct {
+		typ     memory.DataType
+		compact bool
+	}
+	class := func(in instruction) storageClass { return storageClass{instructionResultType(in), in.compactLiteral} }
+	free := make(map[storageClass][]int)
+	ownerClass := make([]storageClass, 0, n)
 	owners := 0
 	for i := range p.instructions {
 		in := &p.instructions[i]
 		in.storageOwner = 0
 		if reusableInstruction(*in) {
-			typ := instructionResultType(*in)
+			typ := class(*in)
 			available := free[typ]
+			// A scalar can reuse an already admitted dense owner without
+			// filling its vector. The reverse would need unplanned storage.
+			if len(available) == 0 && typ.compact {
+				typ.compact = false
+				available = free[typ]
+			}
 			if len(available) > 0 {
 				in.storageOwner = available[len(available)-1] + 1
 				free[typ] = available[:len(available)-1]
@@ -48,12 +61,13 @@ func (p *Program) planStorage() {
 			}
 		}
 		if in.storageOwner == 0 {
+			ownerClass = append(ownerClass, class(*in))
 			owners++
 			in.storageOwner = owners
 		}
 		// Only subsequent instructions may overwrite values consumed here.
 		for _, dead := range release[i] {
-			typ := instructionResultType(p.instructions[dead])
+			typ := ownerClass[p.instructions[dead].storageOwner-1]
 			free[typ] = append(free[typ], p.instructions[dead].storageOwner-1)
 		}
 	}

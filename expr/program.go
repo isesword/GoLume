@@ -30,6 +30,7 @@ const (
 type instruction struct {
 	storageOwner        int // One-based physical owner; zero denotes an unplanned register.
 	Kind                uint8
+	compactLiteral      bool // Scalar payload; all consumers support register reads.
 	Regions             []Program
 	Code                opcode
 	Op                  Op
@@ -66,7 +67,7 @@ type Program struct {
 // WorkspaceBytes returns logical register metadata and distinct physical-slot
 // storage for a fresh execution, plus conservative per-execution allowances
 // for immutable literal IN sets. Dynamic string, JSON, list and dictionary
-// payloads are admitted separately.
+// payloads and dense literal output materialization are admitted separately.
 func (p Program) WorkspaceBytes(rows int) (int64, error) {
 	return instructionWorkspaceBytes(p.instructions, rows)
 }

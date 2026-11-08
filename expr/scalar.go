@@ -509,7 +509,8 @@ func evaluateInstructionsActive(instructions []instruction, batch *memory.Batch,
 		}
 		r.typ = instructionResultType(in)
 		if in.Code != scalarColumn {
-			if err := prepareScalarBuffers(r, batch.Rows); err != nil {
+			r.constant = in.compactLiteral
+			if err := prepareInstructionBuffers(r, in, batch.Rows); err != nil {
 				return err
 			}
 		}
@@ -568,6 +569,10 @@ func evaluateInstructionsActive(instructions []instruction, batch *memory.Batch,
 			}
 		case scalarLiteralI64:
 			r.validity = nil
+			if r.constant {
+				r.i64lit = in.I64
+				break
+			}
 			switch familyOf(in.Type) {
 			case familyI32:
 				values := ensureI32(r, batch.Rows)
@@ -584,12 +589,20 @@ func evaluateInstructionsActive(instructions []instruction, batch *memory.Batch,
 			}
 		case scalarLiteralF64:
 			r.validity = nil
+			if r.constant {
+				r.f64lit = in.F64
+				break
+			}
 			values := ensureF64(r, batch.Rows)
 			for row := range values {
 				values[row] = in.F64
 			}
 		case scalarLiteralString:
 			r.validity = nil
+			if r.constant {
+				r.strlit = in.String
+				break
+			}
 			offsets := ensureOffsets(r, batch.Rows)
 			offsets[0] = 0
 			r.data = r.data[:0]
@@ -2127,11 +2140,11 @@ func registerUint64(r *scalarRegister, row int) (uint64, error) {
 		return 0, nil
 	}
 	if r.constant {
-		if r.i64lit < 0 {
-			return 0, fmt.Errorf("negative value cannot convert to uint64")
-		}
 		if familyOf(r.typ) == familyF64 {
 			return checkedFloatUint64(r.f64lit, row)
+		}
+		if r.i64lit < 0 {
+			return 0, fmt.Errorf("negative value cannot convert to uint64 at row %d", row)
 		}
 		return uint64(r.i64lit), nil
 	}
@@ -2205,6 +2218,9 @@ func registerFloat64(r *scalarRegister, row int) (float64, error) {
 
 func registerString(r *scalarRegister, row int) ([]byte, error) {
 	if r.constant {
+		if r.literalKey == r.strlit && len(r.literal) == len(r.strlit) {
+			return r.literal, nil
+		}
 		return []byte(r.strlit), nil
 	}
 	if r.strView != nil {
