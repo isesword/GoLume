@@ -16,6 +16,24 @@ func installCheckedIntegerSIMD(set *Set, mode Mode, vectorBits int) {
 	}
 	switch vectorBits {
 	case 128:
+		set.d.arithmeticInt32[ArithmeticAdd] = checkedarm64Int32Add128
+		idInt32Add, _ := ArithmeticID(memory.TypeInt32, ArithmeticAdd)
+		set.setCapability(idInt32Add, KernelCapability{HardwareSIMD: true, VectorBits: 128, Backend: "archsimd-arm64-checked"})
+		set.d.arithmeticInt32[ArithmeticSub] = checkedarm64Int32Sub128
+		idInt32Sub, _ := ArithmeticID(memory.TypeInt32, ArithmeticSub)
+		set.setCapability(idInt32Sub, KernelCapability{HardwareSIMD: true, VectorBits: 128, Backend: "archsimd-arm64-checked"})
+		set.d.arithmeticInt32[ArithmeticMul] = checkedarm64Int32Mul128
+		idInt32Mul, _ := ArithmeticID(memory.TypeInt32, ArithmeticMul)
+		set.setCapability(idInt32Mul, KernelCapability{HardwareSIMD: true, VectorBits: 128, Backend: "archsimd-arm64-checked"})
+		set.d.arithmeticUint32[ArithmeticAdd] = checkedarm64Uint32Add128
+		idUint32Add, _ := ArithmeticID(memory.TypeUint32, ArithmeticAdd)
+		set.setCapability(idUint32Add, KernelCapability{HardwareSIMD: true, VectorBits: 128, Backend: "archsimd-arm64-checked"})
+		set.d.arithmeticUint32[ArithmeticSub] = checkedarm64Uint32Sub128
+		idUint32Sub, _ := ArithmeticID(memory.TypeUint32, ArithmeticSub)
+		set.setCapability(idUint32Sub, KernelCapability{HardwareSIMD: true, VectorBits: 128, Backend: "archsimd-arm64-checked"})
+		set.d.arithmeticUint32[ArithmeticMul] = checkedarm64Uint32Mul128
+		idUint32Mul, _ := ArithmeticID(memory.TypeUint32, ArithmeticMul)
+		set.setCapability(idUint32Mul, KernelCapability{HardwareSIMD: true, VectorBits: 128, Backend: "archsimd-arm64-checked"})
 		set.d.arithmeticInt64[ArithmeticAdd] = checkedarm64Int64Add128
 		idInt64Add, _ := ArithmeticID(memory.TypeInt64, ArithmeticAdd)
 		set.setCapability(idInt64Add, KernelCapability{HardwareSIMD: true, VectorBits: 128, Backend: "archsimd-arm64-checked"})
@@ -363,6 +381,620 @@ func checkedarm64Uint64Mul128(left, right, out []uint64, validity, overflow memo
 			value := a * b
 			hi, _ := bits.Mul64(a, b)
 			failed := hi != 0
+			if failed {
+				failedWord |= uint64(1) << uint(off)
+			}
+			out[row] = value
+		}
+		failedWord &= validWord
+		if overflow != nil {
+			overflow[wi] = failedWord
+		}
+		if first < 0 && failedWord != 0 {
+			first = base + bits.TrailingZeros64(failedWord)
+		}
+		invalid := ^validWord & memory.TailMask(rows)
+		for invalid != 0 {
+			lane := bits.TrailingZeros64(invalid)
+			out[base+lane] = 0
+			invalid &= invalid - 1
+		}
+	}
+	return first
+}
+
+func checkedarm64Int32Add128(left, right, out []int32, validity, overflow memory.Bitmap) int {
+	prepareIntegerArithmetic(len(left), len(left), len(right), len(out), overflow)
+	if len(left) < 16 {
+		if len(left) == 0 {
+			return -1
+		}
+		if validity == nil && overflow == nil {
+			first := -1
+			for row, a := range left {
+				b := right[row]
+				wide := int64(a) + int64(b)
+				value := int32(wide)
+				failed := wide < -2147483648 || wide > 2147483647
+				if failed && first < 0 {
+					first = row
+				}
+				out[row] = value
+			}
+			return first
+		}
+		validWord := bitmapWord(validity, 0) & memory.TailMask(len(left))
+		if validWord == 0 {
+			clear(out[:len(left)])
+			return -1
+		}
+		var failedWord uint64
+		for row, a := range left {
+			b := right[row]
+			wide := int64(a) + int64(b)
+			value := int32(wide)
+			failed := wide < -2147483648 || wide > 2147483647
+			if failed {
+				failedWord |= uint64(1) << uint(row)
+			}
+			out[row] = value
+		}
+		failedWord &= validWord
+		if overflow != nil {
+			overflow[0] = failedWord
+		}
+		invalid := ^validWord & memory.TailMask(len(left))
+		for invalid != 0 {
+			row := bits.TrailingZeros64(invalid)
+			out[row] = 0
+			invalid &= invalid - 1
+		}
+		if failedWord != 0 {
+			return bits.TrailingZeros64(failedWord)
+		}
+		return -1
+	}
+	if checkedIntegerPartialOverlap(left, right, out) {
+		return scalarInt32Add(left, right, out, validity, overflow)
+	}
+	first := -1
+	for wi := 0; wi < memory.WordsFor(len(left)); wi++ {
+		base := wi * 64
+		rows := min(64, len(left)-base)
+		validWord := bitmapWord(validity, wi) & memory.TailMask(rows)
+		if validWord == 0 {
+			clear(out[base : base+rows])
+			continue
+		}
+		var failedWord uint64
+		off := 0
+		for ; off+4 <= rows; off += 4 {
+			laneOffset := off
+			a := archsimd.LoadInt32x4(left[base+off:])
+			b := archsimd.LoadInt32x4(right[base+off:])
+			result := a.Add(b)
+			failed := a.Xor(result).And(b.Xor(result)).Less(archsimd.Int32x4{})
+			mask := failed.ToInt32x4()
+			failedWord |= ((uint64(uint32(mask.GetElem(0))) >> 31) | ((uint64(uint32(mask.GetElem(1))) >> 31) << 1) | ((uint64(uint32(mask.GetElem(2))) >> 31) << 2) | ((uint64(uint32(mask.GetElem(3))) >> 31) << 3)) << uint(laneOffset)
+			result.Store(out[base+off:])
+		}
+		for ; off < rows; off++ {
+			row := base + off
+			a, b := left[row], right[row]
+			value := a + b
+			failed := (a^value)&(b^value) < 0
+			if failed {
+				failedWord |= uint64(1) << uint(off)
+			}
+			out[row] = value
+		}
+		failedWord &= validWord
+		if overflow != nil {
+			overflow[wi] = failedWord
+		}
+		if first < 0 && failedWord != 0 {
+			first = base + bits.TrailingZeros64(failedWord)
+		}
+		invalid := ^validWord & memory.TailMask(rows)
+		for invalid != 0 {
+			lane := bits.TrailingZeros64(invalid)
+			out[base+lane] = 0
+			invalid &= invalid - 1
+		}
+	}
+	return first
+}
+
+func checkedarm64Int32Sub128(left, right, out []int32, validity, overflow memory.Bitmap) int {
+	prepareIntegerArithmetic(len(left), len(left), len(right), len(out), overflow)
+	if len(left) < 16 {
+		if len(left) == 0 {
+			return -1
+		}
+		if validity == nil && overflow == nil {
+			first := -1
+			for row, a := range left {
+				b := right[row]
+				wide := int64(a) - int64(b)
+				value := int32(wide)
+				failed := wide < -2147483648 || wide > 2147483647
+				if failed && first < 0 {
+					first = row
+				}
+				out[row] = value
+			}
+			return first
+		}
+		validWord := bitmapWord(validity, 0) & memory.TailMask(len(left))
+		if validWord == 0 {
+			clear(out[:len(left)])
+			return -1
+		}
+		var failedWord uint64
+		for row, a := range left {
+			b := right[row]
+			wide := int64(a) - int64(b)
+			value := int32(wide)
+			failed := wide < -2147483648 || wide > 2147483647
+			if failed {
+				failedWord |= uint64(1) << uint(row)
+			}
+			out[row] = value
+		}
+		failedWord &= validWord
+		if overflow != nil {
+			overflow[0] = failedWord
+		}
+		invalid := ^validWord & memory.TailMask(len(left))
+		for invalid != 0 {
+			row := bits.TrailingZeros64(invalid)
+			out[row] = 0
+			invalid &= invalid - 1
+		}
+		if failedWord != 0 {
+			return bits.TrailingZeros64(failedWord)
+		}
+		return -1
+	}
+	if checkedIntegerPartialOverlap(left, right, out) {
+		return scalarInt32Sub(left, right, out, validity, overflow)
+	}
+	first := -1
+	for wi := 0; wi < memory.WordsFor(len(left)); wi++ {
+		base := wi * 64
+		rows := min(64, len(left)-base)
+		validWord := bitmapWord(validity, wi) & memory.TailMask(rows)
+		if validWord == 0 {
+			clear(out[base : base+rows])
+			continue
+		}
+		var failedWord uint64
+		off := 0
+		for ; off+4 <= rows; off += 4 {
+			laneOffset := off
+			a := archsimd.LoadInt32x4(left[base+off:])
+			b := archsimd.LoadInt32x4(right[base+off:])
+			result := a.Sub(b)
+			failed := a.Xor(b).And(a.Xor(result)).Less(archsimd.Int32x4{})
+			mask := failed.ToInt32x4()
+			failedWord |= ((uint64(uint32(mask.GetElem(0))) >> 31) | ((uint64(uint32(mask.GetElem(1))) >> 31) << 1) | ((uint64(uint32(mask.GetElem(2))) >> 31) << 2) | ((uint64(uint32(mask.GetElem(3))) >> 31) << 3)) << uint(laneOffset)
+			result.Store(out[base+off:])
+		}
+		for ; off < rows; off++ {
+			row := base + off
+			a, b := left[row], right[row]
+			value := a - b
+			failed := (a^b)&(a^value) < 0
+			if failed {
+				failedWord |= uint64(1) << uint(off)
+			}
+			out[row] = value
+		}
+		failedWord &= validWord
+		if overflow != nil {
+			overflow[wi] = failedWord
+		}
+		if first < 0 && failedWord != 0 {
+			first = base + bits.TrailingZeros64(failedWord)
+		}
+		invalid := ^validWord & memory.TailMask(rows)
+		for invalid != 0 {
+			lane := bits.TrailingZeros64(invalid)
+			out[base+lane] = 0
+			invalid &= invalid - 1
+		}
+	}
+	return first
+}
+
+func checkedarm64Int32Mul128(left, right, out []int32, validity, overflow memory.Bitmap) int {
+	prepareIntegerArithmetic(len(left), len(left), len(right), len(out), overflow)
+	if len(left) < 16 {
+		if len(left) == 0 {
+			return -1
+		}
+		if validity == nil && overflow == nil {
+			first := -1
+			for row, a := range left {
+				b := right[row]
+				wide := int64(a) * int64(b)
+				value := int32(wide)
+				failed := wide < -2147483648 || wide > 2147483647
+				if failed && first < 0 {
+					first = row
+				}
+				out[row] = value
+			}
+			return first
+		}
+		validWord := bitmapWord(validity, 0) & memory.TailMask(len(left))
+		if validWord == 0 {
+			clear(out[:len(left)])
+			return -1
+		}
+		var failedWord uint64
+		for row, a := range left {
+			b := right[row]
+			wide := int64(a) * int64(b)
+			value := int32(wide)
+			failed := wide < -2147483648 || wide > 2147483647
+			if failed {
+				failedWord |= uint64(1) << uint(row)
+			}
+			out[row] = value
+		}
+		failedWord &= validWord
+		if overflow != nil {
+			overflow[0] = failedWord
+		}
+		invalid := ^validWord & memory.TailMask(len(left))
+		for invalid != 0 {
+			row := bits.TrailingZeros64(invalid)
+			out[row] = 0
+			invalid &= invalid - 1
+		}
+		if failedWord != 0 {
+			return bits.TrailingZeros64(failedWord)
+		}
+		return -1
+	}
+	if checkedIntegerPartialOverlap(left, right, out) {
+		return scalarInt32Mul(left, right, out, validity, overflow)
+	}
+	first := -1
+	for wi := 0; wi < memory.WordsFor(len(left)); wi++ {
+		base := wi * 64
+		rows := min(64, len(left)-base)
+		validWord := bitmapWord(validity, wi) & memory.TailMask(rows)
+		if validWord == 0 {
+			clear(out[base : base+rows])
+			continue
+		}
+		var failedWord uint64
+		off := 0
+		for ; off+4 <= rows; off += 4 {
+			laneOffset := off
+			a := archsimd.LoadInt32x4(left[base+off:])
+			b := archsimd.LoadInt32x4(right[base+off:])
+			result := a.Mul(b)
+			even := a.ConcatEven(a).MulWidenLo(b.ConcatEven(b))
+			odd := a.ConcatOdd(a).MulWidenLo(b.ConcatOdd(b))
+			// Reassemble the high 32 bits of each exact 64-bit product in row order.
+			high := even.ToBits().ShiftAllRight(32).Or(odd.ToBits().And(archsimd.BroadcastUint64x2(0xffffffff00000000))).ReshapeToUint32s()
+			failed := high.BitsToInt32().NotEqual(result.ShiftAllRight(31))
+			mask := failed.ToInt32x4()
+			failedWord |= ((uint64(uint32(mask.GetElem(0))) >> 31) | ((uint64(uint32(mask.GetElem(1))) >> 31) << 1) | ((uint64(uint32(mask.GetElem(2))) >> 31) << 2) | ((uint64(uint32(mask.GetElem(3))) >> 31) << 3)) << uint(laneOffset)
+			result.Store(out[base+off:])
+		}
+		for ; off < rows; off++ {
+			row := base + off
+			a, b := left[row], right[row]
+			value := a * b
+			failed := int64(a)*int64(b) != int64(value)
+			if failed {
+				failedWord |= uint64(1) << uint(off)
+			}
+			out[row] = value
+		}
+		failedWord &= validWord
+		if overflow != nil {
+			overflow[wi] = failedWord
+		}
+		if first < 0 && failedWord != 0 {
+			first = base + bits.TrailingZeros64(failedWord)
+		}
+		invalid := ^validWord & memory.TailMask(rows)
+		for invalid != 0 {
+			lane := bits.TrailingZeros64(invalid)
+			out[base+lane] = 0
+			invalid &= invalid - 1
+		}
+	}
+	return first
+}
+
+func checkedarm64Uint32Add128(left, right, out []uint32, validity, overflow memory.Bitmap) int {
+	prepareIntegerArithmetic(len(left), len(left), len(right), len(out), overflow)
+	if len(left) < 16 {
+		if len(left) == 0 {
+			return -1
+		}
+		if validity == nil && overflow == nil {
+			first := -1
+			for row, a := range left {
+				b := right[row]
+				value := a + b
+				failed := value < a
+				if failed && first < 0 {
+					first = row
+				}
+				out[row] = value
+			}
+			return first
+		}
+		validWord := bitmapWord(validity, 0) & memory.TailMask(len(left))
+		if validWord == 0 {
+			clear(out[:len(left)])
+			return -1
+		}
+		var failedWord uint64
+		for row, a := range left {
+			b := right[row]
+			value := a + b
+			failed := value < a
+			if failed {
+				failedWord |= uint64(1) << uint(row)
+			}
+			out[row] = value
+		}
+		failedWord &= validWord
+		if overflow != nil {
+			overflow[0] = failedWord
+		}
+		invalid := ^validWord & memory.TailMask(len(left))
+		for invalid != 0 {
+			row := bits.TrailingZeros64(invalid)
+			out[row] = 0
+			invalid &= invalid - 1
+		}
+		if failedWord != 0 {
+			return bits.TrailingZeros64(failedWord)
+		}
+		return -1
+	}
+	if checkedIntegerPartialOverlap(left, right, out) {
+		return scalarUint32Add(left, right, out, validity, overflow)
+	}
+	first := -1
+	for wi := 0; wi < memory.WordsFor(len(left)); wi++ {
+		base := wi * 64
+		rows := min(64, len(left)-base)
+		validWord := bitmapWord(validity, wi) & memory.TailMask(rows)
+		if validWord == 0 {
+			clear(out[base : base+rows])
+			continue
+		}
+		var failedWord uint64
+		off := 0
+		for ; off+4 <= rows; off += 4 {
+			laneOffset := off
+			a := archsimd.LoadUint32x4(left[base+off:])
+			b := archsimd.LoadUint32x4(right[base+off:])
+			result := a.Add(b)
+			failed := result.Less(a)
+			mask := failed.ToInt32x4()
+			failedWord |= ((uint64(uint32(mask.GetElem(0))) >> 31) | ((uint64(uint32(mask.GetElem(1))) >> 31) << 1) | ((uint64(uint32(mask.GetElem(2))) >> 31) << 2) | ((uint64(uint32(mask.GetElem(3))) >> 31) << 3)) << uint(laneOffset)
+			result.Store(out[base+off:])
+		}
+		for ; off < rows; off++ {
+			row := base + off
+			a, b := left[row], right[row]
+			value := a + b
+			failed := value < a
+			if failed {
+				failedWord |= uint64(1) << uint(off)
+			}
+			out[row] = value
+		}
+		failedWord &= validWord
+		if overflow != nil {
+			overflow[wi] = failedWord
+		}
+		if first < 0 && failedWord != 0 {
+			first = base + bits.TrailingZeros64(failedWord)
+		}
+		invalid := ^validWord & memory.TailMask(rows)
+		for invalid != 0 {
+			lane := bits.TrailingZeros64(invalid)
+			out[base+lane] = 0
+			invalid &= invalid - 1
+		}
+	}
+	return first
+}
+
+func checkedarm64Uint32Sub128(left, right, out []uint32, validity, overflow memory.Bitmap) int {
+	prepareIntegerArithmetic(len(left), len(left), len(right), len(out), overflow)
+	if len(left) < 16 {
+		if len(left) == 0 {
+			return -1
+		}
+		if validity == nil && overflow == nil {
+			first := -1
+			for row, a := range left {
+				b := right[row]
+				value := a - b
+				failed := a < b
+				if failed && first < 0 {
+					first = row
+				}
+				out[row] = value
+			}
+			return first
+		}
+		validWord := bitmapWord(validity, 0) & memory.TailMask(len(left))
+		if validWord == 0 {
+			clear(out[:len(left)])
+			return -1
+		}
+		var failedWord uint64
+		for row, a := range left {
+			b := right[row]
+			value := a - b
+			failed := a < b
+			if failed {
+				failedWord |= uint64(1) << uint(row)
+			}
+			out[row] = value
+		}
+		failedWord &= validWord
+		if overflow != nil {
+			overflow[0] = failedWord
+		}
+		invalid := ^validWord & memory.TailMask(len(left))
+		for invalid != 0 {
+			row := bits.TrailingZeros64(invalid)
+			out[row] = 0
+			invalid &= invalid - 1
+		}
+		if failedWord != 0 {
+			return bits.TrailingZeros64(failedWord)
+		}
+		return -1
+	}
+	if checkedIntegerPartialOverlap(left, right, out) {
+		return scalarUint32Sub(left, right, out, validity, overflow)
+	}
+	first := -1
+	for wi := 0; wi < memory.WordsFor(len(left)); wi++ {
+		base := wi * 64
+		rows := min(64, len(left)-base)
+		validWord := bitmapWord(validity, wi) & memory.TailMask(rows)
+		if validWord == 0 {
+			clear(out[base : base+rows])
+			continue
+		}
+		var failedWord uint64
+		off := 0
+		for ; off+4 <= rows; off += 4 {
+			laneOffset := off
+			a := archsimd.LoadUint32x4(left[base+off:])
+			b := archsimd.LoadUint32x4(right[base+off:])
+			result := a.Sub(b)
+			failed := a.Less(b)
+			mask := failed.ToInt32x4()
+			failedWord |= ((uint64(uint32(mask.GetElem(0))) >> 31) | ((uint64(uint32(mask.GetElem(1))) >> 31) << 1) | ((uint64(uint32(mask.GetElem(2))) >> 31) << 2) | ((uint64(uint32(mask.GetElem(3))) >> 31) << 3)) << uint(laneOffset)
+			result.Store(out[base+off:])
+		}
+		for ; off < rows; off++ {
+			row := base + off
+			a, b := left[row], right[row]
+			value := a - b
+			failed := a < b
+			if failed {
+				failedWord |= uint64(1) << uint(off)
+			}
+			out[row] = value
+		}
+		failedWord &= validWord
+		if overflow != nil {
+			overflow[wi] = failedWord
+		}
+		if first < 0 && failedWord != 0 {
+			first = base + bits.TrailingZeros64(failedWord)
+		}
+		invalid := ^validWord & memory.TailMask(rows)
+		for invalid != 0 {
+			lane := bits.TrailingZeros64(invalid)
+			out[base+lane] = 0
+			invalid &= invalid - 1
+		}
+	}
+	return first
+}
+
+func checkedarm64Uint32Mul128(left, right, out []uint32, validity, overflow memory.Bitmap) int {
+	prepareIntegerArithmetic(len(left), len(left), len(right), len(out), overflow)
+	if len(left) < 16 {
+		if len(left) == 0 {
+			return -1
+		}
+		if validity == nil && overflow == nil {
+			first := -1
+			for row, a := range left {
+				b := right[row]
+				value := a * b
+				failed := uint64(a)*uint64(b) > 0xffffffff
+				if failed && first < 0 {
+					first = row
+				}
+				out[row] = value
+			}
+			return first
+		}
+		validWord := bitmapWord(validity, 0) & memory.TailMask(len(left))
+		if validWord == 0 {
+			clear(out[:len(left)])
+			return -1
+		}
+		var failedWord uint64
+		for row, a := range left {
+			b := right[row]
+			value := a * b
+			failed := uint64(a)*uint64(b) > 0xffffffff
+			if failed {
+				failedWord |= uint64(1) << uint(row)
+			}
+			out[row] = value
+		}
+		failedWord &= validWord
+		if overflow != nil {
+			overflow[0] = failedWord
+		}
+		invalid := ^validWord & memory.TailMask(len(left))
+		for invalid != 0 {
+			row := bits.TrailingZeros64(invalid)
+			out[row] = 0
+			invalid &= invalid - 1
+		}
+		if failedWord != 0 {
+			return bits.TrailingZeros64(failedWord)
+		}
+		return -1
+	}
+	if checkedIntegerPartialOverlap(left, right, out) {
+		return scalarUint32Mul(left, right, out, validity, overflow)
+	}
+	first := -1
+	for wi := 0; wi < memory.WordsFor(len(left)); wi++ {
+		base := wi * 64
+		rows := min(64, len(left)-base)
+		validWord := bitmapWord(validity, wi) & memory.TailMask(rows)
+		if validWord == 0 {
+			clear(out[base : base+rows])
+			continue
+		}
+		var failedWord uint64
+		off := 0
+		for ; off+4 <= rows; off += 4 {
+			laneOffset := off
+			a := archsimd.LoadUint32x4(left[base+off:])
+			b := archsimd.LoadUint32x4(right[base+off:])
+			result := a.Mul(b)
+			even := a.ConcatEven(a).MulWidenLo(b.ConcatEven(b))
+			odd := a.ConcatOdd(a).MulWidenLo(b.ConcatOdd(b))
+			// Reassemble the high 32 bits of each exact 64-bit product in row order.
+			high := even.ShiftAllRight(32).Or(odd.And(archsimd.BroadcastUint64x2(0xffffffff00000000))).ReshapeToUint32s()
+			failed := high.NotEqual(archsimd.Uint32x4{})
+			mask := failed.ToInt32x4()
+			failedWord |= ((uint64(uint32(mask.GetElem(0))) >> 31) | ((uint64(uint32(mask.GetElem(1))) >> 31) << 1) | ((uint64(uint32(mask.GetElem(2))) >> 31) << 2) | ((uint64(uint32(mask.GetElem(3))) >> 31) << 3)) << uint(laneOffset)
+			result.Store(out[base+off:])
+		}
+		for ; off < rows; off++ {
+			row := base + off
+			a, b := left[row], right[row]
+			value := a * b
+			failed := uint64(a)*uint64(b) > 0xffffffff
 			if failed {
 				failedWord |= uint64(1) << uint(off)
 			}

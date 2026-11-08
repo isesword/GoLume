@@ -24,9 +24,9 @@ func reviewCheckedPages[T reviewInteger](t *testing.T, signed bool, run func([]T
 		maps[i] = m
 	}
 	for n := 0; n <= 129; n++ {
-		a := unsafe.Slice((*T)(unsafe.Pointer(&maps[0][p-n*8])), n)
-		b := unsafe.Slice((*T)(unsafe.Pointer(&maps[1][p-n*8])), n)
-		out := unsafe.Slice((*T)(unsafe.Pointer(&maps[2][p-n*8])), n)
+		a := unsafe.Slice((*T)(unsafe.Pointer(&maps[0][p-n*int(unsafe.Sizeof(*new(T)))])), n)
+		b := unsafe.Slice((*T)(unsafe.Pointer(&maps[1][p-n*int(unsafe.Sizeof(*new(T)))])), n)
+		out := unsafe.Slice((*T)(unsafe.Pointer(&maps[2][p-n*int(unsafe.Sizeof(*new(T)))])), n)
 		for i := range a {
 			a[i] = T(uint64(i+1) * 0xf0f0f0f0f0f0f0f1)
 			b[i] = T(i%5 + 1)

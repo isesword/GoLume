@@ -31,7 +31,7 @@ func generateCheckedInteger(arch string) []byte {
 	b.WriteString("switch vectorBits {\n")
 	for _, width := range widths {
 		fmt.Fprintf(&b, "case %d:\n", width)
-		for _, typ := range []string{"Int64", "Uint64"} {
+		for _, typ := range []string{"Int32", "Uint32", "Int64", "Uint64"} {
 			for _, op := range []string{"Add", "Sub", "Mul"} {
 				fmt.Fprintf(&b, "set.d.arithmetic%s[Arithmetic%s] = checked%s%s%s%d\nid%s%s, _ := ArithmeticID(memory.Type%s, Arithmetic%s)\nset.setCapability(id%s%s, KernelCapability{HardwareSIMD:true, VectorBits:%d, Backend: %q})\n", typ, op, arch, typ, op, width, typ, op, typ, op, typ, op, width, "archsimd-"+arch+"-checked")
 			}
@@ -124,6 +124,7 @@ return first
 			}
 		}
 	}
+	generateCheckedInteger32(&b, arch, widths)
 	return b.Bytes()
 }
 

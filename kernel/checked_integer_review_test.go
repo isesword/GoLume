@@ -8,9 +8,12 @@ import (
 	"math/rand/v2"
 	"slices"
 	"testing"
+	"unsafe"
 )
 
-type reviewInteger interface{ ~int64 | ~uint64 }
+type reviewInteger interface {
+	~int32 | ~uint32 | ~int64 | ~uint64
+}
 
 func reviewIntegerOp[T reviewInteger](a, b T, op ArithmeticOp, signed bool) (T, bool) {
 	var x, y big.Int
@@ -32,6 +35,12 @@ func reviewIntegerOp[T reviewInteger](a, b T, op ArithmeticOp, signed bool) (T, 
 	case ArithmeticMul:
 		x.Mul(&x, &y)
 		z = a * b
+	}
+	if unsafe.Sizeof(a) == 4 {
+		if signed {
+			return z, x.Cmp(big.NewInt(math.MinInt32)) < 0 || x.Cmp(big.NewInt(math.MaxInt32)) > 0
+		}
+		return z, x.Sign() < 0 || x.BitLen() > 32
 	}
 	if signed {
 		return z, !x.IsInt64()

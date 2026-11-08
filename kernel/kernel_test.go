@@ -107,8 +107,7 @@ func TestKernelCapabilitiesAreExactAndAutoPrefersNative(t *testing.T) {
 		t.Fatalf("physical aliases diverged: date=%s int32=%s timestamp=%s int64=%s", dateID, int32ID, timestampID, int64ID)
 	}
 	forced := New(ModeSIMD)
-	intMul, _ := ArithmeticID(memory.TypeInt32, ArithmeticMul)
-	for _, id := range []KernelID{intMul, KernelStringByteLength} {
+	for _, id := range []KernelID{KernelStringByteLength, KernelStringUTF8Length} {
 		capability, ok := forced.Capability(id)
 		if !ok || capability.Backend != "scalar" {
 			t.Fatalf("forced scalar fallback %s=%+v ok=%t", id, capability, ok)
