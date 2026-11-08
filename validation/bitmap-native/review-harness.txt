@@ -1,0 +1,13 @@
+A separate read-only review of the paired benchmark runner and Float32 query
+fixture found no blocking defect. Kernel case counts reconcile as 30 integer
+literal + 12 Float64 shape + 2 Float32 + 80 column32 workloads = 124. Query counts
+are 24 numeric + 40 column32 workloads = 64. The Float32 literal 1 is exactly
+representable, column comparisons use their right operand in the oracle, and
+arithmetic still widens before the operation. Supplementary Float32 query cases
+are correctly labeled final-build comparisons, not before/after measurements.
+
+Column32 backend names differ between versions. Analysis pairs workloads after
+removing the /backend diagnostic dimension while retaining it in raw results.
+The script records Auto selection but does not itself require native execution;
+the separate runtime/instruction checks establish native execution on this host.
+The reviewer ran no tests, builds, profiles, or timing during this read-only check.

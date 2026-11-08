@@ -1,0 +1,513 @@
+goos: linux
+goarch: amd64
+pkg: gocolumn/kernel
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+                                                                      │ validation/bitmap-native/paired-before-kernel.txt │ validation/bitmap-native/paired-after-kernel.txt │
+                                                                      │                      sec/op                       │          sec/op            vs base               │
+NativeNumericLiteral/int8/rows=7/null=false/auto                                                           21.44n ±   18%               20.81n ±  18%        ~ (p=0.394 n=6)
+NativeNumericLiteral/int8/rows=7/null=true/auto                                                            24.91n ±   15%               17.14n ± 125%        ~ (p=0.065 n=6)
+NativeNumericLiteral/int8/rows=1025/null=false/auto                                                       992.30n ±    7%               98.69n ±  19%  -90.05% (p=0.002 n=6)
+NativeNumericLiteral/int8/rows=1025/null=true/auto                                                       1055.50n ±   16%               89.16n ±  74%  -91.55% (p=0.002 n=6)
+NativeNumericLiteral/int8/rows=65536/null=false/auto                                                      67.355µ ±   13%               5.196µ ±  60%  -92.29% (p=0.002 n=6)
+NativeNumericLiteral/int8/rows=65536/null=true/auto                                                       66.207µ ±   15%               4.840µ ±  53%  -92.69% (p=0.002 n=6)
+NativeNumericLiteral/int32/rows=7/null=false/auto                                                          18.91n ±   25%               16.08n ±  40%        ~ (p=0.240 n=6)
+NativeNumericLiteral/int32/rows=7/null=true/auto                                                           19.56n ±   13%               21.96n ±  98%  +12.24% (p=0.009 n=6)
+NativeNumericLiteral/int32/rows=1025/null=false/auto                                                      1237.5n ±   71%               183.5n ±  26%  -85.18% (p=0.002 n=6)
+NativeNumericLiteral/int32/rows=1025/null=true/auto                                                       1271.0n ±   93%               174.7n ±  32%  -86.25% (p=0.002 n=6)
+NativeNumericLiteral/int32/rows=65536/null=false/auto                                                      83.36µ ±   71%               10.96µ ±  61%  -86.85% (p=0.002 n=6)
+NativeNumericLiteral/int32/rows=65536/null=true/auto                                                       82.46µ ±  102%               11.37µ ± 216%  -86.21% (p=0.002 n=6)
+NativeNumericLiteral/int64/rows=7/null=false/auto                                                          17.43n ±  116%               17.59n ±  84%        ~ (p=0.937 n=6)
+NativeNumericLiteral/int64/rows=7/null=true/auto                                                           24.11n ±  117%               17.18n ±  11%  -28.74% (p=0.002 n=6)
+NativeNumericLiteral/int64/rows=1025/null=false/auto                                                      1498.0n ±  832%               302.9n ±  51%  -79.78% (p=0.002 n=6)
+NativeNumericLiteral/int64/rows=1025/null=true/auto                                                       1378.5n ±  128%               306.2n ±  16%  -77.79% (p=0.002 n=6)
+NativeNumericLiteral/int64/rows=65536/null=false/auto                                                      88.70µ ±  117%               19.43µ ±  40%  -78.09% (p=0.002 n=6)
+NativeNumericLiteral/int64/rows=65536/null=true/auto                                                       90.34µ ±  118%               20.34µ ±  77%  -77.48% (p=0.002 n=6)
+NativeNumericLiteral/uint32/rows=7/null=false/auto                                                         18.98n ±  125%               15.42n ± 122%        ~ (p=0.093 n=6)
+NativeNumericLiteral/uint32/rows=7/null=true/auto                                                          20.00n ±  105%               21.85n ±   9%        ~ (p=0.310 n=6)
+NativeNumericLiteral/uint32/rows=1025/null=false/auto                                                     1267.0n ±   54%               170.7n ±   9%  -86.53% (p=0.002 n=6)
+NativeNumericLiteral/uint32/rows=1025/null=true/auto                                                      1356.0n ±   78%               165.9n ±  31%  -87.76% (p=0.002 n=6)
+NativeNumericLiteral/uint32/rows=65536/null=false/auto                                                     78.73µ ±  109%               10.87µ ±  11%  -86.20% (p=0.002 n=6)
+NativeNumericLiteral/uint32/rows=65536/null=true/auto                                                      81.53µ ±   97%               11.65µ ±  29%  -85.72% (p=0.002 n=6)
+NativeNumericLiteral/uint64/rows=7/null=false/auto                                                         16.65n ±  113%               16.65n ±  13%        ~ (p=0.937 n=6)
+NativeNumericLiteral/uint64/rows=7/null=true/auto                                                          23.66n ±  119%               17.00n ±  10%  -28.19% (p=0.002 n=6)
+NativeNumericLiteral/uint64/rows=1025/null=false/auto                                                     1387.5n ±   96%               302.2n ±  25%  -78.22% (p=0.002 n=6)
+NativeNumericLiteral/uint64/rows=1025/null=true/auto                                                      1377.5n ±  120%               291.1n ±  39%  -78.87% (p=0.002 n=6)
+NativeNumericLiteral/uint64/rows=65536/null=false/auto                                                     87.30µ ±  155%               19.52µ ±   9%  -77.64% (p=0.002 n=6)
+NativeNumericLiteral/uint64/rows=65536/null=true/auto                                                      94.72µ ±  126%               19.37µ ±  14%  -79.55% (p=0.002 n=6)
+NativeFloat64Comparison/columns=false/rows=7/null=false/auto                                               18.01n ±  136%               19.70n ±   9%        ~ (p=0.394 n=6)
+NativeFloat64Comparison/columns=true/rows=7/null=false/auto                                                30.26n ±  104%               27.57n ±   5%        ~ (p=0.132 n=6)
+NativeFloat64Comparison/columns=false/rows=7/null=true/auto                                                18.14n ±   11%               18.42n ±   4%        ~ (p=0.734 n=6)
+NativeFloat64Comparison/columns=true/rows=7/null=true/auto                                                 21.64n ±    9%               21.72n ±  28%        ~ (p=0.937 n=6)
+NativeFloat64Comparison/columns=false/rows=1025/null=false/auto                                           1517.5n ±   25%               470.0n ±   5%  -69.03% (p=0.002 n=6)
+NativeFloat64Comparison/columns=true/rows=1025/null=false/auto                                            1588.0n ±   21%               561.4n ±   8%  -64.65% (p=0.002 n=6)
+NativeFloat64Comparison/columns=false/rows=1025/null=true/auto                                            1427.5n ±  105%               501.5n ±  12%  -64.87% (p=0.002 n=6)
+NativeFloat64Comparison/columns=true/rows=1025/null=true/auto                                             1588.5n ±   98%               421.2n ±   7%  -73.48% (p=0.002 n=6)
+NativeFloat64Comparison/columns=false/rows=65536/null=false/auto                                           85.32µ ±   25%               20.69µ ±  21%  -75.75% (p=0.002 n=6)
+NativeFloat64Comparison/columns=true/rows=65536/null=false/auto                                            93.64µ ±   13%               25.15µ ±  15%  -73.15% (p=0.002 n=6)
+NativeFloat64Comparison/columns=false/rows=65536/null=true/auto                                            80.09µ ±   12%               21.31µ ±   5%  -73.39% (p=0.002 n=6)
+NativeFloat64Comparison/columns=true/rows=65536/null=true/auto                                             94.97µ ±    5%               27.03µ ±  46%  -71.54% (p=0.002 n=6)
+Float32Compare/auto                                                                                       1537.4µ ±    7%               256.0µ ±  43%  -83.35% (p=0.002 n=6)
+Float32ColumnCompare/auto                                                                                 2499.5µ ±   10%               366.4µ ±  16%  -85.34% (p=0.002 n=6)
+Column32ComparisonGate/type=int32/case=stream/op=gt/mode=auto                                             1550.3µ ±   10%               366.1µ ±   5%  -76.39% (p=0.002 n=6)
+Column32ComparisonGate/type=int32/case=stream/op=ge/mode=auto                                             1911.5µ ±    8%               366.9µ ±   7%  -80.81% (p=0.002 n=6)
+Column32ComparisonGate/type=int32/case=stream/op=lt/mode=auto                                             1506.5µ ±   14%               374.4µ ±   7%  -75.15% (p=0.002 n=6)
+Column32ComparisonGate/type=int32/case=stream/op=le/mode=auto                                             1913.1µ ±    9%               391.7µ ±  62%  -79.53% (p=0.002 n=6)
+Column32ComparisonGate/type=int32/case=stream/op=eq/mode=auto                                             1616.4µ ±    9%               383.3µ ±  16%  -76.29% (p=0.002 n=6)
+Column32ComparisonGate/type=int32/case=bitmap/op=gt/mode=auto                                              94.23µ ±   11%               15.21µ ±  17%  -83.86% (p=0.002 n=6)
+Column32ComparisonGate/type=int32/case=bitmap/op=ge/mode=auto                                             123.06µ ±   47%               14.26µ ±  28%  -88.41% (p=0.002 n=6)
+Column32ComparisonGate/type=int32/case=bitmap/op=lt/mode=auto                                              96.67µ ±   10%               14.31µ ±  40%  -85.20% (p=0.002 n=6)
+Column32ComparisonGate/type=int32/case=bitmap/op=le/mode=auto                                             121.22µ ±   10%               14.69µ ±  83%  -87.89% (p=0.002 n=6)
+Column32ComparisonGate/type=int32/case=bitmap/op=eq/mode=auto                                              95.61µ ±   11%               14.83µ ± 303%  -84.49% (p=0.002 n=6)
+Column32ComparisonGate/type=int32/case=nullable-tail/op=gt/mode=auto                                       90.59µ ±    9%               14.21µ ±  14%  -84.32% (p=0.002 n=6)
+Column32ComparisonGate/type=int32/case=nullable-tail/op=ge/mode=auto                                      128.37µ ±   14%               14.88µ ±  18%  -88.41% (p=0.002 n=6)
+Column32ComparisonGate/type=int32/case=nullable-tail/op=lt/mode=auto                                       89.48µ ±   10%               14.74µ ±  71%  -83.53% (p=0.002 n=6)
+Column32ComparisonGate/type=int32/case=nullable-tail/op=le/mode=auto                                      133.68µ ±   12%               14.56µ ±  12%  -89.11% (p=0.002 n=6)
+Column32ComparisonGate/type=int32/case=nullable-tail/op=eq/mode=auto                                       95.29µ ±   13%               14.32µ ±  11%  -84.97% (p=0.002 n=6)
+Column32ComparisonGate/type=int32/case=sparse/op=gt/mode=auto                                              65.21µ ±   11%               14.06µ ±  54%  -78.44% (p=0.002 n=6)
+Column32ComparisonGate/type=int32/case=sparse/op=ge/mode=auto                                              65.33µ ±   16%               14.54µ ±  15%  -77.74% (p=0.002 n=6)
+Column32ComparisonGate/type=int32/case=sparse/op=lt/mode=auto                                             125.50µ ±    7%               13.82µ ±  14%  -88.99% (p=0.002 n=6)
+Column32ComparisonGate/type=int32/case=sparse/op=le/mode=auto                                             124.97µ ±    9%               13.70µ ±  10%  -89.04% (p=0.002 n=6)
+Column32ComparisonGate/type=int32/case=sparse/op=eq/mode=auto                                              69.11µ ±   30%               13.42µ ±   7%  -80.59% (p=0.002 n=6)
+Column32ComparisonGate/type=int32/case=dense/op=gt/mode=auto                                              133.74µ ±  185%               14.11µ ±  12%  -89.45% (p=0.002 n=6)
+Column32ComparisonGate/type=int32/case=dense/op=ge/mode=auto                                              121.37µ ±  195%               14.07µ ±  13%  -88.41% (p=0.002 n=6)
+Column32ComparisonGate/type=int32/case=dense/op=lt/mode=auto                                               68.99µ ±   11%               14.00µ ±  12%  -79.70% (p=0.002 n=6)
+Column32ComparisonGate/type=int32/case=dense/op=le/mode=auto                                               68.15µ ±   15%               14.07µ ±  15%  -79.36% (p=0.002 n=6)
+Column32ComparisonGate/type=int32/case=dense/op=eq/mode=auto                                               66.58µ ±   24%               13.75µ ±   8%  -79.34% (p=0.002 n=6)
+Column32ComparisonGate/type=int32/case=equal/op=gt/mode=auto                                               61.55µ ±   40%               14.32µ ±  14%  -76.73% (p=0.002 n=6)
+Column32ComparisonGate/type=int32/case=equal/op=ge/mode=auto                                              120.04µ ±  122%               13.72µ ±   9%  -88.57% (p=0.002 n=6)
+Column32ComparisonGate/type=int32/case=equal/op=lt/mode=auto                                               63.55µ ±   18%               13.95µ ±  13%  -78.06% (p=0.002 n=6)
+Column32ComparisonGate/type=int32/case=equal/op=le/mode=auto                                              118.44µ ±   27%               14.12µ ±  14%  -88.08% (p=0.002 n=6)
+Column32ComparisonGate/type=int32/case=equal/op=eq/mode=auto                                              123.96µ ±   92%               13.78µ ±  10%  -88.88% (p=0.002 n=6)
+Column32ComparisonGate/type=int32/case=short/op=gt/mode=auto                                               33.68n ±    6%               26.84n ±  10%  -20.32% (p=0.002 n=6)
+Column32ComparisonGate/type=int32/case=short/op=ge/mode=auto                                               36.88n ±    8%               25.32n ±  19%  -31.34% (p=0.002 n=6)
+Column32ComparisonGate/type=int32/case=short/op=lt/mode=auto                                               36.67n ±   25%               28.45n ±  12%  -22.42% (p=0.002 n=6)
+Column32ComparisonGate/type=int32/case=short/op=le/mode=auto                                               40.18n ±   27%               31.87n ±   8%  -20.67% (p=0.002 n=6)
+Column32ComparisonGate/type=int32/case=short/op=eq/mode=auto                                               39.95n ±   53%               30.59n ±  13%  -23.44% (p=0.002 n=6)
+Column32ComparisonGate/type=int32/case=tail/op=gt/mode=auto                                               104.16n ±   12%               31.27n ±  15%  -69.98% (p=0.002 n=6)
+Column32ComparisonGate/type=int32/case=tail/op=ge/mode=auto                                               131.25n ±   13%               27.32n ±  14%  -79.18% (p=0.002 n=6)
+Column32ComparisonGate/type=int32/case=tail/op=lt/mode=auto                                               114.10n ±    9%               29.51n ±  12%  -74.14% (p=0.002 n=6)
+Column32ComparisonGate/type=int32/case=tail/op=le/mode=auto                                               143.90n ±    9%               28.88n ±  11%  -79.93% (p=0.002 n=6)
+Column32ComparisonGate/type=int32/case=tail/op=eq/mode=auto                                               110.95n ±   15%               28.50n ±  12%  -74.31% (p=0.002 n=6)
+Column32ComparisonGate/type=uint32/case=stream/op=gt/mode=auto                                            1207.8µ ±   14%               369.7µ ±  11%  -69.39% (p=0.002 n=6)
+Column32ComparisonGate/type=uint32/case=stream/op=ge/mode=auto                                            1618.6µ ±   30%               378.8µ ±   6%  -76.60% (p=0.002 n=6)
+Column32ComparisonGate/type=uint32/case=stream/op=lt/mode=auto                                            1347.5µ ±   21%               380.2µ ±   4%  -71.78% (p=0.002 n=6)
+Column32ComparisonGate/type=uint32/case=stream/op=le/mode=auto                                            1610.6µ ±   14%               382.4µ ±  59%  -76.26% (p=0.002 n=6)
+Column32ComparisonGate/type=uint32/case=stream/op=eq/mode=auto                                            1330.0µ ±   19%               387.6µ ±   9%  -70.85% (p=0.002 n=6)
+Column32ComparisonGate/type=uint32/case=bitmap/op=gt/mode=auto                                             78.08µ ±   12%               14.17µ ±  12%  -81.85% (p=0.002 n=6)
+Column32ComparisonGate/type=uint32/case=bitmap/op=ge/mode=auto                                            124.23µ ±   12%               14.55µ ±  37%  -88.29% (p=0.002 n=6)
+Column32ComparisonGate/type=uint32/case=bitmap/op=lt/mode=auto                                             81.90µ ±  549%               14.27µ ±  97%  -82.58% (p=0.002 n=6)
+Column32ComparisonGate/type=uint32/case=bitmap/op=le/mode=auto                                            117.34µ ±   19%               14.63µ ±  81%  -87.53% (p=0.002 n=6)
+Column32ComparisonGate/type=uint32/case=bitmap/op=eq/mode=auto                                             80.92µ ±    9%               15.19µ ±  58%  -81.24% (p=0.002 n=6)
+Column32ComparisonGate/type=uint32/case=nullable-tail/op=gt/mode=auto                                      79.13µ ±   16%               14.69µ ±  22%  -81.43% (p=0.002 n=6)
+Column32ComparisonGate/type=uint32/case=nullable-tail/op=ge/mode=auto                                     111.87µ ±   63%               15.25µ ±  69%  -86.37% (p=0.002 n=6)
+Column32ComparisonGate/type=uint32/case=nullable-tail/op=lt/mode=auto                                      77.97µ ±   18%               14.42µ ± 107%  -81.51% (p=0.002 n=6)
+Column32ComparisonGate/type=uint32/case=nullable-tail/op=le/mode=auto                                     113.97µ ±   13%               14.60µ ±  69%  -87.19% (p=0.002 n=6)
+Column32ComparisonGate/type=uint32/case=nullable-tail/op=eq/mode=auto                                      93.46µ ±   24%               15.23µ ±  43%  -83.71% (p=0.002 n=6)
+Column32ComparisonGate/type=uint32/case=sparse/op=gt/mode=auto                                             59.05µ ±   12%               15.22µ ±  30%  -74.23% (p=0.002 n=6)
+Column32ComparisonGate/type=uint32/case=sparse/op=ge/mode=auto                                             58.10µ ±   69%               14.23µ ±  40%  -75.51% (p=0.002 n=6)
+Column32ComparisonGate/type=uint32/case=sparse/op=lt/mode=auto                                            123.60µ ±    9%               14.34µ ± 180%  -88.40% (p=0.002 n=6)
+Column32ComparisonGate/type=uint32/case=sparse/op=le/mode=auto                                            118.30µ ±   12%               13.98µ ± 122%  -88.18% (p=0.002 n=6)
+Column32ComparisonGate/type=uint32/case=sparse/op=eq/mode=auto                                             57.37µ ±   10%               14.64µ ± 127%  -74.49% (p=0.002 n=6)
+Column32ComparisonGate/type=uint32/case=dense/op=gt/mode=auto                                             119.92µ ±   10%               14.56µ ± 348%  -87.86% (p=0.002 n=6)
+Column32ComparisonGate/type=uint32/case=dense/op=ge/mode=auto                                             120.17µ ±   12%               13.92µ ± 184%  -88.41% (p=0.002 n=6)
+Column32ComparisonGate/type=uint32/case=dense/op=lt/mode=auto                                              54.88µ ±   22%               14.44µ ±  56%  -73.70% (p=0.002 n=6)
+Column32ComparisonGate/type=uint32/case=dense/op=le/mode=auto                                              59.12µ ±   12%               14.82µ ±  85%  -74.93% (p=0.002 n=6)
+Column32ComparisonGate/type=uint32/case=dense/op=eq/mode=auto                                              58.33µ ±  198%               15.58µ ±  69%  -73.29% (p=0.002 n=6)
+Column32ComparisonGate/type=uint32/case=equal/op=gt/mode=auto                                              59.98µ ±  115%               14.36µ ±  53%  -76.06% (p=0.002 n=6)
+Column32ComparisonGate/type=uint32/case=equal/op=ge/mode=auto                                             110.52µ ±    6%               14.15µ ± 120%  -87.20% (p=0.002 n=6)
+Column32ComparisonGate/type=uint32/case=equal/op=lt/mode=auto                                              60.51µ ±  161%               14.36µ ±  80%  -76.28% (p=0.002 n=6)
+Column32ComparisonGate/type=uint32/case=equal/op=le/mode=auto                                             115.95µ ±   13%               13.95µ ±  16%  -87.97% (p=0.002 n=6)
+Column32ComparisonGate/type=uint32/case=equal/op=eq/mode=auto                                             112.78µ ± 1396%               13.79µ ±  10%  -87.77% (p=0.002 n=6)
+Column32ComparisonGate/type=uint32/case=short/op=gt/mode=auto                                              30.59n ±    7%               27.40n ±  11%  -10.41% (p=0.002 n=6)
+Column32ComparisonGate/type=uint32/case=short/op=ge/mode=auto                                              38.24n ±    9%               30.69n ±  15%  -19.74% (p=0.002 n=6)
+Column32ComparisonGate/type=uint32/case=short/op=lt/mode=auto                                              34.92n ±   68%               29.85n ±   7%  -14.50% (p=0.002 n=6)
+Column32ComparisonGate/type=uint32/case=short/op=le/mode=auto                                              34.61n ±   11%               31.76n ±   7%        ~ (p=0.065 n=6)
+Column32ComparisonGate/type=uint32/case=short/op=eq/mode=auto                                              38.52n ±   10%               39.40n ±  15%        ~ (p=0.589 n=6)
+Column32ComparisonGate/type=uint32/case=tail/op=gt/mode=auto                                               98.16n ±   11%               28.96n ±  12%  -70.50% (p=0.002 n=6)
+Column32ComparisonGate/type=uint32/case=tail/op=ge/mode=auto                                              116.50n ±    7%               29.84n ±  13%  -74.39% (p=0.002 n=6)
+Column32ComparisonGate/type=uint32/case=tail/op=lt/mode=auto                                               98.53n ±    7%               30.97n ± 297%        ~ (p=0.065 n=6)
+Column32ComparisonGate/type=uint32/case=tail/op=le/mode=auto                                              126.65n ±   21%               30.81n ±  13%  -75.68% (p=0.002 n=6)
+Column32ComparisonGate/type=uint32/case=tail/op=eq/mode=auto                                               99.31n ±   27%               30.18n ±  13%  -69.61% (p=0.002 n=6)
+geomean                                                                                                    8.869µ                       2.174µ         -75.49%
+
+                                                       │ validation/bitmap-native/paired-before-kernel.txt │ validation/bitmap-native/paired-after-kernel.txt │
+                                                       │                     selected                      │         selected          vs base                │
+NativeNumericLiteral/int8/rows=7/null=false/auto                                              3.000 ± 0%                   3.000 ± 0%       ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/int8/rows=7/null=true/auto                                               0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/int8/rows=1025/null=false/auto                                           440.0 ± 0%                   440.0 ± 0%       ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/int8/rows=1025/null=true/auto                                            229.0 ± 0%                   229.0 ± 0%       ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/int8/rows=65536/null=false/auto                                         28.16k ± 0%                  28.16k ± 0%       ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/int8/rows=65536/null=true/auto                                          14.53k ± 0%                  14.53k ± 0%       ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/int32/rows=7/null=false/auto                                             6.000 ± 0%                   6.000 ± 0%       ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/int32/rows=7/null=true/auto                                              1.000 ± 0%                   1.000 ± 0%       ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/int32/rows=1025/null=false/auto                                         1.024k ± 0%                  1.024k ± 0%       ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/int32/rows=1025/null=true/auto                                           527.0 ± 0%                   527.0 ± 0%       ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/int32/rows=65536/null=false/auto                                        65.53k ± 0%                  65.53k ± 0%       ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/int32/rows=65536/null=true/auto                                         33.79k ± 0%                  33.79k ± 0%       ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/int64/rows=7/null=false/auto                                             6.000 ± 0%                   6.000 ± 0%       ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/int64/rows=7/null=true/auto                                              1.000 ± 0%                   1.000 ± 0%       ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/int64/rows=1025/null=false/auto                                         1.024k ± 0%                  1.024k ± 0%       ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/int64/rows=1025/null=true/auto                                           527.0 ± 0%                   527.0 ± 0%       ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/int64/rows=65536/null=false/auto                                        65.53k ± 0%                  65.53k ± 0%       ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/int64/rows=65536/null=true/auto                                         33.79k ± 0%                  33.79k ± 0%       ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/uint32/rows=7/null=false/auto                                            6.000 ± 0%                   6.000 ± 0%       ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/uint32/rows=7/null=true/auto                                             1.000 ± 0%                   1.000 ± 0%       ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/uint32/rows=1025/null=false/auto                                        1.024k ± 0%                  1.024k ± 0%       ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/uint32/rows=1025/null=true/auto                                          527.0 ± 0%                   527.0 ± 0%       ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/uint32/rows=65536/null=false/auto                                       65.53k ± 0%                  65.53k ± 0%       ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/uint32/rows=65536/null=true/auto                                        33.79k ± 0%                  33.79k ± 0%       ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/uint64/rows=7/null=false/auto                                            6.000 ± 0%                   6.000 ± 0%       ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/uint64/rows=7/null=true/auto                                             1.000 ± 0%                   1.000 ± 0%       ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/uint64/rows=1025/null=false/auto                                        1.024k ± 0%                  1.024k ± 0%       ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/uint64/rows=1025/null=true/auto                                          527.0 ± 0%                   527.0 ± 0%       ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/uint64/rows=65536/null=false/auto                                       65.53k ± 0%                  65.53k ± 0%       ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/uint64/rows=65536/null=true/auto                                        33.79k ± 0%                  33.79k ± 0%       ~ (p=1.000 n=6) ¹
+geomean                                                                                                  ²                             +0.00%               ²
+¹ all samples are equal
+² summaries must be >0 to compute geomean
+
+                                                                      │ validation/bitmap-native/paired-before-kernel.txt │ validation/bitmap-native/paired-after-kernel.txt │
+                                                                      │                       B/op                        │          B/op            vs base                 │
+NativeNumericLiteral/int8/rows=7/null=false/auto                                                            0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/int8/rows=7/null=true/auto                                                             0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/int8/rows=1025/null=false/auto                                                         0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/int8/rows=1025/null=true/auto                                                          0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/int8/rows=65536/null=false/auto                                                        0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/int8/rows=65536/null=true/auto                                                         0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/int32/rows=7/null=false/auto                                                           0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/int32/rows=7/null=true/auto                                                            0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/int32/rows=1025/null=false/auto                                                        0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/int32/rows=1025/null=true/auto                                                         0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/int32/rows=65536/null=false/auto                                                       0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/int32/rows=65536/null=true/auto                                                        0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/int64/rows=7/null=false/auto                                                           0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/int64/rows=7/null=true/auto                                                            0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/int64/rows=1025/null=false/auto                                                        0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/int64/rows=1025/null=true/auto                                                         0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/int64/rows=65536/null=false/auto                                                       0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/int64/rows=65536/null=true/auto                                                        0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/uint32/rows=7/null=false/auto                                                          0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/uint32/rows=7/null=true/auto                                                           0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/uint32/rows=1025/null=false/auto                                                       0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/uint32/rows=1025/null=true/auto                                                        0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/uint32/rows=65536/null=false/auto                                                      0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/uint32/rows=65536/null=true/auto                                                       0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/uint64/rows=7/null=false/auto                                                          0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/uint64/rows=7/null=true/auto                                                           0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/uint64/rows=1025/null=false/auto                                                       0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/uint64/rows=1025/null=true/auto                                                        0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/uint64/rows=65536/null=false/auto                                                      0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/uint64/rows=65536/null=true/auto                                                       0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+NativeFloat64Comparison/columns=false/rows=7/null=false/auto                                                0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+NativeFloat64Comparison/columns=true/rows=7/null=false/auto                                                 0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+NativeFloat64Comparison/columns=false/rows=7/null=true/auto                                                 0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+NativeFloat64Comparison/columns=true/rows=7/null=true/auto                                                  0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+NativeFloat64Comparison/columns=false/rows=1025/null=false/auto                                             0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+NativeFloat64Comparison/columns=true/rows=1025/null=false/auto                                              0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+NativeFloat64Comparison/columns=false/rows=1025/null=true/auto                                              0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+NativeFloat64Comparison/columns=true/rows=1025/null=true/auto                                               0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+NativeFloat64Comparison/columns=false/rows=65536/null=false/auto                                            0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+NativeFloat64Comparison/columns=true/rows=65536/null=false/auto                                             0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+NativeFloat64Comparison/columns=false/rows=65536/null=true/auto                                             0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+NativeFloat64Comparison/columns=true/rows=65536/null=true/auto                                              0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+Float32Compare/auto                                                                                        214.00 ±  9%                 33.00 ± 70%  -84.58% (p=0.002 n=6)
+Float32ColumnCompare/auto                                                                                  337.00 ± 15%                 48.50 ± 18%  -85.61% (p=0.002 n=6)
+Column32ComparisonGate/type=int32/case=stream/op=gt/mode=auto                                               0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=int32/case=stream/op=ge/mode=auto                                               0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=int32/case=stream/op=lt/mode=auto                                               0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=int32/case=stream/op=le/mode=auto                                               0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=int32/case=stream/op=eq/mode=auto                                               0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=int32/case=bitmap/op=gt/mode=auto                                               0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=int32/case=bitmap/op=ge/mode=auto                                               0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=int32/case=bitmap/op=lt/mode=auto                                               0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=int32/case=bitmap/op=le/mode=auto                                               0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=int32/case=bitmap/op=eq/mode=auto                                               0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=int32/case=nullable-tail/op=gt/mode=auto                                        0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=int32/case=nullable-tail/op=ge/mode=auto                                        0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=int32/case=nullable-tail/op=lt/mode=auto                                        0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=int32/case=nullable-tail/op=le/mode=auto                                        0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=int32/case=nullable-tail/op=eq/mode=auto                                        0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=int32/case=sparse/op=gt/mode=auto                                               0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=int32/case=sparse/op=ge/mode=auto                                               0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=int32/case=sparse/op=lt/mode=auto                                               0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=int32/case=sparse/op=le/mode=auto                                               0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=int32/case=sparse/op=eq/mode=auto                                               0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=int32/case=dense/op=gt/mode=auto                                                0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=int32/case=dense/op=ge/mode=auto                                                0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=int32/case=dense/op=lt/mode=auto                                                0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=int32/case=dense/op=le/mode=auto                                                0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=int32/case=dense/op=eq/mode=auto                                                0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=int32/case=equal/op=gt/mode=auto                                                0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=int32/case=equal/op=ge/mode=auto                                                0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=int32/case=equal/op=lt/mode=auto                                                0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=int32/case=equal/op=le/mode=auto                                                0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=int32/case=equal/op=eq/mode=auto                                                0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=int32/case=short/op=gt/mode=auto                                                0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=int32/case=short/op=ge/mode=auto                                                0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=int32/case=short/op=lt/mode=auto                                                0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=int32/case=short/op=le/mode=auto                                                0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=int32/case=short/op=eq/mode=auto                                                0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=int32/case=tail/op=gt/mode=auto                                                 0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=int32/case=tail/op=ge/mode=auto                                                 0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=int32/case=tail/op=lt/mode=auto                                                 0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=int32/case=tail/op=le/mode=auto                                                 0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=int32/case=tail/op=eq/mode=auto                                                 0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=uint32/case=stream/op=gt/mode=auto                                              0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=uint32/case=stream/op=ge/mode=auto                                              0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=uint32/case=stream/op=lt/mode=auto                                              0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=uint32/case=stream/op=le/mode=auto                                              0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=uint32/case=stream/op=eq/mode=auto                                              0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=uint32/case=bitmap/op=gt/mode=auto                                              0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=uint32/case=bitmap/op=ge/mode=auto                                              0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=uint32/case=bitmap/op=lt/mode=auto                                              0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=uint32/case=bitmap/op=le/mode=auto                                              0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=uint32/case=bitmap/op=eq/mode=auto                                              0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=uint32/case=nullable-tail/op=gt/mode=auto                                       0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=uint32/case=nullable-tail/op=ge/mode=auto                                       0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=uint32/case=nullable-tail/op=lt/mode=auto                                       0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=uint32/case=nullable-tail/op=le/mode=auto                                       0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=uint32/case=nullable-tail/op=eq/mode=auto                                       0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=uint32/case=sparse/op=gt/mode=auto                                              0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=uint32/case=sparse/op=ge/mode=auto                                              0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=uint32/case=sparse/op=lt/mode=auto                                              0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=uint32/case=sparse/op=le/mode=auto                                              0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=uint32/case=sparse/op=eq/mode=auto                                              0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=uint32/case=dense/op=gt/mode=auto                                               0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=uint32/case=dense/op=ge/mode=auto                                               0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=uint32/case=dense/op=lt/mode=auto                                               0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=uint32/case=dense/op=le/mode=auto                                               0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=uint32/case=dense/op=eq/mode=auto                                               0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=uint32/case=equal/op=gt/mode=auto                                               0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=uint32/case=equal/op=ge/mode=auto                                               0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=uint32/case=equal/op=lt/mode=auto                                               0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=uint32/case=equal/op=le/mode=auto                                               0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=uint32/case=equal/op=eq/mode=auto                                               0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=uint32/case=short/op=gt/mode=auto                                               0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=uint32/case=short/op=ge/mode=auto                                               0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=uint32/case=short/op=lt/mode=auto                                               0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=uint32/case=short/op=le/mode=auto                                               0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=uint32/case=short/op=eq/mode=auto                                               0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=uint32/case=tail/op=gt/mode=auto                                                0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=uint32/case=tail/op=ge/mode=auto                                                0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=uint32/case=tail/op=lt/mode=auto                                                0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=uint32/case=tail/op=le/mode=auto                                                0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=uint32/case=tail/op=eq/mode=auto                                                0.000 ±  0%                 0.000 ±  0%        ~ (p=1.000 n=6) ¹
+geomean                                                                                                                 ²                             -3.02%               ²
+¹ all samples are equal
+² summaries must be >0 to compute geomean
+
+                                                                      │ validation/bitmap-native/paired-before-kernel.txt │ validation/bitmap-native/paired-after-kernel.txt │
+                                                                      │                     allocs/op                     │        allocs/op          vs base                │
+NativeNumericLiteral/int8/rows=7/null=false/auto                                                             0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/int8/rows=7/null=true/auto                                                              0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/int8/rows=1025/null=false/auto                                                          0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/int8/rows=1025/null=true/auto                                                           0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/int8/rows=65536/null=false/auto                                                         0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/int8/rows=65536/null=true/auto                                                          0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/int32/rows=7/null=false/auto                                                            0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/int32/rows=7/null=true/auto                                                             0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/int32/rows=1025/null=false/auto                                                         0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/int32/rows=1025/null=true/auto                                                          0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/int32/rows=65536/null=false/auto                                                        0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/int32/rows=65536/null=true/auto                                                         0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/int64/rows=7/null=false/auto                                                            0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/int64/rows=7/null=true/auto                                                             0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/int64/rows=1025/null=false/auto                                                         0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/int64/rows=1025/null=true/auto                                                          0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/int64/rows=65536/null=false/auto                                                        0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/int64/rows=65536/null=true/auto                                                         0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/uint32/rows=7/null=false/auto                                                           0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/uint32/rows=7/null=true/auto                                                            0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/uint32/rows=1025/null=false/auto                                                        0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/uint32/rows=1025/null=true/auto                                                         0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/uint32/rows=65536/null=false/auto                                                       0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/uint32/rows=65536/null=true/auto                                                        0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/uint64/rows=7/null=false/auto                                                           0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/uint64/rows=7/null=true/auto                                                            0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/uint64/rows=1025/null=false/auto                                                        0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/uint64/rows=1025/null=true/auto                                                         0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/uint64/rows=65536/null=false/auto                                                       0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+NativeNumericLiteral/uint64/rows=65536/null=true/auto                                                        0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+NativeFloat64Comparison/columns=false/rows=7/null=false/auto                                                 0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+NativeFloat64Comparison/columns=true/rows=7/null=false/auto                                                  0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+NativeFloat64Comparison/columns=false/rows=7/null=true/auto                                                  0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+NativeFloat64Comparison/columns=true/rows=7/null=true/auto                                                   0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+NativeFloat64Comparison/columns=false/rows=1025/null=false/auto                                              0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+NativeFloat64Comparison/columns=true/rows=1025/null=false/auto                                               0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+NativeFloat64Comparison/columns=false/rows=1025/null=true/auto                                               0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+NativeFloat64Comparison/columns=true/rows=1025/null=true/auto                                                0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+NativeFloat64Comparison/columns=false/rows=65536/null=false/auto                                             0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+NativeFloat64Comparison/columns=true/rows=65536/null=false/auto                                              0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+NativeFloat64Comparison/columns=false/rows=65536/null=true/auto                                              0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+NativeFloat64Comparison/columns=true/rows=65536/null=true/auto                                               0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Float32Compare/auto                                                                                          0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Float32ColumnCompare/auto                                                                                    0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=int32/case=stream/op=gt/mode=auto                                                0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=int32/case=stream/op=ge/mode=auto                                                0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=int32/case=stream/op=lt/mode=auto                                                0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=int32/case=stream/op=le/mode=auto                                                0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=int32/case=stream/op=eq/mode=auto                                                0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=int32/case=bitmap/op=gt/mode=auto                                                0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=int32/case=bitmap/op=ge/mode=auto                                                0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=int32/case=bitmap/op=lt/mode=auto                                                0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=int32/case=bitmap/op=le/mode=auto                                                0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=int32/case=bitmap/op=eq/mode=auto                                                0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=int32/case=nullable-tail/op=gt/mode=auto                                         0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=int32/case=nullable-tail/op=ge/mode=auto                                         0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=int32/case=nullable-tail/op=lt/mode=auto                                         0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=int32/case=nullable-tail/op=le/mode=auto                                         0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=int32/case=nullable-tail/op=eq/mode=auto                                         0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=int32/case=sparse/op=gt/mode=auto                                                0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=int32/case=sparse/op=ge/mode=auto                                                0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=int32/case=sparse/op=lt/mode=auto                                                0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=int32/case=sparse/op=le/mode=auto                                                0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=int32/case=sparse/op=eq/mode=auto                                                0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=int32/case=dense/op=gt/mode=auto                                                 0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=int32/case=dense/op=ge/mode=auto                                                 0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=int32/case=dense/op=lt/mode=auto                                                 0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=int32/case=dense/op=le/mode=auto                                                 0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=int32/case=dense/op=eq/mode=auto                                                 0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=int32/case=equal/op=gt/mode=auto                                                 0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=int32/case=equal/op=ge/mode=auto                                                 0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=int32/case=equal/op=lt/mode=auto                                                 0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=int32/case=equal/op=le/mode=auto                                                 0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=int32/case=equal/op=eq/mode=auto                                                 0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=int32/case=short/op=gt/mode=auto                                                 0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=int32/case=short/op=ge/mode=auto                                                 0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=int32/case=short/op=lt/mode=auto                                                 0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=int32/case=short/op=le/mode=auto                                                 0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=int32/case=short/op=eq/mode=auto                                                 0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=int32/case=tail/op=gt/mode=auto                                                  0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=int32/case=tail/op=ge/mode=auto                                                  0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=int32/case=tail/op=lt/mode=auto                                                  0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=int32/case=tail/op=le/mode=auto                                                  0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=int32/case=tail/op=eq/mode=auto                                                  0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=uint32/case=stream/op=gt/mode=auto                                               0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=uint32/case=stream/op=ge/mode=auto                                               0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=uint32/case=stream/op=lt/mode=auto                                               0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=uint32/case=stream/op=le/mode=auto                                               0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=uint32/case=stream/op=eq/mode=auto                                               0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=uint32/case=bitmap/op=gt/mode=auto                                               0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=uint32/case=bitmap/op=ge/mode=auto                                               0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=uint32/case=bitmap/op=lt/mode=auto                                               0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=uint32/case=bitmap/op=le/mode=auto                                               0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=uint32/case=bitmap/op=eq/mode=auto                                               0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=uint32/case=nullable-tail/op=gt/mode=auto                                        0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=uint32/case=nullable-tail/op=ge/mode=auto                                        0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=uint32/case=nullable-tail/op=lt/mode=auto                                        0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=uint32/case=nullable-tail/op=le/mode=auto                                        0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=uint32/case=nullable-tail/op=eq/mode=auto                                        0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=uint32/case=sparse/op=gt/mode=auto                                               0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=uint32/case=sparse/op=ge/mode=auto                                               0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=uint32/case=sparse/op=lt/mode=auto                                               0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=uint32/case=sparse/op=le/mode=auto                                               0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=uint32/case=sparse/op=eq/mode=auto                                               0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=uint32/case=dense/op=gt/mode=auto                                                0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=uint32/case=dense/op=ge/mode=auto                                                0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=uint32/case=dense/op=lt/mode=auto                                                0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=uint32/case=dense/op=le/mode=auto                                                0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=uint32/case=dense/op=eq/mode=auto                                                0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=uint32/case=equal/op=gt/mode=auto                                                0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=uint32/case=equal/op=ge/mode=auto                                                0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=uint32/case=equal/op=lt/mode=auto                                                0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=uint32/case=equal/op=le/mode=auto                                                0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=uint32/case=equal/op=eq/mode=auto                                                0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=uint32/case=short/op=gt/mode=auto                                                0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=uint32/case=short/op=ge/mode=auto                                                0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=uint32/case=short/op=lt/mode=auto                                                0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=uint32/case=short/op=le/mode=auto                                                0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=uint32/case=short/op=eq/mode=auto                                                0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=uint32/case=tail/op=gt/mode=auto                                                 0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=uint32/case=tail/op=ge/mode=auto                                                 0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=uint32/case=tail/op=lt/mode=auto                                                 0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=uint32/case=tail/op=le/mode=auto                                                 0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate/type=uint32/case=tail/op=eq/mode=auto                                                 0.000 ± 0%                   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+geomean                                                                                                                 ²                             +0.00%               ²
+¹ all samples are equal
+² summaries must be >0 to compute geomean
+
+                                                                      │ validation/bitmap-native/paired-before-kernel.txt │ validation/bitmap-native/paired-after-kernel.txt │
+                                                                      │                        B/s                        │           B/s             vs base                │
+Float32Compare/auto                                                                                         2.542Gi ±  7%             15.257Gi ± 30%  +500.30% (p=0.002 n=6)
+Float32ColumnCompare/auto                                                                                   3.126Gi ± 12%             21.327Gi ± 14%  +582.31% (p=0.002 n=6)
+Column32ComparisonGate/type=int32/case=stream/op=gt/mode=auto                                               5.044Gi ± 10%             21.343Gi ±  5%  +323.14% (p=0.002 n=6)
+Column32ComparisonGate/type=int32/case=stream/op=ge/mode=auto                                               4.087Gi ±  9%             21.309Gi ±  7%  +421.38% (p=0.002 n=6)
+Column32ComparisonGate/type=int32/case=stream/op=lt/mode=auto                                               5.186Gi ± 12%             20.869Gi ±  7%  +302.42% (p=0.002 n=6)
+Column32ComparisonGate/type=int32/case=stream/op=le/mode=auto                                               4.085Gi ± 10%             19.953Gi ± 38%  +388.49% (p=0.002 n=6)
+Column32ComparisonGate/type=int32/case=stream/op=eq/mode=auto                                               4.833Gi ± 10%             20.384Gi ± 14%  +321.75% (p=0.002 n=6)
+Column32ComparisonGate/type=int32/case=bitmap/op=gt/mode=auto                                               5.182Gi ± 12%             32.127Gi ± 21%  +519.93% (p=0.002 n=6)
+Column32ComparisonGate/type=int32/case=bitmap/op=ge/mode=auto                                               3.970Gi ± 32%             34.309Gi ± 22%  +764.24% (p=0.002 n=6)
+Column32ComparisonGate/type=int32/case=bitmap/op=lt/mode=auto                                               5.053Gi ± 12%             34.132Gi ± 28%  +575.53% (p=0.002 n=6)
+Column32ComparisonGate/type=int32/case=bitmap/op=le/mode=auto                                               4.028Gi ± 11%             33.251Gi ± 45%  +725.46% (p=0.002 n=6)
+Column32ComparisonGate/type=int32/case=bitmap/op=eq/mode=auto                                               5.107Gi ± 12%             33.036Gi ± 75%  +546.84% (p=0.002 n=6)
+Column32ComparisonGate/type=int32/case=nullable-tail/op=gt/mode=auto                                        5.390Gi ± 10%             34.375Gi ± 12%  +537.74% (p=0.002 n=6)
+Column32ComparisonGate/type=int32/case=nullable-tail/op=ge/mode=auto                                        3.805Gi ± 13%             32.838Gi ± 18%  +763.11% (p=0.002 n=6)
+Column32ComparisonGate/type=int32/case=nullable-tail/op=lt/mode=auto                                        5.457Gi ±  9%             33.152Gi ± 42%  +507.49% (p=0.002 n=6)
+Column32ComparisonGate/type=int32/case=nullable-tail/op=le/mode=auto                                        3.653Gi ± 11%             33.551Gi ± 14%  +818.35% (p=0.002 n=6)
+Column32ComparisonGate/type=int32/case=nullable-tail/op=eq/mode=auto                                        5.133Gi ± 15%             34.089Gi ± 13%  +564.13% (p=0.002 n=6)
+Column32ComparisonGate/type=int32/case=sparse/op=gt/mode=auto                                               7.491Gi ± 10%             34.723Gi ± 35%  +363.50% (p=0.002 n=6)
+Column32ComparisonGate/type=int32/case=sparse/op=ge/mode=auto                                               7.477Gi ± 14%             33.593Gi ± 17%  +349.30% (p=0.002 n=6)
+Column32ComparisonGate/type=int32/case=sparse/op=lt/mode=auto                                               3.891Gi ±  8%             35.354Gi ± 16%  +808.66% (p=0.002 n=6)
+Column32ComparisonGate/type=int32/case=sparse/op=le/mode=auto                                               3.907Gi ± 10%             35.648Gi ± 10%  +812.37% (p=0.002 n=6)
+Column32ComparisonGate/type=int32/case=sparse/op=eq/mode=auto                                               7.100Gi ± 23%             36.404Gi ±  8%  +412.73% (p=0.002 n=6)
+Column32ComparisonGate/type=int32/case=dense/op=gt/mode=auto                                                3.655Gi ± 65%             34.600Gi ± 14%  +846.72% (p=0.002 n=6)
+Column32ComparisonGate/type=int32/case=dense/op=ge/mode=auto                                                4.023Gi ± 66%             34.713Gi ± 12%  +762.81% (p=0.002 n=6)
+Column32ComparisonGate/type=int32/case=dense/op=lt/mode=auto                                                7.082Gi ± 13%             34.868Gi ± 14%  +392.36% (p=0.002 n=6)
+Column32ComparisonGate/type=int32/case=dense/op=le/mode=auto                                                7.172Gi ± 13%             34.724Gi ± 18%  +384.18% (p=0.002 n=6)
+Column32ComparisonGate/type=int32/case=dense/op=eq/mode=auto                                                7.336Gi ± 19%             35.501Gi ±  8%  +383.94% (p=0.002 n=6)
+Column32ComparisonGate/type=int32/case=equal/op=gt/mode=auto                                                7.933Gi ± 29%             34.101Gi ± 16%  +329.84% (p=0.002 n=6)
+Column32ComparisonGate/type=int32/case=equal/op=ge/mode=auto                                                4.071Gi ± 55%             35.581Gi ± 10%  +774.09% (p=0.002 n=6)
+Column32ComparisonGate/type=int32/case=equal/op=lt/mode=auto                                                7.684Gi ± 15%             35.027Gi ± 15%  +355.82% (p=0.002 n=6)
+Column32ComparisonGate/type=int32/case=equal/op=le/mode=auto                                                4.124Gi ± 22%             34.576Gi ± 17%  +738.38% (p=0.002 n=6)
+Column32ComparisonGate/type=int32/case=equal/op=eq/mode=auto                                                3.941Gi ± 48%             35.441Gi ±  9%  +799.30% (p=0.002 n=6)
+Column32ComparisonGate/type=int32/case=short/op=gt/mode=auto                                                1.548Gi ±  6%              1.944Gi ± 10%   +25.56% (p=0.002 n=6)
+Column32ComparisonGate/type=int32/case=short/op=ge/mode=auto                                                1.414Gi ±  8%              2.060Gi ± 16%   +45.66% (p=0.002 n=6)
+Column32ComparisonGate/type=int32/case=short/op=lt/mode=auto                                                1.422Gi ± 20%              1.833Gi ± 14%   +28.89% (p=0.002 n=6)
+Column32ComparisonGate/type=int32/case=short/op=le/mode=auto                                                1.298Gi ± 21%              1.636Gi ±  9%   +26.04% (p=0.002 n=6)
+Column32ComparisonGate/type=int32/case=short/op=eq/mode=auto                                                1.307Gi ± 35%              1.705Gi ± 15%   +30.46% (p=0.002 n=6)
+Column32ComparisonGate/type=int32/case=tail/op=gt/mode=auto                                                 4.658Gi ± 11%             15.491Gi ± 18%  +232.58% (p=0.002 n=6)
+Column32ComparisonGate/type=int32/case=tail/op=ge/mode=auto                                                 3.692Gi ± 15%             17.737Gi ± 13%  +380.43% (p=0.002 n=6)
+Column32ComparisonGate/type=int32/case=tail/op=lt/mode=auto                                                 4.245Gi ±  9%             16.411Gi ± 13%  +286.59% (p=0.002 n=6)
+Column32ComparisonGate/type=int32/case=tail/op=le/mode=auto                                                 3.371Gi ±  8%             16.773Gi ± 12%  +397.63% (p=0.002 n=6)
+Column32ComparisonGate/type=int32/case=tail/op=eq/mode=auto                                                 4.365Gi ± 13%             16.992Gi ± 12%  +289.33% (p=0.002 n=6)
+Column32ComparisonGate/type=uint32/case=stream/op=gt/mode=auto                                              6.468Gi ± 12%             21.135Gi ± 10%  +226.74% (p=0.002 n=6)
+Column32ComparisonGate/type=uint32/case=stream/op=ge/mode=auto                                              4.827Gi ± 23%             20.626Gi ±  6%  +327.33% (p=0.002 n=6)
+Column32ComparisonGate/type=uint32/case=stream/op=lt/mode=auto                                              5.799Gi ± 19%             20.546Gi ±  4%  +254.31% (p=0.002 n=6)
+Column32ComparisonGate/type=uint32/case=stream/op=le/mode=auto                                              4.851Gi ± 12%             20.442Gi ± 37%  +321.40% (p=0.002 n=6)
+Column32ComparisonGate/type=uint32/case=stream/op=eq/mode=auto                                              5.875Gi ± 16%             20.171Gi ± 10%  +243.31% (p=0.002 n=6)
+Column32ComparisonGate/type=uint32/case=bitmap/op=gt/mode=auto                                              6.259Gi ± 10%             34.461Gi ± 14%  +450.54% (p=0.002 n=6)
+Column32ComparisonGate/type=uint32/case=bitmap/op=ge/mode=auto                                              3.931Gi ± 13%             33.573Gi ± 27%  +754.06% (p=0.002 n=6)
+Column32ComparisonGate/type=uint32/case=bitmap/op=lt/mode=auto                                              5.962Gi ± 85%             34.225Gi ± 49%  +474.01% (p=0.002 n=6)
+Column32ComparisonGate/type=uint32/case=bitmap/op=le/mode=auto                                              4.162Gi ± 16%             33.385Gi ± 45%  +702.13% (p=0.002 n=6)
+Column32ComparisonGate/type=uint32/case=bitmap/op=eq/mode=auto                                              6.034Gi ± 10%             32.157Gi ± 37%  +432.91% (p=0.002 n=6)
+Column32ComparisonGate/type=uint32/case=nullable-tail/op=gt/mode=auto                                       6.173Gi ± 16%             33.251Gi ± 18%  +438.67% (p=0.002 n=6)
+Column32ComparisonGate/type=uint32/case=nullable-tail/op=ge/mode=auto                                       4.365Gi ± 39%             32.031Gi ± 41%  +633.81% (p=0.002 n=6)
+Column32ComparisonGate/type=uint32/case=nullable-tail/op=lt/mode=auto                                       6.264Gi ± 15%             33.930Gi ± 52%  +441.70% (p=0.002 n=6)
+Column32ComparisonGate/type=uint32/case=nullable-tail/op=le/mode=auto                                       4.285Gi ± 12%             33.445Gi ± 41%  +680.59% (p=0.002 n=6)
+Column32ComparisonGate/type=uint32/case=nullable-tail/op=eq/mode=auto                                       5.235Gi ± 32%             32.070Gi ± 30%  +512.60% (p=0.002 n=6)
+Column32ComparisonGate/type=uint32/case=sparse/op=gt/mode=auto                                              8.277Gi ± 13%             32.136Gi ± 23%  +288.24% (p=0.002 n=6)
+Column32ComparisonGate/type=uint32/case=sparse/op=ge/mode=auto                                              8.414Gi ± 41%             34.381Gi ± 29%  +308.63% (p=0.002 n=6)
+Column32ComparisonGate/type=uint32/case=sparse/op=lt/mode=auto                                              3.952Gi ± 10%             34.061Gi ± 64%  +761.85% (p=0.002 n=6)
+Column32ComparisonGate/type=uint32/case=sparse/op=le/mode=auto                                              4.131Gi ± 12%             34.918Gi ± 55%  +745.21% (p=0.002 n=6)
+Column32ComparisonGate/type=uint32/case=sparse/op=eq/mode=auto                                              8.520Gi ± 10%             33.375Gi ± 56%  +291.74% (p=0.002 n=6)
+Column32ComparisonGate/type=uint32/case=dense/op=gt/mode=auto                                               4.072Gi ±  9%             33.624Gi ± 78%  +725.71% (p=0.002 n=6)
+Column32ComparisonGate/type=uint32/case=dense/op=ge/mode=auto                                               4.067Gi ± 11%             35.070Gi ± 65%  +762.31% (p=0.002 n=6)
+Column32ComparisonGate/type=uint32/case=dense/op=lt/mode=auto                                               8.909Gi ± 18%             33.889Gi ± 36%  +280.38% (p=0.002 n=6)
+Column32ComparisonGate/type=uint32/case=dense/op=le/mode=auto                                               8.260Gi ± 11%             33.117Gi ± 46%  +300.94% (p=0.002 n=6)
+Column32ComparisonGate/type=uint32/case=dense/op=eq/mode=auto                                               8.378Gi ± 66%             31.339Gi ± 41%  +274.07% (p=0.002 n=6)
+Column32ComparisonGate/type=uint32/case=equal/op=gt/mode=auto                                               8.143Gi ± 54%             34.006Gi ± 35%  +317.62% (p=0.002 n=6)
+Column32ComparisonGate/type=uint32/case=equal/op=ge/mode=auto                                               4.418Gi ±  7%             34.515Gi ± 54%  +681.26% (p=0.002 n=6)
+Column32ComparisonGate/type=uint32/case=equal/op=lt/mode=auto                                               8.069Gi ± 62%             34.019Gi ± 44%  +321.57% (p=0.002 n=6)
+Column32ComparisonGate/type=uint32/case=equal/op=le/mode=auto                                               4.213Gi ± 15%             35.114Gi ± 15%  +733.51% (p=0.002 n=6)
+Column32ComparisonGate/type=uint32/case=equal/op=eq/mode=auto                                               4.330Gi ± 93%             35.398Gi ± 10%  +717.57% (p=0.002 n=6)
+Column32ComparisonGate/type=uint32/case=short/op=gt/mode=auto                                               1.705Gi ±  7%              1.903Gi ± 13%   +11.64% (p=0.002 n=6)
+Column32ComparisonGate/type=uint32/case=short/op=ge/mode=auto                                               1.365Gi ±  8%              1.699Gi ± 13%   +24.48% (p=0.002 n=6)
+Column32ComparisonGate/type=uint32/case=short/op=lt/mode=auto                                               1.494Gi ± 40%              1.747Gi ±  7%   +16.95% (p=0.002 n=6)
+Column32ComparisonGate/type=uint32/case=short/op=le/mode=auto                                               1.507Gi ± 10%              1.642Gi ±  8%         ~ (p=0.065 n=6)
+Column32ComparisonGate/type=uint32/case=short/op=eq/mode=auto                                               1.354Gi ± 11%              1.324Gi ± 18%         ~ (p=0.589 n=6)
+Column32ComparisonGate/type=uint32/case=tail/op=gt/mode=auto                                                4.938Gi ± 13%             16.724Gi ± 11%  +238.68% (p=0.002 n=6)
+Column32ComparisonGate/type=uint32/case=tail/op=ge/mode=auto                                                4.160Gi ±  8%             16.235Gi ± 13%  +290.28% (p=0.002 n=6)
+Column32ComparisonGate/type=uint32/case=tail/op=lt/mode=auto                                                4.918Gi ±  7%             15.635Gi ± 75%         ~ (p=0.065 n=6)
+Column32ComparisonGate/type=uint32/case=tail/op=le/mode=auto                                                3.825Gi ± 19%             15.734Gi ± 15%  +311.37% (p=0.002 n=6)
+Column32ComparisonGate/type=uint32/case=tail/op=eq/mode=auto                                                4.885Gi ± 22%             16.057Gi ± 13%  +228.72% (p=0.002 n=6)
+geomean                                                                                                     4.363Gi                    20.06Gi        +359.73%

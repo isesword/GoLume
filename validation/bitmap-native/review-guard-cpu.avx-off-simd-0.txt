@@ -1,0 +1,9 @@
+=== RUN   TestReviewIndependentBitmapPaths
+    review_overlay_test.go:16: native unavailable
+--- SKIP: TestReviewIndependentBitmapPaths (0.00s)
+=== RUN   TestReviewGuardMatrix
+--- PASS: TestReviewGuardMatrix (0.00s)
+=== RUN   TestReviewPortableColumnValidity
+    review_overlay_test.go:199: portable native unavailable
+--- SKIP: TestReviewPortableColumnValidity (0.00s)
+PASS

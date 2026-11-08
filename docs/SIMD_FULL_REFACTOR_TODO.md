@@ -221,3 +221,17 @@ Float32 expression arithmetic currently promotes to Float64 and is not a native
 Float32 kernel call. Keep this public type behavior until a separate semantics
 change is requested. Next optimize mask packing/null handling with measured query
 and memory effects, then profile aggregation/compaction before selecting more work.
+
+
+## 2026-11-08 comparison bitmap stage
+
+Generated guarded amd64 ToBits paths now cover the 35 existing literal and 20
+existing column comparison dispatch entries at 128/256/512 bits. The generator
+widens masks before shifting, preserves ordered IEEE comparisons and scalar
+short-input/tail handling, and avoids per-vector type dispatch and scratch masks.
+Portable column32 null validity is combined once per word, including all-null
+skips with cleared output. Direct portable tests prevent the amd64 overrides from
+hiding fallback regressions. See [validation/bitmap-native](../validation/bitmap-native/README.md)
+for exact review, runtime, cross-compilation, and paired measurement evidence.
+The next investigation is representative aggregation/compaction profiling; no
+new reduction or compaction backend is implied by this comparison work.

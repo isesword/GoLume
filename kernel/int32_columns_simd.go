@@ -35,6 +35,11 @@ func simdInt32Columns(left, right []int32, leftValid, rightValid, out memory.Bit
 	for wi := 0; wi < words; wi++ {
 		base := wi * 64
 		rows := min(64, len(left)-base)
+		validWord := bitmapWord(leftValid, wi) & bitmapWord(rightValid, wi) & memory.TailMask(rows)
+		// prepareComparison cleared the logical words, including skipped words.
+		if validWord == 0 {
+			continue
+		}
 		var word uint64
 		off := 0
 		for ; off+lanes <= rows; off += lanes {
@@ -55,19 +60,18 @@ func simdInt32Columns(left, right []int32, leftValid, rightValid, out memory.Bit
 			}
 			mask.ToInt32s().Store(laneMask)
 			for lane := 0; lane < lanes; lane++ {
-				row := base + off + lane
-				if uint32(laneMask[lane])>>31 != 0 && validAt(leftValid, row) && validAt(rightValid, row) {
+				if uint32(laneMask[lane])>>31 != 0 {
 					word |= uint64(1) << uint(off+lane)
 				}
 			}
 		}
 		for ; off < rows; off++ {
 			row := base + off
-			if validAt(leftValid, row) && validAt(rightValid, row) && scalarInt32CompareValue(left[row], right[row], op) {
+			if scalarInt32CompareValue(left[row], right[row], op) {
 				word |= uint64(1) << uint(off)
 			}
 		}
-		word &= memory.TailMask(rows)
+		word &= validWord
 		out[wi] = word
 		selected += bits.OnesCount64(word)
 	}

@@ -56,6 +56,11 @@ its Auto backend can differ from the explicit-SIMD `available_backend`.
   does not change result types or claim SIMD acceleration of that expression path.
 - Int16/Uint8/Uint16 literal comparisons and Int8/Int16/Int64/Uint8/Uint16/Uint64
   column comparisons remain scalar. Checked integer arithmetic is unchanged.
+- amd64 replaces these 35 literal and 20 column comparison entries with
+  generated direct mask-to-bitmap kernels at the exact selected runtime width:
+  128-bit AVX, 256-bit AVX2, or 512-bit AVX512 (F+CD+BW+DQ+VL). Unsupported
+  widths/features retain the portable implementation. `archsimd-amd64-mask`
+  reports this backend independently of arithmetic and hash/compaction.
 - amd64 Hash64 and Int32/Int64/Uint32/Uint64/Float64 compaction use AVX-512
   only when the runtime reports AVX-512, portable SIMD is non-emulated, and
   the selected native width is at least 512 bits. Narrower widths fall back
@@ -78,6 +83,18 @@ entry and reuses one 64-row transient word. The separately maintained
 Int32/Uint32/Float32 column-comparison implementations still use an operator
 switch and a stored-mask lane scan. Selecting those native implementations
 in Auto does not imply they have the generated literal-kernel shape.
+
+amd64 comparison masks are widened to uint64 before shifting into the output
+word, avoiding narrow-mask truncation. They do not store masks to scratch arrays
+or scan lanes. The 165 generated width/type/operation variants share one generator
+and are selected once during Set installation, not through a per-vector type switch.
+Scalar fallback below one vector is preserved. This adds fixed generated code;
+it does not add per-call heap buffers, and is not a claim about total process RSS.
+
+Portable column32 comparisons now combine both validity bitmaps once per output
+word, then mask the result. All-null words can skip value loads; output is cleared
+first, so skipped words cannot retain stale bits. The portable fallback is tested
+directly in addition to testing the selected architecture backend.
 
 Portable literal and generated Float64 column comparisons use bounded stack
 mask storage and combine validity once per bitmap word. Arithmetic writes its
@@ -149,3 +166,12 @@ identity checks, IEEE/boundary tests, allocations, and complete query measuremen
 Linux/arm64 validation for this stage is cross-compilation only, not native execution.
 Kernel coverage does not imply whole-query acceleration; measured query timings
 are mixed and managed-memory/heap allocation comparisons are reported separately.
+
+## Comparison bitmap validation
+
+The [bitmap stage report](../validation/bitmap-native/README.md) separates
+independent native safety checks from paired before/after Auto benchmarks.
+The native operation counts are unchanged; this stage improves 55 existing
+comparison dispatch entries rather than claiming 165 new public operations.
+All three amd64 widths and CPU-feature-masked fallback paths were checked.
+arm64 is cross-compiled only, and its literal overrides remain unchanged.

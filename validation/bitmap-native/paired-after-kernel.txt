@@ -1,0 +1,864 @@
+goos: linux
+goarch: amd64
+pkg: gocolumn/kernel
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkNativeNumericLiteral/int8/rows=7/null=false/auto         	 5587437	        21.49 ns/op	         3.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=7/null=true/auto          	 7217638	        16.51 ns/op	         0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=1025/null=false/auto      	 1278141	        94.48 ns/op	       440.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=1025/null=true/auto       	 1435104	        83.59 ns/op	       229.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=65536/null=false/auto     	   21901	      4767 ns/op	     28160 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=65536/null=true/auto      	   22808	      4792 ns/op	     14528 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=7/null=false/auto        	 8459997	        16.01 ns/op	         6.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=7/null=true/auto         	 5183240	        22.07 ns/op	         1.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=1025/null=false/auto     	  733366	       181.5 ns/op	      1024 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=1025/null=true/auto      	  775722	       170.8 ns/op	       527.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=65536/null=false/auto    	   10000	     11060 ns/op	     65535 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=65536/null=true/auto     	    9319	     10999 ns/op	     33791 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=7/null=false/auto        	 7524000	        17.68 ns/op	         6.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=7/null=true/auto         	 7351260	        17.21 ns/op	         1.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=1025/null=false/auto     	  414706	       296.9 ns/op	      1024 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=1025/null=true/auto      	  399434	       307.8 ns/op	       527.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=65536/null=false/auto    	    7131	     18920 ns/op	     65535 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=65536/null=true/auto     	    6424	     20717 ns/op	     33791 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=7/null=false/auto       	 7483542	        15.28 ns/op	         6.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=7/null=true/auto        	 5551641	        21.45 ns/op	         1.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=1025/null=false/auto    	  688617	       172.1 ns/op	      1024 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=1025/null=true/auto     	  751360	       164.2 ns/op	       527.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=65536/null=false/auto   	   11313	     10804 ns/op	     65535 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=65536/null=true/auto    	   10000	     11162 ns/op	     33791 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=7/null=false/auto       	 7018308	        16.26 ns/op	         6.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=7/null=true/auto        	 7260943	        17.25 ns/op	         1.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=1025/null=false/auto    	  452439	       290.9 ns/op	      1024 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=1025/null=true/auto     	  397941	       314.0 ns/op	       527.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=65536/null=false/auto   	    6069	     20038 ns/op	     65535 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=65536/null=true/auto    	    5905	     19647 ns/op	     33791 selected	       0 B/op	       0 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/kernel
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkNativeFloat64Comparison/columns=false/rows=7/null=false/auto         	 6662024	        18.59 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=7/null=false/auto          	 4222184	        27.57 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=7/null=true/auto          	 7039219	        17.92 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=7/null=true/auto           	 6009566	        19.91 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=1025/null=false/auto      	  295942	       450.1 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=1025/null=false/auto       	  214305	       560.5 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=1025/null=true/auto       	  260158	       494.7 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=1025/null=true/auto        	  268471	       409.3 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=65536/null=false/auto     	    6903	     20727 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=65536/null=false/auto      	    4804	     25027 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=65536/null=true/auto      	    5886	     21241 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=65536/null=true/auto       	    4116	     26226 ns/op	       0 B/op	       0 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/kernel
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkFloat32Compare/auto  	     501	    242452 ns/op	17299.53 MB/s	      32 B/op	       0 allocs/op
+BenchmarkFloat32ColumnCompare/auto         	     295	    370284 ns/op	22654.50 MB/s	      54 B/op	       0 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/kernel
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkColumn32ComparisonGate/type=int32/case=stream/op=gt/mode=auto/backend=archsimd-amd64-mask         	     308	    363148 ns/op	23099.68 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=stream/op=ge/mode=auto/backend=archsimd-amd64-mask         	     346	    357330 ns/op	23475.79 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=stream/op=lt/mode=auto/backend=archsimd-amd64-mask         	     340	    361560 ns/op	23201.17 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=stream/op=le/mode=auto/backend=archsimd-amd64-mask         	     339	    363992 ns/op	23046.15 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=stream/op=eq/mode=auto/backend=archsimd-amd64-mask         	     367	    346671 ns/op	24197.59 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=bitmap/op=gt/mode=auto/backend=archsimd-amd64-mask         	   10000	     14026 ns/op	37380.88 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=bitmap/op=ge/mode=auto/backend=archsimd-amd64-mask         	    6859	     16379 ns/op	32010.67 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=bitmap/op=lt/mode=auto/backend=archsimd-amd64-mask         	   10000	     13559 ns/op	38665.98 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=bitmap/op=le/mode=auto/backend=archsimd-amd64-mask         	    9628	     13688 ns/op	38302.90 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=bitmap/op=eq/mode=auto/backend=archsimd-amd64-mask         	    9375	     13926 ns/op	37647.87 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=nullable-tail/op=gt/mode=auto/backend=archsimd-amd64-mask  	    9915	     13700 ns/op	38272.19 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=nullable-tail/op=ge/mode=auto/backend=archsimd-amd64-mask  	    9056	     13922 ns/op	37661.81 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=nullable-tail/op=lt/mode=auto/backend=archsimd-amd64-mask  	   10000	     14119 ns/op	37134.04 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=nullable-tail/op=le/mode=auto/backend=archsimd-amd64-mask  	   10000	     13874 ns/op	37791.19 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=nullable-tail/op=eq/mode=auto/backend=archsimd-amd64-mask  	    9555	     14383 ns/op	36454.13 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=sparse/op=gt/mode=auto/backend=archsimd-amd64-mask         	    9283	     14059 ns/op	37290.70 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=sparse/op=ge/mode=auto/backend=archsimd-amd64-mask         	    7993	     15011 ns/op	34928.02 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=sparse/op=lt/mode=auto/backend=archsimd-amd64-mask         	    8884	     13438 ns/op	39014.11 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=sparse/op=le/mode=auto/backend=archsimd-amd64-mask         	    9268	     13296 ns/op	39431.71 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=sparse/op=eq/mode=auto/backend=archsimd-amd64-mask         	    9999	     13190 ns/op	39747.94 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=dense/op=gt/mode=auto/backend=archsimd-amd64-mask          	    8650	     14230 ns/op	36843.85 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=dense/op=ge/mode=auto/backend=archsimd-amd64-mask          	    9445	     13913 ns/op	37683.30 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=dense/op=lt/mode=auto/backend=archsimd-amd64-mask          	    9798	     12725 ns/op	41200.83 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=dense/op=le/mode=auto/backend=archsimd-amd64-mask          	    7251	     14317 ns/op	36618.71 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=dense/op=eq/mode=auto/backend=archsimd-amd64-mask          	    8868	     13143 ns/op	39891.07 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=equal/op=gt/mode=auto/backend=archsimd-amd64-mask          	    9540	     13766 ns/op	38086.41 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=equal/op=ge/mode=auto/backend=archsimd-amd64-mask          	    9874	     12927 ns/op	40558.29 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=equal/op=lt/mode=auto/backend=archsimd-amd64-mask          	    9649	     14925 ns/op	35128.84 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=equal/op=le/mode=auto/backend=archsimd-amd64-mask          	    8132	     14045 ns/op	37330.29 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=equal/op=eq/mode=auto/backend=archsimd-amd64-mask          	    7410	     14523 ns/op	36099.46 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=short/op=gt/mode=auto/backend=archsimd-amd64-mask          	 5107195	        26.16 ns/op	2140.79 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=short/op=ge/mode=auto/backend=archsimd-amd64-mask          	 4583034	        24.91 ns/op	2248.54 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=short/op=lt/mode=auto/backend=archsimd-amd64-mask          	 5130541	        29.50 ns/op	1898.50 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=short/op=le/mode=auto/backend=archsimd-amd64-mask          	 3636249	        31.97 ns/op	1751.64 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=short/op=eq/mode=auto/backend=archsimd-amd64-mask          	 4043883	        30.14 ns/op	1858.13 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=tail/op=gt/mode=auto/backend=archsimd-amd64-mask           	 4296596	        28.75 ns/op	18086.56 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=tail/op=ge/mode=auto/backend=archsimd-amd64-mask           	 3991500	        26.52 ns/op	19610.40 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=tail/op=lt/mode=auto/backend=archsimd-amd64-mask           	 4145268	        28.59 ns/op	18189.77 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=tail/op=le/mode=auto/backend=archsimd-amd64-mask           	 4460770	        27.31 ns/op	19042.04 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=tail/op=eq/mode=auto/backend=archsimd-amd64-mask           	 4204756	        28.19 ns/op	18445.55 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=stream/op=gt/mode=auto/backend=archsimd-amd64-mask        	     344	    352391 ns/op	23804.86 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=stream/op=ge/mode=auto/backend=archsimd-amd64-mask        	     316	    355686 ns/op	23584.31 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=stream/op=lt/mode=auto/backend=archsimd-amd64-mask        	     345	    373594 ns/op	22453.81 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=stream/op=le/mode=auto/backend=archsimd-amd64-mask        	     352	    339754 ns/op	24690.24 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=stream/op=eq/mode=auto/backend=archsimd-amd64-mask        	     309	    351814 ns/op	23843.86 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=bitmap/op=gt/mode=auto/backend=archsimd-amd64-mask        	    7982	     14056 ns/op	37299.22 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=bitmap/op=ge/mode=auto/backend=archsimd-amd64-mask        	    8520	     13640 ns/op	38436.67 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=bitmap/op=lt/mode=auto/backend=archsimd-amd64-mask        	    9613	     14105 ns/op	37170.89 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=bitmap/op=le/mode=auto/backend=archsimd-amd64-mask        	    7406	     13763 ns/op	38093.92 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=bitmap/op=eq/mode=auto/backend=archsimd-amd64-mask        	    8320	     15098 ns/op	34724.93 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=nullable-tail/op=gt/mode=auto/backend=archsimd-amd64-mask 	   10000	     13531 ns/op	38748.43 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=nullable-tail/op=ge/mode=auto/backend=archsimd-amd64-mask 	   10000	     15740 ns/op	33310.96 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=nullable-tail/op=lt/mode=auto/backend=archsimd-amd64-mask 	    7664	     13832 ns/op	37906.60 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=nullable-tail/op=le/mode=auto/backend=archsimd-amd64-mask 	    7822	     14285 ns/op	36702.86 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=nullable-tail/op=eq/mode=auto/backend=archsimd-amd64-mask 	    9321	     13757 ns/op	38112.91 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=sparse/op=gt/mode=auto/backend=archsimd-amd64-mask        	    8007	     15834 ns/op	33111.72 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=sparse/op=ge/mode=auto/backend=archsimd-amd64-mask        	    9058	     13608 ns/op	38527.23 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=sparse/op=lt/mode=auto/backend=archsimd-amd64-mask        	    8391	     13722 ns/op	38207.64 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=sparse/op=le/mode=auto/backend=archsimd-amd64-mask        	    8167	     13124 ns/op	39947.67 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=sparse/op=eq/mode=auto/backend=archsimd-amd64-mask        	    8059	     14974 ns/op	35013.24 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=dense/op=gt/mode=auto/backend=archsimd-amd64-mask         	    8264	     13681 ns/op	38323.55 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=dense/op=ge/mode=auto/backend=archsimd-amd64-mask         	    9824	     13531 ns/op	38746.28 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=dense/op=lt/mode=auto/backend=archsimd-amd64-mask         	    8721	     13816 ns/op	37948.68 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=dense/op=le/mode=auto/backend=archsimd-amd64-mask         	   10000	     13433 ns/op	39030.05 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=dense/op=eq/mode=auto/backend=archsimd-amd64-mask         	    7759	     15696 ns/op	33402.14 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=equal/op=gt/mode=auto/backend=archsimd-amd64-mask         	    8092	     14402 ns/op	36404.39 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=equal/op=ge/mode=auto/backend=archsimd-amd64-mask         	    7549	     13256 ns/op	39550.00 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=equal/op=lt/mode=auto/backend=archsimd-amd64-mask         	    7850	     14200 ns/op	36921.12 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=equal/op=le/mode=auto/backend=archsimd-amd64-mask         	    9194	     14683 ns/op	35708.32 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=equal/op=eq/mode=auto/backend=archsimd-amd64-mask         	   10000	     13815 ns/op	37949.82 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=short/op=gt/mode=auto/backend=archsimd-amd64-mask         	 4767498	        27.48 ns/op	2038.14 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=short/op=ge/mode=auto/backend=archsimd-amd64-mask         	 3993283	        31.34 ns/op	1786.64 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=short/op=lt/mode=auto/backend=archsimd-amd64-mask         	 4241320	        29.29 ns/op	1911.75 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=short/op=le/mode=auto/backend=archsimd-amd64-mask         	 3766695	        33.58 ns/op	1667.69 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=short/op=eq/mode=auto/backend=archsimd-amd64-mask         	 3128085	        40.08 ns/op	1397.17 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=tail/op=gt/mode=auto/backend=archsimd-amd64-mask          	 3726774	        28.75 ns/op	18086.64 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=tail/op=ge/mode=auto/backend=archsimd-amd64-mask          	 3770372	        33.68 ns/op	15438.16 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=tail/op=lt/mode=auto/backend=archsimd-amd64-mask          	 4073841	        30.02 ns/op	17324.61 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=tail/op=le/mode=auto/backend=archsimd-amd64-mask          	 4165800	        31.72 ns/op	16394.17 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=tail/op=eq/mode=auto/backend=archsimd-amd64-mask          	 4080656	        31.55 ns/op	16483.91 MB/s	       0 B/op	       0 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/kernel
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkNativeNumericLiteral/int8/rows=7/null=false/auto         	 6815637	        17.11 ns/op	         3.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=7/null=true/auto          	 7857268	        16.28 ns/op	         0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=1025/null=false/auto      	 1506409	        80.01 ns/op	       440.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=1025/null=true/auto       	 1491156	        81.22 ns/op	       229.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=65536/null=false/auto     	   20610	      5200 ns/op	     28160 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=65536/null=true/auto      	   27739	      4800 ns/op	     14528 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=7/null=false/auto        	 8617286	        14.42 ns/op	         6.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=7/null=true/auto         	 6355186	        21.32 ns/op	         1.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=1025/null=false/auto     	  742389	       159.6 ns/op	      1024 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=1025/null=true/auto      	  792464	       167.3 ns/op	       527.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=65536/null=false/auto    	   12398	      9718 ns/op	     65535 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=65536/null=true/auto     	   10000	     11214 ns/op	     33791 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=7/null=false/auto        	 7153286	        15.61 ns/op	         6.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=7/null=true/auto         	 7915510	        16.54 ns/op	         1.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=1025/null=false/auto     	  444655	       275.8 ns/op	      1024 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=1025/null=true/auto      	  406024	       281.0 ns/op	       527.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=65536/null=false/auto    	    6672	     17700 ns/op	     65535 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=65536/null=true/auto     	    7537	     17926 ns/op	     33791 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=7/null=false/auto       	 8237095	        13.58 ns/op	         6.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=7/null=true/auto        	 6567268	        19.88 ns/op	         1.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=1025/null=false/auto    	  765549	       155.2 ns/op	      1024 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=1025/null=true/auto     	  789812	       159.6 ns/op	       527.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=65536/null=false/auto   	   12187	      9825 ns/op	     65535 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=65536/null=true/auto    	   12492	      9656 ns/op	     33791 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=7/null=false/auto       	 6812640	        15.55 ns/op	         6.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=7/null=true/auto        	 7461576	        15.36 ns/op	         1.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=1025/null=false/auto    	  378804	       288.8 ns/op	      1024 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=1025/null=true/auto     	  428000	       272.6 ns/op	       527.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=65536/null=false/auto   	    7450	     17685 ns/op	     65535 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=65536/null=true/auto    	    6306	     18298 ns/op	     33791 selected	       0 B/op	       0 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/kernel
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkNativeFloat64Comparison/columns=false/rows=7/null=false/auto         	 6162571	        19.34 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=7/null=false/auto          	 4792840	        27.28 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=7/null=true/auto          	 7006068	        18.33 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=7/null=true/auto           	 5354269	        21.82 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=1025/null=false/auto      	  229588	       466.7 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=1025/null=false/auto       	  235962	       548.3 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=1025/null=true/auto       	  246541	       472.6 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=1025/null=true/auto        	  317443	       423.9 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=65536/null=false/auto     	    7359	     20368 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=65536/null=false/auto      	    4550	     25932 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=65536/null=true/auto      	    5748	     21735 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=65536/null=true/auto       	    4074	     27816 ns/op	       0 B/op	       0 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/kernel
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkFloat32Compare/auto  	     400	    252721 ns/op	16596.58 MB/s	      40 B/op	       0 allocs/op
+BenchmarkFloat32ColumnCompare/auto         	     330	    358074 ns/op	23427.01 MB/s	      48 B/op	       0 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/kernel
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkColumn32ComparisonGate/type=int32/case=stream/op=gt/mode=auto/backend=archsimd-amd64-mask         	     296	    368976 ns/op	22734.83 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=stream/op=ge/mode=auto/backend=archsimd-amd64-mask         	     296	    376410 ns/op	22285.85 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=stream/op=lt/mode=auto/backend=archsimd-amd64-mask         	     324	    374306 ns/op	22411.12 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=stream/op=le/mode=auto/backend=archsimd-amd64-mask         	     306	    636296 ns/op	13183.49 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=stream/op=eq/mode=auto/backend=archsimd-amd64-mask         	     327	    358741 ns/op	23383.48 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=bitmap/op=gt/mode=auto/backend=archsimd-amd64-mask         	   10000	     12579 ns/op	41679.11 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=bitmap/op=ge/mode=auto/backend=archsimd-amd64-mask         	    8734	     12732 ns/op	41177.81 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=bitmap/op=lt/mode=auto/backend=archsimd-amd64-mask         	    9520	     12604 ns/op	41596.14 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=bitmap/op=le/mode=auto/backend=archsimd-amd64-mask         	   10000	     15104 ns/op	34710.99 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=bitmap/op=eq/mode=auto/backend=archsimd-amd64-mask         	   10000	     12581 ns/op	41671.47 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=nullable-tail/op=gt/mode=auto/backend=archsimd-amd64-mask  	   10000	     12769 ns/op	41060.08 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=nullable-tail/op=ge/mode=auto/backend=archsimd-amd64-mask  	    9372	     12631 ns/op	41510.70 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=nullable-tail/op=lt/mode=auto/backend=archsimd-amd64-mask  	    9811	     12640 ns/op	41481.52 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=nullable-tail/op=le/mode=auto/backend=archsimd-amd64-mask  	    9344	     12816 ns/op	40911.29 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=nullable-tail/op=eq/mode=auto/backend=archsimd-amd64-mask  	    8196	     12691 ns/op	41314.14 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=sparse/op=gt/mode=auto/backend=archsimd-amd64-mask         	    9568	     11903 ns/op	44046.44 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=sparse/op=ge/mode=auto/backend=archsimd-amd64-mask         	   10000	     12393 ns/op	42305.69 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=sparse/op=lt/mode=auto/backend=archsimd-amd64-mask         	    9448	     11941 ns/op	43904.76 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=sparse/op=le/mode=auto/backend=archsimd-amd64-mask         	   10000	     12397 ns/op	42292.40 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=sparse/op=eq/mode=auto/backend=archsimd-amd64-mask         	   10000	     12471 ns/op	42041.63 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=dense/op=gt/mode=auto/backend=archsimd-amd64-mask          	   10070	     12370 ns/op	42384.58 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=dense/op=ge/mode=auto/backend=archsimd-amd64-mask          	    9978	     12668 ns/op	41387.09 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=dense/op=lt/mode=auto/backend=archsimd-amd64-mask          	   10000	     12266 ns/op	42743.12 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=dense/op=le/mode=auto/backend=archsimd-amd64-mask          	    9619	     11904 ns/op	44042.27 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=dense/op=eq/mode=auto/backend=archsimd-amd64-mask          	   10000	     12682 ns/op	41340.42 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=equal/op=gt/mode=auto/backend=archsimd-amd64-mask          	    9436	     12302 ns/op	42618.70 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=equal/op=ge/mode=auto/backend=archsimd-amd64-mask          	    9847	     12471 ns/op	42041.02 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=equal/op=lt/mode=auto/backend=archsimd-amd64-mask          	    9274	     12138 ns/op	43193.52 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=equal/op=le/mode=auto/backend=archsimd-amd64-mask          	    9655	     12109 ns/op	43298.27 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=equal/op=eq/mode=auto/backend=archsimd-amd64-mask          	   10000	     13996 ns/op	37458.68 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=short/op=gt/mode=auto/backend=archsimd-amd64-mask          	 4973694	        24.41 ns/op	2293.98 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=short/op=ge/mode=auto/backend=archsimd-amd64-mask          	 5456500	        22.95 ns/op	2439.76 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=short/op=lt/mode=auto/backend=archsimd-amd64-mask          	 5002273	        25.04 ns/op	2236.08 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=short/op=le/mode=auto/backend=archsimd-amd64-mask          	 4022940	        29.25 ns/op	1914.48 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=short/op=eq/mode=auto/backend=archsimd-amd64-mask          	 4707794	        26.50 ns/op	2113.53 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=tail/op=gt/mode=auto/backend=archsimd-amd64-mask           	 4831522	        26.42 ns/op	19681.62 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=tail/op=ge/mode=auto/backend=archsimd-amd64-mask           	 4696887	        26.15 ns/op	19885.74 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=tail/op=lt/mode=auto/backend=archsimd-amd64-mask           	 4657176	        26.07 ns/op	19943.58 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=tail/op=le/mode=auto/backend=archsimd-amd64-mask           	 4535539	        25.82 ns/op	20141.53 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=tail/op=eq/mode=auto/backend=archsimd-amd64-mask           	 4635566	        25.49 ns/op	20396.73 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=stream/op=gt/mode=auto/backend=archsimd-amd64-mask        	     338	    367821 ns/op	22806.24 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=stream/op=ge/mode=auto/backend=archsimd-amd64-mask        	     298	    359055 ns/op	23363.00 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=stream/op=lt/mode=auto/backend=archsimd-amd64-mask        	     310	    380364 ns/op	22054.17 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=stream/op=le/mode=auto/backend=archsimd-amd64-mask        	     330	    359777 ns/op	23316.13 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=stream/op=eq/mode=auto/backend=archsimd-amd64-mask        	     344	    376640 ns/op	22272.19 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=bitmap/op=gt/mode=auto/backend=archsimd-amd64-mask        	   10000	     12471 ns/op	42041.87 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=bitmap/op=ge/mode=auto/backend=archsimd-amd64-mask        	    8964	     12646 ns/op	41458.00 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=bitmap/op=lt/mode=auto/backend=archsimd-amd64-mask        	   10000	     12569 ns/op	41711.32 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=bitmap/op=le/mode=auto/backend=archsimd-amd64-mask        	   10000	     12822 ns/op	40891.11 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=bitmap/op=eq/mode=auto/backend=archsimd-amd64-mask        	    8908	     12726 ns/op	41196.58 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=nullable-tail/op=gt/mode=auto/backend=archsimd-amd64-mask 	   10000	     13033 ns/op	40229.85 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=nullable-tail/op=ge/mode=auto/backend=archsimd-amd64-mask 	    9837	     12426 ns/op	42193.23 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=nullable-tail/op=lt/mode=auto/backend=archsimd-amd64-mask 	   10000	     13653 ns/op	38403.70 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=nullable-tail/op=le/mode=auto/backend=archsimd-amd64-mask 	   10000	     12947 ns/op	40497.34 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=nullable-tail/op=eq/mode=auto/backend=archsimd-amd64-mask 	   10000	     12872 ns/op	40731.94 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=sparse/op=gt/mode=auto/backend=archsimd-amd64-mask        	   10000	     12366 ns/op	42396.80 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=sparse/op=ge/mode=auto/backend=archsimd-amd64-mask        	    9999	     12312 ns/op	42585.14 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=sparse/op=lt/mode=auto/backend=archsimd-amd64-mask        	   10000	     12314 ns/op	42576.11 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=sparse/op=le/mode=auto/backend=archsimd-amd64-mask        	   10000	     11752 ns/op	44610.86 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=sparse/op=eq/mode=auto/backend=archsimd-amd64-mask        	   10000	     12578 ns/op	41684.29 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=dense/op=gt/mode=auto/backend=archsimd-amd64-mask         	   10000	     11969 ns/op	43802.98 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=dense/op=ge/mode=auto/backend=archsimd-amd64-mask         	    9837	     12508 ns/op	41917.00 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=dense/op=lt/mode=auto/backend=archsimd-amd64-mask         	    9447	     11996 ns/op	43706.94 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=dense/op=le/mode=auto/backend=archsimd-amd64-mask         	    8808	     12437 ns/op	42155.13 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=dense/op=eq/mode=auto/backend=archsimd-amd64-mask         	   10000	     12771 ns/op	41053.77 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=equal/op=gt/mode=auto/backend=archsimd-amd64-mask         	   10000	     12406 ns/op	42261.72 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=equal/op=ge/mode=auto/backend=archsimd-amd64-mask         	   10000	     11936 ns/op	43924.07 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=equal/op=lt/mode=auto/backend=archsimd-amd64-mask         	   10000	     12772 ns/op	41048.85 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=equal/op=le/mode=auto/backend=archsimd-amd64-mask         	    9646	     12555 ns/op	41760.75 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=equal/op=eq/mode=auto/backend=archsimd-amd64-mask         	   10000	     12701 ns/op	41278.53 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=short/op=gt/mode=auto/backend=archsimd-amd64-mask         	 4899333	        24.28 ns/op	2306.10 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=short/op=ge/mode=auto/backend=archsimd-amd64-mask         	 4682106	        29.83 ns/op	1877.43 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=short/op=lt/mode=auto/backend=archsimd-amd64-mask         	 3970196	        27.89 ns/op	2008.22 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=short/op=le/mode=auto/backend=archsimd-amd64-mask         	 4051900	        29.42 ns/op	1903.77 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=short/op=eq/mode=auto/backend=archsimd-amd64-mask         	 3382590	        33.36 ns/op	1678.80 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=tail/op=gt/mode=auto/backend=archsimd-amd64-mask          	 4702970	        26.90 ns/op	19333.31 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=tail/op=ge/mode=auto/backend=archsimd-amd64-mask          	 4630998	        26.41 ns/op	19690.34 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=tail/op=lt/mode=auto/backend=archsimd-amd64-mask          	 4457271	        27.53 ns/op	18887.26 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=tail/op=le/mode=auto/backend=archsimd-amd64-mask          	 4545685	        27.16 ns/op	19148.43 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=tail/op=eq/mode=auto/backend=archsimd-amd64-mask          	 4015474	        26.61 ns/op	19540.62 MB/s	       0 B/op	       0 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/kernel
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkNativeNumericLiteral/int8/rows=7/null=false/auto         	 4875966	        23.08 ns/op	         3.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=7/null=true/auto          	 3337825	        38.66 ns/op	         0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=1025/null=false/auto      	 1000000	       105.8 ns/op	       440.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=1025/null=true/auto       	 1164477	       112.5 ns/op	       229.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=65536/null=false/auto     	   20194	      5789 ns/op	     28160 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=65536/null=true/auto      	   15793	      6739 ns/op	     14528 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=7/null=false/auto        	 5493906	        22.57 ns/op	         6.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=7/null=true/auto         	 2844218	        43.44 ns/op	         1.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=1025/null=false/auto     	  498075	       231.3 ns/op	      1024 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=1025/null=true/auto      	  564644	       221.9 ns/op	       527.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=65536/null=false/auto    	   10000	     13962 ns/op	     65535 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=65536/null=true/auto     	    9972	     35964 ns/op	     33791 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=7/null=false/auto        	 3168860	        32.37 ns/op	         6.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=7/null=true/auto         	 6439742	        19.11 ns/op	         1.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=1025/null=false/auto     	  474524	       457.8 ns/op	      1024 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=1025/null=true/auto      	  447243	       354.3 ns/op	       527.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=65536/null=false/auto    	    4558	     27210 ns/op	     65535 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=65536/null=true/auto     	    3639	     35980 ns/op	     33791 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=7/null=false/auto       	 4253426	        34.26 ns/op	         6.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=7/null=true/auto        	 5095971	        23.46 ns/op	         1.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=1025/null=false/auto    	  693997	       181.0 ns/op	      1024 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=1025/null=true/auto     	  501504	       216.8 ns/op	       527.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=65536/null=false/auto   	    9952	     12048 ns/op	     65535 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=65536/null=true/auto    	   10000	     15071 ns/op	     33791 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=7/null=false/auto       	 6603334	        18.83 ns/op	         6.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=7/null=true/auto        	 7660152	        16.74 ns/op	         1.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=1025/null=false/auto    	  440606	       377.8 ns/op	      1024 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=1025/null=true/auto     	  451567	       285.6 ns/op	       527.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=65536/null=false/auto   	    6828	     19052 ns/op	     65535 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=65536/null=true/auto    	    7462	     19093 ns/op	     33791 selected	       0 B/op	       0 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/kernel
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkNativeFloat64Comparison/columns=false/rows=7/null=false/auto         	 6304864	        20.71 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=7/null=false/auto          	 4793062	        28.84 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=7/null=true/auto          	 5422454	        19.24 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=7/null=true/auto           	 6141475	        27.71 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=1025/null=false/auto      	  256773	       491.9 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=1025/null=false/auto       	  259310	       536.4 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=1025/null=true/auto       	  254990	       512.7 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=1025/null=true/auto        	  288938	       418.5 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=65536/null=false/auto     	    5044	     25003 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=65536/null=false/auto      	    5401	     28800 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=65536/null=true/auto      	    6307	     22335 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=65536/null=true/auto       	    5728	     39542 ns/op	       0 B/op	       0 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/kernel
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkFloat32Compare/auto  	     288	    367289 ns/op	11419.64 MB/s	      56 B/op	       0 allocs/op
+BenchmarkFloat32ColumnCompare/auto         	     328	    351643 ns/op	23855.43 MB/s	      49 B/op	       0 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/kernel
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkColumn32ComparisonGate/type=int32/case=stream/op=gt/mode=auto/backend=archsimd-amd64-mask         	     344	    349963 ns/op	23970.01 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=stream/op=ge/mode=auto/backend=archsimd-amd64-mask         	     279	    384837 ns/op	21797.84 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=stream/op=lt/mode=auto/backend=archsimd-amd64-mask         	     320	    401516 ns/op	20892.35 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=stream/op=le/mode=auto/backend=archsimd-amd64-mask         	     322	    546430 ns/op	15351.67 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=stream/op=eq/mode=auto/backend=archsimd-amd64-mask         	     249	    443674 ns/op	18907.15 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=bitmap/op=gt/mode=auto/backend=archsimd-amd64-mask         	    8145	     16750 ns/op	31301.57 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=bitmap/op=ge/mode=auto/backend=archsimd-amd64-mask         	    7338	     18280 ns/op	28680.41 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=bitmap/op=lt/mode=auto/backend=archsimd-amd64-mask         	    7174	     19979 ns/op	26242.05 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=bitmap/op=le/mode=auto/backend=archsimd-amd64-mask         	    6918	     26822 ns/op	19547.07 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=bitmap/op=eq/mode=auto/backend=archsimd-amd64-mask         	    5188	     59754 ns/op	8774.10 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=nullable-tail/op=gt/mode=auto/backend=archsimd-amd64-mask  	    8707	     16131 ns/op	32502.41 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=nullable-tail/op=ge/mode=auto/backend=archsimd-amd64-mask  	    6570	     17576 ns/op	29831.04 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=nullable-tail/op=lt/mode=auto/backend=archsimd-amd64-mask  	    7869	     25219 ns/op	20790.20 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=nullable-tail/op=le/mode=auto/backend=archsimd-amd64-mask  	    9500	     14668 ns/op	35744.85 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=nullable-tail/op=eq/mode=auto/backend=archsimd-amd64-mask  	    7444	     13706 ns/op	38252.82 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=sparse/op=gt/mode=auto/backend=archsimd-amd64-mask         	    9150	     21679 ns/op	24183.68 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=sparse/op=ge/mode=auto/backend=archsimd-amd64-mask         	   10000	     14775 ns/op	35484.19 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=sparse/op=lt/mode=auto/backend=archsimd-amd64-mask         	    8666	     15760 ns/op	33266.12 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=sparse/op=le/mode=auto/backend=archsimd-amd64-mask         	   10000	     13841 ns/op	37880.14 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=sparse/op=eq/mode=auto/backend=archsimd-amd64-mask         	    8486	     12606 ns/op	41589.28 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=dense/op=gt/mode=auto/backend=archsimd-amd64-mask          	    7593	     14065 ns/op	37277.34 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=dense/op=ge/mode=auto/backend=archsimd-amd64-mask          	    9744	     14223 ns/op	36861.71 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=dense/op=lt/mode=auto/backend=archsimd-amd64-mask          	    7856	     14493 ns/op	36175.26 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=dense/op=le/mode=auto/backend=archsimd-amd64-mask          	   10000	     13544 ns/op	38709.20 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=dense/op=eq/mode=auto/backend=archsimd-amd64-mask          	    9274	     13658 ns/op	38386.27 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=equal/op=gt/mode=auto/backend=archsimd-amd64-mask          	    8491	     14567 ns/op	35991.92 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=equal/op=ge/mode=auto/backend=archsimd-amd64-mask          	    9548	     14020 ns/op	37397.04 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=equal/op=lt/mode=auto/backend=archsimd-amd64-mask          	    8576	     13450 ns/op	38981.25 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=equal/op=le/mode=auto/backend=archsimd-amd64-mask          	    6634	     15650 ns/op	33501.78 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=equal/op=eq/mode=auto/backend=archsimd-amd64-mask          	    9219	     13166 ns/op	39822.01 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=short/op=gt/mode=auto/backend=archsimd-amd64-mask          	 3874360	        29.61 ns/op	1890.97 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=short/op=ge/mode=auto/backend=archsimd-amd64-mask          	 4746270	        25.84 ns/op	2167.10 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=short/op=lt/mode=auto/backend=archsimd-amd64-mask          	 4711486	        27.39 ns/op	2044.66 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=short/op=le/mode=auto/backend=archsimd-amd64-mask          	 3813080	        31.78 ns/op	1762.18 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=short/op=eq/mode=auto/backend=archsimd-amd64-mask          	 3898798	        32.92 ns/op	1701.34 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=tail/op=gt/mode=auto/backend=archsimd-amd64-mask           	 3323274	        32.39 ns/op	16055.33 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=tail/op=ge/mode=auto/backend=archsimd-amd64-mask           	 4738311	        26.72 ns/op	19463.06 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=tail/op=lt/mode=auto/backend=archsimd-amd64-mask           	 4319235	        29.57 ns/op	17584.64 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=tail/op=le/mode=auto/backend=archsimd-amd64-mask           	 4095440	        28.99 ns/op	17938.77 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=tail/op=eq/mode=auto/backend=archsimd-amd64-mask           	 3926932	        28.48 ns/op	18256.60 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=stream/op=gt/mode=auto/backend=archsimd-amd64-mask        	     334	    370320 ns/op	22652.32 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=stream/op=ge/mode=auto/backend=archsimd-amd64-mask        	     292	    389198 ns/op	21553.57 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=stream/op=lt/mode=auto/backend=archsimd-amd64-mask        	     370	    380108 ns/op	22069.01 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=stream/op=le/mode=auto/backend=archsimd-amd64-mask        	     350	    606587 ns/op	13829.19 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=stream/op=eq/mode=auto/backend=archsimd-amd64-mask        	     290	    408697 ns/op	20525.27 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=bitmap/op=gt/mode=auto/backend=archsimd-amd64-mask        	    9718	     13591 ns/op	38576.65 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=bitmap/op=ge/mode=auto/backend=archsimd-amd64-mask        	    6912	     19997 ns/op	26218.45 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=bitmap/op=lt/mode=auto/backend=archsimd-amd64-mask        	    6885	     28052 ns/op	18689.90 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=bitmap/op=le/mode=auto/backend=archsimd-amd64-mask        	    9354	     26503 ns/op	19782.46 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=bitmap/op=eq/mode=auto/backend=archsimd-amd64-mask        	    5203	     23958 ns/op	21883.67 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=nullable-tail/op=gt/mode=auto/backend=archsimd-amd64-mask 	    6934	     17995 ns/op	29135.74 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=nullable-tail/op=ge/mode=auto/backend=archsimd-amd64-mask 	    6207	     25751 ns/op	20360.99 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=nullable-tail/op=lt/mode=auto/backend=archsimd-amd64-mask 	    6745	     29855 ns/op	17562.06 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=nullable-tail/op=le/mode=auto/backend=archsimd-amd64-mask 	    8181	     24635 ns/op	21283.00 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=nullable-tail/op=eq/mode=auto/backend=archsimd-amd64-mask 	    8178	     21759 ns/op	24096.14 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=sparse/op=gt/mode=auto/backend=archsimd-amd64-mask        	    8122	     19808 ns/op	26468.54 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=sparse/op=ge/mode=auto/backend=archsimd-amd64-mask        	    9044	     19943 ns/op	26289.29 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=sparse/op=lt/mode=auto/backend=archsimd-amd64-mask        	    6870	     23966 ns/op	21876.43 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=sparse/op=le/mode=auto/backend=archsimd-amd64-mask        	    3991	     31084 ns/op	16866.89 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=sparse/op=eq/mode=auto/backend=archsimd-amd64-mask        	    3579	     33288 ns/op	15750.24 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=dense/op=gt/mode=auto/backend=archsimd-amd64-mask         	    4837	     65176 ns/op	8044.25 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=dense/op=ge/mode=auto/backend=archsimd-amd64-mask         	    6972	     39574 ns/op	13248.24 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=dense/op=lt/mode=auto/backend=archsimd-amd64-mask         	    9597	     12706 ns/op	41263.04 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=dense/op=le/mode=auto/backend=archsimd-amd64-mask         	   10000	     18040 ns/op	29062.44 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=dense/op=eq/mode=auto/backend=archsimd-amd64-mask         	    5601	     26345 ns/op	19900.85 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=equal/op=gt/mode=auto/backend=archsimd-amd64-mask         	   10000	     12586 ns/op	41655.39 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=equal/op=ge/mode=auto/backend=archsimd-amd64-mask         	   10000	     15198 ns/op	34497.21 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=equal/op=lt/mode=auto/backend=archsimd-amd64-mask         	   10000	     25844 ns/op	20286.40 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=equal/op=le/mode=auto/backend=archsimd-amd64-mask         	    9489	     12068 ns/op	43443.13 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=equal/op=eq/mode=auto/backend=archsimd-amd64-mask         	   10000	     12496 ns/op	41955.30 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=short/op=gt/mode=auto/backend=archsimd-amd64-mask         	 4382460	        27.06 ns/op	2069.63 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=short/op=ge/mode=auto/backend=archsimd-amd64-mask         	 4718236	        30.60 ns/op	1830.17 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=short/op=lt/mode=auto/backend=archsimd-amd64-mask         	 4544118	        29.05 ns/op	1927.67 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=short/op=le/mode=auto/backend=archsimd-amd64-mask         	 4164118	        31.87 ns/op	1756.89 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=short/op=eq/mode=auto/backend=archsimd-amd64-mask         	 3525526	        37.25 ns/op	1503.46 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=tail/op=gt/mode=auto/backend=archsimd-amd64-mask          	 4242942	        26.17 ns/op	19870.28 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=tail/op=ge/mode=auto/backend=archsimd-amd64-mask          	 3854709	        28.40 ns/op	18312.15 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=tail/op=lt/mode=auto/backend=archsimd-amd64-mask          	 1000000	       123.1 ns/op	4223.64 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=tail/op=le/mode=auto/backend=archsimd-amd64-mask          	 4533351	        26.65 ns/op	19508.61 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=tail/op=eq/mode=auto/backend=archsimd-amd64-mask          	 4165507	        28.41 ns/op	18305.93 MB/s	       0 B/op	       0 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/kernel
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkNativeNumericLiteral/int8/rows=7/null=false/auto         	 5049526	        20.14 ns/op	         3.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=7/null=true/auto          	 6209828	        17.78 ns/op	         0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=1025/null=false/auto      	 1000000	       102.9 ns/op	       440.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=1025/null=true/auto       	 1420684	        94.74 ns/op	       229.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=65536/null=false/auto     	   22429	      5192 ns/op	     28160 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=65536/null=true/auto      	   26397	      4880 ns/op	     14528 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=7/null=false/auto        	 6910454	        16.14 ns/op	         6.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=7/null=true/auto         	 5947720	        21.85 ns/op	         1.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=1025/null=false/auto     	  702920	       185.4 ns/op	      1024 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=1025/null=true/auto      	  774806	       178.6 ns/op	       527.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=65536/null=false/auto    	   11118	     10867 ns/op	     65535 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=65536/null=true/auto     	   10000	     11532 ns/op	     33791 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=7/null=false/auto        	 6941347	        17.51 ns/op	         6.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=7/null=true/auto         	 7574515	        17.15 ns/op	         1.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=1025/null=false/auto     	  425139	       307.9 ns/op	      1024 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=1025/null=true/auto      	  451579	       304.5 ns/op	       527.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=65536/null=false/auto    	    6073	     20007 ns/op	     65535 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=65536/null=true/auto     	    7016	     21125 ns/op	     33791 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=7/null=false/auto       	 8096758	        15.09 ns/op	         6.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=7/null=true/auto        	 5207628	        23.30 ns/op	         1.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=1025/null=false/auto    	  697915	       169.3 ns/op	      1024 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=1025/null=true/auto     	  844435	       195.6 ns/op	       527.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=65536/null=false/auto   	   10000	     10929 ns/op	     65535 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=65536/null=true/auto    	    9769	     11503 ns/op	     33791 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=7/null=false/auto       	 6678440	        17.04 ns/op	         6.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=7/null=true/auto        	 6799605	        18.42 ns/op	         1.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=1025/null=false/auto    	  378272	       315.9 ns/op	      1024 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=1025/null=true/auto     	  392616	       403.6 ns/op	       527.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=65536/null=false/auto   	    6042	     19991 ns/op	     65535 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=65536/null=true/auto    	    5113	     22152 ns/op	     33791 selected	       0 B/op	       0 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/kernel
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkNativeFloat64Comparison/columns=false/rows=7/null=false/auto         	 6326485	        18.38 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=7/null=false/auto          	 4816280	        28.17 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=7/null=true/auto          	 6553386	        18.51 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=7/null=true/auto           	 5990145	        23.09 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=1025/null=false/auto      	  262669	       462.7 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=1025/null=false/auto       	  204555	       562.3 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=1025/null=true/auto       	  278367	       559.3 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=1025/null=true/auto        	  294572	       424.0 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=65536/null=false/auto     	    6436	     21125 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=65536/null=false/auto      	    4390	     24527 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=65536/null=true/auto      	    7196	     20679 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=65536/null=true/auto       	    3847	     30136 ns/op	       0 B/op	       0 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/kernel
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkFloat32Compare/auto  	     547	    266492 ns/op	15738.94 MB/s	      29 B/op	       0 allocs/op
+BenchmarkFloat32ColumnCompare/auto         	     282	    393735 ns/op	21305.19 MB/s	      57 B/op	       0 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/kernel
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkColumn32ComparisonGate/type=int32/case=stream/op=gt/mode=auto/backend=archsimd-amd64-mask         	     338	    376933 ns/op	22254.90 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=stream/op=ge/mode=auto/backend=archsimd-amd64-mask         	     334	    356188 ns/op	23551.08 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=stream/op=lt/mode=auto/backend=archsimd-amd64-mask         	     298	    394851 ns/op	21244.98 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=stream/op=le/mode=auto/backend=archsimd-amd64-mask         	     282	    384437 ns/op	21820.49 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=stream/op=eq/mode=auto/backend=archsimd-amd64-mask         	     328	    381750 ns/op	21974.07 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=bitmap/op=gt/mode=auto/backend=archsimd-amd64-mask         	   10000	     15684 ns/op	33428.37 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=bitmap/op=ge/mode=auto/backend=archsimd-amd64-mask         	   10000	     14921 ns/op	35137.53 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=bitmap/op=lt/mode=auto/backend=archsimd-amd64-mask         	   10000	     16206 ns/op	32352.43 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=bitmap/op=le/mode=auto/backend=archsimd-amd64-mask         	    9045	     14705 ns/op	35653.52 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=bitmap/op=eq/mode=auto/backend=archsimd-amd64-mask         	    8636	     15637 ns/op	33529.36 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=nullable-tail/op=gt/mode=auto/backend=archsimd-amd64-mask  	    8643	     15002 ns/op	34949.40 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=nullable-tail/op=ge/mode=auto/backend=archsimd-amd64-mask  	    9609	     16262 ns/op	32241.81 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=nullable-tail/op=lt/mode=auto/backend=archsimd-amd64-mask  	    7744	     15156 ns/op	34594.50 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=nullable-tail/op=le/mode=auto/backend=archsimd-amd64-mask  	    8370	     14442 ns/op	36305.00 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=nullable-tail/op=eq/mode=auto/backend=archsimd-amd64-mask  	   10000	     14324 ns/op	36604.54 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=sparse/op=gt/mode=auto/backend=archsimd-amd64-mask         	    7659	     13970 ns/op	37529.16 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=sparse/op=ge/mode=auto/backend=archsimd-amd64-mask         	   10000	     14818 ns/op	35380.67 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=sparse/op=lt/mode=auto/backend=archsimd-amd64-mask         	    9488	     15127 ns/op	34659.17 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=sparse/op=le/mode=auto/backend=archsimd-amd64-mask         	    9166	     14860 ns/op	35281.43 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=sparse/op=eq/mode=auto/backend=archsimd-amd64-mask         	    9271	     13643 ns/op	38430.00 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=dense/op=gt/mode=auto/backend=archsimd-amd64-mask          	   10000	     14160 ns/op	37026.10 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=dense/op=ge/mode=auto/backend=archsimd-amd64-mask          	    9952	     15896 ns/op	32982.09 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=dense/op=lt/mode=auto/backend=archsimd-amd64-mask          	    8733	     13980 ns/op	37503.65 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=dense/op=le/mode=auto/backend=archsimd-amd64-mask          	    8230	     14538 ns/op	36063.51 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=dense/op=eq/mode=auto/backend=archsimd-amd64-mask          	    7969	     14286 ns/op	36699.05 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=equal/op=gt/mode=auto/backend=archsimd-amd64-mask          	    6991	     14408 ns/op	36388.97 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=equal/op=ge/mode=auto/backend=archsimd-amd64-mask          	    8149	     13632 ns/op	38459.77 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=equal/op=lt/mode=auto/backend=archsimd-amd64-mask          	    8872	     14227 ns/op	36851.77 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=equal/op=le/mode=auto/backend=archsimd-amd64-mask          	    9276	     13866 ns/op	37811.36 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=equal/op=eq/mode=auto/backend=archsimd-amd64-mask          	   10000	     15185 ns/op	34526.02 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=short/op=gt/mode=auto/backend=archsimd-amd64-mask          	 4916925	        27.25 ns/op	2055.20 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=short/op=ge/mode=auto/backend=archsimd-amd64-mask          	 4881237	        25.25 ns/op	2217.68 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=short/op=lt/mode=auto/backend=archsimd-amd64-mask          	 4665628	        28.75 ns/op	1947.70 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=short/op=le/mode=auto/backend=archsimd-amd64-mask          	 4194540	        31.14 ns/op	1798.56 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=short/op=eq/mode=auto/backend=archsimd-amd64-mask          	 3833791	        31.04 ns/op	1804.26 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=tail/op=gt/mode=auto/backend=archsimd-amd64-mask           	 3917452	        30.85 ns/op	16853.08 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=tail/op=ge/mode=auto/backend=archsimd-amd64-mask           	 4235407	        27.92 ns/op	18627.48 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=tail/op=lt/mode=auto/backend=archsimd-amd64-mask           	 3869836	        31.79 ns/op	16356.99 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=tail/op=le/mode=auto/backend=archsimd-amd64-mask           	 3930364	        28.76 ns/op	18081.77 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=tail/op=eq/mode=auto/backend=archsimd-amd64-mask           	 3975057	        28.52 ns/op	18234.48 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=stream/op=gt/mode=auto/backend=archsimd-amd64-mask        	     328	    368992 ns/op	22733.88 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=stream/op=ge/mode=auto/backend=archsimd-amd64-mask        	     312	    394958 ns/op	21239.25 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=stream/op=lt/mode=auto/backend=archsimd-amd64-mask        	     271	    391846 ns/op	21407.90 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=stream/op=le/mode=auto/backend=archsimd-amd64-mask        	     330	    391456 ns/op	21429.23 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=stream/op=eq/mode=auto/backend=archsimd-amd64-mask        	     315	    408212 ns/op	20549.65 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=bitmap/op=gt/mode=auto/backend=archsimd-amd64-mask        	    8617	     14469 ns/op	36235.56 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=bitmap/op=ge/mode=auto/backend=archsimd-amd64-mask        	    7702	     14678 ns/op	35719.68 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=bitmap/op=lt/mode=auto/backend=archsimd-amd64-mask        	   10000	     14433 ns/op	36326.08 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=bitmap/op=le/mode=auto/backend=archsimd-amd64-mask        	    9452	     14978 ns/op	35004.03 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=bitmap/op=eq/mode=auto/backend=archsimd-amd64-mask        	   10000	     14265 ns/op	36754.47 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=nullable-tail/op=gt/mode=auto/backend=archsimd-amd64-mask 	    7746	     15049 ns/op	34840.87 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=nullable-tail/op=ge/mode=auto/backend=archsimd-amd64-mask 	    8536	     15335 ns/op	34190.88 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=nullable-tail/op=lt/mode=auto/backend=archsimd-amd64-mask 	    8431	     13749 ns/op	38134.99 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=nullable-tail/op=le/mode=auto/backend=archsimd-amd64-mask 	    9294	     14752 ns/op	35542.28 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=nullable-tail/op=eq/mode=auto/backend=archsimd-amd64-mask 	    8589	     15392 ns/op	34064.08 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=sparse/op=gt/mode=auto/backend=archsimd-amd64-mask        	    7767	     14604 ns/op	35900.19 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=sparse/op=ge/mode=auto/backend=archsimd-amd64-mask        	    7468	     13453 ns/op	38971.92 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=sparse/op=lt/mode=auto/backend=archsimd-amd64-mask        	    9188	     14269 ns/op	36742.89 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=sparse/op=le/mode=auto/backend=archsimd-amd64-mask        	    8967	     13901 ns/op	37714.82 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=sparse/op=eq/mode=auto/backend=archsimd-amd64-mask        	   10000	     14301 ns/op	36659.67 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=dense/op=gt/mode=auto/backend=archsimd-amd64-mask         	   10000	     13781 ns/op	38045.41 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=dense/op=ge/mode=auto/backend=archsimd-amd64-mask         	    8755	     13993 ns/op	37466.57 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=dense/op=lt/mode=auto/backend=archsimd-amd64-mask         	    6824	     15054 ns/op	34826.55 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=dense/op=le/mode=auto/backend=archsimd-amd64-mask         	    9493	     13771 ns/op	38070.97 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=dense/op=eq/mode=auto/backend=archsimd-amd64-mask         	    8812	     16193 ns/op	32378.44 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=equal/op=gt/mode=auto/backend=archsimd-amd64-mask         	    9750	     14316 ns/op	36623.28 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=equal/op=ge/mode=auto/backend=archsimd-amd64-mask         	    7116	     14349 ns/op	36538.06 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=equal/op=lt/mode=auto/backend=archsimd-amd64-mask         	    9343	     13397 ns/op	39134.52 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=equal/op=le/mode=auto/backend=archsimd-amd64-mask         	    8292	     16040 ns/op	32685.75 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=equal/op=eq/mode=auto/backend=archsimd-amd64-mask         	    6812	     14917 ns/op	35146.72 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=short/op=gt/mode=auto/backend=archsimd-amd64-mask         	 4510162	        27.38 ns/op	2045.10 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=short/op=ge/mode=auto/backend=archsimd-amd64-mask         	 4235674	        30.42 ns/op	1840.62 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=short/op=lt/mode=auto/backend=archsimd-amd64-mask         	 4071807	        30.42 ns/op	1840.67 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=short/op=le/mode=auto/backend=archsimd-amd64-mask         	 3631918	        31.66 ns/op	1768.91 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=short/op=eq/mode=auto/backend=archsimd-amd64-mask         	 3634471	        44.07 ns/op	1270.79 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=tail/op=gt/mode=auto/backend=archsimd-amd64-mask          	 3533172	        30.08 ns/op	17290.10 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=tail/op=ge/mode=auto/backend=archsimd-amd64-mask          	 3417613	        29.35 ns/op	17717.98 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=tail/op=lt/mode=auto/backend=archsimd-amd64-mask          	 3963187	        30.81 ns/op	16876.94 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=tail/op=le/mode=auto/backend=archsimd-amd64-mask          	 4146292	        33.41 ns/op	15563.67 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=tail/op=eq/mode=auto/backend=archsimd-amd64-mask          	 3569036	        34.25 ns/op	15183.54 MB/s	       0 B/op	       0 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/kernel
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkNativeNumericLiteral/int8/rows=7/null=false/auto         	 5696185	        21.61 ns/op	         3.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=7/null=true/auto          	 5576587	        20.56 ns/op	         0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=1025/null=false/auto      	 1228443	       108.9 ns/op	       440.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=1025/null=true/auto       	 1000000	       155.2 ns/op	       229.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=65536/null=false/auto     	   14907	      8320 ns/op	     28160 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=65536/null=true/auto      	   15730	      7410 ns/op	     14528 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=7/null=false/auto        	 7814968	        19.79 ns/op	         6.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=7/null=true/auto         	 5469440	        25.49 ns/op	         1.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=1025/null=false/auto     	  666832	       203.6 ns/op	      1024 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=1025/null=true/auto      	  440866	       231.0 ns/op	       527.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=65536/null=false/auto    	    8546	     17613 ns/op	     65535 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=65536/null=true/auto     	    7878	     13431 ns/op	     33791 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=7/null=false/auto        	 7569019	        19.57 ns/op	         6.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=7/null=true/auto         	 5921438	        17.77 ns/op	         1.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=1025/null=false/auto     	  410415	       320.4 ns/op	      1024 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=1025/null=true/auto      	  396506	       299.9 ns/op	       527.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=65536/null=false/auto    	    6096	     19946 ns/op	     65535 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=65536/null=true/auto     	    7581	     19972 ns/op	     33791 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=7/null=false/auto       	 8240239	        15.55 ns/op	         6.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=7/null=true/auto        	 5147386	        22.26 ns/op	         1.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=1025/null=false/auto    	  749318	       181.9 ns/op	      1024 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=1025/null=true/auto     	  808075	       167.7 ns/op	       527.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=65536/null=false/auto   	   10000	     11178 ns/op	     65535 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=65536/null=true/auto    	   10000	     11790 ns/op	     33791 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=7/null=false/auto       	 6699669	        17.68 ns/op	         6.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=7/null=true/auto        	 6423378	        17.42 ns/op	         1.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=1025/null=false/auto    	  462692	       302.6 ns/op	      1024 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=1025/null=true/auto     	  467985	       296.5 ns/op	       527.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=65536/null=false/auto   	    5505	     20277 ns/op	     65535 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=65536/null=true/auto    	    5062	     20059 ns/op	     33791 selected	       0 B/op	       0 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/kernel
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkNativeFloat64Comparison/columns=false/rows=7/null=false/auto         	 6197089	        21.39 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=7/null=false/auto          	 4299410	        27.56 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=7/null=true/auto          	 6711610	        18.82 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=7/null=true/auto           	 6233221	        19.76 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=1025/null=false/auto      	  280881	       490.5 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=1025/null=false/auto       	  222213	       605.9 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=1025/null=true/auto       	  240248	       508.2 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=1025/null=true/auto        	  314994	       390.9 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=65536/null=false/auto     	    5517	     20660 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=65536/null=false/auto      	    4851	     24564 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=65536/null=true/auto      	    5848	     21387 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=65536/null=true/auto       	    4411	     26234 ns/op	       0 B/op	       0 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/kernel
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkFloat32Compare/auto  	     468	    256124 ns/op	16376.09 MB/s	      34 B/op	       0 allocs/op
+BenchmarkFloat32ColumnCompare/auto         	     332	    362445 ns/op	23144.49 MB/s	      48 B/op	       0 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/kernel
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkColumn32ComparisonGate/type=int32/case=stream/op=gt/mode=auto/backend=archsimd-amd64-mask         	     298	    383226 ns/op	21889.44 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=stream/op=ge/mode=auto/backend=archsimd-amd64-mask         	     343	    393551 ns/op	21315.15 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=stream/op=lt/mode=auto/backend=archsimd-amd64-mask         	     325	    367543 ns/op	22823.50 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=stream/op=le/mode=auto/backend=archsimd-amd64-mask         	     352	    375469 ns/op	22341.67 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=stream/op=eq/mode=auto/backend=archsimd-amd64-mask         	     348	    388471 ns/op	21593.91 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=bitmap/op=gt/mode=auto/backend=archsimd-amd64-mask         	    9866	     14742 ns/op	35563.66 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=bitmap/op=ge/mode=auto/backend=archsimd-amd64-mask         	    7977	     13604 ns/op	38540.28 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=bitmap/op=lt/mode=auto/backend=archsimd-amd64-mask         	    9240	     14151 ns/op	37049.88 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=bitmap/op=le/mode=auto/backend=archsimd-amd64-mask         	    7959	     14068 ns/op	37268.70 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=bitmap/op=eq/mode=auto/backend=archsimd-amd64-mask         	    8175	     15927 ns/op	32917.57 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=nullable-tail/op=gt/mode=auto/backend=archsimd-amd64-mask  	    7387	     13982 ns/op	37499.19 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=nullable-tail/op=ge/mode=auto/backend=archsimd-amd64-mask  	    9090	     15219 ns/op	34450.58 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=nullable-tail/op=lt/mode=auto/backend=archsimd-amd64-mask  	    7152	     14428 ns/op	36341.12 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=nullable-tail/op=le/mode=auto/backend=archsimd-amd64-mask  	    8706	     14828 ns/op	35360.72 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=nullable-tail/op=eq/mode=auto/backend=archsimd-amd64-mask  	    9133	     15965 ns/op	32840.83 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=sparse/op=gt/mode=auto/backend=archsimd-amd64-mask         	    7908	     14065 ns/op	37275.87 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=sparse/op=ge/mode=auto/backend=archsimd-amd64-mask         	    8718	     14303 ns/op	36656.05 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=sparse/op=lt/mode=auto/backend=archsimd-amd64-mask         	    8667	     13568 ns/op	38641.07 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=sparse/op=le/mode=auto/backend=archsimd-amd64-mask         	    7743	     14871 ns/op	35255.93 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=sparse/op=eq/mode=auto/backend=archsimd-amd64-mask         	    9540	     14177 ns/op	36981.85 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=dense/op=gt/mode=auto/backend=archsimd-amd64-mask          	    7740	     14819 ns/op	35380.01 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=dense/op=ge/mode=auto/backend=archsimd-amd64-mask          	   10000	     13368 ns/op	39219.17 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=dense/op=lt/mode=auto/backend=archsimd-amd64-mask          	    9244	     14549 ns/op	36036.37 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=dense/op=le/mode=auto/backend=archsimd-amd64-mask          	    8923	     14481 ns/op	36205.94 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=dense/op=eq/mode=auto/backend=archsimd-amd64-mask          	    9655	     14317 ns/op	36621.14 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=equal/op=gt/mode=auto/backend=archsimd-amd64-mask          	    8212	     15064 ns/op	34803.41 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=equal/op=ge/mode=auto/backend=archsimd-amd64-mask          	   10000	     14933 ns/op	35110.31 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=equal/op=lt/mode=auto/backend=archsimd-amd64-mask          	    7644	     15620 ns/op	33564.81 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=equal/op=le/mode=auto/backend=archsimd-amd64-mask          	   10000	     14270 ns/op	36741.27 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=equal/op=eq/mode=auto/backend=archsimd-amd64-mask          	    7825	     13565 ns/op	38649.24 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=short/op=gt/mode=auto/backend=archsimd-amd64-mask          	 3930765	        28.22 ns/op	1984.58 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=short/op=ge/mode=auto/backend=archsimd-amd64-mask          	 4609947	        30.06 ns/op	1863.05 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=short/op=lt/mode=auto/backend=archsimd-amd64-mask          	 5075254	        28.71 ns/op	1950.34 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=short/op=le/mode=auto/backend=archsimd-amd64-mask          	 3505375	        33.48 ns/op	1672.64 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=short/op=eq/mode=auto/backend=archsimd-amd64-mask          	 3784875	        32.24 ns/op	1736.91 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=tail/op=gt/mode=auto/backend=archsimd-amd64-mask           	 3631846	        33.99 ns/op	15297.76 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=tail/op=ge/mode=auto/backend=archsimd-amd64-mask           	 3924289	        31.24 ns/op	16645.88 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=tail/op=lt/mode=auto/backend=archsimd-amd64-mask           	 4281261	        29.45 ns/op	17658.06 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=tail/op=le/mode=auto/backend=archsimd-amd64-mask           	 3814123	        29.83 ns/op	17431.45 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=tail/op=eq/mode=auto/backend=archsimd-amd64-mask           	 3843558	        32.06 ns/op	16218.84 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=stream/op=gt/mode=auto/backend=archsimd-amd64-mask        	     288	    381629 ns/op	21981.06 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=stream/op=ge/mode=auto/backend=archsimd-amd64-mask        	     296	    379011 ns/op	22132.86 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=stream/op=lt/mode=auto/backend=archsimd-amd64-mask        	     302	    394597 ns/op	21258.65 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=stream/op=le/mode=auto/backend=archsimd-amd64-mask        	     291	    397605 ns/op	21097.85 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=stream/op=eq/mode=auto/backend=archsimd-amd64-mask        	     301	    364544 ns/op	23011.22 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=bitmap/op=gt/mode=auto/backend=archsimd-amd64-mask        	    7820	     15286 ns/op	34298.99 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=bitmap/op=ge/mode=auto/backend=archsimd-amd64-mask        	    6993	     15158 ns/op	34587.54 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=bitmap/op=lt/mode=auto/backend=archsimd-amd64-mask        	    8478	     15272 ns/op	34329.43 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=bitmap/op=le/mode=auto/backend=archsimd-amd64-mask        	    7723	     14290 ns/op	36689.10 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=bitmap/op=eq/mode=auto/backend=archsimd-amd64-mask        	    7581	     16375 ns/op	32016.95 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=nullable-tail/op=gt/mode=auto/backend=archsimd-amd64-mask 	    6684	     17767 ns/op	29510.90 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=nullable-tail/op=ge/mode=auto/backend=archsimd-amd64-mask 	    7807	     14938 ns/op	35099.05 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=nullable-tail/op=lt/mode=auto/backend=archsimd-amd64-mask 	    7672	     15950 ns/op	32872.07 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=nullable-tail/op=le/mode=auto/backend=archsimd-amd64-mask 	    9712	     14452 ns/op	36280.33 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=nullable-tail/op=eq/mode=auto/backend=archsimd-amd64-mask 	    9780	     15064 ns/op	34806.69 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=sparse/op=gt/mode=auto/backend=archsimd-amd64-mask        	   10000	     14028 ns/op	37374.60 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=sparse/op=ge/mode=auto/backend=archsimd-amd64-mask        	    8103	     15619 ns/op	33566.33 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=sparse/op=lt/mode=auto/backend=archsimd-amd64-mask        	    7522	     14402 ns/op	36403.19 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=sparse/op=le/mode=auto/backend=archsimd-amd64-mask        	    9814	     14663 ns/op	35755.17 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=sparse/op=eq/mode=auto/backend=archsimd-amd64-mask        	    8409	     15019 ns/op	34908.09 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=dense/op=gt/mode=auto/backend=archsimd-amd64-mask         	    9861	     15347 ns/op	34161.99 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=dense/op=ge/mode=auto/backend=archsimd-amd64-mask         	    8643	     13853 ns/op	37845.33 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=dense/op=lt/mode=auto/backend=archsimd-amd64-mask         	    8634	     22586 ns/op	23212.47 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=dense/op=le/mode=auto/backend=archsimd-amd64-mask         	    7353	     27385 ns/op	19145.09 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=dense/op=eq/mode=auto/backend=archsimd-amd64-mask         	    8851	     15038 ns/op	34863.70 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=equal/op=gt/mode=auto/backend=archsimd-amd64-mask         	   10000	     14948 ns/op	35073.25 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=equal/op=ge/mode=auto/backend=archsimd-amd64-mask         	    8794	     31064 ns/op	16877.64 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=equal/op=lt/mode=auto/backend=archsimd-amd64-mask         	    8863	     14510 ns/op	36133.17 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=equal/op=le/mode=auto/backend=archsimd-amd64-mask         	    9994	     13207 ns/op	39698.11 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=equal/op=eq/mode=auto/backend=archsimd-amd64-mask         	    9001	     15131 ns/op	34650.12 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=short/op=gt/mode=auto/backend=archsimd-amd64-mask         	 4353667	        27.43 ns/op	2041.91 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=short/op=ge/mode=auto/backend=archsimd-amd64-mask         	 4593462	        30.79 ns/op	1818.69 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=short/op=lt/mode=auto/backend=archsimd-amd64-mask         	 4369246	        31.68 ns/op	1767.79 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=short/op=le/mode=auto/backend=archsimd-amd64-mask         	 3618578	        31.17 ns/op	1796.83 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=short/op=eq/mode=auto/backend=archsimd-amd64-mask         	 3429308	        38.71 ns/op	1446.60 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=tail/op=gt/mode=auto/backend=archsimd-amd64-mask          	 4263316	        32.32 ns/op	16088.53 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=tail/op=ge/mode=auto/backend=archsimd-amd64-mask          	 3772526	        31.33 ns/op	16595.84 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=tail/op=lt/mode=auto/backend=archsimd-amd64-mask          	 3774409	        31.14 ns/op	16697.93 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=tail/op=le/mode=auto/backend=archsimd-amd64-mask          	 4007386	        29.89 ns/op	17395.14 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=tail/op=eq/mode=auto/backend=archsimd-amd64-mask          	 3998833	        31.06 ns/op	16739.46 MB/s	       0 B/op	       0 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/kernel
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkNativeNumericLiteral/int8/rows=7/null=false/auto         	 7026508	        17.39 ns/op	         3.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=7/null=true/auto          	 7562272	        16.30 ns/op	         0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=1025/null=false/auto      	 1413175	        84.10 ns/op	       440.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=1025/null=true/auto       	 1400925	        83.01 ns/op	       229.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=65536/null=false/auto     	   28545	      4130 ns/op	     28160 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=65536/null=true/auto      	   27468	      4743 ns/op	     14528 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=7/null=false/auto        	 8293484	        14.69 ns/op	         6.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=7/null=true/auto         	 5936594	        20.17 ns/op	         1.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=1025/null=false/auto     	  721966	       157.6 ns/op	      1024 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=1025/null=true/auto      	  765861	       170.6 ns/op	       527.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=65536/null=false/auto    	   10000	     10241 ns/op	     65535 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=65536/null=true/auto     	   10000	     10287 ns/op	     33791 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=7/null=false/auto        	 7330941	        16.89 ns/op	         6.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=7/null=true/auto         	 6425580	        16.01 ns/op	         1.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=1025/null=false/auto     	  420243	       297.9 ns/op	      1024 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=1025/null=true/auto      	  370837	       311.0 ns/op	       527.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=65536/null=false/auto    	    6607	     17864 ns/op	     65535 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=65536/null=true/auto     	    7398	     17341 ns/op	     33791 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=7/null=false/auto       	 8524100	        17.99 ns/op	         6.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=7/null=true/auto        	 5656098	        20.03 ns/op	         1.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=1025/null=false/auto    	  709005	       158.8 ns/op	      1024 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=1025/null=true/auto     	  676194	       152.2 ns/op	       527.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=65536/null=false/auto   	   10000	     10626 ns/op	     65535 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=65536/null=true/auto    	   10000	     11819 ns/op	     33791 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=7/null=false/auto       	 7234218	        16.15 ns/op	         6.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=7/null=true/auto        	 7741399	        16.59 ns/op	         1.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=1025/null=false/auto    	  394633	       301.9 ns/op	      1024 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=1025/null=true/auto     	  430816	       279.1 ns/op	       527.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=65536/null=false/auto   	    6439	     18037 ns/op	     65535 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=65536/null=true/auto    	    6392	     17453 ns/op	     33791 selected	       0 B/op	       0 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/kernel
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkNativeFloat64Comparison/columns=false/rows=7/null=false/auto         	 6072271	        20.07 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=7/null=false/auto          	 4364311	        27.54 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=7/null=true/auto          	 6949602	        18.25 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=7/null=true/auto           	 5036276	        21.63 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=1025/null=false/auto      	  229974	       473.2 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=1025/null=false/auto       	  217959	       562.3 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=1025/null=true/auto       	  255172	       479.0 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=1025/null=true/auto        	  304440	       438.4 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=65536/null=false/auto     	    5973	     19880 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=65536/null=false/auto      	    5042	     25267 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=65536/null=true/auto      	    6530	     20313 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=65536/null=true/auto       	    5125	     25599 ns/op	       0 B/op	       0 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/kernel
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkFloat32Compare/auto  	     529	    255921 ns/op	16389.03 MB/s	      30 B/op	       0 allocs/op
+BenchmarkFloat32ColumnCompare/auto         	     340	    424259 ns/op	19772.37 MB/s	      47 B/op	       0 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/kernel
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkColumn32ComparisonGate/type=int32/case=stream/op=gt/mode=auto/backend=archsimd-amd64-mask         	     362	    353868 ns/op	23705.49 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=stream/op=ge/mode=auto/backend=archsimd-amd64-mask         	     298	    348764 ns/op	24052.40 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=stream/op=lt/mode=auto/backend=archsimd-amd64-mask         	     337	    374408 ns/op	22404.99 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=stream/op=le/mode=auto/backend=archsimd-amd64-mask         	     294	    398925 ns/op	21028.06 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=stream/op=eq/mode=auto/backend=archsimd-amd64-mask         	     351	    384782 ns/op	21800.94 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=bitmap/op=gt/mode=auto/backend=archsimd-amd64-mask         	    8181	     15688 ns/op	33419.46 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=bitmap/op=ge/mode=auto/backend=archsimd-amd64-mask         	    9135	     13440 ns/op	39010.47 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=bitmap/op=lt/mode=auto/backend=archsimd-amd64-mask         	    9578	     14464 ns/op	36247.20 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=bitmap/op=le/mode=auto/backend=archsimd-amd64-mask         	    8425	     14665 ns/op	35751.68 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=bitmap/op=eq/mode=auto/backend=archsimd-amd64-mask         	    9222	     14013 ns/op	37414.64 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=nullable-tail/op=gt/mode=auto/backend=archsimd-amd64-mask  	    9547	     14436 ns/op	36319.93 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=nullable-tail/op=ge/mode=auto/backend=archsimd-amd64-mask  	    7568	     14537 ns/op	36068.46 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=nullable-tail/op=lt/mode=auto/backend=archsimd-amd64-mask  	    8829	     15044 ns/op	34852.22 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=nullable-tail/op=le/mode=auto/backend=archsimd-amd64-mask  	   10000	     15283 ns/op	34306.35 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=nullable-tail/op=eq/mode=auto/backend=archsimd-amd64-mask  	    8368	     14325 ns/op	36600.21 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=sparse/op=gt/mode=auto/backend=archsimd-amd64-mask         	    8175	     14297 ns/op	36671.30 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=sparse/op=ge/mode=auto/backend=archsimd-amd64-mask         	    9768	     13329 ns/op	39333.30 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=sparse/op=lt/mode=auto/backend=archsimd-amd64-mask         	   10000	     14063 ns/op	37281.88 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=sparse/op=le/mode=auto/backend=archsimd-amd64-mask         	    8890	     13557 ns/op	38673.39 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=sparse/op=eq/mode=auto/backend=archsimd-amd64-mask         	    9331	     14248 ns/op	36797.10 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=dense/op=gt/mode=auto/backend=archsimd-amd64-mask          	   10000	     14036 ns/op	37351.85 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=dense/op=ge/mode=auto/backend=archsimd-amd64-mask          	    8928	     15950 ns/op	32870.97 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=dense/op=lt/mode=auto/backend=archsimd-amd64-mask          	    8776	     14028 ns/op	37374.13 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=dense/op=le/mode=auto/backend=archsimd-amd64-mask          	    7687	     13815 ns/op	37950.74 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=dense/op=eq/mode=auto/backend=archsimd-amd64-mask          	    8984	     13851 ns/op	37852.08 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=equal/op=gt/mode=auto/backend=archsimd-amd64-mask          	   10000	     14230 ns/op	36842.97 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=equal/op=ge/mode=auto/backend=archsimd-amd64-mask          	    9364	     13815 ns/op	37949.36 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=equal/op=lt/mode=auto/backend=archsimd-amd64-mask          	    8836	     13664 ns/op	38368.97 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=equal/op=le/mode=auto/backend=archsimd-amd64-mask          	    8606	     14200 ns/op	36921.03 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=equal/op=eq/mode=auto/backend=archsimd-amd64-mask          	   10000	     13479 ns/op	38897.71 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=short/op=gt/mode=auto/backend=archsimd-amd64-mask          	 3981789	        26.42 ns/op	2119.93 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=short/op=ge/mode=auto/backend=archsimd-amd64-mask          	 4893336	        25.39 ns/op	2206.00 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=short/op=lt/mode=auto/backend=archsimd-amd64-mask          	 4456924	        28.19 ns/op	1986.23 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=short/op=le/mode=auto/backend=archsimd-amd64-mask          	 3921280	        32.13 ns/op	1742.95 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=short/op=eq/mode=auto/backend=archsimd-amd64-mask          	 4404645	        29.99 ns/op	1867.44 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=tail/op=gt/mode=auto/backend=archsimd-amd64-mask           	 4363507	        31.68 ns/op	16414.34 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=tail/op=ge/mode=auto/backend=archsimd-amd64-mask           	 3753152	        29.97 ns/op	17351.29 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=tail/op=lt/mode=auto/backend=archsimd-amd64-mask           	 4696372	        32.20 ns/op	16147.48 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=tail/op=le/mode=auto/backend=archsimd-amd64-mask           	 3589809	        29.65 ns/op	17540.63 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=int32/case=tail/op=eq/mode=auto/backend=archsimd-amd64-mask           	 4818703	        30.71 ns/op	16929.99 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=stream/op=gt/mode=auto/backend=archsimd-amd64-mask        	     324	    411451 ns/op	20387.86 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=stream/op=ge/mode=auto/backend=archsimd-amd64-mask        	     316	    378538 ns/op	22160.56 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=stream/op=lt/mode=auto/backend=archsimd-amd64-mask        	     348	    373375 ns/op	22466.96 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=stream/op=le/mode=auto/backend=archsimd-amd64-mask        	     345	    373331 ns/op	22469.60 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=stream/op=eq/mode=auto/backend=archsimd-amd64-mask        	     307	    398620 ns/op	21044.13 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=bitmap/op=gt/mode=auto/backend=archsimd-amd64-mask        	    9672	     14284 ns/op	36704.80 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=bitmap/op=ge/mode=auto/backend=archsimd-amd64-mask        	    8427	     14412 ns/op	36377.36 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=bitmap/op=lt/mode=auto/backend=archsimd-amd64-mask        	    8293	     14039 ns/op	37344.98 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=bitmap/op=le/mode=auto/backend=archsimd-amd64-mask        	    9597	     16790 ns/op	31226.41 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=bitmap/op=eq/mode=auto/backend=archsimd-amd64-mask        	    8154	     15272 ns/op	34330.76 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=nullable-tail/op=gt/mode=auto/backend=archsimd-amd64-mask 	    7662	     14339 ns/op	36566.05 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=nullable-tail/op=ge/mode=auto/backend=archsimd-amd64-mask 	    9655	     15156 ns/op	34594.10 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=nullable-tail/op=lt/mode=auto/backend=archsimd-amd64-mask 	    8001	     14999 ns/op	34956.76 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=nullable-tail/op=le/mode=auto/backend=archsimd-amd64-mask 	    7825	     16743 ns/op	31315.78 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=nullable-tail/op=eq/mode=auto/backend=archsimd-amd64-mask 	    7556	     17303 ns/op	30302.53 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=sparse/op=gt/mode=auto/backend=archsimd-amd64-mask        	    7392	     19035 ns/op	27543.47 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=sparse/op=ge/mode=auto/backend=archsimd-amd64-mask        	    7531	     14850 ns/op	35305.82 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=sparse/op=lt/mode=auto/backend=archsimd-amd64-mask        	    8982	     40132 ns/op	13063.96 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=sparse/op=le/mode=auto/backend=archsimd-amd64-mask        	    8482	     14067 ns/op	37271.41 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=sparse/op=eq/mode=auto/backend=archsimd-amd64-mask        	    9831	     13468 ns/op	38927.33 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=dense/op=gt/mode=auto/backend=archsimd-amd64-mask         	    9237	     18665 ns/op	28089.57 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=dense/op=ge/mode=auto/backend=archsimd-amd64-mask         	    6060	     18979 ns/op	27624.74 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=dense/op=lt/mode=auto/backend=archsimd-amd64-mask         	    7174	     15879 ns/op	33018.69 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=dense/op=le/mode=auto/backend=archsimd-amd64-mask         	   10000	     15865 ns/op	33047.26 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=dense/op=eq/mode=auto/backend=archsimd-amd64-mask         	    9061	     15466 ns/op	33898.32 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=equal/op=gt/mode=auto/backend=archsimd-amd64-mask         	    8562	     21982 ns/op	23850.47 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=equal/op=ge/mode=auto/backend=archsimd-amd64-mask         	    9844	     13950 ns/op	37583.34 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=equal/op=lt/mode=auto/backend=archsimd-amd64-mask         	    7682	     14591 ns/op	35931.10 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=equal/op=le/mode=auto/backend=archsimd-amd64-mask         	    8883	     16227 ns/op	32308.88 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=equal/op=eq/mode=auto/backend=archsimd-amd64-mask         	    8992	     13773 ns/op	38066.59 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=short/op=gt/mode=auto/backend=archsimd-amd64-mask         	 4529156	        27.70 ns/op	2021.32 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=short/op=ge/mode=auto/backend=archsimd-amd64-mask         	 4094643	        35.26 ns/op	1588.37 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=short/op=lt/mode=auto/backend=archsimd-amd64-mask         	 4227418	        30.51 ns/op	1835.55 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=short/op=le/mode=auto/backend=archsimd-amd64-mask         	 3432068	        34.03 ns/op	1645.50 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=short/op=eq/mode=auto/backend=archsimd-amd64-mask         	 3331758	        41.54 ns/op	1348.14 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=tail/op=gt/mode=auto/backend=archsimd-amd64-mask          	 4079714	        29.17 ns/op	17827.13 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=tail/op=ge/mode=auto/backend=archsimd-amd64-mask          	 3940429	        30.33 ns/op	17146.84 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=tail/op=lt/mode=auto/backend=archsimd-amd64-mask          	 4190544	        32.94 ns/op	15784.10 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=tail/op=le/mode=auto/backend=archsimd-amd64-mask          	 3870948	        32.51 ns/op	15993.76 MB/s	       0 B/op	       0 allocs/op
+BenchmarkColumn32ComparisonGate/type=uint32/case=tail/op=eq/mode=auto/backend=archsimd-amd64-mask          	 3948907	        29.31 ns/op	17741.98 MB/s	       0 B/op	       0 allocs/op
+PASS

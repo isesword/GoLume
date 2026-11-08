@@ -63,6 +63,7 @@ func main() {
 		"memory/zz_generated_numeric.go":         generateNumericVectors(),
 		"kernel/zz_generated_scalar.go":          generateScalar(),
 		"kernel/zz_generated_simd.go":            generatePortableSIMD(),
+		"kernel/zz_generated_simd_amd64.go":      generateAMD64SIMD(),
 		"kernel/zz_generated_simd_arm64.go":      generateArm64SIMD(),
 		"kernel/zz_generated_simd_arch_other.go": generateOtherArch(),
 	}
@@ -106,7 +107,7 @@ func repositoryRoot() (string, error) {
 }
 
 func generateOtherArch() []byte {
-	b := header("goexperiment.simd && !arm64")
+	b := header("goexperiment.simd && !amd64 && !arm64")
 	b.WriteString("func installGeneratedArchSIMD(*Set, Mode, int) {}\n")
 	return []byte(b.String())
 }

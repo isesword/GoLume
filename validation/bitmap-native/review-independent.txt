@@ -1,0 +1,46 @@
+=== RUN   TestReviewIndependentBitmapPaths
+=== RUN   TestReviewIndependentBitmapPaths/Int8\u0080
+=== RUN   TestReviewIndependentBitmapPaths/Int32\u0080
+=== RUN   TestReviewIndependentBitmapPaths/Int64\u0080
+=== RUN   TestReviewIndependentBitmapPaths/Uint32\u0080
+=== RUN   TestReviewIndependentBitmapPaths/Uint64\u0080
+=== RUN   TestReviewIndependentBitmapPaths/Float32\u0080
+=== RUN   TestReviewIndependentBitmapPaths/Float64\u0080
+=== RUN   TestReviewIndependentBitmapPaths/Int8Ā
+=== RUN   TestReviewIndependentBitmapPaths/Int32Ā
+=== RUN   TestReviewIndependentBitmapPaths/Int64Ā
+=== RUN   TestReviewIndependentBitmapPaths/Uint32Ā
+=== RUN   TestReviewIndependentBitmapPaths/Uint64Ā
+=== RUN   TestReviewIndependentBitmapPaths/Float32Ā
+=== RUN   TestReviewIndependentBitmapPaths/Float64Ā
+=== RUN   TestReviewIndependentBitmapPaths/Int8Ȁ
+=== RUN   TestReviewIndependentBitmapPaths/Int32Ȁ
+=== RUN   TestReviewIndependentBitmapPaths/Int64Ȁ
+=== RUN   TestReviewIndependentBitmapPaths/Uint32Ȁ
+=== RUN   TestReviewIndependentBitmapPaths/Uint64Ȁ
+=== RUN   TestReviewIndependentBitmapPaths/Float32Ȁ
+=== RUN   TestReviewIndependentBitmapPaths/Float64Ȁ
+--- PASS: TestReviewIndependentBitmapPaths (0.26s)
+    --- PASS: TestReviewIndependentBitmapPaths/Int8\u0080 (0.01s)
+    --- PASS: TestReviewIndependentBitmapPaths/Int32\u0080 (0.01s)
+    --- PASS: TestReviewIndependentBitmapPaths/Int64\u0080 (0.01s)
+    --- PASS: TestReviewIndependentBitmapPaths/Uint32\u0080 (0.01s)
+    --- PASS: TestReviewIndependentBitmapPaths/Uint64\u0080 (0.01s)
+    --- PASS: TestReviewIndependentBitmapPaths/Float32\u0080 (0.02s)
+    --- PASS: TestReviewIndependentBitmapPaths/Float64\u0080 (0.02s)
+    --- PASS: TestReviewIndependentBitmapPaths/Int8Ā (0.01s)
+    --- PASS: TestReviewIndependentBitmapPaths/Int32Ā (0.02s)
+    --- PASS: TestReviewIndependentBitmapPaths/Int64Ā (0.01s)
+    --- PASS: TestReviewIndependentBitmapPaths/Uint32Ā (0.01s)
+    --- PASS: TestReviewIndependentBitmapPaths/Uint64Ā (0.01s)
+    --- PASS: TestReviewIndependentBitmapPaths/Float32Ā (0.02s)
+    --- PASS: TestReviewIndependentBitmapPaths/Float64Ā (0.02s)
+    --- PASS: TestReviewIndependentBitmapPaths/Int8Ȁ (0.01s)
+    --- PASS: TestReviewIndependentBitmapPaths/Int32Ȁ (0.01s)
+    --- PASS: TestReviewIndependentBitmapPaths/Int64Ȁ (0.01s)
+    --- PASS: TestReviewIndependentBitmapPaths/Uint32Ȁ (0.01s)
+    --- PASS: TestReviewIndependentBitmapPaths/Uint64Ȁ (0.01s)
+    --- PASS: TestReviewIndependentBitmapPaths/Float32Ȁ (0.02s)
+    --- PASS: TestReviewIndependentBitmapPaths/Float64Ȁ (0.02s)
+PASS
+ok  	gocolumn/kernel	0.265s

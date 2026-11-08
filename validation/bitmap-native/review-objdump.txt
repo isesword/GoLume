@@ -1,0 +1,2000 @@
+TEXT gocolumn/kernel.simdAMD128Float32GT(SB) /workspace/scratch/ac8e1e118737/GoLume-next/kernel/zz_generated_simd_amd64.go
+  zz_generated_simd_amd64.go:477	0x763600		4c8d6424f8		LEAQ -0x8(SP), R12				
+  zz_generated_simd_amd64.go:477	0x763605		4d3b6610		CMPQ R12, 0x10(R14)				
+  zz_generated_simd_amd64.go:477	0x763609		0f862f030000		JBE 0x76393e					
+  zz_generated_simd_amd64.go:477	0x76360f		55			PUSHQ BP					
+  zz_generated_simd_amd64.go:477	0x763610		4889e5			MOVQ SP, BP					
+  zz_generated_simd_amd64.go:477	0x763613		4883c480		ADDQ $-0x80, SP					
+  zz_generated_simd_amd64.go:477	0x763617		4889842490000000	MOVQ AX, 0x90(SP)				
+  zz_generated_simd_amd64.go:477	0x76361f		4889bc24a8000000	MOVQ DI, 0xa8(SP)				
+  zz_generated_simd_amd64.go:477	0x763627		4c898c24c0000000	MOVQ R9, 0xc0(SP)				
+  zz_generated_simd_amd64.go:478	0x76362f		4883fb04		CMPQ BX, $0x4					
+  zz_generated_simd_amd64.go:478	0x763633		0f8cc3000000		JL 0x7636fc					
+  bitmap.go:13				0x763639		488d533f		LEAQ 0x3f(BX), DX				
+  bitmap.go:13				0x76363d		48c1ea06		SHRQ $0x6, DX					
+  zz_generated_simd_amd64.go:481	0x763641		90			NOPL						
+  scalar.go:12				0x763642		90			NOPL						
+  scalar.go:13				0x763643		4939d2			CMPQ R10, DX					
+  scalar.go:13				0x763646		0f8cde020000		JL 0x76392a					
+  scalar.go:16				0x76364c		4939d3			CMPQ R11, DX					
+  scalar.go:16				0x76364f		0f82d0020000		JB 0x763925					
+  zz_generated_simd_amd64.go:478	0x763655		f30f118424d8000000	MOVSS X0, 0xd8(SP)				
+  zz_generated_simd_amd64.go:478	0x76365e		48898c24a0000000	MOVQ CX, 0xa0(SP)				
+  bitmap.go:13				0x763666		4889542458		MOVQ DX, 0x58(SP)				
+  zz_generated_simd_amd64.go:478	0x76366b		48899c2498000000	MOVQ BX, 0x98(SP)				
+  zz_generated_simd_amd64.go:478	0x763673		4889842490000000	MOVQ AX, 0x90(SP)				
+  zz_generated_simd_amd64.go:478	0x76367b		4889b424b0000000	MOVQ SI, 0xb0(SP)				
+  zz_generated_simd_amd64.go:478	0x763683		4c898c24c0000000	MOVQ R9, 0xc0(SP)				
+  zz_generated_simd_amd64.go:478	0x76368b		4889bc24a8000000	MOVQ DI, 0xa8(SP)				
+  scalar.go:16				0x763693		4885d2			TESTQ DX, DX					
+  scalar.go:16				0x763696		744d			JE 0x7636e5					
+  scalar.go:16				0x763698		4889d3			MOVQ DX, BX					
+  scalar.go:16				0x76369b		48c1e303		SHLQ $0x3, BX					
+  scalar.go:16				0x76369f		4c89c8			MOVQ R9, AX					
+  scalar.go:16				0x7636a2		e819dcd2ff		CALL runtime.memclrNoHeapPointers(SB)		
+  zz_generated_simd_amd64.go:495	0x7636a7		488b842490000000	MOVQ 0x90(SP), AX				
+  zz_generated_simd_amd64.go:495	0x7636af		488b8c24a0000000	MOVQ 0xa0(SP), CX				
+  zz_generated_simd_amd64.go:484	0x7636b7		488b542458		MOVQ 0x58(SP), DX				
+  zz_generated_simd_amd64.go:486	0x7636bc		488b9c2498000000	MOVQ 0x98(SP), BX				
+  scalar.go:78				0x7636c4		488bb424b0000000	MOVQ 0xb0(SP), SI				
+  scalar.go:75				0x7636cc		488bbc24a8000000	MOVQ 0xa8(SP), DI				
+  zz_generated_simd_amd64.go:504	0x7636d4		4c8b8c24c0000000	MOVQ 0xc0(SP), R9				
+  other_gen_amd64.go:85			0x7636dc		f30f108424d8000000	MOVSS 0xd8(SP), X0				
+  other_gen_amd64.go:85			0x7636e5		c58211c1		VMOVSS X0, X15, X1				
+  zz_generated_simd_amd64.go:482	0x7636e9		90			NOPL						
+  other_gen_amd64.go:85			0x7636ea		c4e27918c9		VBROADCASTSS X1, X1				
+  other_gen_amd64.go:85			0x7636ef		0f114c2470		MOVUPS X1, 0x70(SP)				
+  zz_generated_simd_amd64.go:484	0x7636f4		4531c0			XORL R8, R8					
+  zz_generated_simd_amd64.go:484	0x7636f7		4531d2			XORL R10, R10					
+  zz_generated_simd_amd64.go:484	0x7636fa		eb16			JMP 0x763712					
+  float32_scalar.go:92			0x7636fc		c6042401		MOVB $0x1, 0(SP)				
+  float32_scalar.go:92			0x763700		e8bb92faff		CALL gocolumn/kernel.scalarFloat32Compare(SB)	
+  zz_generated_simd_amd64.go:479	0x763705		4883ec80		SUBQ $-0x80, SP					
+  zz_generated_simd_amd64.go:479	0x763709		5d			POPQ BP						
+  zz_generated_simd_amd64.go:479	0x76370a		c3			RET						
+  zz_generated_simd_amd64.go:484	0x76370b		4d8d4301		LEAQ 0x1(R11), R8				
+  zz_generated_simd_amd64.go:486	0x76370f		4c89e3			MOVQ R12, BX					
+  zz_generated_simd_amd64.go:484	0x763712		4939d0			CMPQ R8, DX					
+  zz_generated_simd_amd64.go:484	0x763715		0f8dea010000		JGE 0x763905					
+  zz_generated_simd_amd64.go:485	0x76371b		4d89c3			MOVQ R8, R11					
+  zz_generated_simd_amd64.go:485	0x76371e		49c1e006		SHLQ $0x6, R8					
+  zz_generated_simd_amd64.go:486	0x763722		4989dc			MOVQ BX, R12					
+  zz_generated_simd_amd64.go:486	0x763725		4c29c3			SUBQ R8, BX					
+  zz_generated_simd_amd64.go:486	0x763728		4883fb40		CMPQ BX, $0x40					
+  zz_generated_simd_amd64.go:487	0x76372c		41bd40000000		MOVL $0x40, R13					
+  zz_generated_simd_amd64.go:487	0x763732		4c0f4ceb		CMOVL BX, R13					
+  scalar.go:75				0x763736		4885ff			TESTQ DI, DI					
+  zz_generated_simd_amd64.go:486	0x763739		7414			JE 0x76374f					
+  zz_generated_simd_amd64.go:486	0x76373b		0f1f440000		NOPL 0(AX)(AX*1)				
+  scalar.go:78				0x763740		4c39de			CMPQ SI, R11					
+  scalar.go:78				0x763743		0f86d4010000		JBE 0x76391d					
+  scalar.go:78				0x763749		4a8b1cdf		MOVQ 0(DI)(R11*8), BX				
+  zz_generated_simd_amd64.go:487	0x76374d		eb07			JMP 0x763756					
+  zz_generated_simd_amd64.go:487	0x76374f		48c7c3ffffffff		MOVQ $-0x1, BX					
+  bitmap.go:60				0x763756		4d85ed			TESTQ R13, R13					
+  bitmap.go:60				0x763759		7f07			JG 0x763762					
+  bitmap.go:60				0x76375b		4531ff			XORL R15, R15					
+  bitmap.go:60				0x76375e		6690			NOPW						
+  zz_generated_simd_amd64.go:487	0x763760		eb32			JMP 0x763794					
+  bitmap.go:64				0x763762		49f7c53f000000		TESTQ $0x3f, R13				
+  bitmap.go:64				0x763769		7509			JNE 0x763774					
+  bitmap.go:64				0x76376b		49c7c7ffffffff		MOVQ $-0x1, R15					
+  zz_generated_simd_amd64.go:487	0x763772		eb20			JMP 0x763794					
+  zz_generated_simd_amd64.go:478	0x763774		4989cf			MOVQ CX, R15					
+  bitmap.go:67				0x763777		4c89e9			MOVQ R13, CX					
+  bitmap.go:67				0x76377a		41b901000000		MOVL $0x1, R9					
+  bitmap.go:67				0x763780		49d3e1			SHLQ CL, R9					
+  bitmap.go:67				0x763783		49ffc9			DECQ R9						
+  zz_generated_simd_amd64.go:495	0x763786		4c89f9			MOVQ R15, CX					
+  zz_generated_simd_amd64.go:487	0x763789		4d89cf			MOVQ R9, R15					
+  zz_generated_simd_amd64.go:504	0x76378c		4c8b8c24c0000000	MOVQ 0xc0(SP), R9				
+  zz_generated_simd_amd64.go:487	0x763794		4c21fb			ANDQ R15, BX					
+  zz_generated_simd_amd64.go:487	0x763797		660f1f840000000000	NOPW 0(AX)(AX*1)				
+  zz_generated_simd_amd64.go:489	0x7637a0		4885db			TESTQ BX, BX					
+  zz_generated_simd_amd64.go:489	0x7637a3		0f8462ffffff		JE 0x76370b					
+  zz_generated_simd_amd64.go:484	0x7637a9		4c89542460		MOVQ R10, 0x60(SP)				
+  zz_generated_simd_amd64.go:489	0x7637ae		4531ff			XORL R15, R15					
+  zz_generated_simd_amd64.go:489	0x7637b1		31f6			XORL SI, SI					
+  zz_generated_simd_amd64.go:489	0x7637b3		eb3e			JMP 0x7637f3					
+  slice_gen_amd64.go:108		0x7637b5		c5fa6f12		VMOVDQU 0(DX), X2				
+  zz_generated_simd_amd64.go:495	0x7637b9		c5e8c2d10e		VCMPPS $0xe, X1, X2, X2				
+  zz_generated_simd_amd64.go:496	0x7637be		c5f850d2		VMOVMSKPS X2, DX				
+  zz_generated_simd_amd64.go:496	0x7637c2		0fb6d2			MOVZX DL, DX					
+  zz_generated_simd_amd64.go:478	0x7637c5		4989ca			MOVQ CX, R10					
+  zz_generated_simd_amd64.go:496	0x7637c8		4c89f9			MOVQ R15, CX					
+  zz_generated_simd_amd64.go:496	0x7637cb		48d3e2			SHLQ CL, DX					
+  zz_generated_simd_amd64.go:496	0x7637ce		4883f940		CMPQ CX, $0x40					
+  zz_generated_simd_amd64.go:496	0x7637d2		4819c9			SBBQ CX, CX					
+  zz_generated_simd_amd64.go:496	0x7637d5		4821ca			ANDQ CX, DX					
+  zz_generated_simd_amd64.go:496	0x7637d8		4809d6			ORQ DX, SI					
+  zz_generated_simd_amd64.go:495	0x7637db		4c89d1			MOVQ R10, CX					
+  zz_generated_simd_amd64.go:484	0x7637de		488b542458		MOVQ 0x58(SP), DX				
+  zz_generated_simd_amd64.go:505	0x7637e3		4c8b542460		MOVQ 0x60(SP), R10				
+  zz_generated_simd_amd64.go:495	0x7637e8		4c8ba42498000000	MOVQ 0x98(SP), R12				
+  zz_generated_simd_amd64.go:494	0x7637f0		4989ff			MOVQ DI, R15					
+  zz_generated_simd_amd64.go:494	0x7637f3		498d7f04		LEAQ 0x4(R15), DI				
+  zz_generated_simd_amd64.go:494	0x7637f7		4939fd			CMPQ R13, DI					
+  zz_generated_simd_amd64.go:494	0x7637fa		7c6e			JL 0x76386a					
+  zz_generated_simd_amd64.go:495	0x7637fc		4b8d1407		LEAQ 0(R15)(R8*1), DX				
+  zz_generated_simd_amd64.go:495	0x763800		4939d4			CMPQ R12, DX					
+  zz_generated_simd_amd64.go:495	0x763803		0f820f010000		JB 0x763918					
+  zz_generated_simd_amd64.go:495	0x763809		4889542468		MOVQ DX, 0x68(SP)				
+  zz_generated_simd_amd64.go:495	0x76380e		4929d4			SUBQ DX, R12					
+  zz_generated_simd_amd64.go:495	0x763811		4829ca			SUBQ CX, DX					
+  zz_generated_simd_amd64.go:495	0x763814		4c8b542468		MOVQ 0x68(SP), R10				
+  zz_generated_simd_amd64.go:495	0x763819		49c1e202		SHLQ $0x2, R10					
+  zz_generated_simd_amd64.go:495	0x76381d		48c1fa3f		SARQ $0x3f, DX					
+  zz_generated_simd_amd64.go:495	0x763821		4c21d2			ANDQ R10, DX					
+  zz_generated_simd_amd64.go:495	0x763824		4801c2			ADDQ AX, DX					
+  slice_gen_amd64.go:108		0x763827		4983fc04		CMPQ R12, $0x4					
+  slice_gen_amd64.go:108		0x76382b		7388			JAE 0x7637b5					
+  slice_gen_amd64.go:108		0x76382d		e9e1000000		JMP 0x763913					
+  zz_generated_simd_amd64.go:499	0x763832		f30f1014b8		MOVSS 0(AX)(DI*4), X2				
+  zz_generated_simd_amd64.go:500	0x763837		4c89f9			MOVQ R15, CX					
+  zz_generated_simd_amd64.go:500	0x76383a		bf01000000		MOVL $0x1, DI					
+  zz_generated_simd_amd64.go:500	0x76383f		48d3e7			SHLQ CL, DI					
+  zz_generated_simd_amd64.go:499	0x763842		0f2ed0			UCOMISS X0, X2					
+  zz_generated_simd_amd64.go:500	0x763845		4883f940		CMPQ CX, $0x40					
+  zz_generated_simd_amd64.go:500	0x763849		4819d2			SBBQ DX, DX					
+  zz_generated_simd_amd64.go:500	0x76384c		4821d7			ANDQ DX, DI					
+  zz_generated_simd_amd64.go:500	0x76384f		4809f7			ORQ SI, DI					
+  zz_generated_simd_amd64.go:499	0x763852		0f2ed0			UCOMISS X0, X2					
+  zz_generated_simd_amd64.go:499	0x763855		480f47f7		CMOVA DI, SI					
+  zz_generated_simd_amd64.go:498	0x763859		4c8d7901		LEAQ 0x1(CX), R15				
+  zz_generated_simd_amd64.go:495	0x76385d		488b8c24a0000000	MOVQ 0xa0(SP), CX				
+  zz_generated_simd_amd64.go:484	0x763865		488b542458		MOVQ 0x58(SP), DX				
+  zz_generated_simd_amd64.go:498	0x76386a		4d39ef			CMPQ R15, R13					
+  zz_generated_simd_amd64.go:498	0x76386d		7d0e			JGE 0x76387d					
+  zz_generated_simd_amd64.go:499	0x76386f		4b8d3c07		LEAQ 0(R15)(R8*1), DI				
+  zz_generated_simd_amd64.go:499	0x763873		4939fc			CMPQ R12, DI					
+  zz_generated_simd_amd64.go:499	0x763876		77ba			JA 0x763832					
+  zz_generated_simd_amd64.go:499	0x763878		e991000000		JMP 0x76390e					
+  zz_generated_simd_amd64.go:503	0x76387d		4821de			ANDQ BX, SI					
+  zz_generated_simd_amd64.go:504	0x763880		4b8934d9		MOVQ SI, 0(R9)(R11*8)				
+  zz_generated_simd_amd64.go:504	0x763884		0fb61da71e4d00		MOVZX runtime.x86HasPOPCNT(SB), BX		
+  zz_generated_simd_amd64.go:504	0x76388b		85db			TESTL BX, BX					
+  zz_generated_simd_amd64.go:505	0x76388d		7407			JE 0x763896					
+  zz_generated_simd_amd64.go:505	0x76388f		f3480fb8f6		POPCNTQ SI, SI					
+  zz_generated_simd_amd64.go:505	0x763894		eb56			JMP 0x7638ec					
+  zz_generated_simd_amd64.go:484	0x763896		4c895c2468		MOVQ R11, 0x68(SP)				
+  zz_generated_simd_amd64.go:505	0x76389b		4889f0			MOVQ SI, AX					
+  zz_generated_simd_amd64.go:505	0x76389e		6690			NOPW						
+  zz_generated_simd_amd64.go:505	0x7638a0		e8fb05d3ff		CALL math/bits.OnesCount64(SB)			
+  zz_generated_simd_amd64.go:495	0x7638a5		488b8c24a0000000	MOVQ 0xa0(SP), CX				
+  zz_generated_simd_amd64.go:484	0x7638ad		488b542458		MOVQ 0x58(SP), DX				
+  zz_generated_simd_amd64.go:484	0x7638b2		0fb61d791e4d00		MOVZX runtime.x86HasPOPCNT(SB), BX		
+  zz_generated_simd_amd64.go:504	0x7638b9		4c8b8c24c0000000	MOVQ 0xc0(SP), R9				
+  zz_generated_simd_amd64.go:505	0x7638c1		4c8b542460		MOVQ 0x60(SP), R10				
+  zz_generated_simd_amd64.go:484	0x7638c6		4c8b5c2468		MOVQ 0x68(SP), R11				
+  zz_generated_simd_amd64.go:486	0x7638cb		4c8ba42498000000	MOVQ 0x98(SP), R12				
+  zz_generated_simd_amd64.go:499	0x7638d3		f30f108424d8000000	MOVSS 0xd8(SP), X0				
+  zz_generated_simd_amd64.go:495	0x7638dc		0f104c2470		MOVUPS 0x70(SP), X1				
+  zz_generated_simd_amd64.go:505	0x7638e1		4889c6			MOVQ AX, SI					
+  zz_generated_simd_amd64.go:495	0x7638e4		488b842490000000	MOVQ 0x90(SP), AX				
+  zz_generated_simd_amd64.go:505	0x7638ec		4901f2			ADDQ SI, R10					
+  scalar.go:78				0x7638ef		488bb424b0000000	MOVQ 0xb0(SP), SI				
+  scalar.go:75				0x7638f7		488bbc24a8000000	MOVQ 0xa8(SP), DI				
+  scalar.go:75				0x7638ff		90			NOPL						
+  zz_generated_simd_amd64.go:505	0x763900		e906feffff		JMP 0x76370b					
+  zz_generated_simd_amd64.go:507	0x763905		4c89d0			MOVQ R10, AX					
+  zz_generated_simd_amd64.go:507	0x763908		4883ec80		SUBQ $-0x80, SP					
+  zz_generated_simd_amd64.go:507	0x76390c		5d			POPQ BP						
+  zz_generated_simd_amd64.go:507	0x76390d		c3			RET						
+  zz_generated_simd_amd64.go:499	0x76390e		e80dd9d2ff		CALL runtime.panicBounds(SB)			
+  slice_gen_amd64.go:108		0x763913		e808d9d2ff		CALL runtime.panicBounds(SB)			
+  zz_generated_simd_amd64.go:495	0x763918		e803d9d2ff		CALL runtime.panicBounds(SB)			
+  scalar.go:78				0x76391d		0f1f00			NOPL 0(AX)					
+  scalar.go:78				0x763920		e8fbd8d2ff		CALL runtime.panicBounds(SB)			
+  scalar.go:16				0x763925		e8f6d8d2ff		CALL runtime.panicBounds(SB)			
+  scalar.go:14				0x76392a		488d05cfb64300		LEAQ 0x43b6cf(IP), AX				
+  scalar.go:14				0x763931		488d1df8440c00		LEAQ 0xc44f8(IP), BX				
+  scalar.go:14				0x763938		e82360d2ff		CALL runtime.gopanic(SB)			
+  scalar.go:14				0x76393d		90			NOPL						
+  zz_generated_simd_amd64.go:477	0x76393e		4889442408		MOVQ AX, 0x8(SP)				
+  zz_generated_simd_amd64.go:477	0x763943		48895c2410		MOVQ BX, 0x10(SP)				
+  zz_generated_simd_amd64.go:477	0x763948		48894c2418		MOVQ CX, 0x18(SP)				
+  zz_generated_simd_amd64.go:477	0x76394d		48897c2420		MOVQ DI, 0x20(SP)				
+  zz_generated_simd_amd64.go:477	0x763952		4889742428		MOVQ SI, 0x28(SP)				
+  zz_generated_simd_amd64.go:477	0x763957		4c89442430		MOVQ R8, 0x30(SP)				
+  zz_generated_simd_amd64.go:477	0x76395c		4c894c2438		MOVQ R9, 0x38(SP)				
+  zz_generated_simd_amd64.go:477	0x763961		4c89542440		MOVQ R10, 0x40(SP)				
+  zz_generated_simd_amd64.go:477	0x763966		4c895c2448		MOVQ R11, 0x48(SP)				
+  zz_generated_simd_amd64.go:477	0x76396b		f30f11442450		MOVSS X0, 0x50(SP)				
+  zz_generated_simd_amd64.go:477	0x763971		e86abcd2ff		CALL runtime.morestack_noctxt.abi0(SB)		
+  zz_generated_simd_amd64.go:477	0x763976		488b442408		MOVQ 0x8(SP), AX				
+  zz_generated_simd_amd64.go:477	0x76397b		488b5c2410		MOVQ 0x10(SP), BX				
+  zz_generated_simd_amd64.go:477	0x763980		488b4c2418		MOVQ 0x18(SP), CX				
+  zz_generated_simd_amd64.go:477	0x763985		488b7c2420		MOVQ 0x20(SP), DI				
+  zz_generated_simd_amd64.go:477	0x76398a		488b742428		MOVQ 0x28(SP), SI				
+  zz_generated_simd_amd64.go:477	0x76398f		4c8b442430		MOVQ 0x30(SP), R8				
+  zz_generated_simd_amd64.go:477	0x763994		4c8b4c2438		MOVQ 0x38(SP), R9				
+  zz_generated_simd_amd64.go:477	0x763999		4c8b542440		MOVQ 0x40(SP), R10				
+  zz_generated_simd_amd64.go:477	0x76399e		4c8b5c2448		MOVQ 0x48(SP), R11				
+  zz_generated_simd_amd64.go:477	0x7639a3		f30f10442450		MOVSS 0x50(SP), X0				
+  zz_generated_simd_amd64.go:477	0x7639a9		e952fcffff		JMP gocolumn/kernel.simdAMD128Float32GT(SB)	
+
+TEXT gocolumn/kernel.simdAMD128Int8GT(SB) /workspace/scratch/ac8e1e118737/GoLume-next/kernel/zz_generated_simd_amd64.go
+  zz_generated_simd_amd64.go:642	0x7648c0		4c8d6424d8		LEAQ -0x28(SP), R12				
+  zz_generated_simd_amd64.go:642	0x7648c5		4d3b6610		CMPQ R12, 0x10(R14)				
+  zz_generated_simd_amd64.go:642	0x7648c9		0f868a030000		JBE 0x764c59					
+  zz_generated_simd_amd64.go:642	0x7648cf		55			PUSHQ BP					
+  zz_generated_simd_amd64.go:642	0x7648d0		4889e5			MOVQ SP, BP					
+  zz_generated_simd_amd64.go:642	0x7648d3		4881eca0000000		SUBQ $0xa0, SP					
+  zz_generated_simd_amd64.go:642	0x7648da		48898424b8000000	MOVQ AX, 0xb8(SP)				
+  zz_generated_simd_amd64.go:642	0x7648e2		4889bc24d0000000	MOVQ DI, 0xd0(SP)				
+  zz_generated_simd_amd64.go:642	0x7648ea		4c898c24e8000000	MOVQ R9, 0xe8(SP)				
+  zz_generated_simd_amd64.go:643	0x7648f2		4883fb10		CMPQ BX, $0x10					
+  zz_generated_simd_amd64.go:643	0x7648f6		0f8cc2000000		JL 0x7649be					
+  bitmap.go:13				0x7648fc		488d533f		LEAQ 0x3f(BX), DX				
+  bitmap.go:13				0x764900		48c1fa06		SARQ $0x6, DX					
+  zz_generated_simd_amd64.go:646	0x764904		90			NOPL						
+  scalar.go:12				0x764905		90			NOPL						
+  scalar.go:13				0x764906		4939d2			CMPQ R10, DX					
+  scalar.go:13				0x764909		0f8c36030000		JL 0x764c45					
+  scalar.go:16				0x76490f		4939d3			CMPQ R11, DX					
+  scalar.go:16				0x764912		0f8225030000		JB 0x764c3d					
+  zz_generated_simd_amd64.go:643	0x764918		4889bc24d0000000	MOVQ DI, 0xd0(SP)				
+  bitmap.go:13				0x764920		4889542458		MOVQ DX, 0x58(SP)				
+  zz_generated_simd_amd64.go:643	0x764925		48898c24c8000000	MOVQ CX, 0xc8(SP)				
+  zz_generated_simd_amd64.go:643	0x76492d		4c898c24e8000000	MOVQ R9, 0xe8(SP)				
+  zz_generated_simd_amd64.go:643	0x764935		48899c24c0000000	MOVQ BX, 0xc0(SP)				
+  zz_generated_simd_amd64.go:643	0x76493d		48898424b8000000	MOVQ AX, 0xb8(SP)				
+  zz_generated_simd_amd64.go:643	0x764945		4889b424d8000000	MOVQ SI, 0xd8(SP)				
+  scalar.go:16				0x76494d		4885d2			TESTQ DX, DX					
+  scalar.go:16				0x764950		7448			JE 0x76499a					
+  scalar.go:16				0x764952		4889d3			MOVQ DX, BX					
+  scalar.go:16				0x764955		48c1e303		SHLQ $0x3, BX					
+  scalar.go:16				0x764959		4c89c8			MOVQ R9, AX					
+  scalar.go:16				0x76495c		0f1f4000		NOPL 0(AX)					
+  scalar.go:16				0x764960		e85bc9d2ff		CALL runtime.memclrNoHeapPointers(SB)		
+  zz_generated_simd_amd64.go:660	0x764965		488b8424b8000000	MOVQ 0xb8(SP), AX				
+  zz_generated_simd_amd64.go:660	0x76496d		488b8c24c8000000	MOVQ 0xc8(SP), CX				
+  zz_generated_simd_amd64.go:649	0x764975		488b542458		MOVQ 0x58(SP), DX				
+  zz_generated_simd_amd64.go:651	0x76497a		488b9c24c0000000	MOVQ 0xc0(SP), BX				
+  scalar.go:78				0x764982		488bb424d8000000	MOVQ 0xd8(SP), SI				
+  scalar.go:75				0x76498a		488bbc24d0000000	MOVQ 0xd0(SP), DI				
+  zz_generated_simd_amd64.go:669	0x764992		4c8b8c24e8000000	MOVQ 0xe8(SP), R9				
+  other_gen_amd64.go:13			0x76499a		440fb68424b0000000	MOVZX 0xb0(SP), R8				
+  other_gen_amd64.go:13			0x7649a3		c4c1f96ec0		VMOVQ R8, X0					
+  zz_generated_simd_amd64.go:647	0x7649a8		90			NOPL						
+  other_gen_amd64.go:13			0x7649a9		c4e27978c0		VPBROADCASTB X0, X0				
+  other_gen_amd64.go:13			0x7649ae		0f11842480000000	MOVUPS X0, 0x80(SP)				
+  zz_generated_simd_amd64.go:649	0x7649b6		4531d2			XORL R10, R10					
+  zz_generated_simd_amd64.go:649	0x7649b9		4531db			XORL R11, R11					
+  zz_generated_simd_amd64.go:649	0x7649bc		eb29			JMP 0x7649e7					
+  zz_generated_simd_amd64.go:644	0x7649be		0fb69424b0000000	MOVZX 0xb0(SP), DX				
+  zz_generated_simd_amd64.go:644	0x7649c6		881424			MOVB DL, 0(SP)					
+  zz_generated_simd_amd64.go:644	0x7649c9		e8727cfbff		CALL gocolumn/kernel.scalarInt8GT(SB)		
+  zz_generated_simd_amd64.go:644	0x7649ce		4881c4a0000000		ADDQ $0xa0, SP					
+  zz_generated_simd_amd64.go:644	0x7649d5		5d			POPQ BP						
+  zz_generated_simd_amd64.go:644	0x7649d6		c3			RET						
+  zz_generated_simd_amd64.go:649	0x7649d7		4d8d542401		LEAQ 0x1(R12), R10				
+  zz_generated_simd_amd64.go:651	0x7649dc		4c89eb			MOVQ R13, BX					
+  zz_generated_simd_amd64.go:669	0x7649df		4c8b8c24e8000000	MOVQ 0xe8(SP), R9				
+  zz_generated_simd_amd64.go:649	0x7649e7		4939d2			CMPQ R10, DX					
+  zz_generated_simd_amd64.go:649	0x7649ea		0f8d2d020000		JGE 0x764c1d					
+  zz_generated_simd_amd64.go:650	0x7649f0		4d89d4			MOVQ R10, R12					
+  zz_generated_simd_amd64.go:650	0x7649f3		49c1e206		SHLQ $0x6, R10					
+  zz_generated_simd_amd64.go:651	0x7649f7		4989dd			MOVQ BX, R13					
+  zz_generated_simd_amd64.go:651	0x7649fa		4c29d3			SUBQ R10, BX					
+  zz_generated_simd_amd64.go:651	0x7649fd		4883fb40		CMPQ BX, $0x40					
+  zz_generated_simd_amd64.go:652	0x764a01		41bf40000000		MOVL $0x40, R15					
+  zz_generated_simd_amd64.go:652	0x764a07		4c0f4cfb		CMOVL BX, R15					
+  scalar.go:75				0x764a0b		4885ff			TESTQ DI, DI					
+  zz_generated_simd_amd64.go:651	0x764a0e		740f			JE 0x764a1f					
+  scalar.go:78				0x764a10		4c39e6			CMPQ SI, R12					
+  scalar.go:78				0x764a13		0f861f020000		JBE 0x764c38					
+  scalar.go:78				0x764a19		4a8b1ce7		MOVQ 0(DI)(R12*8), BX				
+  zz_generated_simd_amd64.go:652	0x764a1d		eb07			JMP 0x764a26					
+  zz_generated_simd_amd64.go:652	0x764a1f		48c7c3ffffffff		MOVQ $-0x1, BX					
+  bitmap.go:60				0x764a26		4d85ff			TESTQ R15, R15					
+  bitmap.go:60				0x764a29		7f19			JG 0x764a44					
+  zz_generated_simd_amd64.go:643	0x764a2b		4889842498000000	MOVQ AX, 0x98(SP)				
+  zz_generated_simd_amd64.go:652	0x764a33		31c0			XORL AX, AX					
+  zz_generated_simd_amd64.go:652	0x764a35		4889442460		MOVQ AX, 0x60(SP)				
+  zz_generated_simd_amd64.go:660	0x764a3a		488b842498000000	MOVQ 0x98(SP), AX				
+  zz_generated_simd_amd64.go:652	0x764a42		eb43			JMP 0x764a87					
+  bitmap.go:64				0x764a44		49f7c73f000000		TESTQ $0x3f, R15				
+  bitmap.go:64				0x764a4b		751e			JNE 0x764a6b					
+  zz_generated_simd_amd64.go:643	0x764a4d		4889842490000000	MOVQ AX, 0x90(SP)				
+  zz_generated_simd_amd64.go:652	0x764a55		48c7c0ffffffff		MOVQ $-0x1, AX					
+  zz_generated_simd_amd64.go:652	0x764a5c		4889442460		MOVQ AX, 0x60(SP)				
+  zz_generated_simd_amd64.go:660	0x764a61		488b842490000000	MOVQ 0x90(SP), AX				
+  zz_generated_simd_amd64.go:652	0x764a69		eb1c			JMP 0x764a87					
+  bitmap.go:67				0x764a6b		4c89f9			MOVQ R15, CX					
+  bitmap.go:67				0x764a6e		41b901000000		MOVL $0x1, R9					
+  bitmap.go:67				0x764a74		49d3e1			SHLQ CL, R9					
+  bitmap.go:67				0x764a77		49ffc9			DECQ R9						
+  zz_generated_simd_amd64.go:660	0x764a7a		488b8c24c8000000	MOVQ 0xc8(SP), CX				
+  zz_generated_simd_amd64.go:652	0x764a82		4c894c2460		MOVQ R9, 0x60(SP)				
+  zz_generated_simd_amd64.go:652	0x764a87		4c8b4c2460		MOVQ 0x60(SP), R9				
+  zz_generated_simd_amd64.go:652	0x764a8c		4c21cb			ANDQ R9, BX					
+  zz_generated_simd_amd64.go:654	0x764a8f		4885db			TESTQ BX, BX					
+  zz_generated_simd_amd64.go:654	0x764a92		0f843fffffff		JE 0x7649d7					
+  zz_generated_simd_amd64.go:649	0x764a98		4c895c2468		MOVQ R11, 0x68(SP)				
+  zz_generated_simd_amd64.go:654	0x764a9d		4531c9			XORL R9, R9					
+  zz_generated_simd_amd64.go:654	0x764aa0		31f6			XORL SI, SI					
+  zz_generated_simd_amd64.go:654	0x764aa2		eb3d			JMP 0x764ae1					
+  slice_gen_amd64.go:12			0x764aa4		c5fa6f0a		VMOVDQU 0(DX), X1				
+  zz_generated_simd_amd64.go:660	0x764aa8		c5f164c8		VPCMPGTB X0, X1, X1				
+  zz_generated_simd_amd64.go:661	0x764aac		c5f9d7d1		VPMOVMSKB X1, DX				
+  zz_generated_simd_amd64.go:661	0x764ab0		0fb7d2			MOVZX DX, DX					
+  zz_generated_simd_amd64.go:643	0x764ab3		4989cb			MOVQ CX, R11					
+  zz_generated_simd_amd64.go:661	0x764ab6		4889f1			MOVQ SI, CX					
+  zz_generated_simd_amd64.go:661	0x764ab9		48d3e2			SHLQ CL, DX					
+  zz_generated_simd_amd64.go:661	0x764abc		4883f940		CMPQ CX, $0x40					
+  zz_generated_simd_amd64.go:661	0x764ac0		4819c9			SBBQ CX, CX					
+  zz_generated_simd_amd64.go:661	0x764ac3		4821ca			ANDQ CX, DX					
+  zz_generated_simd_amd64.go:661	0x764ac6		4909d1			ORQ DX, R9					
+  zz_generated_simd_amd64.go:660	0x764ac9		4c89d9			MOVQ R11, CX					
+  zz_generated_simd_amd64.go:649	0x764acc		488b542458		MOVQ 0x58(SP), DX				
+  zz_generated_simd_amd64.go:670	0x764ad1		4c8b5c2468		MOVQ 0x68(SP), R11				
+  zz_generated_simd_amd64.go:660	0x764ad6		4c8bac24c0000000	MOVQ 0xc0(SP), R13				
+  zz_generated_simd_amd64.go:659	0x764ade		4889fe			MOVQ DI, SI					
+  zz_generated_simd_amd64.go:659	0x764ae1		488d7e10		LEAQ 0x10(SI), DI				
+  zz_generated_simd_amd64.go:659	0x764ae5		4939ff			CMPQ R15, DI					
+  zz_generated_simd_amd64.go:659	0x764ae8		0f8c8a000000		JL 0x764b78					
+  zz_generated_simd_amd64.go:660	0x764aee		4a8d1416		LEAQ 0(SI)(R10*1), DX				
+  zz_generated_simd_amd64.go:660	0x764af2		4939d5			CMPQ R13, DX					
+  zz_generated_simd_amd64.go:660	0x764af5		0f8238010000		JB 0x764c33					
+  zz_generated_simd_amd64.go:660	0x764afb		4889542478		MOVQ DX, 0x78(SP)				
+  zz_generated_simd_amd64.go:660	0x764b00		4929d5			SUBQ DX, R13					
+  zz_generated_simd_amd64.go:660	0x764b03		4829ca			SUBQ CX, DX					
+  zz_generated_simd_amd64.go:660	0x764b06		48c1fa3f		SARQ $0x3f, DX					
+  zz_generated_simd_amd64.go:660	0x764b0a		4c8b5c2478		MOVQ 0x78(SP), R11				
+  zz_generated_simd_amd64.go:660	0x764b0f		4c21da			ANDQ R11, DX					
+  zz_generated_simd_amd64.go:660	0x764b12		4801c2			ADDQ AX, DX					
+  slice_gen_amd64.go:12			0x764b15		4983fd10		CMPQ R13, $0x10					
+  slice_gen_amd64.go:12			0x764b19		7389			JAE 0x764aa4					
+  slice_gen_amd64.go:12			0x764b1b		0f1f440000		NOPL 0(AX)(AX*1)				
+  slice_gen_amd64.go:12			0x764b20		e909010000		JMP 0x764c2e					
+  zz_generated_simd_amd64.go:664	0x764b25		0fb63c38		MOVZX 0(AX)(DI*1), DI				
+  zz_generated_simd_amd64.go:664	0x764b29		40887c2457		MOVB DI, 0x57(SP)				
+  zz_generated_simd_amd64.go:665	0x764b2e		4889f1			MOVQ SI, CX					
+  zz_generated_simd_amd64.go:665	0x764b31		bf01000000		MOVL $0x1, DI					
+  zz_generated_simd_amd64.go:665	0x764b36		48d3e7			SHLQ CL, DI					
+  zz_generated_simd_amd64.go:665	0x764b39		48897c2470		MOVQ DI, 0x70(SP)				
+  zz_generated_simd_amd64.go:664	0x764b3e		0fb67c2457		MOVZX 0x57(SP), DI				
+  zz_generated_simd_amd64.go:664	0x764b43		4438c7			CMPL DI, R8					
+  zz_generated_simd_amd64.go:665	0x764b46		4883f940		CMPQ CX, $0x40					
+  zz_generated_simd_amd64.go:665	0x764b4a		4819d2			SBBQ DX, DX					
+  zz_generated_simd_amd64.go:665	0x764b4d		488b7c2470		MOVQ 0x70(SP), DI				
+  zz_generated_simd_amd64.go:665	0x764b52		4821d7			ANDQ DX, DI					
+  zz_generated_simd_amd64.go:665	0x764b55		4c09cf			ORQ R9, DI					
+  zz_generated_simd_amd64.go:665	0x764b58		4889fa			MOVQ DI, DX					
+  zz_generated_simd_amd64.go:664	0x764b5b		0fb67c2457		MOVZX 0x57(SP), DI				
+  zz_generated_simd_amd64.go:664	0x764b60		4438c7			CMPL DI, R8					
+  zz_generated_simd_amd64.go:664	0x764b63		4c0f4fca		CMOVG DX, R9					
+  zz_generated_simd_amd64.go:663	0x764b67		488d7101		LEAQ 0x1(CX), SI				
+  zz_generated_simd_amd64.go:660	0x764b6b		488b8c24c8000000	MOVQ 0xc8(SP), CX				
+  zz_generated_simd_amd64.go:649	0x764b73		488b542458		MOVQ 0x58(SP), DX				
+  zz_generated_simd_amd64.go:663	0x764b78		4c39fe			CMPQ SI, R15					
+  zz_generated_simd_amd64.go:663	0x764b7b		7d0e			JGE 0x764b8b					
+  zz_generated_simd_amd64.go:664	0x764b7d		4a8d3c16		LEAQ 0(SI)(R10*1), DI				
+  zz_generated_simd_amd64.go:664	0x764b81		4939fd			CMPQ R13, DI					
+  zz_generated_simd_amd64.go:664	0x764b84		779f			JA 0x764b25					
+  zz_generated_simd_amd64.go:664	0x764b86		e99e000000		JMP 0x764c29					
+  zz_generated_simd_amd64.go:668	0x764b8b		4921d9			ANDQ BX, R9					
+  zz_generated_simd_amd64.go:669	0x764b8e		488b9c24e8000000	MOVQ 0xe8(SP), BX				
+  zz_generated_simd_amd64.go:669	0x764b96		4e890ce3		MOVQ R9, 0(BX)(R12*8)				
+  zz_generated_simd_amd64.go:669	0x764b9a		0fb635910b4d00		MOVZX runtime.x86HasPOPCNT(SB), SI		
+  zz_generated_simd_amd64.go:669	0x764ba1		85f6			TESTL SI, SI					
+  zz_generated_simd_amd64.go:670	0x764ba3		7409			JE 0x764bae					
+  zz_generated_simd_amd64.go:670	0x764ba5		31ff			XORL DI, DI					
+  zz_generated_simd_amd64.go:670	0x764ba7		f3490fb8f9		POPCNTQ R9, DI					
+  zz_generated_simd_amd64.go:670	0x764bac		eb57			JMP 0x764c05					
+  zz_generated_simd_amd64.go:649	0x764bae		4c89642478		MOVQ R12, 0x78(SP)				
+  zz_generated_simd_amd64.go:670	0x764bb3		4c89c8			MOVQ R9, AX					
+  zz_generated_simd_amd64.go:670	0x764bb6		e8e5f2d2ff		CALL math/bits.OnesCount64(SB)			
+  zz_generated_simd_amd64.go:660	0x764bbb		488b8c24c8000000	MOVQ 0xc8(SP), CX				
+  zz_generated_simd_amd64.go:649	0x764bc3		488b542458		MOVQ 0x58(SP), DX				
+  zz_generated_simd_amd64.go:669	0x764bc8		488b9c24e8000000	MOVQ 0xe8(SP), BX				
+  zz_generated_simd_amd64.go:669	0x764bd0		0fb6355b0b4d00		MOVZX runtime.x86HasPOPCNT(SB), SI		
+  zz_generated_simd_amd64.go:664	0x764bd7		440fb68424b0000000	MOVZX 0xb0(SP), R8				
+  zz_generated_simd_amd64.go:670	0x764be0		4c8b5c2468		MOVQ 0x68(SP), R11				
+  zz_generated_simd_amd64.go:649	0x764be5		4c8b642478		MOVQ 0x78(SP), R12				
+  zz_generated_simd_amd64.go:651	0x764bea		4c8bac24c0000000	MOVQ 0xc0(SP), R13				
+  zz_generated_simd_amd64.go:660	0x764bf2		0f10842480000000	MOVUPS 0x80(SP), X0				
+  zz_generated_simd_amd64.go:670	0x764bfa		4889c7			MOVQ AX, DI					
+  zz_generated_simd_amd64.go:660	0x764bfd		488b8424b8000000	MOVQ 0xb8(SP), AX				
+  zz_generated_simd_amd64.go:670	0x764c05		4901fb			ADDQ DI, R11					
+  scalar.go:78				0x764c08		488bb424d8000000	MOVQ 0xd8(SP), SI				
+  scalar.go:75				0x764c10		488bbc24d0000000	MOVQ 0xd0(SP), DI				
+  zz_generated_simd_amd64.go:670	0x764c18		e9bafdffff		JMP 0x7649d7					
+  zz_generated_simd_amd64.go:672	0x764c1d		4c89d8			MOVQ R11, AX					
+  zz_generated_simd_amd64.go:672	0x764c20		4881c4a0000000		ADDQ $0xa0, SP					
+  zz_generated_simd_amd64.go:672	0x764c27		5d			POPQ BP						
+  zz_generated_simd_amd64.go:672	0x764c28		c3			RET						
+  zz_generated_simd_amd64.go:664	0x764c29		e8f2c5d2ff		CALL runtime.panicBounds(SB)			
+  slice_gen_amd64.go:12			0x764c2e		e8edc5d2ff		CALL runtime.panicBounds(SB)			
+  zz_generated_simd_amd64.go:660	0x764c33		e8e8c5d2ff		CALL runtime.panicBounds(SB)			
+  scalar.go:78				0x764c38		e8e3c5d2ff		CALL runtime.panicBounds(SB)			
+  scalar.go:16				0x764c3d		0f1f00			NOPL 0(AX)					
+  scalar.go:16				0x764c40		e8dbc5d2ff		CALL runtime.panicBounds(SB)			
+  scalar.go:14				0x764c45		488d05b4a34300		LEAQ 0x43a3b4(IP), AX				
+  scalar.go:14				0x764c4c		488d1ddd310c00		LEAQ 0xc31dd(IP), BX				
+  scalar.go:14				0x764c53		e8084dd2ff		CALL runtime.gopanic(SB)			
+  scalar.go:14				0x764c58		90			NOPL						
+  zz_generated_simd_amd64.go:642	0x764c59		4889442410		MOVQ AX, 0x10(SP)				
+  zz_generated_simd_amd64.go:642	0x764c5e		48895c2418		MOVQ BX, 0x18(SP)				
+  zz_generated_simd_amd64.go:642	0x764c63		48894c2420		MOVQ CX, 0x20(SP)				
+  zz_generated_simd_amd64.go:642	0x764c68		48897c2428		MOVQ DI, 0x28(SP)				
+  zz_generated_simd_amd64.go:642	0x764c6d		4889742430		MOVQ SI, 0x30(SP)				
+  zz_generated_simd_amd64.go:642	0x764c72		4c89442438		MOVQ R8, 0x38(SP)				
+  zz_generated_simd_amd64.go:642	0x764c77		4c894c2440		MOVQ R9, 0x40(SP)				
+  zz_generated_simd_amd64.go:642	0x764c7c		4c89542448		MOVQ R10, 0x48(SP)				
+  zz_generated_simd_amd64.go:642	0x764c81		4c895c2450		MOVQ R11, 0x50(SP)				
+  zz_generated_simd_amd64.go:642	0x764c86		e855a9d2ff		CALL runtime.morestack_noctxt.abi0(SB)		
+  zz_generated_simd_amd64.go:642	0x764c8b		488b442410		MOVQ 0x10(SP), AX				
+  zz_generated_simd_amd64.go:642	0x764c90		488b5c2418		MOVQ 0x18(SP), BX				
+  zz_generated_simd_amd64.go:642	0x764c95		488b4c2420		MOVQ 0x20(SP), CX				
+  zz_generated_simd_amd64.go:642	0x764c9a		488b7c2428		MOVQ 0x28(SP), DI				
+  zz_generated_simd_amd64.go:642	0x764c9f		488b742430		MOVQ 0x30(SP), SI				
+  zz_generated_simd_amd64.go:642	0x764ca4		4c8b442438		MOVQ 0x38(SP), R8				
+  zz_generated_simd_amd64.go:642	0x764ca9		4c8b4c2440		MOVQ 0x40(SP), R9				
+  zz_generated_simd_amd64.go:642	0x764cae		4c8b542448		MOVQ 0x48(SP), R10				
+  zz_generated_simd_amd64.go:642	0x764cb3		4c8b5c2450		MOVQ 0x50(SP), R11				
+  zz_generated_simd_amd64.go:642	0x764cb8		e903fcffff		JMP gocolumn/kernel.simdAMD128Int8GT(SB)	
+
+TEXT gocolumn/kernel.simdAMD128Uint64GE(SB) /workspace/scratch/ac8e1e118737/GoLume-next/kernel/zz_generated_simd_amd64.go
+  zz_generated_simd_amd64.go:1335	0x769e40		4c8d6424d8		LEAQ -0x28(SP), R12				
+  zz_generated_simd_amd64.go:1335	0x769e45		4d3b6610		CMPQ R12, 0x10(R14)				
+  zz_generated_simd_amd64.go:1335	0x769e49		0f86aa030000		JBE 0x76a1f9					
+  zz_generated_simd_amd64.go:1335	0x769e4f		55			PUSHQ BP					
+  zz_generated_simd_amd64.go:1335	0x769e50		4889e5			MOVQ SP, BP					
+  zz_generated_simd_amd64.go:1335	0x769e53		4881eca0000000		SUBQ $0xa0, SP					
+  zz_generated_simd_amd64.go:1335	0x769e5a		48898424b8000000	MOVQ AX, 0xb8(SP)				
+  zz_generated_simd_amd64.go:1335	0x769e62		4889bc24d0000000	MOVQ DI, 0xd0(SP)				
+  zz_generated_simd_amd64.go:1335	0x769e6a		4c898c24e8000000	MOVQ R9, 0xe8(SP)				
+  zz_generated_simd_amd64.go:1336	0x769e72		4883fb02		CMPQ BX, $0x2					
+  zz_generated_simd_amd64.go:1336	0x769e76		0f8cc1000000		JL 0x769f3d					
+  bitmap.go:13				0x769e7c		488d533f		LEAQ 0x3f(BX), DX				
+  bitmap.go:13				0x769e80		48c1ea06		SHRQ $0x6, DX					
+  zz_generated_simd_amd64.go:1339	0x769e84		90			NOPL						
+  scalar.go:12				0x769e85		90			NOPL						
+  scalar.go:13				0x769e86		4939d2			CMPQ R10, DX					
+  scalar.go:13				0x769e89		0f8c56030000		JL 0x76a1e5					
+  scalar.go:16				0x769e8f		4939d3			CMPQ R11, DX					
+  scalar.go:16				0x769e92		0f8244030000		JB 0x76a1dc					
+  zz_generated_simd_amd64.go:1336	0x769e98		48898c24c8000000	MOVQ CX, 0xc8(SP)				
+  bitmap.go:13				0x769ea0		4889542450		MOVQ DX, 0x50(SP)				
+  zz_generated_simd_amd64.go:1336	0x769ea5		48899c24c0000000	MOVQ BX, 0xc0(SP)				
+  zz_generated_simd_amd64.go:1336	0x769ead		48898424b8000000	MOVQ AX, 0xb8(SP)				
+  zz_generated_simd_amd64.go:1336	0x769eb5		4889b424d8000000	MOVQ SI, 0xd8(SP)				
+  zz_generated_simd_amd64.go:1336	0x769ebd		4c898c24e8000000	MOVQ R9, 0xe8(SP)				
+  zz_generated_simd_amd64.go:1336	0x769ec5		4889bc24d0000000	MOVQ DI, 0xd0(SP)				
+  scalar.go:16				0x769ecd		4885d2			TESTQ DX, DX					
+  scalar.go:16				0x769ed0		7448			JE 0x769f1a					
+  scalar.go:16				0x769ed2		4889d3			MOVQ DX, BX					
+  scalar.go:16				0x769ed5		48c1e303		SHLQ $0x3, BX					
+  scalar.go:16				0x769ed9		4c89c8			MOVQ R9, AX					
+  scalar.go:16				0x769edc		0f1f4000		NOPL 0(AX)					
+  scalar.go:16				0x769ee0		e8db73d2ff		CALL runtime.memclrNoHeapPointers(SB)		
+  zz_generated_simd_amd64.go:1353	0x769ee5		488b8424b8000000	MOVQ 0xb8(SP), AX				
+  zz_generated_simd_amd64.go:1353	0x769eed		488b8c24c8000000	MOVQ 0xc8(SP), CX				
+  zz_generated_simd_amd64.go:1342	0x769ef5		488b542450		MOVQ 0x50(SP), DX				
+  zz_generated_simd_amd64.go:1344	0x769efa		488b9c24c0000000	MOVQ 0xc0(SP), BX				
+  scalar.go:78				0x769f02		488bb424d8000000	MOVQ 0xd8(SP), SI				
+  scalar.go:75				0x769f0a		488bbc24d0000000	MOVQ 0xd0(SP), DI				
+  zz_generated_simd_amd64.go:1362	0x769f12		4c8b8c24e8000000	MOVQ 0xe8(SP), R9				
+  other_gen_amd64.go:76			0x769f1a		4c8b8424b0000000	MOVQ 0xb0(SP), R8				
+  other_gen_amd64.go:76			0x769f22		c4c1f96ec0		VMOVQ R8, X0					
+  zz_generated_simd_amd64.go:1340	0x769f27		90			NOPL						
+  other_gen_amd64.go:76			0x769f28		c4e27959c0		VPBROADCASTQ X0, X0				
+  other_gen_amd64.go:76			0x769f2d		0f11842480000000	MOVUPS X0, 0x80(SP)				
+  zz_generated_simd_amd64.go:1342	0x769f35		4531d2			XORL R10, R10					
+  zz_generated_simd_amd64.go:1342	0x769f38		4531db			XORL R11, R11					
+  zz_generated_simd_amd64.go:1342	0x769f3b		eb2a			JMP 0x769f67					
+  zz_generated_simd_amd64.go:1337	0x769f3d		488b9424b0000000	MOVQ 0xb0(SP), DX				
+  zz_generated_simd_amd64.go:1337	0x769f45		48891424		MOVQ DX, 0(SP)					
+  zz_generated_simd_amd64.go:1337	0x769f49		e81249fbff		CALL gocolumn/kernel.scalarUint64GE(SB)		
+  zz_generated_simd_amd64.go:1337	0x769f4e		4881c4a0000000		ADDQ $0xa0, SP					
+  zz_generated_simd_amd64.go:1337	0x769f55		5d			POPQ BP						
+  zz_generated_simd_amd64.go:1337	0x769f56		c3			RET						
+  zz_generated_simd_amd64.go:1342	0x769f57		4d8d542401		LEAQ 0x1(R12), R10				
+  zz_generated_simd_amd64.go:1344	0x769f5c		4c89eb			MOVQ R13, BX					
+  zz_generated_simd_amd64.go:1362	0x769f5f		4c8b8c24e8000000	MOVQ 0xe8(SP), R9				
+  zz_generated_simd_amd64.go:1342	0x769f67		4939d2			CMPQ R10, DX					
+  zz_generated_simd_amd64.go:1342	0x769f6a		0f8d4c020000		JGE 0x76a1bc					
+  zz_generated_simd_amd64.go:1343	0x769f70		4d89d4			MOVQ R10, R12					
+  zz_generated_simd_amd64.go:1343	0x769f73		49c1e206		SHLQ $0x6, R10					
+  zz_generated_simd_amd64.go:1344	0x769f77		4989dd			MOVQ BX, R13					
+  zz_generated_simd_amd64.go:1344	0x769f7a		4c29d3			SUBQ R10, BX					
+  zz_generated_simd_amd64.go:1344	0x769f7d		4883fb40		CMPQ BX, $0x40					
+  zz_generated_simd_amd64.go:1345	0x769f81		41bf40000000		MOVL $0x40, R15					
+  zz_generated_simd_amd64.go:1345	0x769f87		4c0f4cfb		CMOVL BX, R15					
+  scalar.go:75				0x769f8b		4885ff			TESTQ DI, DI					
+  zz_generated_simd_amd64.go:1344	0x769f8e		740f			JE 0x769f9f					
+  scalar.go:78				0x769f90		4c39e6			CMPQ SI, R12					
+  scalar.go:78				0x769f93		0f863e020000		JBE 0x76a1d7					
+  scalar.go:78				0x769f99		4a8b1ce7		MOVQ 0(DI)(R12*8), BX				
+  zz_generated_simd_amd64.go:1345	0x769f9d		eb07			JMP 0x769fa6					
+  zz_generated_simd_amd64.go:1345	0x769f9f		48c7c3ffffffff		MOVQ $-0x1, BX					
+  bitmap.go:60				0x769fa6		4d85ff			TESTQ R15, R15					
+  bitmap.go:60				0x769fa9		7f19			JG 0x769fc4					
+  zz_generated_simd_amd64.go:1336	0x769fab		4889842498000000	MOVQ AX, 0x98(SP)				
+  zz_generated_simd_amd64.go:1345	0x769fb3		31c0			XORL AX, AX					
+  zz_generated_simd_amd64.go:1345	0x769fb5		4889442458		MOVQ AX, 0x58(SP)				
+  zz_generated_simd_amd64.go:1353	0x769fba		488b842498000000	MOVQ 0x98(SP), AX				
+  zz_generated_simd_amd64.go:1345	0x769fc2		eb43			JMP 0x76a007					
+  bitmap.go:64				0x769fc4		49f7c73f000000		TESTQ $0x3f, R15				
+  bitmap.go:64				0x769fcb		751e			JNE 0x769feb					
+  zz_generated_simd_amd64.go:1336	0x769fcd		4889842490000000	MOVQ AX, 0x90(SP)				
+  zz_generated_simd_amd64.go:1345	0x769fd5		48c7c0ffffffff		MOVQ $-0x1, AX					
+  zz_generated_simd_amd64.go:1345	0x769fdc		4889442458		MOVQ AX, 0x58(SP)				
+  zz_generated_simd_amd64.go:1353	0x769fe1		488b842490000000	MOVQ 0x90(SP), AX				
+  zz_generated_simd_amd64.go:1345	0x769fe9		eb1c			JMP 0x76a007					
+  bitmap.go:67				0x769feb		4c89f9			MOVQ R15, CX					
+  bitmap.go:67				0x769fee		41b901000000		MOVL $0x1, R9					
+  bitmap.go:67				0x769ff4		49d3e1			SHLQ CL, R9					
+  bitmap.go:67				0x769ff7		49ffc9			DECQ R9						
+  zz_generated_simd_amd64.go:1353	0x769ffa		488b8c24c8000000	MOVQ 0xc8(SP), CX				
+  zz_generated_simd_amd64.go:1345	0x76a002		4c894c2458		MOVQ R9, 0x58(SP)				
+  zz_generated_simd_amd64.go:1345	0x76a007		4c8b4c2458		MOVQ 0x58(SP), R9				
+  zz_generated_simd_amd64.go:1345	0x76a00c		4c21cb			ANDQ R9, BX					
+  zz_generated_simd_amd64.go:1347	0x76a00f		4885db			TESTQ BX, BX					
+  zz_generated_simd_amd64.go:1347	0x76a012		0f843fffffff		JE 0x769f57					
+  zz_generated_simd_amd64.go:1342	0x76a018		4c895c2460		MOVQ R11, 0x60(SP)				
+  zz_generated_simd_amd64.go:1347	0x76a01d		4531c9			XORL R9, R9					
+  zz_generated_simd_amd64.go:1347	0x76a020		31f6			XORL SI, SI					
+  zz_generated_simd_amd64.go:1347	0x76a022		eb54			JMP 0x76a078					
+  slice_gen_amd64.go:96			0x76a024		c5fa6f0a		VMOVDQU 0(DX), X1				
+  compare_gen_amd64.go:425		0x76a028		c4e27129d1		VPCMPEQQ X1, X1, X2				
+  compare_gen_amd64.go:426		0x76a02d		c5e173f23f		VPSLLQ $0x3f, X2, X3				
+  compare_gen_amd64.go:427		0x76a032		c5e1efe0		VPXOR X0, X3, X4				
+  compare_gen_amd64.go:427		0x76a036		c5e1efc9		VPXOR X1, X3, X1				
+  compare_gen_amd64.go:427		0x76a03a		c4e25937c9		VPCMPGTQ X1, X4, X1				
+  compare_gen_amd64.go:427		0x76a03f		c5f1efca		VPXOR X2, X1, X1				
+  zz_generated_simd_amd64.go:1354	0x76a043		c5f950d1		VMOVMSKPD X1, DX				
+  zz_generated_simd_amd64.go:1354	0x76a047		0fb6d2			MOVZX DL, DX					
+  zz_generated_simd_amd64.go:1336	0x76a04a		4989cb			MOVQ CX, R11					
+  zz_generated_simd_amd64.go:1354	0x76a04d		4889f1			MOVQ SI, CX					
+  zz_generated_simd_amd64.go:1354	0x76a050		48d3e2			SHLQ CL, DX					
+  zz_generated_simd_amd64.go:1354	0x76a053		4883f940		CMPQ CX, $0x40					
+  zz_generated_simd_amd64.go:1354	0x76a057		4819c9			SBBQ CX, CX					
+  zz_generated_simd_amd64.go:1354	0x76a05a		4821ca			ANDQ CX, DX					
+  zz_generated_simd_amd64.go:1354	0x76a05d		4909d1			ORQ DX, R9					
+  zz_generated_simd_amd64.go:1353	0x76a060		4c89d9			MOVQ R11, CX					
+  zz_generated_simd_amd64.go:1342	0x76a063		488b542450		MOVQ 0x50(SP), DX				
+  zz_generated_simd_amd64.go:1363	0x76a068		4c8b5c2460		MOVQ 0x60(SP), R11				
+  zz_generated_simd_amd64.go:1353	0x76a06d		4c8bac24c0000000	MOVQ 0xc0(SP), R13				
+  zz_generated_simd_amd64.go:1352	0x76a075		4889fe			MOVQ DI, SI					
+  zz_generated_simd_amd64.go:1352	0x76a078		488d7e02		LEAQ 0x2(SI), DI				
+  zz_generated_simd_amd64.go:1352	0x76a07c		0f1f4000		NOPL 0(AX)					
+  zz_generated_simd_amd64.go:1352	0x76a080		4939ff			CMPQ R15, DI					
+  zz_generated_simd_amd64.go:1352	0x76a083		0f8c8f000000		JL 0x76a118					
+  zz_generated_simd_amd64.go:1353	0x76a089		4a8d1416		LEAQ 0(SI)(R10*1), DX				
+  zz_generated_simd_amd64.go:1353	0x76a08d		4939d5			CMPQ R13, DX					
+  zz_generated_simd_amd64.go:1353	0x76a090		0f823c010000		JB 0x76a1d2					
+  zz_generated_simd_amd64.go:1353	0x76a096		4889542478		MOVQ DX, 0x78(SP)				
+  zz_generated_simd_amd64.go:1353	0x76a09b		4929d5			SUBQ DX, R13					
+  zz_generated_simd_amd64.go:1353	0x76a09e		4829ca			SUBQ CX, DX					
+  zz_generated_simd_amd64.go:1353	0x76a0a1		4c8b5c2478		MOVQ 0x78(SP), R11				
+  zz_generated_simd_amd64.go:1353	0x76a0a6		49c1e303		SHLQ $0x3, R11					
+  zz_generated_simd_amd64.go:1353	0x76a0aa		48c1fa3f		SARQ $0x3f, DX					
+  zz_generated_simd_amd64.go:1353	0x76a0ae		4c21da			ANDQ R11, DX					
+  zz_generated_simd_amd64.go:1353	0x76a0b1		4801c2			ADDQ AX, DX					
+  slice_gen_amd64.go:96			0x76a0b4		4983fd02		CMPQ R13, $0x2					
+  slice_gen_amd64.go:96			0x76a0b8		0f8366ffffff		JAE 0x76a024					
+  slice_gen_amd64.go:96			0x76a0be		6690			NOPW						
+  slice_gen_amd64.go:96			0x76a0c0		e908010000		JMP 0x76a1cd					
+  zz_generated_simd_amd64.go:1357	0x76a0c5		488b3cf8		MOVQ 0(AX)(DI*8), DI				
+  zz_generated_simd_amd64.go:1357	0x76a0c9		48897c2470		MOVQ DI, 0x70(SP)				
+  zz_generated_simd_amd64.go:1358	0x76a0ce		4889f1			MOVQ SI, CX					
+  zz_generated_simd_amd64.go:1358	0x76a0d1		bf01000000		MOVL $0x1, DI					
+  zz_generated_simd_amd64.go:1358	0x76a0d6		48d3e7			SHLQ CL, DI					
+  zz_generated_simd_amd64.go:1358	0x76a0d9		48897c2468		MOVQ DI, 0x68(SP)				
+  zz_generated_simd_amd64.go:1357	0x76a0de		488b7c2470		MOVQ 0x70(SP), DI				
+  zz_generated_simd_amd64.go:1357	0x76a0e3		4c39c7			CMPQ DI, R8					
+  zz_generated_simd_amd64.go:1358	0x76a0e6		4883f940		CMPQ CX, $0x40					
+  zz_generated_simd_amd64.go:1358	0x76a0ea		4819d2			SBBQ DX, DX					
+  zz_generated_simd_amd64.go:1358	0x76a0ed		488b7c2468		MOVQ 0x68(SP), DI				
+  zz_generated_simd_amd64.go:1358	0x76a0f2		4821d7			ANDQ DX, DI					
+  zz_generated_simd_amd64.go:1358	0x76a0f5		4c09cf			ORQ R9, DI					
+  zz_generated_simd_amd64.go:1358	0x76a0f8		4889fa			MOVQ DI, DX					
+  zz_generated_simd_amd64.go:1357	0x76a0fb		488b7c2470		MOVQ 0x70(SP), DI				
+  zz_generated_simd_amd64.go:1357	0x76a100		4c39c7			CMPQ DI, R8					
+  zz_generated_simd_amd64.go:1357	0x76a103		4c0f43ca		CMOVAE DX, R9					
+  zz_generated_simd_amd64.go:1356	0x76a107		488d7101		LEAQ 0x1(CX), SI				
+  zz_generated_simd_amd64.go:1353	0x76a10b		488b8c24c8000000	MOVQ 0xc8(SP), CX				
+  zz_generated_simd_amd64.go:1342	0x76a113		488b542450		MOVQ 0x50(SP), DX				
+  zz_generated_simd_amd64.go:1356	0x76a118		4c39fe			CMPQ SI, R15					
+  zz_generated_simd_amd64.go:1356	0x76a11b		7d0e			JGE 0x76a12b					
+  zz_generated_simd_amd64.go:1357	0x76a11d		4a8d3c16		LEAQ 0(SI)(R10*1), DI				
+  zz_generated_simd_amd64.go:1357	0x76a121		4939fd			CMPQ R13, DI					
+  zz_generated_simd_amd64.go:1357	0x76a124		779f			JA 0x76a0c5					
+  zz_generated_simd_amd64.go:1357	0x76a126		e99d000000		JMP 0x76a1c8					
+  zz_generated_simd_amd64.go:1361	0x76a12b		4921d9			ANDQ BX, R9					
+  zz_generated_simd_amd64.go:1362	0x76a12e		488b9c24e8000000	MOVQ 0xe8(SP), BX				
+  zz_generated_simd_amd64.go:1362	0x76a136		4e890ce3		MOVQ R9, 0(BX)(R12*8)				
+  zz_generated_simd_amd64.go:1362	0x76a13a		0fb635f1b54c00		MOVZX runtime.x86HasPOPCNT(SB), SI		
+  zz_generated_simd_amd64.go:1362	0x76a141		85f6			TESTL SI, SI					
+  zz_generated_simd_amd64.go:1363	0x76a143		7409			JE 0x76a14e					
+  zz_generated_simd_amd64.go:1363	0x76a145		31ff			XORL DI, DI					
+  zz_generated_simd_amd64.go:1363	0x76a147		f3490fb8f9		POPCNTQ R9, DI					
+  zz_generated_simd_amd64.go:1363	0x76a14c		eb56			JMP 0x76a1a4					
+  zz_generated_simd_amd64.go:1342	0x76a14e		4c89642478		MOVQ R12, 0x78(SP)				
+  zz_generated_simd_amd64.go:1363	0x76a153		4c89c8			MOVQ R9, AX					
+  zz_generated_simd_amd64.go:1363	0x76a156		e8459dd2ff		CALL math/bits.OnesCount64(SB)			
+  zz_generated_simd_amd64.go:1353	0x76a15b		488b8c24c8000000	MOVQ 0xc8(SP), CX				
+  zz_generated_simd_amd64.go:1342	0x76a163		488b542450		MOVQ 0x50(SP), DX				
+  zz_generated_simd_amd64.go:1362	0x76a168		488b9c24e8000000	MOVQ 0xe8(SP), BX				
+  zz_generated_simd_amd64.go:1362	0x76a170		0fb635bbb54c00		MOVZX runtime.x86HasPOPCNT(SB), SI		
+  zz_generated_simd_amd64.go:1357	0x76a177		4c8b8424b0000000	MOVQ 0xb0(SP), R8				
+  zz_generated_simd_amd64.go:1363	0x76a17f		4c8b5c2460		MOVQ 0x60(SP), R11				
+  zz_generated_simd_amd64.go:1342	0x76a184		4c8b642478		MOVQ 0x78(SP), R12				
+  zz_generated_simd_amd64.go:1344	0x76a189		4c8bac24c0000000	MOVQ 0xc0(SP), R13				
+  compare_gen_amd64.go:427		0x76a191		0f10842480000000	MOVUPS 0x80(SP), X0				
+  zz_generated_simd_amd64.go:1363	0x76a199		4889c7			MOVQ AX, DI					
+  zz_generated_simd_amd64.go:1353	0x76a19c		488b8424b8000000	MOVQ 0xb8(SP), AX				
+  zz_generated_simd_amd64.go:1363	0x76a1a4		4901fb			ADDQ DI, R11					
+  scalar.go:78				0x76a1a7		488bb424d8000000	MOVQ 0xd8(SP), SI				
+  scalar.go:75				0x76a1af		488bbc24d0000000	MOVQ 0xd0(SP), DI				
+  zz_generated_simd_amd64.go:1363	0x76a1b7		e99bfdffff		JMP 0x769f57					
+  zz_generated_simd_amd64.go:1365	0x76a1bc		4c89d8			MOVQ R11, AX					
+  zz_generated_simd_amd64.go:1365	0x76a1bf		4881c4a0000000		ADDQ $0xa0, SP					
+  zz_generated_simd_amd64.go:1365	0x76a1c6		5d			POPQ BP						
+  zz_generated_simd_amd64.go:1365	0x76a1c7		c3			RET						
+  zz_generated_simd_amd64.go:1357	0x76a1c8		e85370d2ff		CALL runtime.panicBounds(SB)			
+  slice_gen_amd64.go:96			0x76a1cd		e84e70d2ff		CALL runtime.panicBounds(SB)			
+  zz_generated_simd_amd64.go:1353	0x76a1d2		e84970d2ff		CALL runtime.panicBounds(SB)			
+  scalar.go:78				0x76a1d7		e84470d2ff		CALL runtime.panicBounds(SB)			
+  scalar.go:16				0x76a1dc		0f1f4000		NOPL 0(AX)					
+  scalar.go:16				0x76a1e0		e83b70d2ff		CALL runtime.panicBounds(SB)			
+  scalar.go:14				0x76a1e5		488d05144e4300		LEAQ 0x434e14(IP), AX				
+  scalar.go:14				0x76a1ec		488d1d3ddc0b00		LEAQ 0xbdc3d(IP), BX				
+  scalar.go:14				0x76a1f3		e868f7d1ff		CALL runtime.gopanic(SB)			
+  scalar.go:14				0x76a1f8		90			NOPL						
+  zz_generated_simd_amd64.go:1335	0x76a1f9		4889442410		MOVQ AX, 0x10(SP)				
+  zz_generated_simd_amd64.go:1335	0x76a1fe		48895c2418		MOVQ BX, 0x18(SP)				
+  zz_generated_simd_amd64.go:1335	0x76a203		48894c2420		MOVQ CX, 0x20(SP)				
+  zz_generated_simd_amd64.go:1335	0x76a208		48897c2428		MOVQ DI, 0x28(SP)				
+  zz_generated_simd_amd64.go:1335	0x76a20d		4889742430		MOVQ SI, 0x30(SP)				
+  zz_generated_simd_amd64.go:1335	0x76a212		4c89442438		MOVQ R8, 0x38(SP)				
+  zz_generated_simd_amd64.go:1335	0x76a217		4c894c2440		MOVQ R9, 0x40(SP)				
+  zz_generated_simd_amd64.go:1335	0x76a21c		4c89542448		MOVQ R10, 0x48(SP)				
+  zz_generated_simd_amd64.go:1335	0x76a221		4c895c2450		MOVQ R11, 0x50(SP)				
+  zz_generated_simd_amd64.go:1335	0x76a226		e8b553d2ff		CALL runtime.morestack_noctxt.abi0(SB)		
+  zz_generated_simd_amd64.go:1335	0x76a22b		488b442410		MOVQ 0x10(SP), AX				
+  zz_generated_simd_amd64.go:1335	0x76a230		488b5c2418		MOVQ 0x18(SP), BX				
+  zz_generated_simd_amd64.go:1335	0x76a235		488b4c2420		MOVQ 0x20(SP), CX				
+  zz_generated_simd_amd64.go:1335	0x76a23a		488b7c2428		MOVQ 0x28(SP), DI				
+  zz_generated_simd_amd64.go:1335	0x76a23f		488b742430		MOVQ 0x30(SP), SI				
+  zz_generated_simd_amd64.go:1335	0x76a244		4c8b442438		MOVQ 0x38(SP), R8				
+  zz_generated_simd_amd64.go:1335	0x76a249		4c8b4c2440		MOVQ 0x40(SP), R9				
+  zz_generated_simd_amd64.go:1335	0x76a24e		4c8b542448		MOVQ 0x48(SP), R10				
+  zz_generated_simd_amd64.go:1335	0x76a253		4c8b5c2450		MOVQ 0x50(SP), R11				
+  zz_generated_simd_amd64.go:1335	0x76a258		e9e3fbffff		JMP gocolumn/kernel.simdAMD128Uint64GE(SB)	
+
+TEXT gocolumn/kernel.simdAMD256Float32GT(SB) /workspace/scratch/ac8e1e118737/GoLume-next/kernel/zz_generated_simd_amd64.go
+  zz_generated_simd_amd64.go:2332	0x773660		4c8d6424e8		LEAQ -0x18(SP), R12				
+  zz_generated_simd_amd64.go:2332	0x773665		4d3b6610		CMPQ R12, 0x10(R14)				
+  zz_generated_simd_amd64.go:2332	0x773669		0f8637030000		JBE 0x7739a6					
+  zz_generated_simd_amd64.go:2332	0x77366f		55			PUSHQ BP					
+  zz_generated_simd_amd64.go:2332	0x773670		4889e5			MOVQ SP, BP					
+  zz_generated_simd_amd64.go:2332	0x773673		4881ec90000000		SUBQ $0x90, SP					
+  zz_generated_simd_amd64.go:2332	0x77367a		48898424a0000000	MOVQ AX, 0xa0(SP)				
+  zz_generated_simd_amd64.go:2332	0x773682		4889bc24b8000000	MOVQ DI, 0xb8(SP)				
+  zz_generated_simd_amd64.go:2332	0x77368a		4c898c24d0000000	MOVQ R9, 0xd0(SP)				
+  zz_generated_simd_amd64.go:2333	0x773692		4883fb08		CMPQ BX, $0x8					
+  zz_generated_simd_amd64.go:2333	0x773696		0f8cc6000000		JL 0x773762					
+  bitmap.go:13				0x77369c		488d533f		LEAQ 0x3f(BX), DX				
+  bitmap.go:13				0x7736a0		48c1ea06		SHRQ $0x6, DX					
+  zz_generated_simd_amd64.go:2336	0x7736a4		90			NOPL						
+  scalar.go:12				0x7736a5		90			NOPL						
+  scalar.go:13				0x7736a6		4939d2			CMPQ R10, DX					
+  scalar.go:13				0x7736a9		0f8ce0020000		JL 0x77398f					
+  scalar.go:16				0x7736af		4939d3			CMPQ R11, DX					
+  scalar.go:16				0x7736b2		0f82d2020000		JB 0x77398a					
+  zz_generated_simd_amd64.go:2333	0x7736b8		f30f118424e8000000	MOVSS X0, 0xe8(SP)				
+  zz_generated_simd_amd64.go:2333	0x7736c1		48898c24b0000000	MOVQ CX, 0xb0(SP)				
+  bitmap.go:13				0x7736c9		4889542458		MOVQ DX, 0x58(SP)				
+  zz_generated_simd_amd64.go:2333	0x7736ce		48899c24a8000000	MOVQ BX, 0xa8(SP)				
+  zz_generated_simd_amd64.go:2333	0x7736d6		48898424a0000000	MOVQ AX, 0xa0(SP)				
+  zz_generated_simd_amd64.go:2333	0x7736de		4889b424c0000000	MOVQ SI, 0xc0(SP)				
+  zz_generated_simd_amd64.go:2333	0x7736e6		4c898c24d0000000	MOVQ R9, 0xd0(SP)				
+  zz_generated_simd_amd64.go:2333	0x7736ee		4889bc24b8000000	MOVQ DI, 0xb8(SP)				
+  scalar.go:16				0x7736f6		4885d2			TESTQ DX, DX					
+  scalar.go:16				0x7736f9		744d			JE 0x773748					
+  scalar.go:16				0x7736fb		4889d3			MOVQ DX, BX					
+  scalar.go:16				0x7736fe		48c1e303		SHLQ $0x3, BX					
+  scalar.go:16				0x773702		4c89c8			MOVQ R9, AX					
+  scalar.go:16				0x773705		e8b6dbd1ff		CALL runtime.memclrNoHeapPointers(SB)		
+  zz_generated_simd_amd64.go:2350	0x77370a		488b8424a0000000	MOVQ 0xa0(SP), AX				
+  zz_generated_simd_amd64.go:2350	0x773712		488b8c24b0000000	MOVQ 0xb0(SP), CX				
+  zz_generated_simd_amd64.go:2339	0x77371a		488b542458		MOVQ 0x58(SP), DX				
+  zz_generated_simd_amd64.go:2341	0x77371f		488b9c24a8000000	MOVQ 0xa8(SP), BX				
+  scalar.go:78				0x773727		488bb424c0000000	MOVQ 0xc0(SP), SI				
+  scalar.go:75				0x77372f		488bbc24b8000000	MOVQ 0xb8(SP), DI				
+  zz_generated_simd_amd64.go:2359	0x773737		4c8b8c24d0000000	MOVQ 0xd0(SP), R9				
+  other_gen_amd64.go:175		0x77373f		f30f108424e8000000	MOVSS 0xe8(SP), X0				
+  other_gen_amd64.go:175		0x773748		c58211c1		VMOVSS X0, X15, X1				
+  zz_generated_simd_amd64.go:2337	0x77374c		90			NOPL						
+  other_gen_amd64.go:175		0x77374d		c4e27d18c9		VBROADCASTSS X1, Y1				
+  other_gen_amd64.go:175		0x773752		c5fe7f4c2470		VMOVDQU Y1, 0x70(SP)				
+  zz_generated_simd_amd64.go:2339	0x773758		4531c0			XORL R8, R8					
+  zz_generated_simd_amd64.go:2339	0x77375b		4531d2			XORL R10, R10					
+  zz_generated_simd_amd64.go:2339	0x77375e		6690			NOPW						
+  zz_generated_simd_amd64.go:2339	0x773760		eb1e			JMP 0x773780					
+  float32_scalar.go:92			0x773762		c6042401		MOVB $0x1, 0(SP)				
+  float32_scalar.go:92			0x773766		e85592f9ff		CALL gocolumn/kernel.scalarFloat32Compare(SB)	
+  zz_generated_simd_amd64.go:2334	0x77376b		4881c490000000		ADDQ $0x90, SP					
+  zz_generated_simd_amd64.go:2334	0x773772		5d			POPQ BP						
+  zz_generated_simd_amd64.go:2334	0x773773		c3			RET						
+  zz_generated_simd_amd64.go:2339	0x773774		4d8d4301		LEAQ 0x1(R11), R8				
+  zz_generated_simd_amd64.go:2341	0x773778		4c89e3			MOVQ R12, BX					
+  zz_generated_simd_amd64.go:2341	0x77377b		0f1f440000		NOPL 0(AX)(AX*1)				
+  zz_generated_simd_amd64.go:2339	0x773780		4939d0			CMPQ R8, DX					
+  zz_generated_simd_amd64.go:2339	0x773783		0f8ddc010000		JGE 0x773965					
+  zz_generated_simd_amd64.go:2340	0x773789		4d89c3			MOVQ R8, R11					
+  zz_generated_simd_amd64.go:2340	0x77378c		49c1e006		SHLQ $0x6, R8					
+  zz_generated_simd_amd64.go:2341	0x773790		4989dc			MOVQ BX, R12					
+  zz_generated_simd_amd64.go:2341	0x773793		4c29c3			SUBQ R8, BX					
+  zz_generated_simd_amd64.go:2341	0x773796		4883fb40		CMPQ BX, $0x40					
+  zz_generated_simd_amd64.go:2342	0x77379a		41bd40000000		MOVL $0x40, R13					
+  zz_generated_simd_amd64.go:2342	0x7737a0		4c0f4ceb		CMOVL BX, R13					
+  scalar.go:75				0x7737a4		4885ff			TESTQ DI, DI					
+  zz_generated_simd_amd64.go:2341	0x7737a7		740f			JE 0x7737b8					
+  scalar.go:78				0x7737a9		4c39de			CMPQ SI, R11					
+  scalar.go:78				0x7737ac		0f86d3010000		JBE 0x773985					
+  scalar.go:78				0x7737b2		4a8b1cdf		MOVQ 0(DI)(R11*8), BX				
+  zz_generated_simd_amd64.go:2342	0x7737b6		eb07			JMP 0x7737bf					
+  zz_generated_simd_amd64.go:2342	0x7737b8		48c7c3ffffffff		MOVQ $-0x1, BX					
+  zz_generated_simd_amd64.go:2342	0x7737bf		90			NOPL						
+  bitmap.go:60				0x7737c0		4d85ed			TESTQ R13, R13					
+  bitmap.go:60				0x7737c3		7f05			JG 0x7737ca					
+  bitmap.go:60				0x7737c5		4531ff			XORL R15, R15					
+  zz_generated_simd_amd64.go:2342	0x7737c8		eb32			JMP 0x7737fc					
+  bitmap.go:64				0x7737ca		49f7c53f000000		TESTQ $0x3f, R13				
+  bitmap.go:64				0x7737d1		7509			JNE 0x7737dc					
+  bitmap.go:64				0x7737d3		49c7c7ffffffff		MOVQ $-0x1, R15					
+  zz_generated_simd_amd64.go:2342	0x7737da		eb20			JMP 0x7737fc					
+  zz_generated_simd_amd64.go:2333	0x7737dc		4989cf			MOVQ CX, R15					
+  bitmap.go:67				0x7737df		4c89e9			MOVQ R13, CX					
+  bitmap.go:67				0x7737e2		41b901000000		MOVL $0x1, R9					
+  bitmap.go:67				0x7737e8		49d3e1			SHLQ CL, R9					
+  bitmap.go:67				0x7737eb		49ffc9			DECQ R9						
+  zz_generated_simd_amd64.go:2350	0x7737ee		4c89f9			MOVQ R15, CX					
+  zz_generated_simd_amd64.go:2342	0x7737f1		4d89cf			MOVQ R9, R15					
+  zz_generated_simd_amd64.go:2359	0x7737f4		4c8b8c24d0000000	MOVQ 0xd0(SP), R9				
+  zz_generated_simd_amd64.go:2342	0x7737fc		4c21fb			ANDQ R15, BX					
+  zz_generated_simd_amd64.go:2342	0x7737ff		90			NOPL						
+  zz_generated_simd_amd64.go:2344	0x773800		4885db			TESTQ BX, BX					
+  zz_generated_simd_amd64.go:2344	0x773803		0f846bffffff		JE 0x773774					
+  zz_generated_simd_amd64.go:2339	0x773809		4c89542460		MOVQ R10, 0x60(SP)				
+  zz_generated_simd_amd64.go:2344	0x77380e		4531ff			XORL R15, R15					
+  zz_generated_simd_amd64.go:2344	0x773811		31f6			XORL SI, SI					
+  zz_generated_simd_amd64.go:2344	0x773813		eb3e			JMP 0x773853					
+  slice_gen_amd64.go:228		0x773815		c5fe6f12		VMOVDQU 0(DX), Y2				
+  zz_generated_simd_amd64.go:2350	0x773819		c5ecc2d10e		VCMPPS $0xe, Y1, Y2, Y2				
+  zz_generated_simd_amd64.go:2351	0x77381e		c5fc50d2		VMOVMSKPS Y2, DX				
+  zz_generated_simd_amd64.go:2351	0x773822		0fb6d2			MOVZX DL, DX					
+  zz_generated_simd_amd64.go:2333	0x773825		4989ca			MOVQ CX, R10					
+  zz_generated_simd_amd64.go:2351	0x773828		4c89f9			MOVQ R15, CX					
+  zz_generated_simd_amd64.go:2351	0x77382b		48d3e2			SHLQ CL, DX					
+  zz_generated_simd_amd64.go:2351	0x77382e		4883f940		CMPQ CX, $0x40					
+  zz_generated_simd_amd64.go:2351	0x773832		4819c9			SBBQ CX, CX					
+  zz_generated_simd_amd64.go:2351	0x773835		4821ca			ANDQ CX, DX					
+  zz_generated_simd_amd64.go:2351	0x773838		4809d6			ORQ DX, SI					
+  zz_generated_simd_amd64.go:2350	0x77383b		4c89d1			MOVQ R10, CX					
+  zz_generated_simd_amd64.go:2339	0x77383e		488b542458		MOVQ 0x58(SP), DX				
+  zz_generated_simd_amd64.go:2360	0x773843		4c8b542460		MOVQ 0x60(SP), R10				
+  zz_generated_simd_amd64.go:2350	0x773848		4c8ba424a8000000	MOVQ 0xa8(SP), R12				
+  zz_generated_simd_amd64.go:2349	0x773850		4989ff			MOVQ DI, R15					
+  zz_generated_simd_amd64.go:2349	0x773853		498d7f08		LEAQ 0x8(R15), DI				
+  zz_generated_simd_amd64.go:2349	0x773857		4939fd			CMPQ R13, DI					
+  zz_generated_simd_amd64.go:2349	0x77385a		7c6e			JL 0x7738ca					
+  zz_generated_simd_amd64.go:2350	0x77385c		4b8d1407		LEAQ 0(R15)(R8*1), DX				
+  zz_generated_simd_amd64.go:2350	0x773860		4939d4			CMPQ R12, DX					
+  zz_generated_simd_amd64.go:2350	0x773863		0f8212010000		JB 0x77397b					
+  zz_generated_simd_amd64.go:2350	0x773869		4889542468		MOVQ DX, 0x68(SP)				
+  zz_generated_simd_amd64.go:2350	0x77386e		4929d4			SUBQ DX, R12					
+  zz_generated_simd_amd64.go:2350	0x773871		4829ca			SUBQ CX, DX					
+  zz_generated_simd_amd64.go:2350	0x773874		4c8b542468		MOVQ 0x68(SP), R10				
+  zz_generated_simd_amd64.go:2350	0x773879		49c1e202		SHLQ $0x2, R10					
+  zz_generated_simd_amd64.go:2350	0x77387d		48c1fa3f		SARQ $0x3f, DX					
+  zz_generated_simd_amd64.go:2350	0x773881		4c21d2			ANDQ R10, DX					
+  zz_generated_simd_amd64.go:2350	0x773884		4801c2			ADDQ AX, DX					
+  slice_gen_amd64.go:228		0x773887		4983fc08		CMPQ R12, $0x8					
+  slice_gen_amd64.go:228		0x77388b		7388			JAE 0x773815					
+  slice_gen_amd64.go:228		0x77388d		e9e4000000		JMP 0x773976					
+  zz_generated_simd_amd64.go:2354	0x773892		f30f1014b8		MOVSS 0(AX)(DI*4), X2				
+  zz_generated_simd_amd64.go:2355	0x773897		4c89f9			MOVQ R15, CX					
+  zz_generated_simd_amd64.go:2355	0x77389a		bf01000000		MOVL $0x1, DI					
+  zz_generated_simd_amd64.go:2355	0x77389f		48d3e7			SHLQ CL, DI					
+  zz_generated_simd_amd64.go:2354	0x7738a2		0f2ed0			UCOMISS X0, X2					
+  zz_generated_simd_amd64.go:2355	0x7738a5		4883f940		CMPQ CX, $0x40					
+  zz_generated_simd_amd64.go:2355	0x7738a9		4819d2			SBBQ DX, DX					
+  zz_generated_simd_amd64.go:2355	0x7738ac		4821d7			ANDQ DX, DI					
+  zz_generated_simd_amd64.go:2355	0x7738af		4809f7			ORQ SI, DI					
+  zz_generated_simd_amd64.go:2354	0x7738b2		0f2ed0			UCOMISS X0, X2					
+  zz_generated_simd_amd64.go:2354	0x7738b5		480f47f7		CMOVA DI, SI					
+  zz_generated_simd_amd64.go:2353	0x7738b9		4c8d7901		LEAQ 0x1(CX), R15				
+  zz_generated_simd_amd64.go:2350	0x7738bd		488b8c24b0000000	MOVQ 0xb0(SP), CX				
+  zz_generated_simd_amd64.go:2339	0x7738c5		488b542458		MOVQ 0x58(SP), DX				
+  zz_generated_simd_amd64.go:2353	0x7738ca		4d39ef			CMPQ R15, R13					
+  zz_generated_simd_amd64.go:2353	0x7738cd		7d0e			JGE 0x7738dd					
+  zz_generated_simd_amd64.go:2354	0x7738cf		4b8d3c07		LEAQ 0(R15)(R8*1), DI				
+  zz_generated_simd_amd64.go:2354	0x7738d3		4939fc			CMPQ R12, DI					
+  zz_generated_simd_amd64.go:2354	0x7738d6		77ba			JA 0x773892					
+  zz_generated_simd_amd64.go:2354	0x7738d8		e994000000		JMP 0x773971					
+  zz_generated_simd_amd64.go:2358	0x7738dd		4821de			ANDQ BX, SI					
+  zz_generated_simd_amd64.go:2359	0x7738e0		4b8934d9		MOVQ SI, 0(R9)(R11*8)				
+  zz_generated_simd_amd64.go:2359	0x7738e4		0fb61d471e4c00		MOVZX runtime.x86HasPOPCNT(SB), BX		
+  zz_generated_simd_amd64.go:2359	0x7738eb		85db			TESTL BX, BX					
+  zz_generated_simd_amd64.go:2360	0x7738ed		7407			JE 0x7738f6					
+  zz_generated_simd_amd64.go:2360	0x7738ef		f3480fb8f6		POPCNTQ SI, SI					
+  zz_generated_simd_amd64.go:2360	0x7738f4		eb57			JMP 0x77394d					
+  zz_generated_simd_amd64.go:2339	0x7738f6		4c895c2468		MOVQ R11, 0x68(SP)				
+  zz_generated_simd_amd64.go:2360	0x7738fb		4889f0			MOVQ SI, AX					
+  zz_generated_simd_amd64.go:2360	0x7738fe		6690			NOPW						
+  zz_generated_simd_amd64.go:2360	0x773900		e89b05d2ff		CALL math/bits.OnesCount64(SB)			
+  zz_generated_simd_amd64.go:2350	0x773905		488b8c24b0000000	MOVQ 0xb0(SP), CX				
+  zz_generated_simd_amd64.go:2339	0x77390d		488b542458		MOVQ 0x58(SP), DX				
+  zz_generated_simd_amd64.go:2339	0x773912		0fb61d191e4c00		MOVZX runtime.x86HasPOPCNT(SB), BX		
+  zz_generated_simd_amd64.go:2359	0x773919		4c8b8c24d0000000	MOVQ 0xd0(SP), R9				
+  zz_generated_simd_amd64.go:2360	0x773921		4c8b542460		MOVQ 0x60(SP), R10				
+  zz_generated_simd_amd64.go:2339	0x773926		4c8b5c2468		MOVQ 0x68(SP), R11				
+  zz_generated_simd_amd64.go:2341	0x77392b		4c8ba424a8000000	MOVQ 0xa8(SP), R12				
+  zz_generated_simd_amd64.go:2354	0x773933		f30f108424e8000000	MOVSS 0xe8(SP), X0				
+  zz_generated_simd_amd64.go:2350	0x77393c		c5fe6f4c2470		VMOVDQU 0x70(SP), Y1				
+  zz_generated_simd_amd64.go:2360	0x773942		4889c6			MOVQ AX, SI					
+  zz_generated_simd_amd64.go:2350	0x773945		488b8424a0000000	MOVQ 0xa0(SP), AX				
+  zz_generated_simd_amd64.go:2360	0x77394d		4901f2			ADDQ SI, R10					
+  scalar.go:78				0x773950		488bb424c0000000	MOVQ 0xc0(SP), SI				
+  scalar.go:75				0x773958		488bbc24b8000000	MOVQ 0xb8(SP), DI				
+  zz_generated_simd_amd64.go:2360	0x773960		e90ffeffff		JMP 0x773774					
+  zz_generated_simd_amd64.go:2362	0x773965		4c89d0			MOVQ R10, AX					
+  zz_generated_simd_amd64.go:2362	0x773968		4881c490000000		ADDQ $0x90, SP					
+  zz_generated_simd_amd64.go:2362	0x77396f		5d			POPQ BP						
+  zz_generated_simd_amd64.go:2362	0x773970		c3			RET						
+  zz_generated_simd_amd64.go:2354	0x773971		e8aad8d1ff		CALL runtime.panicBounds(SB)			
+  slice_gen_amd64.go:228		0x773976		e8a5d8d1ff		CALL runtime.panicBounds(SB)			
+  zz_generated_simd_amd64.go:2350	0x77397b		0f1f440000		NOPL 0(AX)(AX*1)				
+  zz_generated_simd_amd64.go:2350	0x773980		e89bd8d1ff		CALL runtime.panicBounds(SB)			
+  scalar.go:78				0x773985		e896d8d1ff		CALL runtime.panicBounds(SB)			
+  scalar.go:16				0x77398a		e891d8d1ff		CALL runtime.panicBounds(SB)			
+  scalar.go:14				0x77398f		488d056ab64200		LEAQ 0x42b66a(IP), AX				
+  scalar.go:14				0x773996		488d1d93440b00		LEAQ 0xb4493(IP), BX				
+  scalar.go:14				0x77399d		0f1f00			NOPL 0(AX)					
+  scalar.go:14				0x7739a0		e8bb5fd1ff		CALL runtime.gopanic(SB)			
+  scalar.go:14				0x7739a5		90			NOPL						
+  zz_generated_simd_amd64.go:2332	0x7739a6		4889442408		MOVQ AX, 0x8(SP)				
+  zz_generated_simd_amd64.go:2332	0x7739ab		48895c2410		MOVQ BX, 0x10(SP)				
+  zz_generated_simd_amd64.go:2332	0x7739b0		48894c2418		MOVQ CX, 0x18(SP)				
+  zz_generated_simd_amd64.go:2332	0x7739b5		48897c2420		MOVQ DI, 0x20(SP)				
+  zz_generated_simd_amd64.go:2332	0x7739ba		4889742428		MOVQ SI, 0x28(SP)				
+  zz_generated_simd_amd64.go:2332	0x7739bf		4c89442430		MOVQ R8, 0x30(SP)				
+  zz_generated_simd_amd64.go:2332	0x7739c4		4c894c2438		MOVQ R9, 0x38(SP)				
+  zz_generated_simd_amd64.go:2332	0x7739c9		4c89542440		MOVQ R10, 0x40(SP)				
+  zz_generated_simd_amd64.go:2332	0x7739ce		4c895c2448		MOVQ R11, 0x48(SP)				
+  zz_generated_simd_amd64.go:2332	0x7739d3		f30f11442450		MOVSS X0, 0x50(SP)				
+  zz_generated_simd_amd64.go:2332	0x7739d9		e802bcd1ff		CALL runtime.morestack_noctxt.abi0(SB)		
+  zz_generated_simd_amd64.go:2332	0x7739de		488b442408		MOVQ 0x8(SP), AX				
+  zz_generated_simd_amd64.go:2332	0x7739e3		488b5c2410		MOVQ 0x10(SP), BX				
+  zz_generated_simd_amd64.go:2332	0x7739e8		488b4c2418		MOVQ 0x18(SP), CX				
+  zz_generated_simd_amd64.go:2332	0x7739ed		488b7c2420		MOVQ 0x20(SP), DI				
+  zz_generated_simd_amd64.go:2332	0x7739f2		488b742428		MOVQ 0x28(SP), SI				
+  zz_generated_simd_amd64.go:2332	0x7739f7		4c8b442430		MOVQ 0x30(SP), R8				
+  zz_generated_simd_amd64.go:2332	0x7739fc		4c8b4c2438		MOVQ 0x38(SP), R9				
+  zz_generated_simd_amd64.go:2332	0x773a01		4c8b542440		MOVQ 0x40(SP), R10				
+  zz_generated_simd_amd64.go:2332	0x773a06		4c8b5c2448		MOVQ 0x48(SP), R11				
+  zz_generated_simd_amd64.go:2332	0x773a0b		f30f10442450		MOVSS 0x50(SP), X0				
+  zz_generated_simd_amd64.go:2332	0x773a11		e94afcffff		JMP gocolumn/kernel.simdAMD256Float32GT(SB)	
+
+TEXT gocolumn/kernel.simdAMD256Int8GT(SB) /workspace/scratch/ac8e1e118737/GoLume-next/kernel/zz_generated_simd_amd64.go
+  zz_generated_simd_amd64.go:2497	0x774920		4c8d6424c8		LEAQ -0x38(SP), R12				
+  zz_generated_simd_amd64.go:2497	0x774925		4d3b6610		CMPQ R12, 0x10(R14)				
+  zz_generated_simd_amd64.go:2497	0x774929		0f868f030000		JBE 0x774cbe					
+  zz_generated_simd_amd64.go:2497	0x77492f		55			PUSHQ BP					
+  zz_generated_simd_amd64.go:2497	0x774930		4889e5			MOVQ SP, BP					
+  zz_generated_simd_amd64.go:2497	0x774933		4881ecb0000000		SUBQ $0xb0, SP					
+  zz_generated_simd_amd64.go:2497	0x77493a		48898424c8000000	MOVQ AX, 0xc8(SP)				
+  zz_generated_simd_amd64.go:2497	0x774942		4889bc24e0000000	MOVQ DI, 0xe0(SP)				
+  zz_generated_simd_amd64.go:2497	0x77494a		4c898c24f8000000	MOVQ R9, 0xf8(SP)				
+  zz_generated_simd_amd64.go:2498	0x774952		4883fb20		CMPQ BX, $0x20					
+  zz_generated_simd_amd64.go:2498	0x774956		0f8cc3000000		JL 0x774a1f					
+  bitmap.go:13				0x77495c		488d533f		LEAQ 0x3f(BX), DX				
+  bitmap.go:13				0x774960		48c1fa06		SARQ $0x6, DX					
+  zz_generated_simd_amd64.go:2501	0x774964		90			NOPL						
+  scalar.go:12				0x774965		90			NOPL						
+  scalar.go:13				0x774966		4939d2			CMPQ R10, DX					
+  scalar.go:13				0x774969		0f8c3b030000		JL 0x774caa					
+  scalar.go:16				0x77496f		4939d3			CMPQ R11, DX					
+  scalar.go:16				0x774972		0f822d030000		JB 0x774ca5					
+  zz_generated_simd_amd64.go:2498	0x774978		4889bc24e0000000	MOVQ DI, 0xe0(SP)				
+  bitmap.go:13				0x774980		4889542458		MOVQ DX, 0x58(SP)				
+  zz_generated_simd_amd64.go:2498	0x774985		48898c24d8000000	MOVQ CX, 0xd8(SP)				
+  zz_generated_simd_amd64.go:2498	0x77498d		4c898c24f8000000	MOVQ R9, 0xf8(SP)				
+  zz_generated_simd_amd64.go:2498	0x774995		48899c24d0000000	MOVQ BX, 0xd0(SP)				
+  zz_generated_simd_amd64.go:2498	0x77499d		48898424c8000000	MOVQ AX, 0xc8(SP)				
+  zz_generated_simd_amd64.go:2498	0x7749a5		4889b424e8000000	MOVQ SI, 0xe8(SP)				
+  scalar.go:16				0x7749ad		4885d2			TESTQ DX, DX					
+  scalar.go:16				0x7749b0		7448			JE 0x7749fa					
+  scalar.go:16				0x7749b2		4889d3			MOVQ DX, BX					
+  scalar.go:16				0x7749b5		48c1e303		SHLQ $0x3, BX					
+  scalar.go:16				0x7749b9		4c89c8			MOVQ R9, AX					
+  scalar.go:16				0x7749bc		0f1f4000		NOPL 0(AX)					
+  scalar.go:16				0x7749c0		e8fbc8d1ff		CALL runtime.memclrNoHeapPointers(SB)		
+  zz_generated_simd_amd64.go:2515	0x7749c5		488b8424c8000000	MOVQ 0xc8(SP), AX				
+  zz_generated_simd_amd64.go:2515	0x7749cd		488b8c24d8000000	MOVQ 0xd8(SP), CX				
+  zz_generated_simd_amd64.go:2504	0x7749d5		488b542458		MOVQ 0x58(SP), DX				
+  zz_generated_simd_amd64.go:2506	0x7749da		488b9c24d0000000	MOVQ 0xd0(SP), BX				
+  scalar.go:78				0x7749e2		488bb424e8000000	MOVQ 0xe8(SP), SI				
+  scalar.go:75				0x7749ea		488bbc24e0000000	MOVQ 0xe0(SP), DI				
+  zz_generated_simd_amd64.go:2524	0x7749f2		4c8b8c24f8000000	MOVQ 0xf8(SP), R9				
+  other_gen_amd64.go:103		0x7749fa		440fb68424c0000000	MOVZX 0xc0(SP), R8				
+  other_gen_amd64.go:103		0x774a03		c4c1f96ec0		VMOVQ R8, X0					
+  zz_generated_simd_amd64.go:2502	0x774a08		90			NOPL						
+  other_gen_amd64.go:103		0x774a09		c4e27d78c0		VPBROADCASTB X0, Y0				
+  other_gen_amd64.go:103		0x774a0e		c5fe7f842480000000	VMOVDQU Y0, 0x80(SP)				
+  zz_generated_simd_amd64.go:2504	0x774a17		4531d2			XORL R10, R10					
+  zz_generated_simd_amd64.go:2504	0x774a1a		4531db			XORL R11, R11					
+  zz_generated_simd_amd64.go:2504	0x774a1d		eb29			JMP 0x774a48					
+  zz_generated_simd_amd64.go:2499	0x774a1f		0fb69424c0000000	MOVZX 0xc0(SP), DX				
+  zz_generated_simd_amd64.go:2499	0x774a27		881424			MOVB DL, 0(SP)					
+  zz_generated_simd_amd64.go:2499	0x774a2a		e8117cfaff		CALL gocolumn/kernel.scalarInt8GT(SB)		
+  zz_generated_simd_amd64.go:2499	0x774a2f		4881c4b0000000		ADDQ $0xb0, SP					
+  zz_generated_simd_amd64.go:2499	0x774a36		5d			POPQ BP						
+  zz_generated_simd_amd64.go:2499	0x774a37		c3			RET						
+  zz_generated_simd_amd64.go:2504	0x774a38		4d8d542401		LEAQ 0x1(R12), R10				
+  zz_generated_simd_amd64.go:2506	0x774a3d		4c89eb			MOVQ R13, BX					
+  zz_generated_simd_amd64.go:2524	0x774a40		4c8b8c24f8000000	MOVQ 0xf8(SP), R9				
+  zz_generated_simd_amd64.go:2504	0x774a48		4939d2			CMPQ R10, DX					
+  zz_generated_simd_amd64.go:2504	0x774a4b		0f8d2d020000		JGE 0x774c7e					
+  zz_generated_simd_amd64.go:2505	0x774a51		4d89d4			MOVQ R10, R12					
+  zz_generated_simd_amd64.go:2505	0x774a54		49c1e206		SHLQ $0x6, R10					
+  zz_generated_simd_amd64.go:2506	0x774a58		4989dd			MOVQ BX, R13					
+  zz_generated_simd_amd64.go:2506	0x774a5b		4c29d3			SUBQ R10, BX					
+  zz_generated_simd_amd64.go:2506	0x774a5e		4883fb40		CMPQ BX, $0x40					
+  zz_generated_simd_amd64.go:2507	0x774a62		41bf40000000		MOVL $0x40, R15					
+  zz_generated_simd_amd64.go:2507	0x774a68		4c0f4cfb		CMOVL BX, R15					
+  scalar.go:75				0x774a6c		4885ff			TESTQ DI, DI					
+  zz_generated_simd_amd64.go:2506	0x774a6f		7411			JE 0x774a82					
+  scalar.go:78				0x774a71		4c39e6			CMPQ SI, R12					
+  scalar.go:78				0x774a74		0f8624020000		JBE 0x774c9e					
+  scalar.go:78				0x774a7a		4a8b1ce7		MOVQ 0(DI)(R12*8), BX				
+  scalar.go:78				0x774a7e		6690			NOPW						
+  zz_generated_simd_amd64.go:2507	0x774a80		eb07			JMP 0x774a89					
+  zz_generated_simd_amd64.go:2507	0x774a82		48c7c3ffffffff		MOVQ $-0x1, BX					
+  bitmap.go:60				0x774a89		4d85ff			TESTQ R15, R15					
+  bitmap.go:60				0x774a8c		7f19			JG 0x774aa7					
+  zz_generated_simd_amd64.go:2498	0x774a8e		48898424a8000000	MOVQ AX, 0xa8(SP)				
+  zz_generated_simd_amd64.go:2507	0x774a96		31c0			XORL AX, AX					
+  zz_generated_simd_amd64.go:2507	0x774a98		4889442460		MOVQ AX, 0x60(SP)				
+  zz_generated_simd_amd64.go:2515	0x774a9d		488b8424a8000000	MOVQ 0xa8(SP), AX				
+  zz_generated_simd_amd64.go:2507	0x774aa5		eb43			JMP 0x774aea					
+  bitmap.go:64				0x774aa7		49f7c73f000000		TESTQ $0x3f, R15				
+  bitmap.go:64				0x774aae		751e			JNE 0x774ace					
+  zz_generated_simd_amd64.go:2498	0x774ab0		48898424a0000000	MOVQ AX, 0xa0(SP)				
+  zz_generated_simd_amd64.go:2507	0x774ab8		48c7c0ffffffff		MOVQ $-0x1, AX					
+  zz_generated_simd_amd64.go:2507	0x774abf		4889442460		MOVQ AX, 0x60(SP)				
+  zz_generated_simd_amd64.go:2515	0x774ac4		488b8424a0000000	MOVQ 0xa0(SP), AX				
+  zz_generated_simd_amd64.go:2507	0x774acc		eb1c			JMP 0x774aea					
+  bitmap.go:67				0x774ace		4c89f9			MOVQ R15, CX					
+  bitmap.go:67				0x774ad1		41b901000000		MOVL $0x1, R9					
+  bitmap.go:67				0x774ad7		49d3e1			SHLQ CL, R9					
+  bitmap.go:67				0x774ada		49ffc9			DECQ R9						
+  zz_generated_simd_amd64.go:2515	0x774add		488b8c24d8000000	MOVQ 0xd8(SP), CX				
+  zz_generated_simd_amd64.go:2507	0x774ae5		4c894c2460		MOVQ R9, 0x60(SP)				
+  zz_generated_simd_amd64.go:2507	0x774aea		4c8b4c2460		MOVQ 0x60(SP), R9				
+  zz_generated_simd_amd64.go:2507	0x774aef		4c21cb			ANDQ R9, BX					
+  zz_generated_simd_amd64.go:2509	0x774af2		4885db			TESTQ BX, BX					
+  zz_generated_simd_amd64.go:2509	0x774af5		0f843dffffff		JE 0x774a38					
+  zz_generated_simd_amd64.go:2504	0x774afb		4c895c2468		MOVQ R11, 0x68(SP)				
+  zz_generated_simd_amd64.go:2509	0x774b00		4531c9			XORL R9, R9					
+  zz_generated_simd_amd64.go:2509	0x774b03		31f6			XORL SI, SI					
+  zz_generated_simd_amd64.go:2509	0x774b05		eb3c			JMP 0x774b43					
+  slice_gen_amd64.go:132		0x774b07		c5fe6f0a		VMOVDQU 0(DX), Y1				
+  zz_generated_simd_amd64.go:2515	0x774b0b		c5f564c8		VPCMPGTB Y0, Y1, Y1				
+  zz_generated_simd_amd64.go:2516	0x774b0f		c5fdd7d1		VPMOVMSKB Y1, DX				
+  zz_generated_simd_amd64.go:2516	0x774b13		89d2			MOVL DX, DX					
+  zz_generated_simd_amd64.go:2498	0x774b15		4989cb			MOVQ CX, R11					
+  zz_generated_simd_amd64.go:2516	0x774b18		4889f1			MOVQ SI, CX					
+  zz_generated_simd_amd64.go:2516	0x774b1b		48d3e2			SHLQ CL, DX					
+  zz_generated_simd_amd64.go:2516	0x774b1e		4883f940		CMPQ CX, $0x40					
+  zz_generated_simd_amd64.go:2516	0x774b22		4819c9			SBBQ CX, CX					
+  zz_generated_simd_amd64.go:2516	0x774b25		4821ca			ANDQ CX, DX					
+  zz_generated_simd_amd64.go:2516	0x774b28		4909d1			ORQ DX, R9					
+  zz_generated_simd_amd64.go:2515	0x774b2b		4c89d9			MOVQ R11, CX					
+  zz_generated_simd_amd64.go:2504	0x774b2e		488b542458		MOVQ 0x58(SP), DX				
+  zz_generated_simd_amd64.go:2525	0x774b33		4c8b5c2468		MOVQ 0x68(SP), R11				
+  zz_generated_simd_amd64.go:2515	0x774b38		4c8bac24d0000000	MOVQ 0xd0(SP), R13				
+  zz_generated_simd_amd64.go:2514	0x774b40		4889fe			MOVQ DI, SI					
+  zz_generated_simd_amd64.go:2514	0x774b43		488d7e20		LEAQ 0x20(SI), DI				
+  zz_generated_simd_amd64.go:2514	0x774b47		4939ff			CMPQ R15, DI					
+  zz_generated_simd_amd64.go:2514	0x774b4a		0f8c88000000		JL 0x774bd8					
+  zz_generated_simd_amd64.go:2515	0x774b50		4a8d1416		LEAQ 0(SI)(R10*1), DX				
+  zz_generated_simd_amd64.go:2515	0x774b54		4939d5			CMPQ R13, DX					
+  zz_generated_simd_amd64.go:2515	0x774b57		0f823c010000		JB 0x774c99					
+  zz_generated_simd_amd64.go:2515	0x774b5d		4889542478		MOVQ DX, 0x78(SP)				
+  zz_generated_simd_amd64.go:2515	0x774b62		4929d5			SUBQ DX, R13					
+  zz_generated_simd_amd64.go:2515	0x774b65		4829ca			SUBQ CX, DX					
+  zz_generated_simd_amd64.go:2515	0x774b68		48c1fa3f		SARQ $0x3f, DX					
+  zz_generated_simd_amd64.go:2515	0x774b6c		4c8b5c2478		MOVQ 0x78(SP), R11				
+  zz_generated_simd_amd64.go:2515	0x774b71		4c21da			ANDQ R11, DX					
+  zz_generated_simd_amd64.go:2515	0x774b74		4801c2			ADDQ AX, DX					
+  slice_gen_amd64.go:132		0x774b77		4983fd20		CMPQ R13, $0x20					
+  slice_gen_amd64.go:132		0x774b7b		738a			JAE 0x774b07					
+  slice_gen_amd64.go:132		0x774b7d		0f1f00			NOPL 0(AX)					
+  slice_gen_amd64.go:132		0x774b80		e90a010000		JMP 0x774c8f					
+  zz_generated_simd_amd64.go:2519	0x774b85		0fb63c38		MOVZX 0(AX)(DI*1), DI				
+  zz_generated_simd_amd64.go:2519	0x774b89		40887c2457		MOVB DI, 0x57(SP)				
+  zz_generated_simd_amd64.go:2520	0x774b8e		4889f1			MOVQ SI, CX					
+  zz_generated_simd_amd64.go:2520	0x774b91		bf01000000		MOVL $0x1, DI					
+  zz_generated_simd_amd64.go:2520	0x774b96		48d3e7			SHLQ CL, DI					
+  zz_generated_simd_amd64.go:2520	0x774b99		48897c2470		MOVQ DI, 0x70(SP)				
+  zz_generated_simd_amd64.go:2519	0x774b9e		0fb67c2457		MOVZX 0x57(SP), DI				
+  zz_generated_simd_amd64.go:2519	0x774ba3		4438c7			CMPL DI, R8					
+  zz_generated_simd_amd64.go:2520	0x774ba6		4883f940		CMPQ CX, $0x40					
+  zz_generated_simd_amd64.go:2520	0x774baa		4819d2			SBBQ DX, DX					
+  zz_generated_simd_amd64.go:2520	0x774bad		488b7c2470		MOVQ 0x70(SP), DI				
+  zz_generated_simd_amd64.go:2520	0x774bb2		4821d7			ANDQ DX, DI					
+  zz_generated_simd_amd64.go:2520	0x774bb5		4c09cf			ORQ R9, DI					
+  zz_generated_simd_amd64.go:2520	0x774bb8		4889fa			MOVQ DI, DX					
+  zz_generated_simd_amd64.go:2519	0x774bbb		0fb67c2457		MOVZX 0x57(SP), DI				
+  zz_generated_simd_amd64.go:2519	0x774bc0		4438c7			CMPL DI, R8					
+  zz_generated_simd_amd64.go:2519	0x774bc3		4c0f4fca		CMOVG DX, R9					
+  zz_generated_simd_amd64.go:2518	0x774bc7		488d7101		LEAQ 0x1(CX), SI				
+  zz_generated_simd_amd64.go:2515	0x774bcb		488b8c24d8000000	MOVQ 0xd8(SP), CX				
+  zz_generated_simd_amd64.go:2504	0x774bd3		488b542458		MOVQ 0x58(SP), DX				
+  zz_generated_simd_amd64.go:2518	0x774bd8		4c39fe			CMPQ SI, R15					
+  zz_generated_simd_amd64.go:2518	0x774bdb		7d0e			JGE 0x774beb					
+  zz_generated_simd_amd64.go:2519	0x774bdd		4a8d3c16		LEAQ 0(SI)(R10*1), DI				
+  zz_generated_simd_amd64.go:2519	0x774be1		4939fd			CMPQ R13, DI					
+  zz_generated_simd_amd64.go:2519	0x774be4		779f			JA 0x774b85					
+  zz_generated_simd_amd64.go:2519	0x774be6		e99f000000		JMP 0x774c8a					
+  zz_generated_simd_amd64.go:2523	0x774beb		4921d9			ANDQ BX, R9					
+  zz_generated_simd_amd64.go:2524	0x774bee		488b9c24f8000000	MOVQ 0xf8(SP), BX				
+  zz_generated_simd_amd64.go:2524	0x774bf6		4e890ce3		MOVQ R9, 0(BX)(R12*8)				
+  zz_generated_simd_amd64.go:2524	0x774bfa		0fb635310b4c00		MOVZX runtime.x86HasPOPCNT(SB), SI		
+  zz_generated_simd_amd64.go:2524	0x774c01		85f6			TESTL SI, SI					
+  zz_generated_simd_amd64.go:2525	0x774c03		7409			JE 0x774c0e					
+  zz_generated_simd_amd64.go:2525	0x774c05		31ff			XORL DI, DI					
+  zz_generated_simd_amd64.go:2525	0x774c07		f3490fb8f9		POPCNTQ R9, DI					
+  zz_generated_simd_amd64.go:2525	0x774c0c		eb58			JMP 0x774c66					
+  zz_generated_simd_amd64.go:2504	0x774c0e		4c89642478		MOVQ R12, 0x78(SP)				
+  zz_generated_simd_amd64.go:2525	0x774c13		4c89c8			MOVQ R9, AX					
+  zz_generated_simd_amd64.go:2525	0x774c16		e885f2d1ff		CALL math/bits.OnesCount64(SB)			
+  zz_generated_simd_amd64.go:2515	0x774c1b		488b8c24d8000000	MOVQ 0xd8(SP), CX				
+  zz_generated_simd_amd64.go:2504	0x774c23		488b542458		MOVQ 0x58(SP), DX				
+  zz_generated_simd_amd64.go:2524	0x774c28		488b9c24f8000000	MOVQ 0xf8(SP), BX				
+  zz_generated_simd_amd64.go:2524	0x774c30		0fb635fb0a4c00		MOVZX runtime.x86HasPOPCNT(SB), SI		
+  zz_generated_simd_amd64.go:2519	0x774c37		440fb68424c0000000	MOVZX 0xc0(SP), R8				
+  zz_generated_simd_amd64.go:2525	0x774c40		4c8b5c2468		MOVQ 0x68(SP), R11				
+  zz_generated_simd_amd64.go:2504	0x774c45		4c8b642478		MOVQ 0x78(SP), R12				
+  zz_generated_simd_amd64.go:2506	0x774c4a		4c8bac24d0000000	MOVQ 0xd0(SP), R13				
+  zz_generated_simd_amd64.go:2515	0x774c52		c5fe6f842480000000	VMOVDQU 0x80(SP), Y0				
+  zz_generated_simd_amd64.go:2525	0x774c5b		4889c7			MOVQ AX, DI					
+  zz_generated_simd_amd64.go:2515	0x774c5e		488b8424c8000000	MOVQ 0xc8(SP), AX				
+  zz_generated_simd_amd64.go:2525	0x774c66		4901fb			ADDQ DI, R11					
+  scalar.go:78				0x774c69		488bb424e8000000	MOVQ 0xe8(SP), SI				
+  scalar.go:75				0x774c71		488bbc24e0000000	MOVQ 0xe0(SP), DI				
+  zz_generated_simd_amd64.go:2525	0x774c79		e9bafdffff		JMP 0x774a38					
+  zz_generated_simd_amd64.go:2527	0x774c7e		4c89d8			MOVQ R11, AX					
+  zz_generated_simd_amd64.go:2527	0x774c81		4881c4b0000000		ADDQ $0xb0, SP					
+  zz_generated_simd_amd64.go:2527	0x774c88		5d			POPQ BP						
+  zz_generated_simd_amd64.go:2527	0x774c89		c3			RET						
+  zz_generated_simd_amd64.go:2519	0x774c8a		e891c5d1ff		CALL runtime.panicBounds(SB)			
+  slice_gen_amd64.go:132		0x774c8f		b820000000		MOVL $0x20, AX					
+  slice_gen_amd64.go:132		0x774c94		e887c5d1ff		CALL runtime.panicBounds(SB)			
+  zz_generated_simd_amd64.go:2515	0x774c99		e882c5d1ff		CALL runtime.panicBounds(SB)			
+  scalar.go:78				0x774c9e		6690			NOPW						
+  scalar.go:78				0x774ca0		e87bc5d1ff		CALL runtime.panicBounds(SB)			
+  scalar.go:16				0x774ca5		e876c5d1ff		CALL runtime.panicBounds(SB)			
+  scalar.go:14				0x774caa		488d054fa34200		LEAQ 0x42a34f(IP), AX				
+  scalar.go:14				0x774cb1		488d1d78310b00		LEAQ 0xb3178(IP), BX				
+  scalar.go:14				0x774cb8		e8a34cd1ff		CALL runtime.gopanic(SB)			
+  scalar.go:14				0x774cbd		90			NOPL						
+  zz_generated_simd_amd64.go:2497	0x774cbe		4889442410		MOVQ AX, 0x10(SP)				
+  zz_generated_simd_amd64.go:2497	0x774cc3		48895c2418		MOVQ BX, 0x18(SP)				
+  zz_generated_simd_amd64.go:2497	0x774cc8		48894c2420		MOVQ CX, 0x20(SP)				
+  zz_generated_simd_amd64.go:2497	0x774ccd		48897c2428		MOVQ DI, 0x28(SP)				
+  zz_generated_simd_amd64.go:2497	0x774cd2		4889742430		MOVQ SI, 0x30(SP)				
+  zz_generated_simd_amd64.go:2497	0x774cd7		4c89442438		MOVQ R8, 0x38(SP)				
+  zz_generated_simd_amd64.go:2497	0x774cdc		4c894c2440		MOVQ R9, 0x40(SP)				
+  zz_generated_simd_amd64.go:2497	0x774ce1		4c89542448		MOVQ R10, 0x48(SP)				
+  zz_generated_simd_amd64.go:2497	0x774ce6		4c895c2450		MOVQ R11, 0x50(SP)				
+  zz_generated_simd_amd64.go:2497	0x774ceb		e8f0a8d1ff		CALL runtime.morestack_noctxt.abi0(SB)		
+  zz_generated_simd_amd64.go:2497	0x774cf0		488b442410		MOVQ 0x10(SP), AX				
+  zz_generated_simd_amd64.go:2497	0x774cf5		488b5c2418		MOVQ 0x18(SP), BX				
+  zz_generated_simd_amd64.go:2497	0x774cfa		488b4c2420		MOVQ 0x20(SP), CX				
+  zz_generated_simd_amd64.go:2497	0x774cff		488b7c2428		MOVQ 0x28(SP), DI				
+  zz_generated_simd_amd64.go:2497	0x774d04		488b742430		MOVQ 0x30(SP), SI				
+  zz_generated_simd_amd64.go:2497	0x774d09		4c8b442438		MOVQ 0x38(SP), R8				
+  zz_generated_simd_amd64.go:2497	0x774d0e		4c8b4c2440		MOVQ 0x40(SP), R9				
+  zz_generated_simd_amd64.go:2497	0x774d13		4c8b542448		MOVQ 0x48(SP), R10				
+  zz_generated_simd_amd64.go:2497	0x774d18		4c8b5c2450		MOVQ 0x50(SP), R11				
+  zz_generated_simd_amd64.go:2497	0x774d1d		0f1f00			NOPL 0(AX)					
+  zz_generated_simd_amd64.go:2497	0x774d20		e9fbfbffff		JMP gocolumn/kernel.simdAMD256Int8GT(SB)	
+
+TEXT gocolumn/kernel.simdAMD256Uint64GE(SB) /workspace/scratch/ac8e1e118737/GoLume-next/kernel/zz_generated_simd_amd64.go
+  zz_generated_simd_amd64.go:3190	0x779ec0		4c8d6424c8		LEAQ -0x38(SP), R12				
+  zz_generated_simd_amd64.go:3190	0x779ec5		4d3b6610		CMPQ R12, 0x10(R14)				
+  zz_generated_simd_amd64.go:3190	0x779ec9		0f86aa030000		JBE 0x77a279					
+  zz_generated_simd_amd64.go:3190	0x779ecf		55			PUSHQ BP					
+  zz_generated_simd_amd64.go:3190	0x779ed0		4889e5			MOVQ SP, BP					
+  zz_generated_simd_amd64.go:3190	0x779ed3		4881ecb0000000		SUBQ $0xb0, SP					
+  zz_generated_simd_amd64.go:3190	0x779eda		48898424c8000000	MOVQ AX, 0xc8(SP)				
+  zz_generated_simd_amd64.go:3190	0x779ee2		4889bc24e0000000	MOVQ DI, 0xe0(SP)				
+  zz_generated_simd_amd64.go:3190	0x779eea		4c898c24f8000000	MOVQ R9, 0xf8(SP)				
+  zz_generated_simd_amd64.go:3191	0x779ef2		4883fb04		CMPQ BX, $0x4					
+  zz_generated_simd_amd64.go:3191	0x779ef6		0f8cc2000000		JL 0x779fbe					
+  bitmap.go:13				0x779efc		488d533f		LEAQ 0x3f(BX), DX				
+  bitmap.go:13				0x779f00		48c1ea06		SHRQ $0x6, DX					
+  zz_generated_simd_amd64.go:3194	0x779f04		90			NOPL						
+  scalar.go:12				0x779f05		90			NOPL						
+  scalar.go:13				0x779f06		4939d2			CMPQ R10, DX					
+  scalar.go:13				0x779f09		0f8c56030000		JL 0x77a265					
+  scalar.go:16				0x779f0f		4939d3			CMPQ R11, DX					
+  scalar.go:16				0x779f12		0f8245030000		JB 0x77a25d					
+  zz_generated_simd_amd64.go:3191	0x779f18		48898c24d8000000	MOVQ CX, 0xd8(SP)				
+  bitmap.go:13				0x779f20		4889542450		MOVQ DX, 0x50(SP)				
+  zz_generated_simd_amd64.go:3191	0x779f25		48899c24d0000000	MOVQ BX, 0xd0(SP)				
+  zz_generated_simd_amd64.go:3191	0x779f2d		48898424c8000000	MOVQ AX, 0xc8(SP)				
+  zz_generated_simd_amd64.go:3191	0x779f35		4889b424e8000000	MOVQ SI, 0xe8(SP)				
+  zz_generated_simd_amd64.go:3191	0x779f3d		4c898c24f8000000	MOVQ R9, 0xf8(SP)				
+  zz_generated_simd_amd64.go:3191	0x779f45		4889bc24e0000000	MOVQ DI, 0xe0(SP)				
+  scalar.go:16				0x779f4d		4885d2			TESTQ DX, DX					
+  scalar.go:16				0x779f50		7448			JE 0x779f9a					
+  scalar.go:16				0x779f52		4889d3			MOVQ DX, BX					
+  scalar.go:16				0x779f55		48c1e303		SHLQ $0x3, BX					
+  scalar.go:16				0x779f59		4c89c8			MOVQ R9, AX					
+  scalar.go:16				0x779f5c		0f1f4000		NOPL 0(AX)					
+  scalar.go:16				0x779f60		e85b73d1ff		CALL runtime.memclrNoHeapPointers(SB)		
+  zz_generated_simd_amd64.go:3208	0x779f65		488b8424c8000000	MOVQ 0xc8(SP), AX				
+  zz_generated_simd_amd64.go:3208	0x779f6d		488b8c24d8000000	MOVQ 0xd8(SP), CX				
+  zz_generated_simd_amd64.go:3197	0x779f75		488b542450		MOVQ 0x50(SP), DX				
+  zz_generated_simd_amd64.go:3199	0x779f7a		488b9c24d0000000	MOVQ 0xd0(SP), BX				
+  scalar.go:78				0x779f82		488bb424e8000000	MOVQ 0xe8(SP), SI				
+  scalar.go:75				0x779f8a		488bbc24e0000000	MOVQ 0xe0(SP), DI				
+  zz_generated_simd_amd64.go:3217	0x779f92		4c8b8c24f8000000	MOVQ 0xf8(SP), R9				
+  other_gen_amd64.go:166		0x779f9a		4c8b8424c0000000	MOVQ 0xc0(SP), R8				
+  other_gen_amd64.go:166		0x779fa2		c4c1f96ec0		VMOVQ R8, X0					
+  zz_generated_simd_amd64.go:3195	0x779fa7		90			NOPL						
+  other_gen_amd64.go:166		0x779fa8		c4e27d59c0		VPBROADCASTQ X0, Y0				
+  other_gen_amd64.go:166		0x779fad		c5fe7f842480000000	VMOVDQU Y0, 0x80(SP)				
+  zz_generated_simd_amd64.go:3197	0x779fb6		4531d2			XORL R10, R10					
+  zz_generated_simd_amd64.go:3197	0x779fb9		4531db			XORL R11, R11					
+  zz_generated_simd_amd64.go:3197	0x779fbc		eb2a			JMP 0x779fe8					
+  zz_generated_simd_amd64.go:3192	0x779fbe		488b9424c0000000	MOVQ 0xc0(SP), DX				
+  zz_generated_simd_amd64.go:3192	0x779fc6		48891424		MOVQ DX, 0(SP)					
+  zz_generated_simd_amd64.go:3192	0x779fca		e89148faff		CALL gocolumn/kernel.scalarUint64GE(SB)		
+  zz_generated_simd_amd64.go:3192	0x779fcf		4881c4b0000000		ADDQ $0xb0, SP					
+  zz_generated_simd_amd64.go:3192	0x779fd6		5d			POPQ BP						
+  zz_generated_simd_amd64.go:3192	0x779fd7		c3			RET						
+  zz_generated_simd_amd64.go:3197	0x779fd8		4d8d542401		LEAQ 0x1(R12), R10				
+  zz_generated_simd_amd64.go:3199	0x779fdd		4c89eb			MOVQ R13, BX					
+  zz_generated_simd_amd64.go:3217	0x779fe0		4c8b8c24f8000000	MOVQ 0xf8(SP), R9				
+  zz_generated_simd_amd64.go:3197	0x779fe8		4939d2			CMPQ R10, DX					
+  zz_generated_simd_amd64.go:3197	0x779feb		0f8d4c020000		JGE 0x77a23d					
+  zz_generated_simd_amd64.go:3198	0x779ff1		4d89d4			MOVQ R10, R12					
+  zz_generated_simd_amd64.go:3198	0x779ff4		49c1e206		SHLQ $0x6, R10					
+  zz_generated_simd_amd64.go:3199	0x779ff8		4989dd			MOVQ BX, R13					
+  zz_generated_simd_amd64.go:3199	0x779ffb		4c29d3			SUBQ R10, BX					
+  zz_generated_simd_amd64.go:3199	0x779ffe		4883fb40		CMPQ BX, $0x40					
+  zz_generated_simd_amd64.go:3200	0x77a002		41bf40000000		MOVL $0x40, R15					
+  zz_generated_simd_amd64.go:3200	0x77a008		4c0f4cfb		CMOVL BX, R15					
+  scalar.go:75				0x77a00c		4885ff			TESTQ DI, DI					
+  zz_generated_simd_amd64.go:3199	0x77a00f		7411			JE 0x77a022					
+  scalar.go:78				0x77a011		4c39e6			CMPQ SI, R12					
+  scalar.go:78				0x77a014		0f863e020000		JBE 0x77a258					
+  scalar.go:78				0x77a01a		4a8b1ce7		MOVQ 0(DI)(R12*8), BX				
+  scalar.go:78				0x77a01e		6690			NOPW						
+  zz_generated_simd_amd64.go:3200	0x77a020		eb07			JMP 0x77a029					
+  zz_generated_simd_amd64.go:3200	0x77a022		48c7c3ffffffff		MOVQ $-0x1, BX					
+  bitmap.go:60				0x77a029		4d85ff			TESTQ R15, R15					
+  bitmap.go:60				0x77a02c		7f19			JG 0x77a047					
+  zz_generated_simd_amd64.go:3191	0x77a02e		48898424a8000000	MOVQ AX, 0xa8(SP)				
+  zz_generated_simd_amd64.go:3200	0x77a036		31c0			XORL AX, AX					
+  zz_generated_simd_amd64.go:3200	0x77a038		4889442458		MOVQ AX, 0x58(SP)				
+  zz_generated_simd_amd64.go:3208	0x77a03d		488b8424a8000000	MOVQ 0xa8(SP), AX				
+  zz_generated_simd_amd64.go:3200	0x77a045		eb43			JMP 0x77a08a					
+  bitmap.go:64				0x77a047		49f7c73f000000		TESTQ $0x3f, R15				
+  bitmap.go:64				0x77a04e		751e			JNE 0x77a06e					
+  zz_generated_simd_amd64.go:3191	0x77a050		48898424a0000000	MOVQ AX, 0xa0(SP)				
+  zz_generated_simd_amd64.go:3200	0x77a058		48c7c0ffffffff		MOVQ $-0x1, AX					
+  zz_generated_simd_amd64.go:3200	0x77a05f		4889442458		MOVQ AX, 0x58(SP)				
+  zz_generated_simd_amd64.go:3208	0x77a064		488b8424a0000000	MOVQ 0xa0(SP), AX				
+  zz_generated_simd_amd64.go:3200	0x77a06c		eb1c			JMP 0x77a08a					
+  bitmap.go:67				0x77a06e		4c89f9			MOVQ R15, CX					
+  bitmap.go:67				0x77a071		41b901000000		MOVL $0x1, R9					
+  bitmap.go:67				0x77a077		49d3e1			SHLQ CL, R9					
+  bitmap.go:67				0x77a07a		49ffc9			DECQ R9						
+  zz_generated_simd_amd64.go:3208	0x77a07d		488b8c24d8000000	MOVQ 0xd8(SP), CX				
+  zz_generated_simd_amd64.go:3200	0x77a085		4c894c2458		MOVQ R9, 0x58(SP)				
+  zz_generated_simd_amd64.go:3200	0x77a08a		4c8b4c2458		MOVQ 0x58(SP), R9				
+  zz_generated_simd_amd64.go:3200	0x77a08f		4c21cb			ANDQ R9, BX					
+  zz_generated_simd_amd64.go:3202	0x77a092		4885db			TESTQ BX, BX					
+  zz_generated_simd_amd64.go:3202	0x77a095		0f843dffffff		JE 0x779fd8					
+  zz_generated_simd_amd64.go:3197	0x77a09b		4c895c2460		MOVQ R11, 0x60(SP)				
+  zz_generated_simd_amd64.go:3202	0x77a0a0		4531c9			XORL R9, R9					
+  zz_generated_simd_amd64.go:3202	0x77a0a3		31f6			XORL SI, SI					
+  zz_generated_simd_amd64.go:3202	0x77a0a5		eb54			JMP 0x77a0fb					
+  slice_gen_amd64.go:216		0x77a0a7		c5fe6f0a		VMOVDQU 0(DX), Y1				
+  compare_gen_amd64.go:619		0x77a0ab		c4e27529d1		VPCMPEQQ Y1, Y1, Y2				
+  compare_gen_amd64.go:620		0x77a0b0		c5e573f23f		VPSLLQ $0x3f, Y2, Y3				
+  compare_gen_amd64.go:621		0x77a0b5		c5e5efe0		VPXOR Y0, Y3, Y4				
+  compare_gen_amd64.go:621		0x77a0b9		c5e5efc9		VPXOR Y1, Y3, Y1				
+  compare_gen_amd64.go:621		0x77a0bd		c4e25d37c9		VPCMPGTQ Y1, Y4, Y1				
+  compare_gen_amd64.go:621		0x77a0c2		c5f5efca		VPXOR Y2, Y1, Y1				
+  zz_generated_simd_amd64.go:3209	0x77a0c6		c5fd50d1		VMOVMSKPD Y1, DX				
+  zz_generated_simd_amd64.go:3209	0x77a0ca		0fb6d2			MOVZX DL, DX					
+  zz_generated_simd_amd64.go:3191	0x77a0cd		4989cb			MOVQ CX, R11					
+  zz_generated_simd_amd64.go:3209	0x77a0d0		4889f1			MOVQ SI, CX					
+  zz_generated_simd_amd64.go:3209	0x77a0d3		48d3e2			SHLQ CL, DX					
+  zz_generated_simd_amd64.go:3209	0x77a0d6		4883f940		CMPQ CX, $0x40					
+  zz_generated_simd_amd64.go:3209	0x77a0da		4819c9			SBBQ CX, CX					
+  zz_generated_simd_amd64.go:3209	0x77a0dd		4821ca			ANDQ CX, DX					
+  zz_generated_simd_amd64.go:3209	0x77a0e0		4909d1			ORQ DX, R9					
+  zz_generated_simd_amd64.go:3208	0x77a0e3		4c89d9			MOVQ R11, CX					
+  zz_generated_simd_amd64.go:3197	0x77a0e6		488b542450		MOVQ 0x50(SP), DX				
+  zz_generated_simd_amd64.go:3218	0x77a0eb		4c8b5c2460		MOVQ 0x60(SP), R11				
+  zz_generated_simd_amd64.go:3208	0x77a0f0		4c8bac24d0000000	MOVQ 0xd0(SP), R13				
+  zz_generated_simd_amd64.go:3207	0x77a0f8		4889fe			MOVQ DI, SI					
+  zz_generated_simd_amd64.go:3207	0x77a0fb		488d7e04		LEAQ 0x4(SI), DI				
+  zz_generated_simd_amd64.go:3207	0x77a0ff		90			NOPL						
+  zz_generated_simd_amd64.go:3207	0x77a100		4939ff			CMPQ R15, DI					
+  zz_generated_simd_amd64.go:3207	0x77a103		0f8c8f000000		JL 0x77a198					
+  zz_generated_simd_amd64.go:3208	0x77a109		4a8d1416		LEAQ 0(SI)(R10*1), DX				
+  zz_generated_simd_amd64.go:3208	0x77a10d		4939d5			CMPQ R13, DX					
+  zz_generated_simd_amd64.go:3208	0x77a110		0f823d010000		JB 0x77a253					
+  zz_generated_simd_amd64.go:3208	0x77a116		4889542478		MOVQ DX, 0x78(SP)				
+  zz_generated_simd_amd64.go:3208	0x77a11b		4929d5			SUBQ DX, R13					
+  zz_generated_simd_amd64.go:3208	0x77a11e		4829ca			SUBQ CX, DX					
+  zz_generated_simd_amd64.go:3208	0x77a121		4c8b5c2478		MOVQ 0x78(SP), R11				
+  zz_generated_simd_amd64.go:3208	0x77a126		49c1e303		SHLQ $0x3, R11					
+  zz_generated_simd_amd64.go:3208	0x77a12a		48c1fa3f		SARQ $0x3f, DX					
+  zz_generated_simd_amd64.go:3208	0x77a12e		4c21da			ANDQ R11, DX					
+  zz_generated_simd_amd64.go:3208	0x77a131		4801c2			ADDQ AX, DX					
+  slice_gen_amd64.go:216		0x77a134		4983fd04		CMPQ R13, $0x4					
+  slice_gen_amd64.go:216		0x77a138		0f8369ffffff		JAE 0x77a0a7					
+  slice_gen_amd64.go:216		0x77a13e		6690			NOPW						
+  slice_gen_amd64.go:216		0x77a140		e909010000		JMP 0x77a24e					
+  zz_generated_simd_amd64.go:3212	0x77a145		488b3cf8		MOVQ 0(AX)(DI*8), DI				
+  zz_generated_simd_amd64.go:3212	0x77a149		48897c2470		MOVQ DI, 0x70(SP)				
+  zz_generated_simd_amd64.go:3213	0x77a14e		4889f1			MOVQ SI, CX					
+  zz_generated_simd_amd64.go:3213	0x77a151		bf01000000		MOVL $0x1, DI					
+  zz_generated_simd_amd64.go:3213	0x77a156		48d3e7			SHLQ CL, DI					
+  zz_generated_simd_amd64.go:3213	0x77a159		48897c2468		MOVQ DI, 0x68(SP)				
+  zz_generated_simd_amd64.go:3212	0x77a15e		488b7c2470		MOVQ 0x70(SP), DI				
+  zz_generated_simd_amd64.go:3212	0x77a163		4c39c7			CMPQ DI, R8					
+  zz_generated_simd_amd64.go:3213	0x77a166		4883f940		CMPQ CX, $0x40					
+  zz_generated_simd_amd64.go:3213	0x77a16a		4819d2			SBBQ DX, DX					
+  zz_generated_simd_amd64.go:3213	0x77a16d		488b7c2468		MOVQ 0x68(SP), DI				
+  zz_generated_simd_amd64.go:3213	0x77a172		4821d7			ANDQ DX, DI					
+  zz_generated_simd_amd64.go:3213	0x77a175		4c09cf			ORQ R9, DI					
+  zz_generated_simd_amd64.go:3213	0x77a178		4889fa			MOVQ DI, DX					
+  zz_generated_simd_amd64.go:3212	0x77a17b		488b7c2470		MOVQ 0x70(SP), DI				
+  zz_generated_simd_amd64.go:3212	0x77a180		4c39c7			CMPQ DI, R8					
+  zz_generated_simd_amd64.go:3212	0x77a183		4c0f43ca		CMOVAE DX, R9					
+  zz_generated_simd_amd64.go:3211	0x77a187		488d7101		LEAQ 0x1(CX), SI				
+  zz_generated_simd_amd64.go:3208	0x77a18b		488b8c24d8000000	MOVQ 0xd8(SP), CX				
+  zz_generated_simd_amd64.go:3197	0x77a193		488b542450		MOVQ 0x50(SP), DX				
+  zz_generated_simd_amd64.go:3211	0x77a198		4c39fe			CMPQ SI, R15					
+  zz_generated_simd_amd64.go:3211	0x77a19b		7d0e			JGE 0x77a1ab					
+  zz_generated_simd_amd64.go:3212	0x77a19d		4a8d3c16		LEAQ 0(SI)(R10*1), DI				
+  zz_generated_simd_amd64.go:3212	0x77a1a1		4939fd			CMPQ R13, DI					
+  zz_generated_simd_amd64.go:3212	0x77a1a4		779f			JA 0x77a145					
+  zz_generated_simd_amd64.go:3212	0x77a1a6		e99e000000		JMP 0x77a249					
+  zz_generated_simd_amd64.go:3216	0x77a1ab		4921d9			ANDQ BX, R9					
+  zz_generated_simd_amd64.go:3217	0x77a1ae		488b9c24f8000000	MOVQ 0xf8(SP), BX				
+  zz_generated_simd_amd64.go:3217	0x77a1b6		4e890ce3		MOVQ R9, 0(BX)(R12*8)				
+  zz_generated_simd_amd64.go:3217	0x77a1ba		0fb63571b54b00		MOVZX runtime.x86HasPOPCNT(SB), SI		
+  zz_generated_simd_amd64.go:3217	0x77a1c1		85f6			TESTL SI, SI					
+  zz_generated_simd_amd64.go:3218	0x77a1c3		7409			JE 0x77a1ce					
+  zz_generated_simd_amd64.go:3218	0x77a1c5		31ff			XORL DI, DI					
+  zz_generated_simd_amd64.go:3218	0x77a1c7		f3490fb8f9		POPCNTQ R9, DI					
+  zz_generated_simd_amd64.go:3218	0x77a1cc		eb57			JMP 0x77a225					
+  zz_generated_simd_amd64.go:3197	0x77a1ce		4c89642478		MOVQ R12, 0x78(SP)				
+  zz_generated_simd_amd64.go:3218	0x77a1d3		4c89c8			MOVQ R9, AX					
+  zz_generated_simd_amd64.go:3218	0x77a1d6		e8c59cd1ff		CALL math/bits.OnesCount64(SB)			
+  zz_generated_simd_amd64.go:3208	0x77a1db		488b8c24d8000000	MOVQ 0xd8(SP), CX				
+  zz_generated_simd_amd64.go:3197	0x77a1e3		488b542450		MOVQ 0x50(SP), DX				
+  zz_generated_simd_amd64.go:3217	0x77a1e8		488b9c24f8000000	MOVQ 0xf8(SP), BX				
+  zz_generated_simd_amd64.go:3217	0x77a1f0		0fb6353bb54b00		MOVZX runtime.x86HasPOPCNT(SB), SI		
+  zz_generated_simd_amd64.go:3212	0x77a1f7		4c8b8424c0000000	MOVQ 0xc0(SP), R8				
+  zz_generated_simd_amd64.go:3218	0x77a1ff		4c8b5c2460		MOVQ 0x60(SP), R11				
+  zz_generated_simd_amd64.go:3197	0x77a204		4c8b642478		MOVQ 0x78(SP), R12				
+  zz_generated_simd_amd64.go:3199	0x77a209		4c8bac24d0000000	MOVQ 0xd0(SP), R13				
+  compare_gen_amd64.go:621		0x77a211		c5fe6f842480000000	VMOVDQU 0x80(SP), Y0				
+  zz_generated_simd_amd64.go:3218	0x77a21a		4889c7			MOVQ AX, DI					
+  zz_generated_simd_amd64.go:3208	0x77a21d		488b8424c8000000	MOVQ 0xc8(SP), AX				
+  zz_generated_simd_amd64.go:3218	0x77a225		4901fb			ADDQ DI, R11					
+  scalar.go:78				0x77a228		488bb424e8000000	MOVQ 0xe8(SP), SI				
+  scalar.go:75				0x77a230		488bbc24e0000000	MOVQ 0xe0(SP), DI				
+  zz_generated_simd_amd64.go:3218	0x77a238		e99bfdffff		JMP 0x779fd8					
+  zz_generated_simd_amd64.go:3220	0x77a23d		4c89d8			MOVQ R11, AX					
+  zz_generated_simd_amd64.go:3220	0x77a240		4881c4b0000000		ADDQ $0xb0, SP					
+  zz_generated_simd_amd64.go:3220	0x77a247		5d			POPQ BP						
+  zz_generated_simd_amd64.go:3220	0x77a248		c3			RET						
+  zz_generated_simd_amd64.go:3212	0x77a249		e8d26fd1ff		CALL runtime.panicBounds(SB)			
+  slice_gen_amd64.go:216		0x77a24e		e8cd6fd1ff		CALL runtime.panicBounds(SB)			
+  zz_generated_simd_amd64.go:3208	0x77a253		e8c86fd1ff		CALL runtime.panicBounds(SB)			
+  scalar.go:78				0x77a258		e8c36fd1ff		CALL runtime.panicBounds(SB)			
+  scalar.go:16				0x77a25d		0f1f00			NOPL 0(AX)					
+  scalar.go:16				0x77a260		e8bb6fd1ff		CALL runtime.panicBounds(SB)			
+  scalar.go:14				0x77a265		488d05944d4200		LEAQ 0x424d94(IP), AX				
+  scalar.go:14				0x77a26c		488d1dbddb0a00		LEAQ 0xadbbd(IP), BX				
+  scalar.go:14				0x77a273		e8e8f6d0ff		CALL runtime.gopanic(SB)			
+  scalar.go:14				0x77a278		90			NOPL						
+  zz_generated_simd_amd64.go:3190	0x77a279		4889442410		MOVQ AX, 0x10(SP)				
+  zz_generated_simd_amd64.go:3190	0x77a27e		48895c2418		MOVQ BX, 0x18(SP)				
+  zz_generated_simd_amd64.go:3190	0x77a283		48894c2420		MOVQ CX, 0x20(SP)				
+  zz_generated_simd_amd64.go:3190	0x77a288		48897c2428		MOVQ DI, 0x28(SP)				
+  zz_generated_simd_amd64.go:3190	0x77a28d		4889742430		MOVQ SI, 0x30(SP)				
+  zz_generated_simd_amd64.go:3190	0x77a292		4c89442438		MOVQ R8, 0x38(SP)				
+  zz_generated_simd_amd64.go:3190	0x77a297		4c894c2440		MOVQ R9, 0x40(SP)				
+  zz_generated_simd_amd64.go:3190	0x77a29c		4c89542448		MOVQ R10, 0x48(SP)				
+  zz_generated_simd_amd64.go:3190	0x77a2a1		4c895c2450		MOVQ R11, 0x50(SP)				
+  zz_generated_simd_amd64.go:3190	0x77a2a6		e83553d1ff		CALL runtime.morestack_noctxt.abi0(SB)		
+  zz_generated_simd_amd64.go:3190	0x77a2ab		488b442410		MOVQ 0x10(SP), AX				
+  zz_generated_simd_amd64.go:3190	0x77a2b0		488b5c2418		MOVQ 0x18(SP), BX				
+  zz_generated_simd_amd64.go:3190	0x77a2b5		488b4c2420		MOVQ 0x20(SP), CX				
+  zz_generated_simd_amd64.go:3190	0x77a2ba		488b7c2428		MOVQ 0x28(SP), DI				
+  zz_generated_simd_amd64.go:3190	0x77a2bf		488b742430		MOVQ 0x30(SP), SI				
+  zz_generated_simd_amd64.go:3190	0x77a2c4		4c8b442438		MOVQ 0x38(SP), R8				
+  zz_generated_simd_amd64.go:3190	0x77a2c9		4c8b4c2440		MOVQ 0x40(SP), R9				
+  zz_generated_simd_amd64.go:3190	0x77a2ce		4c8b542448		MOVQ 0x48(SP), R10				
+  zz_generated_simd_amd64.go:3190	0x77a2d3		4c8b5c2450		MOVQ 0x50(SP), R11				
+  zz_generated_simd_amd64.go:3190	0x77a2d8		e9e3fbffff		JMP gocolumn/kernel.simdAMD256Uint64GE(SB)	
+
+TEXT gocolumn/kernel.simdAMD512Float32GT(SB) /workspace/scratch/ac8e1e118737/GoLume-next/kernel/zz_generated_simd_amd64.go
+  zz_generated_simd_amd64.go:4187	0x783780		4c8d6424c8		LEAQ -0x38(SP), R12				
+  zz_generated_simd_amd64.go:4187	0x783785		4d3b6610		CMPQ R12, 0x10(R14)				
+  zz_generated_simd_amd64.go:4187	0x783789		0f863f030000		JBE 0x783ace					
+  zz_generated_simd_amd64.go:4187	0x78378f		55			PUSHQ BP					
+  zz_generated_simd_amd64.go:4187	0x783790		4889e5			MOVQ SP, BP					
+  zz_generated_simd_amd64.go:4187	0x783793		4881ecb0000000		SUBQ $0xb0, SP					
+  zz_generated_simd_amd64.go:4187	0x78379a		48898424c0000000	MOVQ AX, 0xc0(SP)				
+  zz_generated_simd_amd64.go:4187	0x7837a2		4889bc24d8000000	MOVQ DI, 0xd8(SP)				
+  zz_generated_simd_amd64.go:4187	0x7837aa		4c898c24f0000000	MOVQ R9, 0xf0(SP)				
+  zz_generated_simd_amd64.go:4188	0x7837b2		4883fb10		CMPQ BX, $0x10					
+  zz_generated_simd_amd64.go:4188	0x7837b6		0f8cca000000		JL 0x783886					
+  bitmap.go:13				0x7837bc		488d533f		LEAQ 0x3f(BX), DX				
+  bitmap.go:13				0x7837c0		48c1ea06		SHRQ $0x6, DX					
+  zz_generated_simd_amd64.go:4191	0x7837c4		90			NOPL						
+  scalar.go:12				0x7837c5		90			NOPL						
+  scalar.go:13				0x7837c6		4939d2			CMPQ R10, DX					
+  scalar.go:13				0x7837c9		0f8ceb020000		JL 0x783aba					
+  scalar.go:16				0x7837cf		4939d3			CMPQ R11, DX					
+  scalar.go:16				0x7837d2		0f82dd020000		JB 0x783ab5					
+  zz_generated_simd_amd64.go:4188	0x7837d8		f30f11842408010000	MOVSS X0, 0x108(SP)				
+  bitmap.go:13				0x7837e1		4889542458		MOVQ DX, 0x58(SP)				
+  zz_generated_simd_amd64.go:4188	0x7837e6		48898c24d0000000	MOVQ CX, 0xd0(SP)				
+  zz_generated_simd_amd64.go:4188	0x7837ee		48899c24c8000000	MOVQ BX, 0xc8(SP)				
+  zz_generated_simd_amd64.go:4188	0x7837f6		4c898c24f0000000	MOVQ R9, 0xf0(SP)				
+  zz_generated_simd_amd64.go:4188	0x7837fe		48898424c0000000	MOVQ AX, 0xc0(SP)				
+  zz_generated_simd_amd64.go:4188	0x783806		4889bc24d8000000	MOVQ DI, 0xd8(SP)				
+  zz_generated_simd_amd64.go:4188	0x78380e		4889b424e0000000	MOVQ SI, 0xe0(SP)				
+  scalar.go:16				0x783816		4885d2			TESTQ DX, DX					
+  scalar.go:16				0x783819		744d			JE 0x783868					
+  scalar.go:16				0x78381b		4889d3			MOVQ DX, BX					
+  scalar.go:16				0x78381e		48c1e303		SHLQ $0x3, BX					
+  scalar.go:16				0x783822		4c89c8			MOVQ R9, AX					
+  scalar.go:16				0x783825		e896dad0ff		CALL runtime.memclrNoHeapPointers(SB)		
+  zz_generated_simd_amd64.go:4205	0x78382a		488b8424c0000000	MOVQ 0xc0(SP), AX				
+  zz_generated_simd_amd64.go:4205	0x783832		488b8c24d0000000	MOVQ 0xd0(SP), CX				
+  zz_generated_simd_amd64.go:4194	0x78383a		488b542458		MOVQ 0x58(SP), DX				
+  zz_generated_simd_amd64.go:4196	0x78383f		488b9c24c8000000	MOVQ 0xc8(SP), BX				
+  scalar.go:78				0x783847		488bb424e0000000	MOVQ 0xe0(SP), SI				
+  scalar.go:75				0x78384f		488bbc24d8000000	MOVQ 0xd8(SP), DI				
+  zz_generated_simd_amd64.go:4214	0x783857		4c8b8c24f0000000	MOVQ 0xf0(SP), R9				
+  other_gen_amd64.go:265		0x78385f		f30f10842408010000	MOVSS 0x108(SP), X0				
+  other_gen_amd64.go:265		0x783868		c58211c1		VMOVSS X0, X15, X1				
+  zz_generated_simd_amd64.go:4192	0x78386c		90			NOPL						
+  other_gen_amd64.go:265		0x78386d		62f27d4818c9		VBROADCASTSS X1, Z1				
+  other_gen_amd64.go:265		0x783873		62f1fe487f8c2470000000	VMOVDQU64 Z1, 0x70(SP)				
+  zz_generated_simd_amd64.go:4194	0x78387e		4531c0			XORL R8, R8					
+  zz_generated_simd_amd64.go:4194	0x783881		4531d2			XORL R10, R10					
+  zz_generated_simd_amd64.go:4194	0x783884		eb1a			JMP 0x7838a0					
+  float32_scalar.go:92			0x783886		c6042401		MOVB $0x1, 0(SP)				
+  float32_scalar.go:92			0x78388a		e83191f8ff		CALL gocolumn/kernel.scalarFloat32Compare(SB)	
+  zz_generated_simd_amd64.go:4189	0x78388f		4881c4b0000000		ADDQ $0xb0, SP					
+  zz_generated_simd_amd64.go:4189	0x783896		5d			POPQ BP						
+  zz_generated_simd_amd64.go:4189	0x783897		c3			RET						
+  zz_generated_simd_amd64.go:4194	0x783898		4d8d4301		LEAQ 0x1(R11), R8				
+  zz_generated_simd_amd64.go:4196	0x78389c		4c89e3			MOVQ R12, BX					
+  zz_generated_simd_amd64.go:4196	0x78389f		90			NOPL						
+  zz_generated_simd_amd64.go:4194	0x7838a0		4939d0			CMPQ R8, DX					
+  zz_generated_simd_amd64.go:4194	0x7838a3		0f8dec010000		JGE 0x783a95					
+  zz_generated_simd_amd64.go:4195	0x7838a9		4d89c3			MOVQ R8, R11					
+  zz_generated_simd_amd64.go:4195	0x7838ac		49c1e006		SHLQ $0x6, R8					
+  zz_generated_simd_amd64.go:4196	0x7838b0		4989dc			MOVQ BX, R12					
+  zz_generated_simd_amd64.go:4196	0x7838b3		4c29c3			SUBQ R8, BX					
+  zz_generated_simd_amd64.go:4196	0x7838b6		4883fb40		CMPQ BX, $0x40					
+  zz_generated_simd_amd64.go:4197	0x7838ba		41bd40000000		MOVL $0x40, R13					
+  zz_generated_simd_amd64.go:4197	0x7838c0		4c0f4ceb		CMOVL BX, R13					
+  scalar.go:75				0x7838c4		4885ff			TESTQ DI, DI					
+  zz_generated_simd_amd64.go:4196	0x7838c7		740f			JE 0x7838d8					
+  scalar.go:78				0x7838c9		4c39de			CMPQ SI, R11					
+  scalar.go:78				0x7838cc		0f86de010000		JBE 0x783ab0					
+  scalar.go:78				0x7838d2		4a8b1cdf		MOVQ 0(DI)(R11*8), BX				
+  zz_generated_simd_amd64.go:4197	0x7838d6		eb07			JMP 0x7838df					
+  zz_generated_simd_amd64.go:4197	0x7838d8		48c7c3ffffffff		MOVQ $-0x1, BX					
+  zz_generated_simd_amd64.go:4197	0x7838df		90			NOPL						
+  bitmap.go:60				0x7838e0		4d85ed			TESTQ R13, R13					
+  bitmap.go:60				0x7838e3		7f05			JG 0x7838ea					
+  bitmap.go:60				0x7838e5		4531ff			XORL R15, R15					
+  zz_generated_simd_amd64.go:4197	0x7838e8		eb32			JMP 0x78391c					
+  bitmap.go:64				0x7838ea		49f7c53f000000		TESTQ $0x3f, R13				
+  bitmap.go:64				0x7838f1		7509			JNE 0x7838fc					
+  bitmap.go:64				0x7838f3		49c7c7ffffffff		MOVQ $-0x1, R15					
+  zz_generated_simd_amd64.go:4197	0x7838fa		eb20			JMP 0x78391c					
+  zz_generated_simd_amd64.go:4188	0x7838fc		4989cf			MOVQ CX, R15					
+  bitmap.go:67				0x7838ff		4c89e9			MOVQ R13, CX					
+  bitmap.go:67				0x783902		41b901000000		MOVL $0x1, R9					
+  bitmap.go:67				0x783908		49d3e1			SHLQ CL, R9					
+  bitmap.go:67				0x78390b		49ffc9			DECQ R9						
+  zz_generated_simd_amd64.go:4205	0x78390e		4c89f9			MOVQ R15, CX					
+  zz_generated_simd_amd64.go:4197	0x783911		4d89cf			MOVQ R9, R15					
+  zz_generated_simd_amd64.go:4214	0x783914		4c8b8c24f0000000	MOVQ 0xf0(SP), R9				
+  zz_generated_simd_amd64.go:4197	0x78391c		4c21fb			ANDQ R15, BX					
+  zz_generated_simd_amd64.go:4197	0x78391f		90			NOPL						
+  zz_generated_simd_amd64.go:4199	0x783920		4885db			TESTQ BX, BX					
+  zz_generated_simd_amd64.go:4199	0x783923		0f846fffffff		JE 0x783898					
+  zz_generated_simd_amd64.go:4194	0x783929		4c89542460		MOVQ R10, 0x60(SP)				
+  zz_generated_simd_amd64.go:4199	0x78392e		4531ff			XORL R15, R15					
+  zz_generated_simd_amd64.go:4199	0x783931		31f6			XORL SI, SI					
+  zz_generated_simd_amd64.go:4199	0x783933		eb42			JMP 0x783977					
+  slice_gen_amd64.go:348		0x783935		62f1fe486f12		VMOVDQU64 0(DX), Z2				
+  zz_generated_simd_amd64.go:4205	0x78393b		62f16c48c2c90e		VCMPPS $0xe, Z1, Z2, K1				
+  zz_generated_simd_amd64.go:4206	0x783942		c5f893d1		KMOVW K1, DX					
+  zz_generated_simd_amd64.go:4206	0x783946		0fb7d2			MOVZX DX, DX					
+  zz_generated_simd_amd64.go:4188	0x783949		4989ca			MOVQ CX, R10					
+  zz_generated_simd_amd64.go:4206	0x78394c		4c89f9			MOVQ R15, CX					
+  zz_generated_simd_amd64.go:4206	0x78394f		48d3e2			SHLQ CL, DX					
+  zz_generated_simd_amd64.go:4206	0x783952		4883f940		CMPQ CX, $0x40					
+  zz_generated_simd_amd64.go:4206	0x783956		4819c9			SBBQ CX, CX					
+  zz_generated_simd_amd64.go:4206	0x783959		4821ca			ANDQ CX, DX					
+  zz_generated_simd_amd64.go:4206	0x78395c		4809d6			ORQ DX, SI					
+  zz_generated_simd_amd64.go:4205	0x78395f		4c89d1			MOVQ R10, CX					
+  zz_generated_simd_amd64.go:4194	0x783962		488b542458		MOVQ 0x58(SP), DX				
+  zz_generated_simd_amd64.go:4215	0x783967		4c8b542460		MOVQ 0x60(SP), R10				
+  zz_generated_simd_amd64.go:4205	0x78396c		4c8ba424c8000000	MOVQ 0xc8(SP), R12				
+  zz_generated_simd_amd64.go:4204	0x783974		4989ff			MOVQ DI, R15					
+  zz_generated_simd_amd64.go:4204	0x783977		498d7f10		LEAQ 0x10(R15), DI				
+  zz_generated_simd_amd64.go:4204	0x78397b		0f1f440000		NOPL 0(AX)(AX*1)				
+  zz_generated_simd_amd64.go:4204	0x783980		4939fd			CMPQ R13, DI					
+  zz_generated_simd_amd64.go:4204	0x783983		7c72			JL 0x7839f7					
+  zz_generated_simd_amd64.go:4205	0x783985		4b8d1407		LEAQ 0(R15)(R8*1), DX				
+  zz_generated_simd_amd64.go:4205	0x783989		4939d4			CMPQ R12, DX					
+  zz_generated_simd_amd64.go:4205	0x78398c		0f8219010000		JB 0x783aab					
+  zz_generated_simd_amd64.go:4205	0x783992		4889542468		MOVQ DX, 0x68(SP)				
+  zz_generated_simd_amd64.go:4205	0x783997		4929d4			SUBQ DX, R12					
+  zz_generated_simd_amd64.go:4205	0x78399a		4829ca			SUBQ CX, DX					
+  zz_generated_simd_amd64.go:4205	0x78399d		4c8b542468		MOVQ 0x68(SP), R10				
+  zz_generated_simd_amd64.go:4205	0x7839a2		49c1e202		SHLQ $0x2, R10					
+  zz_generated_simd_amd64.go:4205	0x7839a6		48c1fa3f		SARQ $0x3f, DX					
+  zz_generated_simd_amd64.go:4205	0x7839aa		4c21d2			ANDQ R10, DX					
+  zz_generated_simd_amd64.go:4205	0x7839ad		4801c2			ADDQ AX, DX					
+  slice_gen_amd64.go:348		0x7839b0		4983fc10		CMPQ R12, $0x10					
+  slice_gen_amd64.go:348		0x7839b4		0f837bffffff		JAE 0x783935					
+  slice_gen_amd64.go:348		0x7839ba		e9e7000000		JMP 0x783aa6					
+  zz_generated_simd_amd64.go:4209	0x7839bf		f30f1014b8		MOVSS 0(AX)(DI*4), X2				
+  zz_generated_simd_amd64.go:4210	0x7839c4		4c89f9			MOVQ R15, CX					
+  zz_generated_simd_amd64.go:4210	0x7839c7		bf01000000		MOVL $0x1, DI					
+  zz_generated_simd_amd64.go:4210	0x7839cc		48d3e7			SHLQ CL, DI					
+  zz_generated_simd_amd64.go:4209	0x7839cf		0f2ed0			UCOMISS X0, X2					
+  zz_generated_simd_amd64.go:4210	0x7839d2		4883f940		CMPQ CX, $0x40					
+  zz_generated_simd_amd64.go:4210	0x7839d6		4819d2			SBBQ DX, DX					
+  zz_generated_simd_amd64.go:4210	0x7839d9		4821d7			ANDQ DX, DI					
+  zz_generated_simd_amd64.go:4210	0x7839dc		4809f7			ORQ SI, DI					
+  zz_generated_simd_amd64.go:4209	0x7839df		0f2ed0			UCOMISS X0, X2					
+  zz_generated_simd_amd64.go:4209	0x7839e2		480f47f7		CMOVA DI, SI					
+  zz_generated_simd_amd64.go:4208	0x7839e6		4c8d7901		LEAQ 0x1(CX), R15				
+  zz_generated_simd_amd64.go:4205	0x7839ea		488b8c24d0000000	MOVQ 0xd0(SP), CX				
+  zz_generated_simd_amd64.go:4194	0x7839f2		488b542458		MOVQ 0x58(SP), DX				
+  zz_generated_simd_amd64.go:4208	0x7839f7		4d39ef			CMPQ R15, R13					
+  zz_generated_simd_amd64.go:4208	0x7839fa		7d0e			JGE 0x783a0a					
+  zz_generated_simd_amd64.go:4209	0x7839fc		4b8d3c07		LEAQ 0(R15)(R8*1), DI				
+  zz_generated_simd_amd64.go:4209	0x783a00		4939fc			CMPQ R12, DI					
+  zz_generated_simd_amd64.go:4209	0x783a03		77ba			JA 0x7839bf					
+  zz_generated_simd_amd64.go:4209	0x783a05		e997000000		JMP 0x783aa1					
+  zz_generated_simd_amd64.go:4213	0x783a0a		4821de			ANDQ BX, SI					
+  zz_generated_simd_amd64.go:4214	0x783a0d		4b8934d9		MOVQ SI, 0(R9)(R11*8)				
+  zz_generated_simd_amd64.go:4214	0x783a11		0fb61d1a1d4b00		MOVZX runtime.x86HasPOPCNT(SB), BX		
+  zz_generated_simd_amd64.go:4214	0x783a18		85db			TESTL BX, BX					
+  zz_generated_simd_amd64.go:4215	0x783a1a		7407			JE 0x783a23					
+  zz_generated_simd_amd64.go:4215	0x783a1c		f3480fb8f6		POPCNTQ SI, SI					
+  zz_generated_simd_amd64.go:4215	0x783a21		eb5a			JMP 0x783a7d					
+  zz_generated_simd_amd64.go:4194	0x783a23		4c895c2468		MOVQ R11, 0x68(SP)				
+  zz_generated_simd_amd64.go:4215	0x783a28		4889f0			MOVQ SI, AX					
+  zz_generated_simd_amd64.go:4215	0x783a2b		e87004d1ff		CALL math/bits.OnesCount64(SB)			
+  zz_generated_simd_amd64.go:4205	0x783a30		488b8c24d0000000	MOVQ 0xd0(SP), CX				
+  zz_generated_simd_amd64.go:4194	0x783a38		488b542458		MOVQ 0x58(SP), DX				
+  zz_generated_simd_amd64.go:4194	0x783a3d		0fb61dee1c4b00		MOVZX runtime.x86HasPOPCNT(SB), BX		
+  zz_generated_simd_amd64.go:4214	0x783a44		4c8b8c24f0000000	MOVQ 0xf0(SP), R9				
+  zz_generated_simd_amd64.go:4215	0x783a4c		4c8b542460		MOVQ 0x60(SP), R10				
+  zz_generated_simd_amd64.go:4194	0x783a51		4c8b5c2468		MOVQ 0x68(SP), R11				
+  zz_generated_simd_amd64.go:4196	0x783a56		4c8ba424c8000000	MOVQ 0xc8(SP), R12				
+  zz_generated_simd_amd64.go:4209	0x783a5e		f30f10842408010000	MOVSS 0x108(SP), X0				
+  zz_generated_simd_amd64.go:4205	0x783a67		62f1fe486f8c2470000000	VMOVDQU64 0x70(SP), Z1				
+  zz_generated_simd_amd64.go:4215	0x783a72		4889c6			MOVQ AX, SI					
+  zz_generated_simd_amd64.go:4205	0x783a75		488b8424c0000000	MOVQ 0xc0(SP), AX				
+  zz_generated_simd_amd64.go:4215	0x783a7d		4901f2			ADDQ SI, R10					
+  scalar.go:78				0x783a80		488bb424e0000000	MOVQ 0xe0(SP), SI				
+  scalar.go:75				0x783a88		488bbc24d8000000	MOVQ 0xd8(SP), DI				
+  zz_generated_simd_amd64.go:4215	0x783a90		e903feffff		JMP 0x783898					
+  zz_generated_simd_amd64.go:4217	0x783a95		4c89d0			MOVQ R10, AX					
+  zz_generated_simd_amd64.go:4217	0x783a98		4881c4b0000000		ADDQ $0xb0, SP					
+  zz_generated_simd_amd64.go:4217	0x783a9f		5d			POPQ BP						
+  zz_generated_simd_amd64.go:4217	0x783aa0		c3			RET						
+  zz_generated_simd_amd64.go:4209	0x783aa1		e87ad7d0ff		CALL runtime.panicBounds(SB)			
+  slice_gen_amd64.go:348		0x783aa6		e875d7d0ff		CALL runtime.panicBounds(SB)			
+  zz_generated_simd_amd64.go:4205	0x783aab		e870d7d0ff		CALL runtime.panicBounds(SB)			
+  scalar.go:78				0x783ab0		e86bd7d0ff		CALL runtime.panicBounds(SB)			
+  scalar.go:16				0x783ab5		e866d7d0ff		CALL runtime.panicBounds(SB)			
+  scalar.go:14				0x783aba		488d053fb54100		LEAQ 0x41b53f(IP), AX				
+  scalar.go:14				0x783ac1		488d1d68430a00		LEAQ 0xa4368(IP), BX				
+  scalar.go:14				0x783ac8		e8935ed0ff		CALL runtime.gopanic(SB)			
+  scalar.go:14				0x783acd		90			NOPL						
+  zz_generated_simd_amd64.go:4187	0x783ace		4889442408		MOVQ AX, 0x8(SP)				
+  zz_generated_simd_amd64.go:4187	0x783ad3		48895c2410		MOVQ BX, 0x10(SP)				
+  zz_generated_simd_amd64.go:4187	0x783ad8		48894c2418		MOVQ CX, 0x18(SP)				
+  zz_generated_simd_amd64.go:4187	0x783add		48897c2420		MOVQ DI, 0x20(SP)				
+  zz_generated_simd_amd64.go:4187	0x783ae2		4889742428		MOVQ SI, 0x28(SP)				
+  zz_generated_simd_amd64.go:4187	0x783ae7		4c89442430		MOVQ R8, 0x30(SP)				
+  zz_generated_simd_amd64.go:4187	0x783aec		4c894c2438		MOVQ R9, 0x38(SP)				
+  zz_generated_simd_amd64.go:4187	0x783af1		4c89542440		MOVQ R10, 0x40(SP)				
+  zz_generated_simd_amd64.go:4187	0x783af6		4c895c2448		MOVQ R11, 0x48(SP)				
+  zz_generated_simd_amd64.go:4187	0x783afb		f30f11442450		MOVSS X0, 0x50(SP)				
+  zz_generated_simd_amd64.go:4187	0x783b01		e8dabad0ff		CALL runtime.morestack_noctxt.abi0(SB)		
+  zz_generated_simd_amd64.go:4187	0x783b06		488b442408		MOVQ 0x8(SP), AX				
+  zz_generated_simd_amd64.go:4187	0x783b0b		488b5c2410		MOVQ 0x10(SP), BX				
+  zz_generated_simd_amd64.go:4187	0x783b10		488b4c2418		MOVQ 0x18(SP), CX				
+  zz_generated_simd_amd64.go:4187	0x783b15		488b7c2420		MOVQ 0x20(SP), DI				
+  zz_generated_simd_amd64.go:4187	0x783b1a		488b742428		MOVQ 0x28(SP), SI				
+  zz_generated_simd_amd64.go:4187	0x783b1f		4c8b442430		MOVQ 0x30(SP), R8				
+  zz_generated_simd_amd64.go:4187	0x783b24		4c8b4c2438		MOVQ 0x38(SP), R9				
+  zz_generated_simd_amd64.go:4187	0x783b29		4c8b542440		MOVQ 0x40(SP), R10				
+  zz_generated_simd_amd64.go:4187	0x783b2e		4c8b5c2448		MOVQ 0x48(SP), R11				
+  zz_generated_simd_amd64.go:4187	0x783b33		f30f10442450		MOVSS 0x50(SP), X0				
+  zz_generated_simd_amd64.go:4187	0x783b39		e942fcffff		JMP gocolumn/kernel.simdAMD512Float32GT(SB)	
+
+TEXT gocolumn/kernel.simdAMD512Int8GT(SB) /workspace/scratch/ac8e1e118737/GoLume-next/kernel/zz_generated_simd_amd64.go
+  zz_generated_simd_amd64.go:4352	0x784a60		4c8d6424a8		LEAQ -0x58(SP), R12				
+  zz_generated_simd_amd64.go:4352	0x784a65		4d3b6610		CMPQ R12, 0x10(R14)				
+  zz_generated_simd_amd64.go:4352	0x784a69		0f8699030000		JBE 0x784e08					
+  zz_generated_simd_amd64.go:4352	0x784a6f		55			PUSHQ BP					
+  zz_generated_simd_amd64.go:4352	0x784a70		4889e5			MOVQ SP, BP					
+  zz_generated_simd_amd64.go:4352	0x784a73		4881ecd0000000		SUBQ $0xd0, SP					
+  zz_generated_simd_amd64.go:4352	0x784a7a		48898424e8000000	MOVQ AX, 0xe8(SP)				
+  zz_generated_simd_amd64.go:4352	0x784a82		4889bc2400010000	MOVQ DI, 0x100(SP)				
+  zz_generated_simd_amd64.go:4352	0x784a8a		4c898c2418010000	MOVQ R9, 0x118(SP)				
+  zz_generated_simd_amd64.go:4353	0x784a92		4883fb40		CMPQ BX, $0x40					
+  zz_generated_simd_amd64.go:4353	0x784a96		0f8cc3000000		JL 0x784b5f					
+  bitmap.go:13				0x784a9c		488d533f		LEAQ 0x3f(BX), DX				
+  bitmap.go:13				0x784aa0		48c1fa06		SARQ $0x6, DX					
+  zz_generated_simd_amd64.go:4356	0x784aa4		90			NOPL						
+  scalar.go:12				0x784aa5		90			NOPL						
+  scalar.go:13				0x784aa6		4939d2			CMPQ R10, DX					
+  scalar.go:13				0x784aa9		0f8c45030000		JL 0x784df4					
+  scalar.go:16				0x784aaf		4939d3			CMPQ R11, DX					
+  scalar.go:16				0x784ab2		0f8237030000		JB 0x784def					
+  zz_generated_simd_amd64.go:4353	0x784ab8		4889bc2400010000	MOVQ DI, 0x100(SP)				
+  bitmap.go:13				0x784ac0		4889542458		MOVQ DX, 0x58(SP)				
+  zz_generated_simd_amd64.go:4353	0x784ac5		48898c24f8000000	MOVQ CX, 0xf8(SP)				
+  zz_generated_simd_amd64.go:4353	0x784acd		4c898c2418010000	MOVQ R9, 0x118(SP)				
+  zz_generated_simd_amd64.go:4353	0x784ad5		48899c24f0000000	MOVQ BX, 0xf0(SP)				
+  zz_generated_simd_amd64.go:4353	0x784add		48898424e8000000	MOVQ AX, 0xe8(SP)				
+  zz_generated_simd_amd64.go:4353	0x784ae5		4889b42408010000	MOVQ SI, 0x108(SP)				
+  scalar.go:16				0x784aed		4885d2			TESTQ DX, DX					
+  scalar.go:16				0x784af0		7448			JE 0x784b3a					
+  scalar.go:16				0x784af2		4889d3			MOVQ DX, BX					
+  scalar.go:16				0x784af5		48c1e303		SHLQ $0x3, BX					
+  scalar.go:16				0x784af9		4c89c8			MOVQ R9, AX					
+  scalar.go:16				0x784afc		0f1f4000		NOPL 0(AX)					
+  scalar.go:16				0x784b00		e8bbc7d0ff		CALL runtime.memclrNoHeapPointers(SB)		
+  zz_generated_simd_amd64.go:4370	0x784b05		488b8424e8000000	MOVQ 0xe8(SP), AX				
+  zz_generated_simd_amd64.go:4370	0x784b0d		488b8c24f8000000	MOVQ 0xf8(SP), CX				
+  zz_generated_simd_amd64.go:4359	0x784b15		488b542458		MOVQ 0x58(SP), DX				
+  zz_generated_simd_amd64.go:4361	0x784b1a		488b9c24f0000000	MOVQ 0xf0(SP), BX				
+  scalar.go:78				0x784b22		488bb42408010000	MOVQ 0x108(SP), SI				
+  scalar.go:75				0x784b2a		488bbc2400010000	MOVQ 0x100(SP), DI				
+  zz_generated_simd_amd64.go:4379	0x784b32		4c8b8c2418010000	MOVQ 0x118(SP), R9				
+  other_gen_amd64.go:193		0x784b3a		440fb68424e0000000	MOVZX 0xe0(SP), R8				
+  other_gen_amd64.go:193		0x784b43		c4c1f96ec0		VMOVQ R8, X0					
+  zz_generated_simd_amd64.go:4357	0x784b48		90			NOPL						
+  other_gen_amd64.go:193		0x784b49		62f27d4878c0		VPBROADCASTB X0, Z0				
+  other_gen_amd64.go:193		0x784b4f		62f1fe487f442402	VMOVDQU64 Z0, 0x80(SP)				
+  zz_generated_simd_amd64.go:4359	0x784b57		4531d2			XORL R10, R10					
+  zz_generated_simd_amd64.go:4359	0x784b5a		4531db			XORL R11, R11					
+  zz_generated_simd_amd64.go:4359	0x784b5d		eb29			JMP 0x784b88					
+  zz_generated_simd_amd64.go:4354	0x784b5f		0fb69424e0000000	MOVZX 0xe0(SP), DX				
+  zz_generated_simd_amd64.go:4354	0x784b67		881424			MOVB DL, 0(SP)					
+  zz_generated_simd_amd64.go:4354	0x784b6a		e8d17af9ff		CALL gocolumn/kernel.scalarInt8GT(SB)		
+  zz_generated_simd_amd64.go:4354	0x784b6f		4881c4d0000000		ADDQ $0xd0, SP					
+  zz_generated_simd_amd64.go:4354	0x784b76		5d			POPQ BP						
+  zz_generated_simd_amd64.go:4354	0x784b77		c3			RET						
+  zz_generated_simd_amd64.go:4359	0x784b78		4d8d542401		LEAQ 0x1(R12), R10				
+  zz_generated_simd_amd64.go:4361	0x784b7d		4c89eb			MOVQ R13, BX					
+  zz_generated_simd_amd64.go:4379	0x784b80		4c8b8c2418010000	MOVQ 0x118(SP), R9				
+  zz_generated_simd_amd64.go:4359	0x784b88		4939d2			CMPQ R10, DX					
+  zz_generated_simd_amd64.go:4359	0x784b8b		0f8d37020000		JGE 0x784dc8					
+  zz_generated_simd_amd64.go:4360	0x784b91		4d89d4			MOVQ R10, R12					
+  zz_generated_simd_amd64.go:4360	0x784b94		49c1e206		SHLQ $0x6, R10					
+  zz_generated_simd_amd64.go:4361	0x784b98		4989dd			MOVQ BX, R13					
+  zz_generated_simd_amd64.go:4361	0x784b9b		4c29d3			SUBQ R10, BX					
+  zz_generated_simd_amd64.go:4361	0x784b9e		4883fb40		CMPQ BX, $0x40					
+  zz_generated_simd_amd64.go:4362	0x784ba2		41bf40000000		MOVL $0x40, R15					
+  zz_generated_simd_amd64.go:4362	0x784ba8		4c0f4cfb		CMOVL BX, R15					
+  scalar.go:75				0x784bac		4885ff			TESTQ DI, DI					
+  zz_generated_simd_amd64.go:4361	0x784baf		7411			JE 0x784bc2					
+  scalar.go:78				0x784bb1		4c39e6			CMPQ SI, R12					
+  scalar.go:78				0x784bb4		0f8630020000		JBE 0x784dea					
+  scalar.go:78				0x784bba		4a8b1ce7		MOVQ 0(DI)(R12*8), BX				
+  scalar.go:78				0x784bbe		6690			NOPW						
+  zz_generated_simd_amd64.go:4362	0x784bc0		eb07			JMP 0x784bc9					
+  zz_generated_simd_amd64.go:4362	0x784bc2		48c7c3ffffffff		MOVQ $-0x1, BX					
+  bitmap.go:60				0x784bc9		4d85ff			TESTQ R15, R15					
+  bitmap.go:60				0x784bcc		7f19			JG 0x784be7					
+  zz_generated_simd_amd64.go:4353	0x784bce		48898424c8000000	MOVQ AX, 0xc8(SP)				
+  zz_generated_simd_amd64.go:4362	0x784bd6		31c0			XORL AX, AX					
+  zz_generated_simd_amd64.go:4362	0x784bd8		4889442460		MOVQ AX, 0x60(SP)				
+  zz_generated_simd_amd64.go:4370	0x784bdd		488b8424c8000000	MOVQ 0xc8(SP), AX				
+  zz_generated_simd_amd64.go:4362	0x784be5		eb43			JMP 0x784c2a					
+  bitmap.go:64				0x784be7		49f7c73f000000		TESTQ $0x3f, R15				
+  bitmap.go:64				0x784bee		751e			JNE 0x784c0e					
+  zz_generated_simd_amd64.go:4353	0x784bf0		48898424c0000000	MOVQ AX, 0xc0(SP)				
+  zz_generated_simd_amd64.go:4362	0x784bf8		48c7c0ffffffff		MOVQ $-0x1, AX					
+  zz_generated_simd_amd64.go:4362	0x784bff		4889442460		MOVQ AX, 0x60(SP)				
+  zz_generated_simd_amd64.go:4370	0x784c04		488b8424c0000000	MOVQ 0xc0(SP), AX				
+  zz_generated_simd_amd64.go:4362	0x784c0c		eb1c			JMP 0x784c2a					
+  bitmap.go:67				0x784c0e		4c89f9			MOVQ R15, CX					
+  bitmap.go:67				0x784c11		41b901000000		MOVL $0x1, R9					
+  bitmap.go:67				0x784c17		49d3e1			SHLQ CL, R9					
+  bitmap.go:67				0x784c1a		49ffc9			DECQ R9						
+  zz_generated_simd_amd64.go:4370	0x784c1d		488b8c24f8000000	MOVQ 0xf8(SP), CX				
+  zz_generated_simd_amd64.go:4362	0x784c25		4c894c2460		MOVQ R9, 0x60(SP)				
+  zz_generated_simd_amd64.go:4362	0x784c2a		4c8b4c2460		MOVQ 0x60(SP), R9				
+  zz_generated_simd_amd64.go:4362	0x784c2f		4c21cb			ANDQ R9, BX					
+  zz_generated_simd_amd64.go:4364	0x784c32		4885db			TESTQ BX, BX					
+  zz_generated_simd_amd64.go:4364	0x784c35		0f843dffffff		JE 0x784b78					
+  zz_generated_simd_amd64.go:4359	0x784c3b		4c895c2468		MOVQ R11, 0x68(SP)				
+  zz_generated_simd_amd64.go:4364	0x784c40		4531c9			XORL R9, R9					
+  zz_generated_simd_amd64.go:4364	0x784c43		31f6			XORL SI, SI					
+  zz_generated_simd_amd64.go:4364	0x784c45		eb3f			JMP 0x784c86					
+  slice_gen_amd64.go:252		0x784c47		62f1fe486f0a		VMOVDQU64 0(DX), Z1				
+  zz_generated_simd_amd64.go:4370	0x784c4d		62f1754864c8		VPCMPGTB Z0, Z1, K1				
+  zz_generated_simd_amd64.go:4371	0x784c53		c4e1fb93d1		KMOVQ K1, DX					
+  zz_generated_simd_amd64.go:4353	0x784c58		4989cb			MOVQ CX, R11					
+  zz_generated_simd_amd64.go:4371	0x784c5b		4c89c9			MOVQ R9, CX					
+  zz_generated_simd_amd64.go:4371	0x784c5e		48d3e2			SHLQ CL, DX					
+  zz_generated_simd_amd64.go:4371	0x784c61		4883f940		CMPQ CX, $0x40					
+  zz_generated_simd_amd64.go:4371	0x784c65		4819c9			SBBQ CX, CX					
+  zz_generated_simd_amd64.go:4371	0x784c68		4821ca			ANDQ CX, DX					
+  zz_generated_simd_amd64.go:4371	0x784c6b		4809d6			ORQ DX, SI					
+  zz_generated_simd_amd64.go:4370	0x784c6e		4c89d9			MOVQ R11, CX					
+  zz_generated_simd_amd64.go:4359	0x784c71		488b542458		MOVQ 0x58(SP), DX				
+  zz_generated_simd_amd64.go:4380	0x784c76		4c8b5c2468		MOVQ 0x68(SP), R11				
+  zz_generated_simd_amd64.go:4370	0x784c7b		4c8bac24f0000000	MOVQ 0xf0(SP), R13				
+  zz_generated_simd_amd64.go:4369	0x784c83		4989f9			MOVQ DI, R9					
+  zz_generated_simd_amd64.go:4369	0x784c86		498d7940		LEAQ 0x40(R9), DI				
+  zz_generated_simd_amd64.go:4369	0x784c8a		4939ff			CMPQ R15, DI					
+  zz_generated_simd_amd64.go:4369	0x784c8d		0f8c92000000		JL 0x784d25					
+  zz_generated_simd_amd64.go:4370	0x784c93		4b8d1411		LEAQ 0(R9)(R10*1), DX				
+  zz_generated_simd_amd64.go:4370	0x784c97		660f1f840000000000	NOPW 0(AX)(AX*1)				
+  zz_generated_simd_amd64.go:4370	0x784ca0		4939d5			CMPQ R13, DX					
+  zz_generated_simd_amd64.go:4370	0x784ca3		0f823c010000		JB 0x784de5					
+  zz_generated_simd_amd64.go:4370	0x784ca9		4889542478		MOVQ DX, 0x78(SP)				
+  zz_generated_simd_amd64.go:4370	0x784cae		4929d5			SUBQ DX, R13					
+  zz_generated_simd_amd64.go:4370	0x784cb1		4829ca			SUBQ CX, DX					
+  zz_generated_simd_amd64.go:4370	0x784cb4		48c1fa3f		SARQ $0x3f, DX					
+  zz_generated_simd_amd64.go:4370	0x784cb8		4c8b5c2478		MOVQ 0x78(SP), R11				
+  zz_generated_simd_amd64.go:4370	0x784cbd		4c21da			ANDQ R11, DX					
+  zz_generated_simd_amd64.go:4370	0x784cc0		4801c2			ADDQ AX, DX					
+  slice_gen_amd64.go:252		0x784cc3		4983fd40		CMPQ R13, $0x40					
+  slice_gen_amd64.go:252		0x784cc7		0f837affffff		JAE 0x784c47					
+  slice_gen_amd64.go:252		0x784ccd		e907010000		JMP 0x784dd9					
+  zz_generated_simd_amd64.go:4374	0x784cd2		0fb63c38		MOVZX 0(AX)(DI*1), DI				
+  zz_generated_simd_amd64.go:4374	0x784cd6		40887c2457		MOVB DI, 0x57(SP)				
+  zz_generated_simd_amd64.go:4375	0x784cdb		4c89c9			MOVQ R9, CX					
+  zz_generated_simd_amd64.go:4375	0x784cde		bf01000000		MOVL $0x1, DI					
+  zz_generated_simd_amd64.go:4375	0x784ce3		48d3e7			SHLQ CL, DI					
+  zz_generated_simd_amd64.go:4375	0x784ce6		48897c2470		MOVQ DI, 0x70(SP)				
+  zz_generated_simd_amd64.go:4374	0x784ceb		0fb67c2457		MOVZX 0x57(SP), DI				
+  zz_generated_simd_amd64.go:4374	0x784cf0		4438c7			CMPL DI, R8					
+  zz_generated_simd_amd64.go:4375	0x784cf3		4883f940		CMPQ CX, $0x40					
+  zz_generated_simd_amd64.go:4375	0x784cf7		4819d2			SBBQ DX, DX					
+  zz_generated_simd_amd64.go:4375	0x784cfa		488b7c2470		MOVQ 0x70(SP), DI				
+  zz_generated_simd_amd64.go:4375	0x784cff		4821d7			ANDQ DX, DI					
+  zz_generated_simd_amd64.go:4375	0x784d02		4809f7			ORQ SI, DI					
+  zz_generated_simd_amd64.go:4375	0x784d05		4889fa			MOVQ DI, DX					
+  zz_generated_simd_amd64.go:4374	0x784d08		0fb67c2457		MOVZX 0x57(SP), DI				
+  zz_generated_simd_amd64.go:4374	0x784d0d		4438c7			CMPL DI, R8					
+  zz_generated_simd_amd64.go:4374	0x784d10		480f4ff2		CMOVG DX, SI					
+  zz_generated_simd_amd64.go:4373	0x784d14		4c8d4901		LEAQ 0x1(CX), R9				
+  zz_generated_simd_amd64.go:4370	0x784d18		488b8c24f8000000	MOVQ 0xf8(SP), CX				
+  zz_generated_simd_amd64.go:4359	0x784d20		488b542458		MOVQ 0x58(SP), DX				
+  zz_generated_simd_amd64.go:4373	0x784d25		4d39f9			CMPQ R9, R15					
+  zz_generated_simd_amd64.go:4373	0x784d28		7d0e			JGE 0x784d38					
+  zz_generated_simd_amd64.go:4374	0x784d2a		4b8d3c11		LEAQ 0(R9)(R10*1), DI				
+  zz_generated_simd_amd64.go:4374	0x784d2e		4939fd			CMPQ R13, DI					
+  zz_generated_simd_amd64.go:4374	0x784d31		779f			JA 0x784cd2					
+  zz_generated_simd_amd64.go:4374	0x784d33		e99c000000		JMP 0x784dd4					
+  zz_generated_simd_amd64.go:4378	0x784d38		4821de			ANDQ BX, SI					
+  zz_generated_simd_amd64.go:4379	0x784d3b		488b9c2418010000	MOVQ 0x118(SP), BX				
+  zz_generated_simd_amd64.go:4379	0x784d43		4a8934e3		MOVQ SI, 0(BX)(R12*8)				
+  zz_generated_simd_amd64.go:4379	0x784d47		0fb63de4094b00		MOVZX runtime.x86HasPOPCNT(SB), DI		
+  zz_generated_simd_amd64.go:4379	0x784d4e		85ff			TESTL DI, DI					
+  zz_generated_simd_amd64.go:4380	0x784d50		7407			JE 0x784d59					
+  zz_generated_simd_amd64.go:4380	0x784d52		f3480fb8f6		POPCNTQ SI, SI					
+  zz_generated_simd_amd64.go:4380	0x784d57		eb57			JMP 0x784db0					
+  zz_generated_simd_amd64.go:4359	0x784d59		4c89642478		MOVQ R12, 0x78(SP)				
+  zz_generated_simd_amd64.go:4380	0x784d5e		4889f0			MOVQ SI, AX					
+  zz_generated_simd_amd64.go:4380	0x784d61		e83af1d0ff		CALL math/bits.OnesCount64(SB)			
+  zz_generated_simd_amd64.go:4370	0x784d66		488b8c24f8000000	MOVQ 0xf8(SP), CX				
+  zz_generated_simd_amd64.go:4359	0x784d6e		488b542458		MOVQ 0x58(SP), DX				
+  zz_generated_simd_amd64.go:4379	0x784d73		488b9c2418010000	MOVQ 0x118(SP), BX				
+  zz_generated_simd_amd64.go:4379	0x784d7b		0fb63db0094b00		MOVZX runtime.x86HasPOPCNT(SB), DI		
+  zz_generated_simd_amd64.go:4374	0x784d82		440fb68424e0000000	MOVZX 0xe0(SP), R8				
+  zz_generated_simd_amd64.go:4380	0x784d8b		4c8b5c2468		MOVQ 0x68(SP), R11				
+  zz_generated_simd_amd64.go:4359	0x784d90		4c8b642478		MOVQ 0x78(SP), R12				
+  zz_generated_simd_amd64.go:4361	0x784d95		4c8bac24f0000000	MOVQ 0xf0(SP), R13				
+  zz_generated_simd_amd64.go:4370	0x784d9d		62f1fe486f442402	VMOVDQU64 0x80(SP), Z0				
+  zz_generated_simd_amd64.go:4380	0x784da5		4889c6			MOVQ AX, SI					
+  zz_generated_simd_amd64.go:4370	0x784da8		488b8424e8000000	MOVQ 0xe8(SP), AX				
+  zz_generated_simd_amd64.go:4380	0x784db0		4901f3			ADDQ SI, R11					
+  scalar.go:78				0x784db3		488bb42408010000	MOVQ 0x108(SP), SI				
+  scalar.go:75				0x784dbb		488bbc2400010000	MOVQ 0x100(SP), DI				
+  zz_generated_simd_amd64.go:4380	0x784dc3		e9b0fdffff		JMP 0x784b78					
+  zz_generated_simd_amd64.go:4382	0x784dc8		4c89d8			MOVQ R11, AX					
+  zz_generated_simd_amd64.go:4382	0x784dcb		4881c4d0000000		ADDQ $0xd0, SP					
+  zz_generated_simd_amd64.go:4382	0x784dd2		5d			POPQ BP						
+  zz_generated_simd_amd64.go:4382	0x784dd3		c3			RET						
+  zz_generated_simd_amd64.go:4374	0x784dd4		e847c4d0ff		CALL runtime.panicBounds(SB)			
+  slice_gen_amd64.go:252		0x784dd9		b840000000		MOVL $0x40, AX					
+  slice_gen_amd64.go:252		0x784dde		6690			NOPW						
+  slice_gen_amd64.go:252		0x784de0		e83bc4d0ff		CALL runtime.panicBounds(SB)			
+  zz_generated_simd_amd64.go:4370	0x784de5		e836c4d0ff		CALL runtime.panicBounds(SB)			
+  scalar.go:78				0x784dea		e831c4d0ff		CALL runtime.panicBounds(SB)			
+  scalar.go:16				0x784def		e82cc4d0ff		CALL runtime.panicBounds(SB)			
+  scalar.go:14				0x784df4		488d0505a24100		LEAQ 0x41a205(IP), AX				
+  scalar.go:14				0x784dfb		488d1d2e300a00		LEAQ 0xa302e(IP), BX				
+  scalar.go:14				0x784e02		e8594bd0ff		CALL runtime.gopanic(SB)			
+  scalar.go:14				0x784e07		90			NOPL						
+  zz_generated_simd_amd64.go:4352	0x784e08		4889442410		MOVQ AX, 0x10(SP)				
+  zz_generated_simd_amd64.go:4352	0x784e0d		48895c2418		MOVQ BX, 0x18(SP)				
+  zz_generated_simd_amd64.go:4352	0x784e12		48894c2420		MOVQ CX, 0x20(SP)				
+  zz_generated_simd_amd64.go:4352	0x784e17		48897c2428		MOVQ DI, 0x28(SP)				
+  zz_generated_simd_amd64.go:4352	0x784e1c		4889742430		MOVQ SI, 0x30(SP)				
+  zz_generated_simd_amd64.go:4352	0x784e21		4c89442438		MOVQ R8, 0x38(SP)				
+  zz_generated_simd_amd64.go:4352	0x784e26		4c894c2440		MOVQ R9, 0x40(SP)				
+  zz_generated_simd_amd64.go:4352	0x784e2b		4c89542448		MOVQ R10, 0x48(SP)				
+  zz_generated_simd_amd64.go:4352	0x784e30		4c895c2450		MOVQ R11, 0x50(SP)				
+  zz_generated_simd_amd64.go:4352	0x784e35		e8a6a7d0ff		CALL runtime.morestack_noctxt.abi0(SB)		
+  zz_generated_simd_amd64.go:4352	0x784e3a		488b442410		MOVQ 0x10(SP), AX				
+  zz_generated_simd_amd64.go:4352	0x784e3f		488b5c2418		MOVQ 0x18(SP), BX				
+  zz_generated_simd_amd64.go:4352	0x784e44		488b4c2420		MOVQ 0x20(SP), CX				
+  zz_generated_simd_amd64.go:4352	0x784e49		488b7c2428		MOVQ 0x28(SP), DI				
+  zz_generated_simd_amd64.go:4352	0x784e4e		488b742430		MOVQ 0x30(SP), SI				
+  zz_generated_simd_amd64.go:4352	0x784e53		4c8b442438		MOVQ 0x38(SP), R8				
+  zz_generated_simd_amd64.go:4352	0x784e58		4c8b4c2440		MOVQ 0x40(SP), R9				
+  zz_generated_simd_amd64.go:4352	0x784e5d		4c8b542448		MOVQ 0x48(SP), R10				
+  zz_generated_simd_amd64.go:4352	0x784e62		4c8b5c2450		MOVQ 0x50(SP), R11				
+  zz_generated_simd_amd64.go:4352	0x784e67		e9f4fbffff		JMP gocolumn/kernel.simdAMD512Int8GT(SB)	
+
+TEXT gocolumn/kernel.simdAMD512Uint64GE(SB) /workspace/scratch/ac8e1e118737/GoLume-next/kernel/zz_generated_simd_amd64.go
+  zz_generated_simd_amd64.go:5045	0x78a0c0		4c8d6424a8		LEAQ -0x58(SP), R12				
+  zz_generated_simd_amd64.go:5045	0x78a0c5		4d3b6610		CMPQ R12, 0x10(R14)				
+  zz_generated_simd_amd64.go:5045	0x78a0c9		0f8699030000		JBE 0x78a468					
+  zz_generated_simd_amd64.go:5045	0x78a0cf		55			PUSHQ BP					
+  zz_generated_simd_amd64.go:5045	0x78a0d0		4889e5			MOVQ SP, BP					
+  zz_generated_simd_amd64.go:5045	0x78a0d3		4881ecd0000000		SUBQ $0xd0, SP					
+  zz_generated_simd_amd64.go:5045	0x78a0da		48898424e8000000	MOVQ AX, 0xe8(SP)				
+  zz_generated_simd_amd64.go:5045	0x78a0e2		4889bc2400010000	MOVQ DI, 0x100(SP)				
+  zz_generated_simd_amd64.go:5045	0x78a0ea		4c898c2418010000	MOVQ R9, 0x118(SP)				
+  zz_generated_simd_amd64.go:5046	0x78a0f2		4883fb08		CMPQ BX, $0x8					
+  zz_generated_simd_amd64.go:5046	0x78a0f6		0f8cc2000000		JL 0x78a1be					
+  bitmap.go:13				0x78a0fc		488d533f		LEAQ 0x3f(BX), DX				
+  bitmap.go:13				0x78a100		48c1ea06		SHRQ $0x6, DX					
+  zz_generated_simd_amd64.go:5049	0x78a104		90			NOPL						
+  scalar.go:12				0x78a105		90			NOPL						
+  scalar.go:13				0x78a106		4939d2			CMPQ R10, DX					
+  scalar.go:13				0x78a109		0f8c45030000		JL 0x78a454					
+  scalar.go:16				0x78a10f		4939d3			CMPQ R11, DX					
+  scalar.go:16				0x78a112		0f8237030000		JB 0x78a44f					
+  zz_generated_simd_amd64.go:5046	0x78a118		48899c24f0000000	MOVQ BX, 0xf0(SP)				
+  bitmap.go:13				0x78a120		4889542450		MOVQ DX, 0x50(SP)				
+  zz_generated_simd_amd64.go:5046	0x78a125		48898424e8000000	MOVQ AX, 0xe8(SP)				
+  zz_generated_simd_amd64.go:5046	0x78a12d		4889b42408010000	MOVQ SI, 0x108(SP)				
+  zz_generated_simd_amd64.go:5046	0x78a135		4889bc2400010000	MOVQ DI, 0x100(SP)				
+  zz_generated_simd_amd64.go:5046	0x78a13d		48898c24f8000000	MOVQ CX, 0xf8(SP)				
+  zz_generated_simd_amd64.go:5046	0x78a145		4c898c2418010000	MOVQ R9, 0x118(SP)				
+  scalar.go:16				0x78a14d		4885d2			TESTQ DX, DX					
+  scalar.go:16				0x78a150		7448			JE 0x78a19a					
+  scalar.go:16				0x78a152		4889d3			MOVQ DX, BX					
+  scalar.go:16				0x78a155		48c1e303		SHLQ $0x3, BX					
+  scalar.go:16				0x78a159		4c89c8			MOVQ R9, AX					
+  scalar.go:16				0x78a15c		0f1f4000		NOPL 0(AX)					
+  scalar.go:16				0x78a160		e85b71d0ff		CALL runtime.memclrNoHeapPointers(SB)		
+  zz_generated_simd_amd64.go:5063	0x78a165		488b8424e8000000	MOVQ 0xe8(SP), AX				
+  zz_generated_simd_amd64.go:5063	0x78a16d		488b8c24f8000000	MOVQ 0xf8(SP), CX				
+  zz_generated_simd_amd64.go:5052	0x78a175		488b542450		MOVQ 0x50(SP), DX				
+  zz_generated_simd_amd64.go:5054	0x78a17a		488b9c24f0000000	MOVQ 0xf0(SP), BX				
+  scalar.go:78				0x78a182		488bb42408010000	MOVQ 0x108(SP), SI				
+  scalar.go:75				0x78a18a		488bbc2400010000	MOVQ 0x100(SP), DI				
+  zz_generated_simd_amd64.go:5072	0x78a192		4c8b8c2418010000	MOVQ 0x118(SP), R9				
+  other_gen_amd64.go:256		0x78a19a		4c8b8424e0000000	MOVQ 0xe0(SP), R8				
+  other_gen_amd64.go:256		0x78a1a2		c4c1f96ec0		VMOVQ R8, X0					
+  zz_generated_simd_amd64.go:5050	0x78a1a7		90			NOPL						
+  other_gen_amd64.go:256		0x78a1a8		62f2fd4859c0		VPBROADCASTQ X0, Z0				
+  other_gen_amd64.go:256		0x78a1ae		62f1fe487f442402	VMOVDQU64 Z0, 0x80(SP)				
+  zz_generated_simd_amd64.go:5052	0x78a1b6		4531d2			XORL R10, R10					
+  zz_generated_simd_amd64.go:5052	0x78a1b9		4531db			XORL R11, R11					
+  zz_generated_simd_amd64.go:5052	0x78a1bc		eb2a			JMP 0x78a1e8					
+  zz_generated_simd_amd64.go:5047	0x78a1be		488b9424e0000000	MOVQ 0xe0(SP), DX				
+  zz_generated_simd_amd64.go:5047	0x78a1c6		48891424		MOVQ DX, 0(SP)					
+  zz_generated_simd_amd64.go:5047	0x78a1ca		e89146f9ff		CALL gocolumn/kernel.scalarUint64GE(SB)		
+  zz_generated_simd_amd64.go:5047	0x78a1cf		4881c4d0000000		ADDQ $0xd0, SP					
+  zz_generated_simd_amd64.go:5047	0x78a1d6		5d			POPQ BP						
+  zz_generated_simd_amd64.go:5047	0x78a1d7		c3			RET						
+  zz_generated_simd_amd64.go:5052	0x78a1d8		4d8d542401		LEAQ 0x1(R12), R10				
+  zz_generated_simd_amd64.go:5054	0x78a1dd		4c89eb			MOVQ R13, BX					
+  zz_generated_simd_amd64.go:5072	0x78a1e0		4c8b8c2418010000	MOVQ 0x118(SP), R9				
+  zz_generated_simd_amd64.go:5052	0x78a1e8		4939d2			CMPQ R10, DX					
+  zz_generated_simd_amd64.go:5052	0x78a1eb		0f8d3a020000		JGE 0x78a42b					
+  zz_generated_simd_amd64.go:5053	0x78a1f1		4d89d4			MOVQ R10, R12					
+  zz_generated_simd_amd64.go:5053	0x78a1f4		49c1e206		SHLQ $0x6, R10					
+  zz_generated_simd_amd64.go:5054	0x78a1f8		4989dd			MOVQ BX, R13					
+  zz_generated_simd_amd64.go:5054	0x78a1fb		4c29d3			SUBQ R10, BX					
+  zz_generated_simd_amd64.go:5054	0x78a1fe		4883fb40		CMPQ BX, $0x40					
+  zz_generated_simd_amd64.go:5055	0x78a202		41bf40000000		MOVL $0x40, R15					
+  zz_generated_simd_amd64.go:5055	0x78a208		4c0f4cfb		CMOVL BX, R15					
+  scalar.go:75				0x78a20c		4885ff			TESTQ DI, DI					
+  zz_generated_simd_amd64.go:5054	0x78a20f		7411			JE 0x78a222					
+  scalar.go:78				0x78a211		4c39e6			CMPQ SI, R12					
+  scalar.go:78				0x78a214		0f8630020000		JBE 0x78a44a					
+  scalar.go:78				0x78a21a		4a8b1ce7		MOVQ 0(DI)(R12*8), BX				
+  scalar.go:78				0x78a21e		6690			NOPW						
+  zz_generated_simd_amd64.go:5055	0x78a220		eb07			JMP 0x78a229					
+  zz_generated_simd_amd64.go:5055	0x78a222		48c7c3ffffffff		MOVQ $-0x1, BX					
+  bitmap.go:60				0x78a229		4d85ff			TESTQ R15, R15					
+  bitmap.go:60				0x78a22c		7f19			JG 0x78a247					
+  zz_generated_simd_amd64.go:5046	0x78a22e		48898424c8000000	MOVQ AX, 0xc8(SP)				
+  zz_generated_simd_amd64.go:5055	0x78a236		31c0			XORL AX, AX					
+  zz_generated_simd_amd64.go:5055	0x78a238		4889442458		MOVQ AX, 0x58(SP)				
+  zz_generated_simd_amd64.go:5063	0x78a23d		488b8424c8000000	MOVQ 0xc8(SP), AX				
+  zz_generated_simd_amd64.go:5055	0x78a245		eb43			JMP 0x78a28a					
+  bitmap.go:64				0x78a247		49f7c73f000000		TESTQ $0x3f, R15				
+  bitmap.go:64				0x78a24e		751e			JNE 0x78a26e					
+  zz_generated_simd_amd64.go:5046	0x78a250		48898424c0000000	MOVQ AX, 0xc0(SP)				
+  zz_generated_simd_amd64.go:5055	0x78a258		48c7c0ffffffff		MOVQ $-0x1, AX					
+  zz_generated_simd_amd64.go:5055	0x78a25f		4889442458		MOVQ AX, 0x58(SP)				
+  zz_generated_simd_amd64.go:5063	0x78a264		488b8424c0000000	MOVQ 0xc0(SP), AX				
+  zz_generated_simd_amd64.go:5055	0x78a26c		eb1c			JMP 0x78a28a					
+  bitmap.go:67				0x78a26e		4c89f9			MOVQ R15, CX					
+  bitmap.go:67				0x78a271		41b901000000		MOVL $0x1, R9					
+  bitmap.go:67				0x78a277		49d3e1			SHLQ CL, R9					
+  bitmap.go:67				0x78a27a		49ffc9			DECQ R9						
+  zz_generated_simd_amd64.go:5063	0x78a27d		488b8c24f8000000	MOVQ 0xf8(SP), CX				
+  zz_generated_simd_amd64.go:5055	0x78a285		4c894c2458		MOVQ R9, 0x58(SP)				
+  zz_generated_simd_amd64.go:5055	0x78a28a		4c8b4c2458		MOVQ 0x58(SP), R9				
+  zz_generated_simd_amd64.go:5055	0x78a28f		4c21cb			ANDQ R9, BX					
+  zz_generated_simd_amd64.go:5057	0x78a292		4885db			TESTQ BX, BX					
+  zz_generated_simd_amd64.go:5057	0x78a295		0f843dffffff		JE 0x78a1d8					
+  zz_generated_simd_amd64.go:5052	0x78a29b		4c895c2460		MOVQ R11, 0x60(SP)				
+  zz_generated_simd_amd64.go:5057	0x78a2a0		4531c9			XORL R9, R9					
+  zz_generated_simd_amd64.go:5057	0x78a2a3		31f6			XORL SI, SI					
+  zz_generated_simd_amd64.go:5057	0x78a2a5		eb42			JMP 0x78a2e9					
+  slice_gen_amd64.go:336		0x78a2a7		62f1fe486f0a		VMOVDQU64 0(DX), Z1				
+  zz_generated_simd_amd64.go:5063	0x78a2ad		62f3f5481ec80d		VPCMPUQ $0xd, Z0, Z1, K1			
+  zz_generated_simd_amd64.go:5064	0x78a2b4		c5f993d1		KMOVB K1, DX					
+  zz_generated_simd_amd64.go:5064	0x78a2b8		0fb6d2			MOVZX DL, DX					
+  zz_generated_simd_amd64.go:5046	0x78a2bb		4989cb			MOVQ CX, R11					
+  zz_generated_simd_amd64.go:5064	0x78a2be		4c89c9			MOVQ R9, CX					
+  zz_generated_simd_amd64.go:5064	0x78a2c1		48d3e2			SHLQ CL, DX					
+  zz_generated_simd_amd64.go:5064	0x78a2c4		4883f940		CMPQ CX, $0x40					
+  zz_generated_simd_amd64.go:5064	0x78a2c8		4819c9			SBBQ CX, CX					
+  zz_generated_simd_amd64.go:5064	0x78a2cb		4821ca			ANDQ CX, DX					
+  zz_generated_simd_amd64.go:5064	0x78a2ce		4809d6			ORQ DX, SI					
+  zz_generated_simd_amd64.go:5063	0x78a2d1		4c89d9			MOVQ R11, CX					
+  zz_generated_simd_amd64.go:5052	0x78a2d4		488b542450		MOVQ 0x50(SP), DX				
+  zz_generated_simd_amd64.go:5073	0x78a2d9		4c8b5c2460		MOVQ 0x60(SP), R11				
+  zz_generated_simd_amd64.go:5063	0x78a2de		4c8bac24f0000000	MOVQ 0xf0(SP), R13				
+  zz_generated_simd_amd64.go:5062	0x78a2e6		4989f9			MOVQ DI, R9					
+  zz_generated_simd_amd64.go:5062	0x78a2e9		498d7908		LEAQ 0x8(R9), DI				
+  zz_generated_simd_amd64.go:5062	0x78a2ed		4939ff			CMPQ R15, DI					
+  zz_generated_simd_amd64.go:5062	0x78a2f0		0f8c93000000		JL 0x78a389					
+  zz_generated_simd_amd64.go:5063	0x78a2f6		4b8d1411		LEAQ 0(R9)(R10*1), DX				
+  zz_generated_simd_amd64.go:5063	0x78a2fa		660f1f440000		NOPW 0(AX)(AX*1)				
+  zz_generated_simd_amd64.go:5063	0x78a300		4939d5			CMPQ R13, DX					
+  zz_generated_simd_amd64.go:5063	0x78a303		0f823c010000		JB 0x78a445					
+  zz_generated_simd_amd64.go:5063	0x78a309		4889542478		MOVQ DX, 0x78(SP)				
+  zz_generated_simd_amd64.go:5063	0x78a30e		4929d5			SUBQ DX, R13					
+  zz_generated_simd_amd64.go:5063	0x78a311		4829ca			SUBQ CX, DX					
+  zz_generated_simd_amd64.go:5063	0x78a314		4c8b5c2478		MOVQ 0x78(SP), R11				
+  zz_generated_simd_amd64.go:5063	0x78a319		49c1e303		SHLQ $0x3, R11					
+  zz_generated_simd_amd64.go:5063	0x78a31d		48c1fa3f		SARQ $0x3f, DX					
+  zz_generated_simd_amd64.go:5063	0x78a321		4c21da			ANDQ R11, DX					
+  zz_generated_simd_amd64.go:5063	0x78a324		4801c2			ADDQ AX, DX					
+  slice_gen_amd64.go:336		0x78a327		4983fd08		CMPQ R13, $0x8					
+  slice_gen_amd64.go:336		0x78a32b		0f8376ffffff		JAE 0x78a2a7					
+  slice_gen_amd64.go:336		0x78a331		e906010000		JMP 0x78a43c					
+  zz_generated_simd_amd64.go:5067	0x78a336		488b3cf8		MOVQ 0(AX)(DI*8), DI				
+  zz_generated_simd_amd64.go:5067	0x78a33a		48897c2470		MOVQ DI, 0x70(SP)				
+  zz_generated_simd_amd64.go:5068	0x78a33f		4c89c9			MOVQ R9, CX					
+  zz_generated_simd_amd64.go:5068	0x78a342		bf01000000		MOVL $0x1, DI					
+  zz_generated_simd_amd64.go:5068	0x78a347		48d3e7			SHLQ CL, DI					
+  zz_generated_simd_amd64.go:5068	0x78a34a		48897c2468		MOVQ DI, 0x68(SP)				
+  zz_generated_simd_amd64.go:5067	0x78a34f		488b7c2470		MOVQ 0x70(SP), DI				
+  zz_generated_simd_amd64.go:5067	0x78a354		4c39c7			CMPQ DI, R8					
+  zz_generated_simd_amd64.go:5068	0x78a357		4883f940		CMPQ CX, $0x40					
+  zz_generated_simd_amd64.go:5068	0x78a35b		4819d2			SBBQ DX, DX					
+  zz_generated_simd_amd64.go:5068	0x78a35e		488b7c2468		MOVQ 0x68(SP), DI				
+  zz_generated_simd_amd64.go:5068	0x78a363		4821d7			ANDQ DX, DI					
+  zz_generated_simd_amd64.go:5068	0x78a366		4809f7			ORQ SI, DI					
+  zz_generated_simd_amd64.go:5068	0x78a369		4889fa			MOVQ DI, DX					
+  zz_generated_simd_amd64.go:5067	0x78a36c		488b7c2470		MOVQ 0x70(SP), DI				
+  zz_generated_simd_amd64.go:5067	0x78a371		4c39c7			CMPQ DI, R8					
+  zz_generated_simd_amd64.go:5067	0x78a374		480f43f2		CMOVAE DX, SI					
+  zz_generated_simd_amd64.go:5066	0x78a378		4c8d4901		LEAQ 0x1(CX), R9				
+  zz_generated_simd_amd64.go:5063	0x78a37c		488b8c24f8000000	MOVQ 0xf8(SP), CX				
+  zz_generated_simd_amd64.go:5052	0x78a384		488b542450		MOVQ 0x50(SP), DX				
+  zz_generated_simd_amd64.go:5066	0x78a389		4d39f9			CMPQ R9, R15					
+  zz_generated_simd_amd64.go:5066	0x78a38c		7d0e			JGE 0x78a39c					
+  zz_generated_simd_amd64.go:5067	0x78a38e		4b8d3c11		LEAQ 0(R9)(R10*1), DI				
+  zz_generated_simd_amd64.go:5067	0x78a392		4939fd			CMPQ R13, DI					
+  zz_generated_simd_amd64.go:5067	0x78a395		779f			JA 0x78a336					
+  zz_generated_simd_amd64.go:5067	0x78a397		e99b000000		JMP 0x78a437					
+  zz_generated_simd_amd64.go:5071	0x78a39c		4821de			ANDQ BX, SI					
+  zz_generated_simd_amd64.go:5072	0x78a39f		488b9c2418010000	MOVQ 0x118(SP), BX				
+  zz_generated_simd_amd64.go:5072	0x78a3a7		4a8934e3		MOVQ SI, 0(BX)(R12*8)				
+  zz_generated_simd_amd64.go:5072	0x78a3ab		0fb63d80b34a00		MOVZX runtime.x86HasPOPCNT(SB), DI		
+  zz_generated_simd_amd64.go:5072	0x78a3b2		85ff			TESTL DI, DI					
+  zz_generated_simd_amd64.go:5073	0x78a3b4		7407			JE 0x78a3bd					
+  zz_generated_simd_amd64.go:5073	0x78a3b6		f3480fb8f6		POPCNTQ SI, SI					
+  zz_generated_simd_amd64.go:5073	0x78a3bb		eb56			JMP 0x78a413					
+  zz_generated_simd_amd64.go:5052	0x78a3bd		4c89642478		MOVQ R12, 0x78(SP)				
+  zz_generated_simd_amd64.go:5073	0x78a3c2		4889f0			MOVQ SI, AX					
+  zz_generated_simd_amd64.go:5073	0x78a3c5		e8d69ad0ff		CALL math/bits.OnesCount64(SB)			
+  zz_generated_simd_amd64.go:5063	0x78a3ca		488b8c24f8000000	MOVQ 0xf8(SP), CX				
+  zz_generated_simd_amd64.go:5052	0x78a3d2		488b542450		MOVQ 0x50(SP), DX				
+  zz_generated_simd_amd64.go:5072	0x78a3d7		488b9c2418010000	MOVQ 0x118(SP), BX				
+  zz_generated_simd_amd64.go:5072	0x78a3df		0fb63d4cb34a00		MOVZX runtime.x86HasPOPCNT(SB), DI		
+  zz_generated_simd_amd64.go:5067	0x78a3e6		4c8b8424e0000000	MOVQ 0xe0(SP), R8				
+  zz_generated_simd_amd64.go:5073	0x78a3ee		4c8b5c2460		MOVQ 0x60(SP), R11				
+  zz_generated_simd_amd64.go:5052	0x78a3f3		4c8b642478		MOVQ 0x78(SP), R12				
+  zz_generated_simd_amd64.go:5054	0x78a3f8		4c8bac24f0000000	MOVQ 0xf0(SP), R13				
+  zz_generated_simd_amd64.go:5063	0x78a400		62f1fe486f442402	VMOVDQU64 0x80(SP), Z0				
+  zz_generated_simd_amd64.go:5073	0x78a408		4889c6			MOVQ AX, SI					
+  zz_generated_simd_amd64.go:5063	0x78a40b		488b8424e8000000	MOVQ 0xe8(SP), AX				
+  zz_generated_simd_amd64.go:5073	0x78a413		4901f3			ADDQ SI, R11					
+  scalar.go:78				0x78a416		488bb42408010000	MOVQ 0x108(SP), SI				
+  scalar.go:75				0x78a41e		488bbc2400010000	MOVQ 0x100(SP), DI				
+  zz_generated_simd_amd64.go:5073	0x78a426		e9adfdffff		JMP 0x78a1d8					
+  zz_generated_simd_amd64.go:5075	0x78a42b		4c89d8			MOVQ R11, AX					
+  zz_generated_simd_amd64.go:5075	0x78a42e		4881c4d0000000		ADDQ $0xd0, SP					
+  zz_generated_simd_amd64.go:5075	0x78a435		5d			POPQ BP						
+  zz_generated_simd_amd64.go:5075	0x78a436		c3			RET						
+  zz_generated_simd_amd64.go:5067	0x78a437		e8e46dd0ff		CALL runtime.panicBounds(SB)			
+  slice_gen_amd64.go:336		0x78a43c		0f1f4000		NOPL 0(AX)					
+  slice_gen_amd64.go:336		0x78a440		e8db6dd0ff		CALL runtime.panicBounds(SB)			
+  zz_generated_simd_amd64.go:5063	0x78a445		e8d66dd0ff		CALL runtime.panicBounds(SB)			
+  scalar.go:78				0x78a44a		e8d16dd0ff		CALL runtime.panicBounds(SB)			
+  scalar.go:16				0x78a44f		e8cc6dd0ff		CALL runtime.panicBounds(SB)			
+  scalar.go:14				0x78a454		488d05a54b4100		LEAQ 0x414ba5(IP), AX				
+  scalar.go:14				0x78a45b		488d1dced90900		LEAQ 0x9d9ce(IP), BX				
+  scalar.go:14				0x78a462		e8f9f4cfff		CALL runtime.gopanic(SB)			
+  scalar.go:14				0x78a467		90			NOPL						
+  zz_generated_simd_amd64.go:5045	0x78a468		4889442410		MOVQ AX, 0x10(SP)				
+  zz_generated_simd_amd64.go:5045	0x78a46d		48895c2418		MOVQ BX, 0x18(SP)				
+  zz_generated_simd_amd64.go:5045	0x78a472		48894c2420		MOVQ CX, 0x20(SP)				
+  zz_generated_simd_amd64.go:5045	0x78a477		48897c2428		MOVQ DI, 0x28(SP)				
+  zz_generated_simd_amd64.go:5045	0x78a47c		4889742430		MOVQ SI, 0x30(SP)				
+  zz_generated_simd_amd64.go:5045	0x78a481		4c89442438		MOVQ R8, 0x38(SP)				
+  zz_generated_simd_amd64.go:5045	0x78a486		4c894c2440		MOVQ R9, 0x40(SP)				
+  zz_generated_simd_amd64.go:5045	0x78a48b		4c89542448		MOVQ R10, 0x48(SP)				
+  zz_generated_simd_amd64.go:5045	0x78a490		4c895c2450		MOVQ R11, 0x50(SP)				
+  zz_generated_simd_amd64.go:5045	0x78a495		e84651d0ff		CALL runtime.morestack_noctxt.abi0(SB)		
+  zz_generated_simd_amd64.go:5045	0x78a49a		488b442410		MOVQ 0x10(SP), AX				
+  zz_generated_simd_amd64.go:5045	0x78a49f		488b5c2418		MOVQ 0x18(SP), BX				
+  zz_generated_simd_amd64.go:5045	0x78a4a4		488b4c2420		MOVQ 0x20(SP), CX				
+  zz_generated_simd_amd64.go:5045	0x78a4a9		488b7c2428		MOVQ 0x28(SP), DI				
+  zz_generated_simd_amd64.go:5045	0x78a4ae		488b742430		MOVQ 0x30(SP), SI				
+  zz_generated_simd_amd64.go:5045	0x78a4b3		4c8b442438		MOVQ 0x38(SP), R8				
+  zz_generated_simd_amd64.go:5045	0x78a4b8		4c8b4c2440		MOVQ 0x40(SP), R9				
+  zz_generated_simd_amd64.go:5045	0x78a4bd		4c8b542448		MOVQ 0x48(SP), R10				
+  zz_generated_simd_amd64.go:5045	0x78a4c2		4c8b5c2450		MOVQ 0x50(SP), R11				
+  zz_generated_simd_amd64.go:5045	0x78a4c7		e9f4fbffff		JMP gocolumn/kernel.simdAMD512Uint64GE(SB)	

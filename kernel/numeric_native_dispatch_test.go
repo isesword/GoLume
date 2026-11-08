@@ -30,7 +30,7 @@ func TestExpandedNumericNativeDispatch(t *testing.T) {
 			if cap.HardwareSIMD != native || cap.Emulated {
 				t.Fatalf("%s/%s cap=%+v", mode, id, cap)
 			}
-			if native && (cap.Backend != "portable-simd" || cap.VectorBits != simd.Int64s{}.Len()*64) {
+			if native && (cap.Backend != expectedComparisonBackend() || cap.VectorBits != simd.Int64s{}.Len()*64) {
 				t.Fatalf("%s/%s cap=%+v", mode, id, cap)
 			}
 		}
@@ -39,6 +39,7 @@ func TestExpandedNumericNativeDispatch(t *testing.T) {
 			// arm64 retains its existing specialized overrides for Int32/Uint32.
 			portable := newScalarSet(mode)
 			installGeneratedPortableSIMD(&portable, mode, simd.Int64s{}.Len()*64)
+			installGeneratedArchSIMD(&portable, mode, simd.Int64s{}.Len()*64)
 			check(memory.TypeInt8, op, s.d.compareInt8[op], portable.d.compareInt8[op], scalar.d.compareInt8[op])
 			check(memory.TypeInt64, op, s.d.compareInt64[op], portable.d.compareInt64[op], scalar.d.compareInt64[op])
 			check(memory.TypeUint64, op, s.d.compareUint64[op], portable.d.compareUint64[op], scalar.d.compareUint64[op])

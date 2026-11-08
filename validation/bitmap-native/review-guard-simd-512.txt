@@ -1,0 +1,49 @@
+=== RUN   TestReviewIndependentBitmapPaths
+=== RUN   TestReviewIndependentBitmapPaths/Int8128
+=== RUN   TestReviewIndependentBitmapPaths/Int32128
+=== RUN   TestReviewIndependentBitmapPaths/Int64128
+=== RUN   TestReviewIndependentBitmapPaths/Uint32128
+=== RUN   TestReviewIndependentBitmapPaths/Uint64128
+=== RUN   TestReviewIndependentBitmapPaths/Float32128
+=== RUN   TestReviewIndependentBitmapPaths/Float64128
+=== RUN   TestReviewIndependentBitmapPaths/Int8256
+=== RUN   TestReviewIndependentBitmapPaths/Int32256
+=== RUN   TestReviewIndependentBitmapPaths/Int64256
+=== RUN   TestReviewIndependentBitmapPaths/Uint32256
+=== RUN   TestReviewIndependentBitmapPaths/Uint64256
+=== RUN   TestReviewIndependentBitmapPaths/Float32256
+=== RUN   TestReviewIndependentBitmapPaths/Float64256
+=== RUN   TestReviewIndependentBitmapPaths/Int8512
+=== RUN   TestReviewIndependentBitmapPaths/Int32512
+=== RUN   TestReviewIndependentBitmapPaths/Int64512
+=== RUN   TestReviewIndependentBitmapPaths/Uint32512
+=== RUN   TestReviewIndependentBitmapPaths/Uint64512
+=== RUN   TestReviewIndependentBitmapPaths/Float32512
+=== RUN   TestReviewIndependentBitmapPaths/Float64512
+--- PASS: TestReviewIndependentBitmapPaths (0.78s)
+    --- PASS: TestReviewIndependentBitmapPaths/Int8128 (0.01s)
+    --- PASS: TestReviewIndependentBitmapPaths/Int32128 (0.02s)
+    --- PASS: TestReviewIndependentBitmapPaths/Int64128 (0.01s)
+    --- PASS: TestReviewIndependentBitmapPaths/Uint32128 (0.02s)
+    --- PASS: TestReviewIndependentBitmapPaths/Uint64128 (0.04s)
+    --- PASS: TestReviewIndependentBitmapPaths/Float32128 (0.05s)
+    --- PASS: TestReviewIndependentBitmapPaths/Float64128 (0.09s)
+    --- PASS: TestReviewIndependentBitmapPaths/Int8256 (0.10s)
+    --- PASS: TestReviewIndependentBitmapPaths/Int32256 (0.09s)
+    --- PASS: TestReviewIndependentBitmapPaths/Int64256 (0.07s)
+    --- PASS: TestReviewIndependentBitmapPaths/Uint32256 (0.03s)
+    --- PASS: TestReviewIndependentBitmapPaths/Uint64256 (0.02s)
+    --- PASS: TestReviewIndependentBitmapPaths/Float32256 (0.04s)
+    --- PASS: TestReviewIndependentBitmapPaths/Float64256 (0.04s)
+    --- PASS: TestReviewIndependentBitmapPaths/Int8512 (0.01s)
+    --- PASS: TestReviewIndependentBitmapPaths/Int32512 (0.02s)
+    --- PASS: TestReviewIndependentBitmapPaths/Int64512 (0.01s)
+    --- PASS: TestReviewIndependentBitmapPaths/Uint32512 (0.02s)
+    --- PASS: TestReviewIndependentBitmapPaths/Uint64512 (0.02s)
+    --- PASS: TestReviewIndependentBitmapPaths/Float32512 (0.03s)
+    --- PASS: TestReviewIndependentBitmapPaths/Float64512 (0.03s)
+=== RUN   TestReviewGuardMatrix
+--- PASS: TestReviewGuardMatrix (0.00s)
+=== RUN   TestReviewPortableColumnValidity
+--- PASS: TestReviewPortableColumnValidity (0.09s)
+PASS

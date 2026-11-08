@@ -1,0 +1,60 @@
+goos: linux
+goarch: amd64
+pkg: gocolumn/kernel
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkNativeNumericLiteral/int32/rows=7/null=true/auto         	52744360	        22.44 ns/op	         1.000 selected	       0 B/op	       0 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/kernel
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkNativeNumericLiteral/int32/rows=7/null=true/auto         	51154466	        20.97 ns/op	         1.000 selected	       0 B/op	       0 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/kernel
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkNativeNumericLiteral/int32/rows=7/null=true/auto         	59445141	        18.55 ns/op	         1.000 selected	       0 B/op	       0 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/kernel
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkNativeNumericLiteral/int32/rows=7/null=true/auto         	64769914	        18.46 ns/op	         1.000 selected	       0 B/op	       0 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/kernel
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkNativeNumericLiteral/int32/rows=7/null=true/auto         	66024192	        20.66 ns/op	         1.000 selected	       0 B/op	       0 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/kernel
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkNativeNumericLiteral/int32/rows=7/null=true/auto         	61674864	        22.59 ns/op	         1.000 selected	       0 B/op	       0 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/kernel
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkNativeNumericLiteral/int32/rows=7/null=true/auto         	57111956	        21.77 ns/op	         1.000 selected	       0 B/op	       0 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/kernel
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkNativeNumericLiteral/int32/rows=7/null=true/auto         	55243000	        21.66 ns/op	         1.000 selected	       0 B/op	       0 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/kernel
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkNativeNumericLiteral/int32/rows=7/null=true/auto         	47884335	        29.40 ns/op	         1.000 selected	       0 B/op	       0 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/kernel
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkNativeNumericLiteral/int32/rows=7/null=true/auto         	69194167	        21.26 ns/op	         1.000 selected	       0 B/op	       0 allocs/op
+PASS

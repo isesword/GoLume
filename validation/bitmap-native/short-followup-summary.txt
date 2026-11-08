@@ -1,0 +1,22 @@
+goos: linux
+goarch: amd64
+pkg: gocolumn/kernel
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+                                                 │ validation/bitmap-native/short-followup-before.txt │ validation/bitmap-native/short-followup-after.txt │
+                                                 │                       sec/op                       │           sec/op            vs base               │
+NativeNumericLiteral/int32/rows=7/null=true/auto                                         21.46n ± 14%                 23.46n ± 14%  +9.34% (p=0.019 n=10)
+
+                                                 │ validation/bitmap-native/short-followup-before.txt │ validation/bitmap-native/short-followup-after.txt │
+                                                 │                      selected                      │           selected             vs base            │
+NativeNumericLiteral/int32/rows=7/null=true/auto                                           1.000 ± 0%                      1.000 ± 0%  ~ (p=1.000 n=10) ¹
+¹ all samples are equal
+
+                                                 │ validation/bitmap-native/short-followup-before.txt │ validation/bitmap-native/short-followup-after.txt │
+                                                 │                        B/op                        │             B/op               vs base            │
+NativeNumericLiteral/int32/rows=7/null=true/auto                                           0.000 ± 0%                      0.000 ± 0%  ~ (p=1.000 n=10) ¹
+¹ all samples are equal
+
+                                                 │ validation/bitmap-native/short-followup-before.txt │ validation/bitmap-native/short-followup-after.txt │
+                                                 │                     allocs/op                      │           allocs/op            vs base            │
+NativeNumericLiteral/int32/rows=7/null=true/auto                                           0.000 ± 0%                      0.000 ± 0%  ~ (p=1.000 n=10) ¹
+¹ all samples are equal

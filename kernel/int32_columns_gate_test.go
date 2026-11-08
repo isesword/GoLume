@@ -6,7 +6,9 @@ import (
 	"math/bits"
 	"math/rand"
 	"reflect"
+	"runtime"
 	"slices"
+	"strings"
 	"testing"
 )
 
@@ -168,6 +170,9 @@ func column32GateBackend(s Set, unsigned bool, op CompareOp) string {
 	if reflect.ValueOf(selected).Pointer() == reflect.ValueOf(reference).Pointer() {
 		return "scalar"
 	}
+	if strings.Contains(runtime.FuncForPC(reflect.ValueOf(selected).Pointer()).Name(), ".simdAMD") {
+		return "archsimd-amd64-mask"
+	}
 	return "portable-simd"
 }
 
@@ -276,7 +281,7 @@ func column32CheckDispatch(t *testing.T, nativeBackend string) {
 					typ = memory.TypeUint32
 				}
 				capability, ok := set.ColumnComparisonCapability(typ, op)
-				if !ok || capability.Backend != want || capability.HardwareSIMD != (want == "portable-simd") {
+				if !ok || capability.Backend != want || capability.HardwareSIMD != (want != "scalar") {
 					t.Fatalf("mode=%s type=%s op=%s capability=%+v ok=%t want=%s", mode.name, typ, op, capability, ok, want)
 				}
 				if got := column32GateBackend(set, unsigned, op); got != want {

@@ -1,0 +1,3720 @@
+{
+  "kernel": {
+    "workloads": 124,
+    "measurements": 1488,
+    "faster": 117,
+    "slower": 7,
+    "ratio_min": 0.07310405244158473,
+    "ratio_max": 1.1224124712496808,
+    "memory_and_rows_equal": false,
+    "details": [
+      {
+        "workload": "BenchmarkColumn32ComparisonGate/type=int32/case=bitmap/op=eq/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 95610.0,
+          "MB/s": 5483.865,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 14825.0,
+          "MB/s": 35472.0,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.1550570024056061,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkColumn32ComparisonGate/type=int32/case=bitmap/op=ge/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 123056.0,
+          "MB/s": 4262.57,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 14262.5,
+          "MB/s": 36838.905,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.11590251592770771,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkColumn32ComparisonGate/type=int32/case=bitmap/op=gt/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 94232.5,
+          "MB/s": 5564.53,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 15213.0,
+          "MB/s": 34496.015,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.16144111638765818,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkColumn32ComparisonGate/type=int32/case=bitmap/op=le/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 121220.5,
+          "MB/s": 4325.18,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 14685.0,
+          "MB/s": 35702.6,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.1211428759986966,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkColumn32ComparisonGate/type=int32/case=bitmap/op=lt/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 96666.0,
+          "MB/s": 5425.125,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 14307.5,
+          "MB/s": 36648.53999999999,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.1480096414458031,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkColumn32ComparisonGate/type=int32/case=dense/op=eq/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 66582.0,
+          "MB/s": 7876.855,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 13754.5,
+          "MB/s": 38119.175,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.20657985641765042,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkColumn32ComparisonGate/type=int32/case=dense/op=ge/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 121369.0,
+          "MB/s": 4319.91,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 14068.0,
+          "MB/s": 37272.505000000005,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.11591098221127306,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkColumn32ComparisonGate/type=int32/case=dense/op=gt/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 133737.0,
+          "MB/s": 3924.2650000000003,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 14112.5,
+          "MB/s": 37151.72,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.10552427525666046,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkColumn32ComparisonGate/type=int32/case=dense/op=le/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 68150.5,
+          "MB/s": 7700.594999999999,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 14066.0,
+          "MB/s": 37284.725,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.20639613795936934,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkColumn32ComparisonGate/type=int32/case=dense/op=lt/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 68993.0,
+          "MB/s": 7603.950000000001,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 14004.0,
+          "MB/s": 37438.89,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.20297711362022233,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkColumn32ComparisonGate/type=int32/case=equal/op=eq/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 123964.0,
+          "MB/s": 4231.505,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 13780.5,
+          "MB/s": 38053.96,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.11116533832402956,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkColumn32ComparisonGate/type=int32/case=equal/op=ge/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 120035.0,
+          "MB/s": 4370.765,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 13723.5,
+          "MB/s": 38204.565,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.11432915399675095,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkColumn32ComparisonGate/type=int32/case=equal/op=gt/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 61547.0,
+          "MB/s": 8518.494999999999,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 14319.0,
+          "MB/s": 36615.97,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.23265146960859182,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkColumn32ComparisonGate/type=int32/case=equal/op=le/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 118437.5,
+          "MB/s": 4428.264999999999,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 14122.5,
+          "MB/s": 37125.66,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.1192401055408971,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkColumn32ComparisonGate/type=int32/case=equal/op=lt/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 63551.0,
+          "MB/s": 8251.119999999999,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 13945.5,
+          "MB/s": 37610.369999999995,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.21943793173986248,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkColumn32ComparisonGate/type=int32/case=nullable-tail/op=eq/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 95288.5,
+          "MB/s": 5511.325,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 14324.5,
+          "MB/s": 36602.375,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.1503276890705594,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkColumn32ComparisonGate/type=int32/case=nullable-tail/op=ge/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 128365.0,
+          "MB/s": 4085.17,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 14878.0,
+          "MB/s": 35259.520000000004,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.11590386787675769,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkColumn32ComparisonGate/type=int32/case=nullable-tail/op=gt/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 90594.0,
+          "MB/s": 5787.545,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 14209.0,
+          "MB/s": 36909.56,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.15684261650881956,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkColumn32ComparisonGate/type=int32/case=nullable-tail/op=le/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 133684.0,
+          "MB/s": 3922.7799999999997,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 14555.0,
+          "MB/s": 36024.925,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.10887615571048144,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkColumn32ComparisonGate/type=int32/case=nullable-tail/op=lt/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 89479.0,
+          "MB/s": 5859.610000000001,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 14736.0,
+          "MB/s": 35596.67,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.16468668626158092,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkColumn32ComparisonGate/type=int32/case=short/op=eq/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 39.955,
+          "MB/s": 1403.6799999999998,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 30.59,
+          "MB/s": 1831.1950000000002,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.7656113127268177,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkColumn32ComparisonGate/type=int32/case=short/op=ge/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 36.879999999999995,
+          "MB/s": 1518.4450000000002,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 25.32,
+          "MB/s": 2211.84,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.6865509761388288,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkColumn32ComparisonGate/type=int32/case=short/op=gt/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 33.68,
+          "MB/s": 1662.655,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 26.835,
+          "MB/s": 2087.5649999999996,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.7967636579572447,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkColumn32ComparisonGate/type=int32/case=short/op=le/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 40.18,
+          "MB/s": 1393.915,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 31.875,
+          "MB/s": 1756.91,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.7933051269288203,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkColumn32ComparisonGate/type=int32/case=short/op=lt/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 36.67,
+          "MB/s": 1527.15,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 28.450000000000003,
+          "MB/s": 1968.2849999999999,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.7758385601308972,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkColumn32ComparisonGate/type=int32/case=sparse/op=eq/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 69109.5,
+          "MB/s": 7623.76,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 13416.5,
+          "MB/s": 39088.97,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.19413394685245877,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkColumn32ComparisonGate/type=int32/case=sparse/op=ge/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 65328.0,
+          "MB/s": 8028.04,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 14539.0,
+          "MB/s": 36070.12,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.2225538819495469,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkColumn32ComparisonGate/type=int32/case=sparse/op=gt/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 65210.0,
+          "MB/s": 8043.905,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 14062.0,
+          "MB/s": 37283.285,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.2156417727342432,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkColumn32ComparisonGate/type=int32/case=sparse/op=le/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 124971.0,
+          "MB/s": 4195.33,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 13699.0,
+          "MB/s": 38276.765,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.10961743124404862,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkColumn32ComparisonGate/type=int32/case=sparse/op=lt/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 125496.0,
+          "MB/s": 4177.735000000001,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 13815.5,
+          "MB/s": 37961.475,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.1100871740931982,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkColumn32ComparisonGate/type=int32/case=stream/op=eq/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 1616387.5,
+          "MB/s": 5189.745,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 383266.0,
+          "MB/s": 21887.504999999997,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.23711269729566703,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkColumn32ComparisonGate/type=int32/case=stream/op=ge/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 1911511.5,
+          "MB/s": 4388.495,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 366870.0,
+          "MB/s": 22880.82,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.19192665071593867,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkColumn32ComparisonGate/type=int32/case=stream/op=gt/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 1550285.0,
+          "MB/s": 5415.99,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 366062.0,
+          "MB/s": 22917.255,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.23612561561261317,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkColumn32ComparisonGate/type=int32/case=stream/op=le/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 1913105.5,
+          "MB/s": 4385.81,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 391681.0,
+          "MB/s": 21424.275,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.20473570328452875,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkColumn32ComparisonGate/type=int32/case=stream/op=lt/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 1506497.0,
+          "MB/s": 5568.365,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 374357.0,
+          "MB/s": 22408.055,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.24849501857620693,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkColumn32ComparisonGate/type=int32/case=tail/op=eq/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 110.94999999999999,
+          "MB/s": 4686.389999999999,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 28.5,
+          "MB/s": 18245.54,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.25687246507435785,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkColumn32ComparisonGate/type=int32/case=tail/op=ge/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 131.25,
+          "MB/s": 3964.205,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 27.32,
+          "MB/s": 19045.27,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.20815238095238095,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkColumn32ComparisonGate/type=int32/case=tail/op=gt/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 104.16,
+          "MB/s": 5001.475,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 31.265,
+          "MB/s": 16633.71,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.3001632104454685,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkColumn32ComparisonGate/type=int32/case=tail/op=le/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 143.89999999999998,
+          "MB/s": 3619.2250000000004,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 28.875,
+          "MB/s": 18010.27,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.20066018068102853,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkColumn32ComparisonGate/type=int32/case=tail/op=lt/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 114.1,
+          "MB/s": 4558.2,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 29.509999999999998,
+          "MB/s": 17621.35,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.2586327782646801,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkColumn32ComparisonGate/type=uint32/case=bitmap/op=eq/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 80923.5,
+          "MB/s": 6479.084999999999,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 15185.0,
+          "MB/s": 34527.845,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.1876463573622001,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkColumn32ComparisonGate/type=uint32/case=bitmap/op=ge/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 124230.0,
+          "MB/s": 4220.85,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 14545.0,
+          "MB/s": 36048.520000000004,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.11708122031715366,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkColumn32ComparisonGate/type=uint32/case=bitmap/op=gt/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 78083.5,
+          "MB/s": 6721.07,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 14170.0,
+          "MB/s": 37002.01,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.18147239813789084,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkColumn32ComparisonGate/type=uint32/case=bitmap/op=le/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 117341.5,
+          "MB/s": 4468.93,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 14634.0,
+          "MB/s": 35846.565,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.12471291060707422,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkColumn32ComparisonGate/type=uint32/case=bitmap/op=lt/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 81904.0,
+          "MB/s": 6402.085,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 14269.0,
+          "MB/s": 36748.485,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.17421615549912092,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkColumn32ComparisonGate/type=uint32/case=dense/op=eq/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 58329.0,
+          "MB/s": 8995.7,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 15581.0,
+          "MB/s": 33650.229999999996,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.2671227005434689,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkColumn32ComparisonGate/type=uint32/case=dense/op=ge/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 120174.5,
+          "MB/s": 4366.875,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 13923.0,
+          "MB/s": 37655.95,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.11585652530278887,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkColumn32ComparisonGate/type=uint32/case=dense/op=gt/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 119922.5,
+          "MB/s": 4372.42,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 14564.0,
+          "MB/s": 36103.7,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.12144509996039109,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkColumn32ComparisonGate/type=uint32/case=dense/op=le/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 59118.0,
+          "MB/s": 8868.875,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 14818.0,
+          "MB/s": 35559.115000000005,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.2506512398930952,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkColumn32ComparisonGate/type=uint32/case=dense/op=lt/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 54878.0,
+          "MB/s": 9566.045,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 14435.0,
+          "MB/s": 36387.615000000005,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.26303801158934365,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkColumn32ComparisonGate/type=uint32/case=equal/op=eq/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 112777.0,
+          "MB/s": 4648.9,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 13794.0,
+          "MB/s": 38008.205,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.12231217358149268,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkColumn32ComparisonGate/type=uint32/case=equal/op=ge/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 110524.0,
+          "MB/s": 4743.68,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 14149.5,
+          "MB/s": 37060.7,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.1280219680793312,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkColumn32ComparisonGate/type=uint32/case=equal/op=gt/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 59975.0,
+          "MB/s": 8743.355,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 14359.0,
+          "MB/s": 36513.835,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.23941642350979575,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkColumn32ComparisonGate/type=uint32/case=equal/op=le/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 115945.5,
+          "MB/s": 4523.41,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 13945.0,
+          "MB/s": 37703.215,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.12027202435627084,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkColumn32ComparisonGate/type=uint32/case=equal/op=lt/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 60510.5,
+          "MB/s": 8664.48,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 14355.0,
+          "MB/s": 36527.145000000004,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.23723155485411623,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkColumn32ComparisonGate/type=uint32/case=nullable-tail/op=eq/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 93457.5,
+          "MB/s": 5621.155000000001,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 15228.0,
+          "MB/s": 34435.385,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.16294037396677635,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkColumn32ComparisonGate/type=uint32/case=nullable-tail/op=ge/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 111870.0,
+          "MB/s": 4686.83,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 15245.5,
+          "MB/s": 34392.49,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.13627871636721195,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkColumn32ComparisonGate/type=uint32/case=nullable-tail/op=gt/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 79134.5,
+          "MB/s": 6628.13,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 14694.0,
+          "MB/s": 35703.46000000001,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.18568386733978226,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkColumn32ComparisonGate/type=uint32/case=nullable-tail/op=le/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 113968.0,
+          "MB/s": 4600.52,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 14602.0,
+          "MB/s": 35911.305,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.1281236838410782,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkColumn32ComparisonGate/type=uint32/case=nullable-tail/op=lt/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 77968.0,
+          "MB/s": 6725.4400000000005,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 14415.5,
+          "MB/s": 36431.68,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.18488995485327314,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkColumn32ComparisonGate/type=uint32/case=short/op=eq/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 38.515,
+          "MB/s": 1454.06,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 39.394999999999996,
+          "MB/s": 1421.885,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 1.0228482409450863,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkColumn32ComparisonGate/type=uint32/case=short/op=ge/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 38.245,
+          "MB/s": 1465.6799999999998,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 30.695,
+          "MB/s": 1824.43,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.8025885736697608,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkColumn32ComparisonGate/type=uint32/case=short/op=gt/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 30.59,
+          "MB/s": 1830.52,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 27.405,
+          "MB/s": 2043.505,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.8958810068649886,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkColumn32ComparisonGate/type=uint32/case=short/op=le/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 34.61,
+          "MB/s": 1618.5749999999998,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 31.765,
+          "MB/s": 1762.9,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.917798324183762,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkColumn32ComparisonGate/type=uint32/case=short/op=lt/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 34.92,
+          "MB/s": 1604.225,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 29.855,
+          "MB/s": 1876.21,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.8549541809851088,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkColumn32ComparisonGate/type=uint32/case=sparse/op=eq/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 57372.0,
+          "MB/s": 9147.945,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 14637.5,
+          "MB/s": 35836.455,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.2551331660043227,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkColumn32ComparisonGate/type=uint32/case=sparse/op=ge/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 58103.0,
+          "MB/s": 9034.305,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 14229.0,
+          "MB/s": 36916.525,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.24489269056675214,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkColumn32ComparisonGate/type=uint32/case=sparse/op=gt/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 59052.5,
+          "MB/s": 8887.740000000002,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 15219.0,
+          "MB/s": 34505.955,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.257719825578934,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkColumn32ComparisonGate/type=uint32/case=sparse/op=le/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 118301.0,
+          "MB/s": 4435.955,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 13984.0,
+          "MB/s": 37493.115000000005,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.11820694668684119,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkColumn32ComparisonGate/type=uint32/case=sparse/op=lt/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 123598.5,
+          "MB/s": 4243.535,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 14335.5,
+          "MB/s": 36573.04,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.11598441728661756,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkColumn32ComparisonGate/type=uint32/case=stream/op=eq/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 1329975.5,
+          "MB/s": 6308.67,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 387630.0,
+          "MB/s": 21658.16,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.2914564967550154,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkColumn32ComparisonGate/type=uint32/case=stream/op=ge/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 1618624.0,
+          "MB/s": 5182.594999999999,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 378774.5,
+          "MB/s": 22146.71,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.2340101839587205,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkColumn32ComparisonGate/type=uint32/case=stream/op=gt/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 1207824.5,
+          "MB/s": 6945.41,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 369656.0,
+          "MB/s": 22693.1,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.306051086064242,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkColumn32ComparisonGate/type=uint32/case=stream/op=le/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 1610552.5,
+          "MB/s": 5208.655,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 382393.5,
+          "MB/s": 21949.415,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.23743001237153089,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkColumn32ComparisonGate/type=uint32/case=stream/op=lt/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 1347492.0,
+          "MB/s": 6226.665,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 380236.0,
+          "MB/s": 22061.589999999997,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.2821805250049722,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkColumn32ComparisonGate/type=uint32/case=tail/op=eq/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 99.31,
+          "MB/s": 5244.73,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 30.185,
+          "MB/s": 17240.72,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.3039472359279025,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkColumn32ComparisonGate/type=uint32/case=tail/op=ge/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 116.5,
+          "MB/s": 4466.68,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 29.84,
+          "MB/s": 17432.41,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.256137339055794,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkColumn32ComparisonGate/type=uint32/case=tail/op=gt/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 98.16,
+          "MB/s": 5302.07,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 28.96,
+          "MB/s": 17956.885000000002,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.29502852485737574,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkColumn32ComparisonGate/type=uint32/case=tail/op=le/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 126.65,
+          "MB/s": 4106.935,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 30.805,
+          "MB/s": 16894.655,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.24322937228582706,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkColumn32ComparisonGate/type=uint32/case=tail/op=lt/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 98.53,
+          "MB/s": 5280.129999999999,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 30.975,
+          "MB/s": 16787.434999999998,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.31437125748503,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkFloat32ColumnCompare/auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 2499459.5,
+          "MB/s": 3356.1800000000003,
+          "B/op": 337.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 366364.5,
+          "MB/s": 22899.495000000003,
+          "B/op": 48.5,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.14657749005334952,
+        "memory_and_rows_equal": false
+      },
+      {
+        "workload": "BenchmarkFloat32Compare/auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 1537437.0,
+          "MB/s": 2729.04,
+          "B/op": 214.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 256022.5,
+          "MB/s": 16382.56,
+          "B/op": 33.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.1665255226718233,
+        "memory_and_rows_equal": false
+      },
+      {
+        "workload": "BenchmarkNativeFloat64Comparison/columns=false/rows=1025/null=false/auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 1517.5,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 469.95,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.3096869851729819,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkNativeFloat64Comparison/columns=false/rows=1025/null=true/auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 1427.5,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 501.45,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.3512784588441331,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkNativeFloat64Comparison/columns=false/rows=65536/null=false/auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 85319.5,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 20693.5,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.24254127133890846,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkNativeFloat64Comparison/columns=false/rows=65536/null=true/auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 80085.5,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 21314.0,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.26614056227406957,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkNativeFloat64Comparison/columns=false/rows=7/null=false/auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 18.015,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 19.705,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 1.0938107132944768,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkNativeFloat64Comparison/columns=false/rows=7/null=true/auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 18.14,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 18.42,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 1.015435501653804,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkNativeFloat64Comparison/columns=true/rows=1025/null=false/auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 1588.0,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 561.4,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.3535264483627204,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkNativeFloat64Comparison/columns=true/rows=1025/null=true/auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 1588.5,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 421.2,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.2651558073654391,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkNativeFloat64Comparison/columns=true/rows=65536/null=false/auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 93640.0,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 25147.0,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.26854976505766764,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkNativeFloat64Comparison/columns=true/rows=65536/null=true/auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 94972.5,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 27025.0,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.2845560557003343,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkNativeFloat64Comparison/columns=true/rows=7/null=false/auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 30.259999999999998,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 27.564999999999998,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.9109385327164573,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkNativeFloat64Comparison/columns=true/rows=7/null=true/auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 21.635,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 21.725,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 1.0041599260457592,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkNativeNumericLiteral/int32/rows=1025/null=false/auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 1237.5,
+          "selected": 1024.0,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 183.45,
+          "selected": 1024.0,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.14824242424242423,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkNativeNumericLiteral/int32/rows=1025/null=true/auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 1271.0,
+          "selected": 527.0,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 174.7,
+          "selected": 527.0,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.13745082612116444,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkNativeNumericLiteral/int32/rows=65536/null=false/auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 83359.0,
+          "selected": 65535.0,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 10963.5,
+          "selected": 65535.0,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.13152149138065475,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkNativeNumericLiteral/int32/rows=65536/null=true/auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 82456.0,
+          "selected": 33791.0,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 11373.0,
+          "selected": 33791.0,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.13792810711167167,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkNativeNumericLiteral/int32/rows=7/null=false/auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 18.905,
+          "selected": 6.0,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 16.075000000000003,
+          "selected": 6.0,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.8503041523406507,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkNativeNumericLiteral/int32/rows=7/null=true/auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 19.564999999999998,
+          "selected": 1.0,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 21.96,
+          "selected": 1.0,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 1.1224124712496808,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkNativeNumericLiteral/int64/rows=1025/null=false/auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 1498.0,
+          "selected": 1024.0,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 302.9,
+          "selected": 1024.0,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.2022029372496662,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkNativeNumericLiteral/int64/rows=1025/null=true/auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 1378.5,
+          "selected": 527.0,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 306.15,
+          "selected": 527.0,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.2220892274211099,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkNativeNumericLiteral/int64/rows=65536/null=false/auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 88700.5,
+          "selected": 65535.0,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 19433.0,
+          "selected": 65535.0,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.21908557448943355,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkNativeNumericLiteral/int64/rows=65536/null=true/auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 90335.0,
+          "selected": 33791.0,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 20344.5,
+          "selected": 33791.0,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.22521171196103393,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkNativeNumericLiteral/int64/rows=7/null=false/auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 17.43,
+          "selected": 6.0,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 17.595,
+          "selected": 6.0,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 1.0094664371772806,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkNativeNumericLiteral/int64/rows=7/null=true/auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 24.11,
+          "selected": 1.0,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 17.18,
+          "selected": 1.0,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.7125673994193281,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkNativeNumericLiteral/int8/rows=1025/null=false/auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 992.3,
+          "selected": 440.0,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 98.69,
+          "selected": 440.0,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.09945580973495918,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkNativeNumericLiteral/int8/rows=1025/null=true/auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 1055.5,
+          "selected": 229.0,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 89.16499999999999,
+          "selected": 229.0,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.08447655139744197,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkNativeNumericLiteral/int8/rows=65536/null=false/auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 67354.5,
+          "selected": 28160.0,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 5196.0,
+          "selected": 28160.0,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.07714406609803354,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkNativeNumericLiteral/int8/rows=65536/null=true/auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 66207.0,
+          "selected": 14528.0,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 4840.0,
+          "selected": 14528.0,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.07310405244158473,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkNativeNumericLiteral/int8/rows=7/null=false/auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 21.439999999999998,
+          "selected": 3.0,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 20.814999999999998,
+          "selected": 3.0,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.9708488805970149,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkNativeNumericLiteral/int8/rows=7/null=true/auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 24.915,
+          "selected": 0.0,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 17.145000000000003,
+          "selected": 0.0,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.6881396748946419,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkNativeNumericLiteral/uint32/rows=1025/null=false/auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 1267.0,
+          "selected": 1024.0,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 170.7,
+          "selected": 1024.0,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.1347277032359905,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkNativeNumericLiteral/uint32/rows=1025/null=true/auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 1356.0,
+          "selected": 527.0,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 165.95,
+          "selected": 527.0,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.12238200589970501,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkNativeNumericLiteral/uint32/rows=65536/null=false/auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 78725.5,
+          "selected": 65535.0,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 10866.5,
+          "selected": 65535.0,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.13803024432998204,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkNativeNumericLiteral/uint32/rows=65536/null=true/auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 81532.5,
+          "selected": 33791.0,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 11646.5,
+          "selected": 33791.0,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.14284487780946248,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkNativeNumericLiteral/uint32/rows=7/null=false/auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 18.985,
+          "selected": 6.0,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 15.415,
+          "selected": 6.0,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.8119568080063208,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkNativeNumericLiteral/uint32/rows=7/null=true/auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 19.994999999999997,
+          "selected": 1.0,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 21.855,
+          "selected": 1.0,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 1.0930232558139537,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkNativeNumericLiteral/uint64/rows=1025/null=false/auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 1387.5,
+          "selected": 1024.0,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 302.25,
+          "selected": 1024.0,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.21783783783783783,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkNativeNumericLiteral/uint64/rows=1025/null=true/auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 1377.5,
+          "selected": 527.0,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 291.05,
+          "selected": 527.0,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.2112885662431942,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkNativeNumericLiteral/uint64/rows=65536/null=false/auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 87304.5,
+          "selected": 65535.0,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 19521.5,
+          "selected": 65535.0,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.22360244890011396,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkNativeNumericLiteral/uint64/rows=65536/null=true/auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 94720.0,
+          "selected": 33791.0,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 19370.0,
+          "selected": 33791.0,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.20449746621621623,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkNativeNumericLiteral/uint64/rows=7/null=false/auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 16.655,
+          "selected": 6.0,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 16.65,
+          "selected": 6.0,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.9996997898528969,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkNativeNumericLiteral/uint64/rows=7/null=true/auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 23.665,
+          "selected": 1.0,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_median": {
+          "ns/op": 16.994999999999997,
+          "selected": 1.0,
+          "B/op": 0.0,
+          "allocs/op": 0.0
+        },
+        "after_before_time_ratio": 0.7181491654341854,
+        "memory_and_rows_equal": true
+      }
+    ]
+  },
+  "query": {
+    "workloads": 64,
+    "measurements": 768,
+    "faster": 64,
+    "slower": 0,
+    "ratio_min": 0.680506641952425,
+    "ratio_max": 0.9894481711795524,
+    "memory_and_rows_equal": true,
+    "details": [
+      {
+        "workload": "BenchmarkCompare32FilterProjectKernelMode/type=int32/op=eq/pct=1/nullable=false/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 45046.0,
+          "MB/s": 2915.5299999999997,
+          "peak_bytes": 18248.0,
+          "projected_rows/op": 82.0,
+          "source_rows/op": 8199.0,
+          "B/op": 29392.0,
+          "allocs/op": 174.0
+        },
+        "after_median": {
+          "ns/op": 34875.0,
+          "MB/s": 3763.795,
+          "peak_bytes": 18248.0,
+          "projected_rows/op": 82.0,
+          "source_rows/op": 8199.0,
+          "B/op": 29392.0,
+          "allocs/op": 174.0
+        },
+        "after_before_time_ratio": 0.7742085867779603,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkCompare32FilterProjectKernelMode/type=int32/op=eq/pct=50/nullable=false/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 119125.5,
+          "MB/s": 1101.225,
+          "peak_bytes": 99592.0,
+          "projected_rows/op": 4100.0,
+          "source_rows/op": 8199.0,
+          "B/op": 120976.0,
+          "allocs/op": 175.0
+        },
+        "after_median": {
+          "ns/op": 94368.0,
+          "MB/s": 1393.015,
+          "peak_bytes": 99592.0,
+          "projected_rows/op": 4100.0,
+          "source_rows/op": 8199.0,
+          "B/op": 120976.0,
+          "allocs/op": 175.0
+        },
+        "after_before_time_ratio": 0.7921729604492741,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkCompare32FilterProjectKernelMode/type=int32/op=eq/pct=50/nullable=true/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 118925.5,
+          "MB/s": 1103.545,
+          "peak_bytes": 99864.0,
+          "projected_rows/op": 3438.0,
+          "source_rows/op": 8199.0,
+          "B/op": 114664.0,
+          "allocs/op": 178.0
+        },
+        "after_median": {
+          "ns/op": 86547.5,
+          "MB/s": 1515.9050000000002,
+          "peak_bytes": 99864.0,
+          "projected_rows/op": 3438.0,
+          "source_rows/op": 8199.0,
+          "B/op": 114664.0,
+          "allocs/op": 178.0
+        },
+        "after_before_time_ratio": 0.7277455213558068,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkCompare32FilterProjectKernelMode/type=int32/op=eq/pct=99/nullable=true/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 163591.5,
+          "MB/s": 801.995,
+          "peak_bytes": 181608.0,
+          "projected_rows/op": 6811.0,
+          "source_rows/op": 8199.0,
+          "B/op": 193128.0,
+          "allocs/op": 178.0
+        },
+        "after_median": {
+          "ns/op": 135427.5,
+          "MB/s": 968.68,
+          "peak_bytes": 181608.0,
+          "projected_rows/op": 6811.0,
+          "source_rows/op": 8199.0,
+          "B/op": 193128.0,
+          "allocs/op": 178.0
+        },
+        "after_before_time_ratio": 0.8278394659869247,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkCompare32FilterProjectKernelMode/type=int32/op=ge/pct=1/nullable=false/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 40846.0,
+          "MB/s": 3213.61,
+          "peak_bytes": 18248.0,
+          "projected_rows/op": 82.0,
+          "source_rows/op": 8199.0,
+          "B/op": 29392.0,
+          "allocs/op": 174.0
+        },
+        "after_median": {
+          "ns/op": 40415.0,
+          "MB/s": 3246.1,
+          "peak_bytes": 18248.0,
+          "projected_rows/op": 82.0,
+          "source_rows/op": 8199.0,
+          "B/op": 29392.0,
+          "allocs/op": 174.0
+        },
+        "after_before_time_ratio": 0.9894481711795524,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkCompare32FilterProjectKernelMode/type=int32/op=ge/pct=50/nullable=false/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 114184.5,
+          "MB/s": 1150.7649999999999,
+          "peak_bytes": 99592.0,
+          "projected_rows/op": 4100.0,
+          "source_rows/op": 8199.0,
+          "B/op": 120976.0,
+          "allocs/op": 175.0
+        },
+        "after_median": {
+          "ns/op": 96423.5,
+          "MB/s": 1365.295,
+          "peak_bytes": 99592.0,
+          "projected_rows/op": 4100.0,
+          "source_rows/op": 8199.0,
+          "B/op": 120976.0,
+          "allocs/op": 175.0
+        },
+        "after_before_time_ratio": 0.8444534941257351,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkCompare32FilterProjectKernelMode/type=int32/op=ge/pct=50/nullable=true/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 110872.5,
+          "MB/s": 1183.58,
+          "peak_bytes": 99864.0,
+          "projected_rows/op": 3438.0,
+          "source_rows/op": 8199.0,
+          "B/op": 114664.0,
+          "allocs/op": 178.0
+        },
+        "after_median": {
+          "ns/op": 90334.5,
+          "MB/s": 1452.475,
+          "peak_bytes": 99864.0,
+          "projected_rows/op": 3438.0,
+          "source_rows/op": 8199.0,
+          "B/op": 114664.0,
+          "allocs/op": 178.0
+        },
+        "after_before_time_ratio": 0.8147601975241832,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkCompare32FilterProjectKernelMode/type=int32/op=ge/pct=99/nullable=true/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 168651.5,
+          "MB/s": 777.85,
+          "peak_bytes": 181608.0,
+          "projected_rows/op": 6811.0,
+          "source_rows/op": 8199.0,
+          "B/op": 193128.0,
+          "allocs/op": 178.0
+        },
+        "after_median": {
+          "ns/op": 136327.5,
+          "MB/s": 962.2950000000001,
+          "peak_bytes": 181608.0,
+          "projected_rows/op": 6811.0,
+          "source_rows/op": 8199.0,
+          "B/op": 193128.0,
+          "allocs/op": 178.0
+        },
+        "after_before_time_ratio": 0.8083384968411191,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkCompare32FilterProjectKernelMode/type=int32/op=gt/pct=1/nullable=false/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 42825.0,
+          "MB/s": 3069.205,
+          "peak_bytes": 18248.0,
+          "projected_rows/op": 82.0,
+          "source_rows/op": 8199.0,
+          "B/op": 29392.0,
+          "allocs/op": 174.0
+        },
+        "after_median": {
+          "ns/op": 34444.0,
+          "MB/s": 3809.455,
+          "peak_bytes": 18248.0,
+          "projected_rows/op": 82.0,
+          "source_rows/op": 8199.0,
+          "B/op": 29392.0,
+          "allocs/op": 174.0
+        },
+        "after_before_time_ratio": 0.8042965557501459,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkCompare32FilterProjectKernelMode/type=int32/op=gt/pct=50/nullable=false/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 110463.5,
+          "MB/s": 1191.0300000000002,
+          "peak_bytes": 99592.0,
+          "projected_rows/op": 4100.0,
+          "source_rows/op": 8199.0,
+          "B/op": 120976.0,
+          "allocs/op": 175.0
+        },
+        "after_median": {
+          "ns/op": 102065.0,
+          "MB/s": 1288.85,
+          "peak_bytes": 99592.0,
+          "projected_rows/op": 4100.0,
+          "source_rows/op": 8199.0,
+          "B/op": 120976.0,
+          "allocs/op": 175.0
+        },
+        "after_before_time_ratio": 0.9239703612505489,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkCompare32FilterProjectKernelMode/type=int32/op=gt/pct=50/nullable=true/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 121775.0,
+          "MB/s": 1079.08,
+          "peak_bytes": 99864.0,
+          "projected_rows/op": 3438.0,
+          "source_rows/op": 8199.0,
+          "B/op": 114664.0,
+          "allocs/op": 178.0
+        },
+        "after_median": {
+          "ns/op": 89800.0,
+          "MB/s": 1461.97,
+          "peak_bytes": 99864.0,
+          "projected_rows/op": 3438.0,
+          "source_rows/op": 8199.0,
+          "B/op": 114664.0,
+          "allocs/op": 178.0
+        },
+        "after_before_time_ratio": 0.7374255799630466,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkCompare32FilterProjectKernelMode/type=int32/op=gt/pct=99/nullable=true/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 170764.5,
+          "MB/s": 768.23,
+          "peak_bytes": 181608.0,
+          "projected_rows/op": 6811.0,
+          "source_rows/op": 8199.0,
+          "B/op": 193128.0,
+          "allocs/op": 178.0
+        },
+        "after_median": {
+          "ns/op": 136893.0,
+          "MB/s": 959.175,
+          "peak_bytes": 181608.0,
+          "projected_rows/op": 6811.0,
+          "source_rows/op": 8199.0,
+          "B/op": 193128.0,
+          "allocs/op": 178.0
+        },
+        "after_before_time_ratio": 0.8016478834886642,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkCompare32FilterProjectKernelMode/type=int32/op=le/pct=1/nullable=false/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 42568.5,
+          "MB/s": 3081.915,
+          "peak_bytes": 18248.0,
+          "projected_rows/op": 82.0,
+          "source_rows/op": 8199.0,
+          "B/op": 29392.0,
+          "allocs/op": 174.0
+        },
+        "after_median": {
+          "ns/op": 32297.0,
+          "MB/s": 4061.855,
+          "peak_bytes": 18248.0,
+          "projected_rows/op": 82.0,
+          "source_rows/op": 8199.0,
+          "B/op": 29392.0,
+          "allocs/op": 174.0
+        },
+        "after_before_time_ratio": 0.7587065553167248,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkCompare32FilterProjectKernelMode/type=int32/op=le/pct=50/nullable=false/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 111644.0,
+          "MB/s": 1175.52,
+          "peak_bytes": 99592.0,
+          "projected_rows/op": 4100.0,
+          "source_rows/op": 8199.0,
+          "B/op": 120976.0,
+          "allocs/op": 175.0
+        },
+        "after_median": {
+          "ns/op": 95661.0,
+          "MB/s": 1371.4499999999998,
+          "peak_bytes": 99592.0,
+          "projected_rows/op": 4100.0,
+          "source_rows/op": 8199.0,
+          "B/op": 120976.0,
+          "allocs/op": 175.0
+        },
+        "after_before_time_ratio": 0.8568395972913905,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkCompare32FilterProjectKernelMode/type=int32/op=le/pct=50/nullable=true/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 111513.5,
+          "MB/s": 1177.025,
+          "peak_bytes": 99864.0,
+          "projected_rows/op": 3438.0,
+          "source_rows/op": 8199.0,
+          "B/op": 114664.0,
+          "allocs/op": 178.0
+        },
+        "after_median": {
+          "ns/op": 90290.0,
+          "MB/s": 1452.915,
+          "peak_bytes": 99864.0,
+          "projected_rows/op": 3438.0,
+          "source_rows/op": 8199.0,
+          "B/op": 114664.0,
+          "allocs/op": 178.0
+        },
+        "after_before_time_ratio": 0.8096777520210557,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkCompare32FilterProjectKernelMode/type=int32/op=le/pct=99/nullable=true/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 168910.5,
+          "MB/s": 776.74,
+          "peak_bytes": 181608.0,
+          "projected_rows/op": 6811.0,
+          "source_rows/op": 8199.0,
+          "B/op": 193128.0,
+          "allocs/op": 178.0
+        },
+        "after_median": {
+          "ns/op": 138271.5,
+          "MB/s": 948.865,
+          "peak_bytes": 181608.0,
+          "projected_rows/op": 6811.0,
+          "source_rows/op": 8199.0,
+          "B/op": 193128.0,
+          "allocs/op": 178.0
+        },
+        "after_before_time_ratio": 0.8186080794266787,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkCompare32FilterProjectKernelMode/type=int32/op=lt/pct=1/nullable=false/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 42333.5,
+          "MB/s": 3099.575,
+          "peak_bytes": 18248.0,
+          "projected_rows/op": 82.0,
+          "source_rows/op": 8199.0,
+          "B/op": 29392.0,
+          "allocs/op": 174.0
+        },
+        "after_median": {
+          "ns/op": 36193.5,
+          "MB/s": 3626.0249999999996,
+          "peak_bytes": 18248.0,
+          "projected_rows/op": 82.0,
+          "source_rows/op": 8199.0,
+          "B/op": 29392.0,
+          "allocs/op": 174.0
+        },
+        "after_before_time_ratio": 0.8549612009401538,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkCompare32FilterProjectKernelMode/type=int32/op=lt/pct=50/nullable=false/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 115455.0,
+          "MB/s": 1136.27,
+          "peak_bytes": 99592.0,
+          "projected_rows/op": 4100.0,
+          "source_rows/op": 8199.0,
+          "B/op": 120976.0,
+          "allocs/op": 175.0
+        },
+        "after_median": {
+          "ns/op": 92273.5,
+          "MB/s": 1422.4099999999999,
+          "peak_bytes": 99592.0,
+          "projected_rows/op": 4100.0,
+          "source_rows/op": 8199.0,
+          "B/op": 120976.0,
+          "allocs/op": 175.0
+        },
+        "after_before_time_ratio": 0.7992161448183275,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkCompare32FilterProjectKernelMode/type=int32/op=lt/pct=50/nullable=true/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 104978.5,
+          "MB/s": 1249.655,
+          "peak_bytes": 99864.0,
+          "projected_rows/op": 3438.0,
+          "source_rows/op": 8199.0,
+          "B/op": 114664.0,
+          "allocs/op": 178.0
+        },
+        "after_median": {
+          "ns/op": 89727.5,
+          "MB/s": 1462.22,
+          "peak_bytes": 99864.0,
+          "projected_rows/op": 3438.0,
+          "source_rows/op": 8199.0,
+          "B/op": 114664.0,
+          "allocs/op": 178.0
+        },
+        "after_before_time_ratio": 0.8547226336821349,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkCompare32FilterProjectKernelMode/type=int32/op=lt/pct=99/nullable=true/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 164304.5,
+          "MB/s": 798.505,
+          "peak_bytes": 181608.0,
+          "projected_rows/op": 6811.0,
+          "source_rows/op": 8199.0,
+          "B/op": 193128.0,
+          "allocs/op": 178.0
+        },
+        "after_median": {
+          "ns/op": 140308.0,
+          "MB/s": 936.94,
+          "peak_bytes": 181608.0,
+          "projected_rows/op": 6811.0,
+          "source_rows/op": 8199.0,
+          "B/op": 193128.0,
+          "allocs/op": 178.0
+        },
+        "after_before_time_ratio": 0.8539510482062268,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkCompare32FilterProjectKernelMode/type=uint32/op=eq/pct=1/nullable=false/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 41245.5,
+          "MB/s": 3181.165,
+          "peak_bytes": 18248.0,
+          "projected_rows/op": 82.0,
+          "source_rows/op": 8199.0,
+          "B/op": 29392.0,
+          "allocs/op": 174.0
+        },
+        "after_median": {
+          "ns/op": 34088.0,
+          "MB/s": 3849.26,
+          "peak_bytes": 18248.0,
+          "projected_rows/op": 82.0,
+          "source_rows/op": 8199.0,
+          "B/op": 29392.0,
+          "allocs/op": 174.0
+        },
+        "after_before_time_ratio": 0.8264659174940296,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkCompare32FilterProjectKernelMode/type=uint32/op=eq/pct=50/nullable=false/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 124422.5,
+          "MB/s": 1058.345,
+          "peak_bytes": 99592.0,
+          "projected_rows/op": 4100.0,
+          "source_rows/op": 8199.0,
+          "B/op": 120976.0,
+          "allocs/op": 175.0
+        },
+        "after_median": {
+          "ns/op": 97158.5,
+          "MB/s": 1350.3249999999998,
+          "peak_bytes": 99592.0,
+          "projected_rows/op": 4100.0,
+          "source_rows/op": 8199.0,
+          "B/op": 120976.0,
+          "allocs/op": 175.0
+        },
+        "after_before_time_ratio": 0.7808756454821274,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkCompare32FilterProjectKernelMode/type=uint32/op=eq/pct=50/nullable=true/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 108887.0,
+          "MB/s": 1205.1999999999998,
+          "peak_bytes": 99864.0,
+          "projected_rows/op": 3438.0,
+          "source_rows/op": 8199.0,
+          "B/op": 114664.0,
+          "allocs/op": 178.0
+        },
+        "after_median": {
+          "ns/op": 84795.5,
+          "MB/s": 1547.105,
+          "peak_bytes": 99864.0,
+          "projected_rows/op": 3438.0,
+          "source_rows/op": 8199.0,
+          "B/op": 114664.0,
+          "allocs/op": 178.0
+        },
+        "after_before_time_ratio": 0.7787476925620138,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkCompare32FilterProjectKernelMode/type=uint32/op=eq/pct=99/nullable=true/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 160144.5,
+          "MB/s": 820.65,
+          "peak_bytes": 181608.0,
+          "projected_rows/op": 6811.0,
+          "source_rows/op": 8199.0,
+          "B/op": 193128.0,
+          "allocs/op": 178.0
+        },
+        "after_median": {
+          "ns/op": 137785.5,
+          "MB/s": 952.1700000000001,
+          "peak_bytes": 181608.0,
+          "projected_rows/op": 6811.0,
+          "source_rows/op": 8199.0,
+          "B/op": 193128.0,
+          "allocs/op": 178.0
+        },
+        "after_before_time_ratio": 0.8603823421972031,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkCompare32FilterProjectKernelMode/type=uint32/op=ge/pct=1/nullable=false/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 48555.0,
+          "MB/s": 2721.2250000000004,
+          "peak_bytes": 18248.0,
+          "projected_rows/op": 82.0,
+          "source_rows/op": 8199.0,
+          "B/op": 29392.0,
+          "allocs/op": 174.0
+        },
+        "after_median": {
+          "ns/op": 33042.0,
+          "MB/s": 3970.5249999999996,
+          "peak_bytes": 18248.0,
+          "projected_rows/op": 82.0,
+          "source_rows/op": 8199.0,
+          "B/op": 29392.0,
+          "allocs/op": 174.0
+        },
+        "after_before_time_ratio": 0.680506641952425,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkCompare32FilterProjectKernelMode/type=uint32/op=ge/pct=50/nullable=false/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 110738.0,
+          "MB/s": 1186.58,
+          "peak_bytes": 99592.0,
+          "projected_rows/op": 4100.0,
+          "source_rows/op": 8199.0,
+          "B/op": 120976.0,
+          "allocs/op": 175.0
+        },
+        "after_median": {
+          "ns/op": 91646.0,
+          "MB/s": 1432.295,
+          "peak_bytes": 99592.0,
+          "projected_rows/op": 4100.0,
+          "source_rows/op": 8199.0,
+          "B/op": 120976.0,
+          "allocs/op": 175.0
+        },
+        "after_before_time_ratio": 0.8275930574870415,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkCompare32FilterProjectKernelMode/type=uint32/op=ge/pct=50/nullable=true/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 106521.0,
+          "MB/s": 1233.2849999999999,
+          "peak_bytes": 99864.0,
+          "projected_rows/op": 3438.0,
+          "source_rows/op": 8199.0,
+          "B/op": 114664.0,
+          "allocs/op": 178.0
+        },
+        "after_median": {
+          "ns/op": 86089.0,
+          "MB/s": 1523.955,
+          "peak_bytes": 99864.0,
+          "projected_rows/op": 3438.0,
+          "source_rows/op": 8199.0,
+          "B/op": 114664.0,
+          "allocs/op": 178.0
+        },
+        "after_before_time_ratio": 0.8081880568150881,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkCompare32FilterProjectKernelMode/type=uint32/op=ge/pct=99/nullable=true/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 170538.5,
+          "MB/s": 770.665,
+          "peak_bytes": 181608.0,
+          "projected_rows/op": 6811.0,
+          "source_rows/op": 8199.0,
+          "B/op": 193128.0,
+          "allocs/op": 178.0
+        },
+        "after_median": {
+          "ns/op": 140950.0,
+          "MB/s": 930.7149999999999,
+          "peak_bytes": 181608.0,
+          "projected_rows/op": 6811.0,
+          "source_rows/op": 8199.0,
+          "B/op": 193128.0,
+          "allocs/op": 178.0
+        },
+        "after_before_time_ratio": 0.8264995880695561,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkCompare32FilterProjectKernelMode/type=uint32/op=gt/pct=1/nullable=false/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 40025.5,
+          "MB/s": 3277.54,
+          "peak_bytes": 18248.0,
+          "projected_rows/op": 82.0,
+          "source_rows/op": 8199.0,
+          "B/op": 29392.0,
+          "allocs/op": 174.0
+        },
+        "after_median": {
+          "ns/op": 36005.0,
+          "MB/s": 3643.6899999999996,
+          "peak_bytes": 18248.0,
+          "projected_rows/op": 82.0,
+          "source_rows/op": 8199.0,
+          "B/op": 29392.0,
+          "allocs/op": 174.0
+        },
+        "after_before_time_ratio": 0.8995515358958663,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkCompare32FilterProjectKernelMode/type=uint32/op=gt/pct=50/nullable=false/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 115144.0,
+          "MB/s": 1139.4299999999998,
+          "peak_bytes": 99592.0,
+          "projected_rows/op": 4100.0,
+          "source_rows/op": 8199.0,
+          "B/op": 120976.0,
+          "allocs/op": 175.0
+        },
+        "after_median": {
+          "ns/op": 95396.0,
+          "MB/s": 1375.4650000000001,
+          "peak_bytes": 99592.0,
+          "projected_rows/op": 4100.0,
+          "source_rows/op": 8199.0,
+          "B/op": 120976.0,
+          "allocs/op": 175.0
+        },
+        "after_before_time_ratio": 0.8284930174390328,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkCompare32FilterProjectKernelMode/type=uint32/op=gt/pct=50/nullable=true/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 110442.5,
+          "MB/s": 1187.975,
+          "peak_bytes": 99864.0,
+          "projected_rows/op": 3438.0,
+          "source_rows/op": 8199.0,
+          "B/op": 114664.0,
+          "allocs/op": 178.0
+        },
+        "after_median": {
+          "ns/op": 94317.0,
+          "MB/s": 1392.2150000000001,
+          "peak_bytes": 99864.0,
+          "projected_rows/op": 3438.0,
+          "source_rows/op": 8199.0,
+          "B/op": 114664.0,
+          "allocs/op": 178.0
+        },
+        "after_before_time_ratio": 0.8539918962355977,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkCompare32FilterProjectKernelMode/type=uint32/op=gt/pct=99/nullable=true/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 189327.0,
+          "MB/s": 702.1800000000001,
+          "peak_bytes": 181608.0,
+          "projected_rows/op": 6811.0,
+          "source_rows/op": 8199.0,
+          "B/op": 193128.0,
+          "allocs/op": 178.0
+        },
+        "after_median": {
+          "ns/op": 133911.0,
+          "MB/s": 980.565,
+          "peak_bytes": 181608.0,
+          "projected_rows/op": 6811.0,
+          "source_rows/op": 8199.0,
+          "B/op": 193128.0,
+          "allocs/op": 178.0
+        },
+        "after_before_time_ratio": 0.707300068136082,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkCompare32FilterProjectKernelMode/type=uint32/op=le/pct=1/nullable=false/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 39572.5,
+          "MB/s": 3317.99,
+          "peak_bytes": 18248.0,
+          "projected_rows/op": 82.0,
+          "source_rows/op": 8199.0,
+          "B/op": 29392.0,
+          "allocs/op": 174.0
+        },
+        "after_median": {
+          "ns/op": 33496.5,
+          "MB/s": 3917.245,
+          "peak_bytes": 18248.0,
+          "projected_rows/op": 82.0,
+          "source_rows/op": 8199.0,
+          "B/op": 29392.0,
+          "allocs/op": 174.0
+        },
+        "after_before_time_ratio": 0.8464590308926654,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkCompare32FilterProjectKernelMode/type=uint32/op=le/pct=50/nullable=false/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 104799.5,
+          "MB/s": 1255.3899999999999,
+          "peak_bytes": 99592.0,
+          "projected_rows/op": 4100.0,
+          "source_rows/op": 8199.0,
+          "B/op": 120976.0,
+          "allocs/op": 175.0
+        },
+        "after_median": {
+          "ns/op": 93991.0,
+          "MB/s": 1396.325,
+          "peak_bytes": 99592.0,
+          "projected_rows/op": 4100.0,
+          "source_rows/op": 8199.0,
+          "B/op": 120976.0,
+          "allocs/op": 175.0
+        },
+        "after_before_time_ratio": 0.896864965958807,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkCompare32FilterProjectKernelMode/type=uint32/op=le/pct=50/nullable=true/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 106160.5,
+          "MB/s": 1235.7350000000001,
+          "peak_bytes": 99864.0,
+          "projected_rows/op": 3438.0,
+          "source_rows/op": 8199.0,
+          "B/op": 114664.0,
+          "allocs/op": 178.0
+        },
+        "after_median": {
+          "ns/op": 95551.0,
+          "MB/s": 1373.52,
+          "peak_bytes": 99864.0,
+          "projected_rows/op": 3438.0,
+          "source_rows/op": 8199.0,
+          "B/op": 114664.0,
+          "allocs/op": 178.0
+        },
+        "after_before_time_ratio": 0.9000616990311839,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkCompare32FilterProjectKernelMode/type=uint32/op=le/pct=99/nullable=true/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 154953.0,
+          "MB/s": 848.085,
+          "peak_bytes": 181608.0,
+          "projected_rows/op": 6811.0,
+          "source_rows/op": 8199.0,
+          "B/op": 193128.0,
+          "allocs/op": 178.0
+        },
+        "after_median": {
+          "ns/op": 130923.5,
+          "MB/s": 1002.19,
+          "peak_bytes": 181608.0,
+          "projected_rows/op": 6811.0,
+          "source_rows/op": 8199.0,
+          "B/op": 193128.0,
+          "allocs/op": 178.0
+        },
+        "after_before_time_ratio": 0.8449239446799998,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkCompare32FilterProjectKernelMode/type=uint32/op=lt/pct=1/nullable=false/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 41742.0,
+          "MB/s": 3142.8,
+          "peak_bytes": 18248.0,
+          "projected_rows/op": 82.0,
+          "source_rows/op": 8199.0,
+          "B/op": 29392.0,
+          "allocs/op": 174.0
+        },
+        "after_median": {
+          "ns/op": 32841.0,
+          "MB/s": 3995.815,
+          "peak_bytes": 18248.0,
+          "projected_rows/op": 82.0,
+          "source_rows/op": 8199.0,
+          "B/op": 29392.0,
+          "allocs/op": 174.0
+        },
+        "after_before_time_ratio": 0.7867615351444588,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkCompare32FilterProjectKernelMode/type=uint32/op=lt/pct=50/nullable=false/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 103481.5,
+          "MB/s": 1267.7199999999998,
+          "peak_bytes": 99592.0,
+          "projected_rows/op": 4100.0,
+          "source_rows/op": 8199.0,
+          "B/op": 120976.0,
+          "allocs/op": 175.0
+        },
+        "after_median": {
+          "ns/op": 97102.5,
+          "MB/s": 1351.835,
+          "peak_bytes": 99592.0,
+          "projected_rows/op": 4100.0,
+          "source_rows/op": 8199.0,
+          "B/op": 120976.0,
+          "allocs/op": 175.0
+        },
+        "after_before_time_ratio": 0.9383561312891676,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkCompare32FilterProjectKernelMode/type=uint32/op=lt/pct=50/nullable=true/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 102728.5,
+          "MB/s": 1278.08,
+          "peak_bytes": 99864.0,
+          "projected_rows/op": 3438.0,
+          "source_rows/op": 8199.0,
+          "B/op": 114664.0,
+          "allocs/op": 178.0
+        },
+        "after_median": {
+          "ns/op": 90109.5,
+          "MB/s": 1455.97,
+          "peak_bytes": 99864.0,
+          "projected_rows/op": 3438.0,
+          "source_rows/op": 8199.0,
+          "B/op": 114664.0,
+          "allocs/op": 178.0
+        },
+        "after_before_time_ratio": 0.8771616445290256,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkCompare32FilterProjectKernelMode/type=uint32/op=lt/pct=99/nullable=true/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 164433.5,
+          "MB/s": 797.84,
+          "peak_bytes": 181608.0,
+          "projected_rows/op": 6811.0,
+          "source_rows/op": 8199.0,
+          "B/op": 193128.0,
+          "allocs/op": 178.0
+        },
+        "after_median": {
+          "ns/op": 132229.5,
+          "MB/s": 993.0350000000001,
+          "peak_bytes": 181608.0,
+          "projected_rows/op": 6811.0,
+          "source_rows/op": 8199.0,
+          "B/op": 193128.0,
+          "allocs/op": 178.0
+        },
+        "after_before_time_ratio": 0.8041518303751972,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkNumericSIMDWholeQuery/type=float32/op=add/column=true/nullable=false/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 160317.5,
+          "peak_bytes": 115840.0,
+          "projected_rows/op": 8199.0,
+          "source_rows/op": 8199.0,
+          "B/op": 126736.0,
+          "allocs/op": 175.0
+        },
+        "after_median": {
+          "ns/op": 151838.5,
+          "peak_bytes": 115840.0,
+          "projected_rows/op": 8199.0,
+          "source_rows/op": 8199.0,
+          "B/op": 126736.0,
+          "allocs/op": 175.0
+        },
+        "after_before_time_ratio": 0.9471112012100987,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkNumericSIMDWholeQuery/type=float32/op=add/column=true/nullable=true/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 152454.0,
+          "peak_bytes": 115840.0,
+          "projected_rows/op": 8199.0,
+          "source_rows/op": 8199.0,
+          "B/op": 126736.0,
+          "allocs/op": 175.0
+        },
+        "after_median": {
+          "ns/op": 142320.0,
+          "peak_bytes": 115840.0,
+          "projected_rows/op": 8199.0,
+          "source_rows/op": 8199.0,
+          "B/op": 126736.0,
+          "allocs/op": 175.0
+        },
+        "after_before_time_ratio": 0.9335274902593569,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkNumericSIMDWholeQuery/type=float32/op=div/column=true/nullable=false/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 173196.5,
+          "peak_bytes": 115840.0,
+          "projected_rows/op": 8199.0,
+          "source_rows/op": 8199.0,
+          "B/op": 126736.0,
+          "allocs/op": 175.0
+        },
+        "after_median": {
+          "ns/op": 163744.5,
+          "peak_bytes": 115840.0,
+          "projected_rows/op": 8199.0,
+          "source_rows/op": 8199.0,
+          "B/op": 126736.0,
+          "allocs/op": 175.0
+        },
+        "after_before_time_ratio": 0.9454261489117851,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkNumericSIMDWholeQuery/type=float32/op=div/column=true/nullable=true/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 164700.0,
+          "peak_bytes": 115840.0,
+          "projected_rows/op": 8199.0,
+          "source_rows/op": 8199.0,
+          "B/op": 126736.0,
+          "allocs/op": 175.0
+        },
+        "after_median": {
+          "ns/op": 146075.0,
+          "peak_bytes": 115840.0,
+          "projected_rows/op": 8199.0,
+          "source_rows/op": 8199.0,
+          "B/op": 126736.0,
+          "allocs/op": 175.0
+        },
+        "after_before_time_ratio": 0.8869156041287188,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkNumericSIMDWholeQuery/type=float32/op=mul/column=true/nullable=false/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 171055.5,
+          "peak_bytes": 115840.0,
+          "projected_rows/op": 8199.0,
+          "source_rows/op": 8199.0,
+          "B/op": 126736.0,
+          "allocs/op": 175.0
+        },
+        "after_median": {
+          "ns/op": 164885.0,
+          "peak_bytes": 115840.0,
+          "projected_rows/op": 8199.0,
+          "source_rows/op": 8199.0,
+          "B/op": 126736.0,
+          "allocs/op": 175.0
+        },
+        "after_before_time_ratio": 0.9639269126102347,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkNumericSIMDWholeQuery/type=float32/op=mul/column=true/nullable=true/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 157362.0,
+          "peak_bytes": 115840.0,
+          "projected_rows/op": 8199.0,
+          "source_rows/op": 8199.0,
+          "B/op": 126736.0,
+          "allocs/op": 175.0
+        },
+        "after_median": {
+          "ns/op": 148528.5,
+          "peak_bytes": 115840.0,
+          "projected_rows/op": 8199.0,
+          "source_rows/op": 8199.0,
+          "B/op": 126736.0,
+          "allocs/op": 175.0
+        },
+        "after_before_time_ratio": 0.9438651008502688,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkNumericSIMDWholeQuery/type=float32/op=sub/column=true/nullable=false/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 171908.5,
+          "peak_bytes": 115840.0,
+          "projected_rows/op": 8199.0,
+          "source_rows/op": 8199.0,
+          "B/op": 126736.0,
+          "allocs/op": 175.0
+        },
+        "after_median": {
+          "ns/op": 155664.0,
+          "peak_bytes": 115840.0,
+          "projected_rows/op": 8199.0,
+          "source_rows/op": 8199.0,
+          "B/op": 126736.0,
+          "allocs/op": 175.0
+        },
+        "after_before_time_ratio": 0.9055049633962253,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkNumericSIMDWholeQuery/type=float32/op=sub/column=true/nullable=true/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 163714.0,
+          "peak_bytes": 115840.0,
+          "projected_rows/op": 8199.0,
+          "source_rows/op": 8199.0,
+          "B/op": 126736.0,
+          "allocs/op": 175.0
+        },
+        "after_median": {
+          "ns/op": 153732.5,
+          "peak_bytes": 115840.0,
+          "projected_rows/op": 8199.0,
+          "source_rows/op": 8199.0,
+          "B/op": 126736.0,
+          "allocs/op": 175.0
+        },
+        "after_before_time_ratio": 0.9390308709090243,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkNumericSIMDWholeQuery/type=float64/op=add/column=true/nullable=false/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 72184.0,
+          "peak_bytes": 115840.0,
+          "projected_rows/op": 8199.0,
+          "source_rows/op": 8199.0,
+          "B/op": 126736.0,
+          "allocs/op": 175.0
+        },
+        "after_median": {
+          "ns/op": 67631.5,
+          "peak_bytes": 115840.0,
+          "projected_rows/op": 8199.0,
+          "source_rows/op": 8199.0,
+          "B/op": 126736.0,
+          "allocs/op": 175.0
+        },
+        "after_before_time_ratio": 0.9369320070929846,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkNumericSIMDWholeQuery/type=float64/op=add/column=true/nullable=true/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 68311.0,
+          "peak_bytes": 115840.0,
+          "projected_rows/op": 8199.0,
+          "source_rows/op": 8199.0,
+          "B/op": 126736.0,
+          "allocs/op": 175.0
+        },
+        "after_median": {
+          "ns/op": 66450.0,
+          "peak_bytes": 115840.0,
+          "projected_rows/op": 8199.0,
+          "source_rows/op": 8199.0,
+          "B/op": 126736.0,
+          "allocs/op": 175.0
+        },
+        "after_before_time_ratio": 0.9727569498323843,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkNumericSIMDWholeQuery/type=float64/op=gt/column=false/nullable=false/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 90323.5,
+          "peak_bytes": 72592.0,
+          "projected_rows/op": 2981.0,
+          "source_rows/op": 8199.0,
+          "B/op": 85496.0,
+          "allocs/op": 169.0
+        },
+        "after_median": {
+          "ns/op": 62569.5,
+          "peak_bytes": 72592.0,
+          "projected_rows/op": 2981.0,
+          "source_rows/op": 8199.0,
+          "B/op": 85496.0,
+          "allocs/op": 169.0
+        },
+        "after_before_time_ratio": 0.6927266990318134,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkNumericSIMDWholeQuery/type=float64/op=gt/column=false/nullable=true/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 77226.5,
+          "peak_bytes": 72592.0,
+          "projected_rows/op": 2981.0,
+          "source_rows/op": 8199.0,
+          "B/op": 85496.0,
+          "allocs/op": 169.0
+        },
+        "after_median": {
+          "ns/op": 71934.0,
+          "peak_bytes": 72592.0,
+          "projected_rows/op": 2981.0,
+          "source_rows/op": 8199.0,
+          "B/op": 85496.0,
+          "allocs/op": 169.0
+        },
+        "after_before_time_ratio": 0.931467825163642,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkNumericSIMDWholeQuery/type=float64/op=le/column=true/nullable=false/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 85196.0,
+          "peak_bytes": 72752.0,
+          "projected_rows/op": 3727.0,
+          "source_rows/op": 8199.0,
+          "B/op": 89648.0,
+          "allocs/op": 166.0
+        },
+        "after_median": {
+          "ns/op": 67662.0,
+          "peak_bytes": 72752.0,
+          "projected_rows/op": 3727.0,
+          "source_rows/op": 8199.0,
+          "B/op": 89648.0,
+          "allocs/op": 166.0
+        },
+        "after_before_time_ratio": 0.7941922155969764,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkNumericSIMDWholeQuery/type=float64/op=le/column=true/nullable=true/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 75980.5,
+          "peak_bytes": 67944.0,
+          "projected_rows/op": 2752.0,
+          "source_rows/op": 8199.0,
+          "B/op": 85448.0,
+          "allocs/op": 169.0
+        },
+        "after_median": {
+          "ns/op": 63809.0,
+          "peak_bytes": 67944.0,
+          "projected_rows/op": 2752.0,
+          "source_rows/op": 8199.0,
+          "B/op": 85448.0,
+          "allocs/op": 169.0
+        },
+        "after_before_time_ratio": 0.839807582208593,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkNumericSIMDWholeQuery/type=int32/op=gt/column=false/nullable=false/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 72096.5,
+          "peak_bytes": 67552.0,
+          "projected_rows/op": 2732.0,
+          "source_rows/op": 8199.0,
+          "B/op": 85448.0,
+          "allocs/op": 169.0
+        },
+        "after_median": {
+          "ns/op": 61560.5,
+          "peak_bytes": 67552.0,
+          "projected_rows/op": 2732.0,
+          "source_rows/op": 8199.0,
+          "B/op": 85448.0,
+          "allocs/op": 169.0
+        },
+        "after_before_time_ratio": 0.8538625314682405,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkNumericSIMDWholeQuery/type=int32/op=gt/column=false/nullable=true/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 70884.0,
+          "peak_bytes": 62544.0,
+          "projected_rows/op": 2483.0,
+          "source_rows/op": 8199.0,
+          "B/op": 75160.0,
+          "allocs/op": 169.0
+        },
+        "after_median": {
+          "ns/op": 56233.5,
+          "peak_bytes": 62544.0,
+          "projected_rows/op": 2483.0,
+          "source_rows/op": 8199.0,
+          "B/op": 75160.0,
+          "allocs/op": 169.0
+        },
+        "after_before_time_ratio": 0.7933172507194853,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkNumericSIMDWholeQuery/type=int64/op=gt/column=false/nullable=false/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 68274.0,
+          "peak_bytes": 67552.0,
+          "projected_rows/op": 2732.0,
+          "source_rows/op": 8199.0,
+          "B/op": 84616.0,
+          "allocs/op": 165.0
+        },
+        "after_median": {
+          "ns/op": 65071.0,
+          "peak_bytes": 67552.0,
+          "projected_rows/op": 2732.0,
+          "source_rows/op": 8199.0,
+          "B/op": 84616.0,
+          "allocs/op": 165.0
+        },
+        "after_before_time_ratio": 0.9530860942672174,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkNumericSIMDWholeQuery/type=int64/op=gt/column=false/nullable=true/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 67156.0,
+          "peak_bytes": 62544.0,
+          "projected_rows/op": 2483.0,
+          "source_rows/op": 8199.0,
+          "B/op": 74328.0,
+          "allocs/op": 165.0
+        },
+        "after_median": {
+          "ns/op": 57663.5,
+          "peak_bytes": 62544.0,
+          "projected_rows/op": 2483.0,
+          "source_rows/op": 8199.0,
+          "B/op": 74328.0,
+          "allocs/op": 165.0
+        },
+        "after_before_time_ratio": 0.8586500089344213,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkNumericSIMDWholeQuery/type=int8/op=gt/column=false/nullable=false/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 67821.0,
+          "peak_bytes": 62176.0,
+          "projected_rows/op": 3075.0,
+          "source_rows/op": 8199.0,
+          "B/op": 73120.0,
+          "allocs/op": 166.0
+        },
+        "after_median": {
+          "ns/op": 60519.0,
+          "peak_bytes": 62176.0,
+          "projected_rows/op": 3075.0,
+          "source_rows/op": 8199.0,
+          "B/op": 73120.0,
+          "allocs/op": 166.0
+        },
+        "after_before_time_ratio": 0.8923342327597646,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkNumericSIMDWholeQuery/type=int8/op=gt/column=false/nullable=true/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 71270.5,
+          "peak_bytes": 68824.0,
+          "projected_rows/op": 2795.0,
+          "source_rows/op": 8199.0,
+          "B/op": 85448.0,
+          "allocs/op": 169.0
+        },
+        "after_median": {
+          "ns/op": 62483.0,
+          "peak_bytes": 68824.0,
+          "projected_rows/op": 2795.0,
+          "source_rows/op": 8199.0,
+          "B/op": 85448.0,
+          "allocs/op": 169.0
+        },
+        "after_before_time_ratio": 0.8767021418398917,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkNumericSIMDWholeQuery/type=uint32/op=gt/column=false/nullable=false/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 93690.5,
+          "peak_bytes": 100840.0,
+          "projected_rows/op": 5465.0,
+          "source_rows/op": 8199.0,
+          "B/op": 122752.0,
+          "allocs/op": 166.0
+        },
+        "after_median": {
+          "ns/op": 79230.0,
+          "peak_bytes": 100840.0,
+          "projected_rows/op": 5465.0,
+          "source_rows/op": 8199.0,
+          "B/op": 122752.0,
+          "allocs/op": 166.0
+        },
+        "after_before_time_ratio": 0.8456567101253596,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkNumericSIMDWholeQuery/type=uint32/op=gt/column=false/nullable=true/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 89091.0,
+          "peak_bytes": 92808.0,
+          "projected_rows/op": 4968.0,
+          "source_rows/op": 8199.0,
+          "B/op": 106272.0,
+          "allocs/op": 166.0
+        },
+        "after_median": {
+          "ns/op": 75019.0,
+          "peak_bytes": 92808.0,
+          "projected_rows/op": 4968.0,
+          "source_rows/op": 8199.0,
+          "B/op": 106272.0,
+          "allocs/op": 166.0
+        },
+        "after_before_time_ratio": 0.8420491407661829,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkNumericSIMDWholeQuery/type=uint64/op=gt/column=false/nullable=false/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 101537.5,
+          "peak_bytes": 100840.0,
+          "projected_rows/op": 5465.0,
+          "source_rows/op": 8199.0,
+          "B/op": 122752.0,
+          "allocs/op": 166.0
+        },
+        "after_median": {
+          "ns/op": 87377.0,
+          "peak_bytes": 100840.0,
+          "projected_rows/op": 5465.0,
+          "source_rows/op": 8199.0,
+          "B/op": 122752.0,
+          "allocs/op": 166.0
+        },
+        "after_before_time_ratio": 0.8605392096516066,
+        "memory_and_rows_equal": true
+      },
+      {
+        "workload": "BenchmarkNumericSIMDWholeQuery/type=uint64/op=gt/column=false/nullable=true/mode=auto",
+        "samples_per_version": 6,
+        "before_median": {
+          "ns/op": 88677.5,
+          "peak_bytes": 92808.0,
+          "projected_rows/op": 4968.0,
+          "source_rows/op": 8199.0,
+          "B/op": 106272.0,
+          "allocs/op": 166.0
+        },
+        "after_median": {
+          "ns/op": 75791.0,
+          "peak_bytes": 92808.0,
+          "projected_rows/op": 4968.0,
+          "source_rows/op": 8199.0,
+          "B/op": 106272.0,
+          "allocs/op": 166.0
+        },
+        "after_before_time_ratio": 0.8546812889402611,
+        "memory_and_rows_equal": true
+      }
+    ]
+  }
+}

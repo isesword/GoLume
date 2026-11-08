@@ -44,9 +44,9 @@ scalar reference evaluation even when the reported backend offers dense SIMD.
 
 | Family | Physical operations | Auto native backend / guard | Remaining scalar boundary |
 |---|---|---|---|
-| Literal comparison | Int8/Int32/Int64/Uint32/Uint64/Float32/Float64 GT/GE/LT/LE/EQ | portable SIMD; arm64 retains Int32 GT/GE/LT/LE and Uint32 overrides | unavailable native runtime, tails |
+| Literal comparison | Int8/Int32/Int64/Uint32/Uint64/Float32/Float64 GT/GE/LT/LE/EQ | portable SIMD; guarded amd64 direct mask extraction; arm64 retains Int32 GT/GE/LT/LE and Uint32 overrides | unavailable native runtime, tails |
 | Literal comparison | Int16/Uint8/Uint16 | none | typed scalar entries |
-| Column comparison | Int32/Uint32/Float32/Float64 GT/GE/LT/LE/EQ | portable SIMD | unavailable native runtime, tails |
+| Column comparison | Int32/Uint32/Float32/Float64 GT/GE/LT/LE/EQ | portable SIMD; guarded amd64 direct mask extraction | unavailable native runtime, tails |
 | Column comparison | Int8/Int16/Int64/Uint8/Uint16/Uint64 | none | typed scalar entries |
 | Arithmetic kernels | Float32/Float64 Add/Sub/Mul/Div | portable SIMD | unavailable native runtime, tails |
 | Expression arithmetic | Float32 operands | promotes to Float64, existing scalar conversion path | native Float32 arithmetic API is not reached |
@@ -102,3 +102,9 @@ alone do not make these SIMD.
   and parallelism.
 - Retain raw final-build kernel and end-to-end samples per target host before
   claiming performance gains or changing planner strategy approvals.
+
+The amd64 comparison mask backend selects only the actual runtime width: AVX
+at 128 bits, AVX2 at 256 bits, and the complete archsimd AVX512 feature group
+at 512 bits. Feature/width mismatch keeps the portable backend. Native column
+and literal masks are packed directly; portable column32 validity is applied
+per word rather than per lane. See the [bitmap report](../validation/bitmap-native/README.md).

@@ -1,0 +1,3 @@
+Targeted follow-up: Int32 literal GT, seven nullable rows, Auto; ten alternating one-second samples per version, GOMAXPROCS=1.
+49cc95f6e7d06c5a4a6fa2792d5d00dcaf7a17f14257b6eb4dbd561473bacf16  /workspace/scratch/ac8e1e118737/bitmap-baseline/kernel.test
+48f82fc70ffe5e236395dd2419d50bb11529a6b9c05f17c1de0c5b7326639c1c  /workspace/scratch/ac8e1e118737/bitmap-final/kernel.test

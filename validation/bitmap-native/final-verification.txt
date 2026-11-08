@@ -1,0 +1,151 @@
+go version go1.27.3 linux/amd64
+== generated sources ==
+== registry ==
+kernel registry, gates file, and code are consistent
+== GoDoc ==
+GoDoc check: PASS (package docs and exported API comments follow naming conventions)
+== structural checks ==
+SIMD structure checks passed
+== ordinary full tests ==
+ok  	gocolumn/aggregate	(cached)
+?   	gocolumn/cmd/demo	[no test files]
+ok  	gocolumn/cmd/kernel-info	(cached)
+?   	gocolumn/cmd/lazy-demo	[no test files]
+?   	gocolumn/costmodel	[no test files]
+ok  	gocolumn/engine	(cached)
+ok  	gocolumn/expr	(cached)
+ok  	gocolumn/hashagg	(cached)
+ok  	gocolumn/internal/benchtrack	(cached)
+?   	gocolumn/internal/cmd/gensimd	[no test files]
+ok  	gocolumn/internal/fixturegen	(cached)
+?   	gocolumn/internal/hashmix	[no test files]
+ok  	gocolumn/internal/kernelgate	(cached)
+ok  	gocolumn/internal/oracle	(cached)
+?   	gocolumn/internal/platformcal	[no test files]
+ok  	gocolumn/internal/proptest	(cached)
+ok  	gocolumn/join	(cached)
+ok  	gocolumn/kernel	0.854s
+ok  	gocolumn/lazy	(cached)
+ok  	gocolumn/logical	(cached)
+ok  	gocolumn/memory	(cached)
+?   	gocolumn/observer	[no test files]
+ok  	gocolumn/optimizer	(cached)
+ok  	gocolumn/physical	0.935s
+ok  	gocolumn/pipeline	(cached)
+ok  	gocolumn/planner	(cached)
+ok  	gocolumn/radix	(cached)
+ok  	gocolumn/scheduler	(cached)
+ok  	gocolumn/source	(cached)
+ok  	gocolumn/source/arrowrecord	(cached)
+ok  	gocolumn/source/inmemory	(cached)
+?   	gocolumn/source/internal/batchview	[no test files]
+ok  	gocolumn/source/parquet	(cached)
+ok  	gocolumn/tools/benchtrack	(cached)
+?   	gocolumn/tools/checkgodoc	[no test files]
+ok  	gocolumn/tools/genfallbackfixture	(cached)
+ok  	gocolumn/tools/genfixture	(cached)
+ok  	gocolumn/tools/kernelgate	(cached)
+ok  	gocolumn/tuplesort	(cached)
+== SIMD full tests ==
+ok  	gocolumn/aggregate	(cached)
+?   	gocolumn/cmd/demo	[no test files]
+ok  	gocolumn/cmd/kernel-info	0.035s
+?   	gocolumn/cmd/lazy-demo	[no test files]
+?   	gocolumn/costmodel	[no test files]
+ok  	gocolumn/engine	2.747s
+ok  	gocolumn/expr	6.061s
+ok  	gocolumn/hashagg	(cached)
+ok  	gocolumn/internal/benchtrack	(cached)
+?   	gocolumn/internal/cmd/gensimd	[no test files]
+ok  	gocolumn/internal/fixturegen	0.342s
+?   	gocolumn/internal/hashmix	[no test files]
+ok  	gocolumn/internal/kernelgate	(cached)
+ok  	gocolumn/internal/oracle	22.661s
+?   	gocolumn/internal/platformcal	[no test files]
+ok  	gocolumn/internal/proptest	0.118s
+ok  	gocolumn/join	(cached)
+ok  	gocolumn/kernel	1.136s
+ok  	gocolumn/lazy	2.858s
+ok  	gocolumn/logical	0.007s
+ok  	gocolumn/memory	(cached)
+?   	gocolumn/observer	[no test files]
+ok  	gocolumn/optimizer	0.010s
+ok  	gocolumn/physical	1.342s
+ok  	gocolumn/pipeline	0.098s
+ok  	gocolumn/planner	0.010s
+ok  	gocolumn/radix	0.006s
+ok  	gocolumn/scheduler	(cached)
+ok  	gocolumn/source	0.010s
+ok  	gocolumn/source/arrowrecord	0.009s
+ok  	gocolumn/source/inmemory	0.008s
+?   	gocolumn/source/internal/batchview	[no test files]
+ok  	gocolumn/source/parquet	0.959s
+ok  	gocolumn/tools/benchtrack	(cached)
+?   	gocolumn/tools/checkgodoc	[no test files]
+ok  	gocolumn/tools/genfallbackfixture	0.109s
+ok  	gocolumn/tools/genfixture	(cached)
+ok  	gocolumn/tools/kernelgate	(cached)
+ok  	gocolumn/tuplesort	(cached)
+== SIMD full race ==
+ok  	gocolumn/aggregate	(cached)
+?   	gocolumn/cmd/demo	[no test files]
+ok  	gocolumn/cmd/kernel-info	1.102s
+?   	gocolumn/cmd/lazy-demo	[no test files]
+?   	gocolumn/costmodel	[no test files]
+ok  	gocolumn/engine	26.165s
+ok  	gocolumn/expr	33.665s
+ok  	gocolumn/hashagg	(cached)
+ok  	gocolumn/internal/benchtrack	(cached)
+?   	gocolumn/internal/cmd/gensimd	[no test files]
+ok  	gocolumn/internal/fixturegen	2.100s
+?   	gocolumn/internal/hashmix	[no test files]
+ok  	gocolumn/internal/kernelgate	(cached)
+ok  	gocolumn/internal/oracle	90.728s
+?   	gocolumn/internal/platformcal	[no test files]
+ok  	gocolumn/internal/proptest	1.316s
+ok  	gocolumn/join	(cached)
+ok  	gocolumn/kernel	5.732s
+ok  	gocolumn/lazy	20.924s
+ok  	gocolumn/logical	1.028s
+ok  	gocolumn/memory	(cached)
+?   	gocolumn/observer	[no test files]
+ok  	gocolumn/optimizer	1.048s
+ok  	gocolumn/physical	6.720s
+ok  	gocolumn/pipeline	1.239s
+ok  	gocolumn/planner	1.021s
+ok  	gocolumn/radix	1.035s
+ok  	gocolumn/scheduler	(cached)
+ok  	gocolumn/source	1.037s
+ok  	gocolumn/source/arrowrecord	1.035s
+ok  	gocolumn/source/inmemory	1.031s
+?   	gocolumn/source/internal/batchview	[no test files]
+ok  	gocolumn/source/parquet	5.905s
+ok  	gocolumn/tools/benchtrack	(cached)
+?   	gocolumn/tools/checkgodoc	[no test files]
+ok  	gocolumn/tools/genfallbackfixture	1.293s
+ok  	gocolumn/tools/genfixture	(cached)
+ok  	gocolumn/tools/kernelgate	(cached)
+ok  	gocolumn/tuplesort	(cached)
+== vet/build both modes ==
+== arm64 cross-compilation only ==
+== runtime simd=0 ==
+ok  	gocolumn/kernel	0.720s
+ok  	gocolumn/expr	3.306s
+ok  	gocolumn/cmd/kernel-info	0.013s
+ok  	gocolumn/physical	0.264s
+== runtime simd=+128 ==
+ok  	gocolumn/kernel	0.620s
+ok  	gocolumn/expr	3.336s
+ok  	gocolumn/cmd/kernel-info	0.008s
+ok  	gocolumn/physical	0.257s
+== runtime simd=+256 ==
+ok  	gocolumn/kernel	0.658s
+ok  	gocolumn/expr	3.410s
+ok  	gocolumn/cmd/kernel-info	0.013s
+ok  	gocolumn/physical	0.246s
+== runtime simd=+512 ==
+ok  	gocolumn/kernel	0.645s
+ok  	gocolumn/expr	3.712s
+ok  	gocolumn/cmd/kernel-info	0.008s
+ok  	gocolumn/physical	0.280s
+FINAL VERIFICATION PASS

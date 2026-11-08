@@ -46,7 +46,7 @@ func (c numericQueryCase) arithmetic() bool {
 }
 func numericQueryExpression(c numericQueryCase) expr.Expr {
 	var right expr.Expr = expr.I64(1)
-	if c.typ == "float64" {
+	if c.typ == "float64" || c.typ == "float32" {
 		right = expr.F64(1)
 	}
 	if c.column {
@@ -75,7 +75,7 @@ func numericQueryExpression(c numericQueryCase) expr.Expr {
 	}
 	panic("invalid query case")
 }
-func numericQueryCompare[T ~int8 | ~int32 | ~int64 | ~uint32 | ~uint64 | ~float64](op string, a, b T) bool {
+func numericQueryCompare[T ~int8 | ~int32 | ~int64 | ~uint32 | ~uint64 | ~float32 | ~float64](op string, a, b T) bool {
 	switch op {
 	case "gt":
 		return a > b
@@ -246,6 +246,14 @@ func numericQueryFixture(t testing.TB, c numericQueryCase, nullable bool) (sourc
 				expected.rows = append(expected.rows, int64(row))
 				expected.values = append(expected.values, float64(value))
 				expected.valid = append(expected.valid, valid)
+			} else {
+				rightValue := float32(1)
+				if c.column {
+					rightValue = right[row]
+				}
+				if valid && numericQueryCompare(c.op, left[row], rightValue) {
+					expected.rows = append(expected.rows, int64(row))
+				}
 			}
 		}
 		batch.Float32s["left"] = &memory.Float32Vector{Values: left, Validity: lv}

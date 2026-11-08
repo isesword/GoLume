@@ -1,0 +1,204 @@
+//go:build goexperiment.simd && amd64
+package kernel
+import("testing";"fmt";"math";"math/rand/v2";"slices";"gocolumn/memory";"simd";"simd/archsimd")
+type reviewNumber interface{~int8|~int32|~int64|~uint32|~uint64|~float32|~float64}
+func reviewCmp[T reviewNumber](a,b T,op CompareOp)bool {switch op {case CompareGT:return a>b;case CompareGE:return a>=b;case CompareLT:return a<b;case CompareLE:return a<=b;case CompareEQ:return a==b};return false}
+func reviewCheck[T reviewNumber](t *testing.T, edges []T, literal func([]T,memory.Bitmap,memory.Bitmap,T,CompareOp)int, column func([]T,[]T,memory.Bitmap,memory.Bitmap,memory.Bitmap,CompareOp)int){
+ t.Helper(); rng:=rand.New(rand.NewPCG(19,97))
+ for n:=0;n<=259;n++ {if n>130&&n<255{continue};a,b:=make([]T,n),make([]T,n);for i:=range a {a[i]=edges[rng.IntN(len(edges))];b[i]=edges[rng.IntN(len(edges))]}
+ for k:=0;k<7;k++ {var av,bv memory.Bitmap;if k>0 {av=make(memory.Bitmap,memory.WordsFor(n));bv=make(memory.Bitmap,len(av));for i:=range av {switch k{case 1:av[i]=^uint64(0);bv[i]=^uint64(0);case 2:av[i]=rng.Uint64();bv[i]=rng.Uint64();case 3:av[i]=0;bv[i]=^uint64(0);case 4:av[i]=^uint64(0);bv[i]=0}};if k==5 {av=nil;for i:=range bv {bv[i]=rng.Uint64()}};if k==6 {bv=nil;for i:=range av {av[i]=rng.Uint64()}}}
+ for op:=CompareGT;op<=CompareEQ;op++ {for _,threshold:=range edges {want,got:=make(memory.Bitmap,memory.WordsFor(n)+1),make(memory.Bitmap,memory.WordsFor(n)+1);want[len(want)-1]=0xcafe;for i:=range got {got[i]=^uint64(0)};got[len(got)-1]=0xcafe;c:=0;for i,x:=range a {if (av==nil||(i/64<len(av)&&av[i/64]&(1<<uint(i%64))!=0))&&reviewCmp(x,threshold,op){want[i/64]|=1<<uint(i%64);c++}};if z:=literal(a,av,got,threshold,op);z!=c||!slices.Equal(got,want){t.Fatalf("literal n=%d k=%d op=%v threshold=%v count=%d want=%d got=%x want=%x",n,k,op,threshold,z,c,got,want)}}
+ if column!=nil {want,got:=make(memory.Bitmap,memory.WordsFor(n)+1),make(memory.Bitmap,memory.WordsFor(n)+1);want[len(want)-1]=0xcafe;for i:=range got {got[i]=^uint64(0)};got[len(got)-1]=0xcafe;c:=0;for i,x:=range a {if (av==nil||(i/64<len(av)&&av[i/64]&(1<<uint(i%64))!=0))&&(bv==nil||(i/64<len(bv)&&bv[i/64]&(1<<uint(i%64))!=0))&&reviewCmp(x,b[i],op){want[i/64]|=1<<uint(i%64);c++}};if z:=column(a,b,av,bv,got,op);z!=c||!slices.Equal(got,want){t.Fatalf("column n=%d k=%d op=%v count=%d want=%d got=%x want=%x",n,k,op,z,c,got,want)}}
+ }}}
+ // Exactly one matching lane, across every offset and the second bitmap word.
+ for pos:=0;pos<129;pos++ {a,b:=make([]T,129),make([]T,129);a[pos]=1;want:=make(memory.Bitmap,3);want[pos/64]=1<<uint(pos%64);out:=make(memory.Bitmap,3);if c:=literal(a,nil,out,1,CompareEQ);c!=1||!slices.Equal(out,want){t.Fatalf("single literal bit %d got=%x",pos,out)};if column!=nil {if c:=column(a,b,nil,nil,out,CompareGT);c!=1||!slices.Equal(out,want){t.Fatalf("single column bit %d got=%x",pos,out)}}}
+}
+func TestReviewIndependentBitmapPaths(t *testing.T){if simd.Emulated(){t.Skip("native unavailable")};for _,w:=range []int{128,256,512}{if (w==128&&!archsimd.X86.AVX())||(w==256&&!archsimd.X86.AVX2())||(w==512&&!archsimd.X86.AVX512()){continue};s:=newScalarSet(ModeSIMD);switch w {
+case 128:
+s.d.compareInt8[CompareGT]=simdAMD128Int8GT
+s.d.compareInt8[CompareGE]=simdAMD128Int8GE
+s.d.compareInt8[CompareLT]=simdAMD128Int8LT
+s.d.compareInt8[CompareLE]=simdAMD128Int8LE
+s.d.compareInt8[CompareEQ]=simdAMD128Int8EQ
+s.d.compareInt32[CompareGT]=simdAMD128Int32GT
+s.d.compareInt32Columns[CompareGT]=simdAMD128Int32ColumnsGT
+s.d.compareInt32[CompareGE]=simdAMD128Int32GE
+s.d.compareInt32Columns[CompareGE]=simdAMD128Int32ColumnsGE
+s.d.compareInt32[CompareLT]=simdAMD128Int32LT
+s.d.compareInt32Columns[CompareLT]=simdAMD128Int32ColumnsLT
+s.d.compareInt32[CompareLE]=simdAMD128Int32LE
+s.d.compareInt32Columns[CompareLE]=simdAMD128Int32ColumnsLE
+s.d.compareInt32[CompareEQ]=simdAMD128Int32EQ
+s.d.compareInt32Columns[CompareEQ]=simdAMD128Int32ColumnsEQ
+s.d.compareInt64[CompareGT]=simdAMD128Int64GT
+s.d.compareInt64[CompareGE]=simdAMD128Int64GE
+s.d.compareInt64[CompareLT]=simdAMD128Int64LT
+s.d.compareInt64[CompareLE]=simdAMD128Int64LE
+s.d.compareInt64[CompareEQ]=simdAMD128Int64EQ
+s.d.compareUint32[CompareGT]=simdAMD128Uint32GT
+s.d.compareUint32Columns[CompareGT]=simdAMD128Uint32ColumnsGT
+s.d.compareUint32[CompareGE]=simdAMD128Uint32GE
+s.d.compareUint32Columns[CompareGE]=simdAMD128Uint32ColumnsGE
+s.d.compareUint32[CompareLT]=simdAMD128Uint32LT
+s.d.compareUint32Columns[CompareLT]=simdAMD128Uint32ColumnsLT
+s.d.compareUint32[CompareLE]=simdAMD128Uint32LE
+s.d.compareUint32Columns[CompareLE]=simdAMD128Uint32ColumnsLE
+s.d.compareUint32[CompareEQ]=simdAMD128Uint32EQ
+s.d.compareUint32Columns[CompareEQ]=simdAMD128Uint32ColumnsEQ
+s.d.compareUint64[CompareGT]=simdAMD128Uint64GT
+s.d.compareUint64[CompareGE]=simdAMD128Uint64GE
+s.d.compareUint64[CompareLT]=simdAMD128Uint64LT
+s.d.compareUint64[CompareLE]=simdAMD128Uint64LE
+s.d.compareUint64[CompareEQ]=simdAMD128Uint64EQ
+s.d.compareFloat32[CompareGT]=simdAMD128Float32GT
+s.d.compareFloat32Columns[CompareGT]=simdAMD128Float32ColumnsGT
+s.d.compareFloat32[CompareGE]=simdAMD128Float32GE
+s.d.compareFloat32Columns[CompareGE]=simdAMD128Float32ColumnsGE
+s.d.compareFloat32[CompareLT]=simdAMD128Float32LT
+s.d.compareFloat32Columns[CompareLT]=simdAMD128Float32ColumnsLT
+s.d.compareFloat32[CompareLE]=simdAMD128Float32LE
+s.d.compareFloat32Columns[CompareLE]=simdAMD128Float32ColumnsLE
+s.d.compareFloat32[CompareEQ]=simdAMD128Float32EQ
+s.d.compareFloat32Columns[CompareEQ]=simdAMD128Float32ColumnsEQ
+s.d.compareFloat64[CompareGT]=simdAMD128Float64GT
+s.d.compareFloat64Columns[CompareGT]=simdAMD128Float64ColumnsGT
+s.d.compareFloat64[CompareGE]=simdAMD128Float64GE
+s.d.compareFloat64Columns[CompareGE]=simdAMD128Float64ColumnsGE
+s.d.compareFloat64[CompareLT]=simdAMD128Float64LT
+s.d.compareFloat64Columns[CompareLT]=simdAMD128Float64ColumnsLT
+s.d.compareFloat64[CompareLE]=simdAMD128Float64LE
+s.d.compareFloat64Columns[CompareLE]=simdAMD128Float64ColumnsLE
+s.d.compareFloat64[CompareEQ]=simdAMD128Float64EQ
+s.d.compareFloat64Columns[CompareEQ]=simdAMD128Float64ColumnsEQ
+case 256:
+s.d.compareInt8[CompareGT]=simdAMD256Int8GT
+s.d.compareInt8[CompareGE]=simdAMD256Int8GE
+s.d.compareInt8[CompareLT]=simdAMD256Int8LT
+s.d.compareInt8[CompareLE]=simdAMD256Int8LE
+s.d.compareInt8[CompareEQ]=simdAMD256Int8EQ
+s.d.compareInt32[CompareGT]=simdAMD256Int32GT
+s.d.compareInt32Columns[CompareGT]=simdAMD256Int32ColumnsGT
+s.d.compareInt32[CompareGE]=simdAMD256Int32GE
+s.d.compareInt32Columns[CompareGE]=simdAMD256Int32ColumnsGE
+s.d.compareInt32[CompareLT]=simdAMD256Int32LT
+s.d.compareInt32Columns[CompareLT]=simdAMD256Int32ColumnsLT
+s.d.compareInt32[CompareLE]=simdAMD256Int32LE
+s.d.compareInt32Columns[CompareLE]=simdAMD256Int32ColumnsLE
+s.d.compareInt32[CompareEQ]=simdAMD256Int32EQ
+s.d.compareInt32Columns[CompareEQ]=simdAMD256Int32ColumnsEQ
+s.d.compareInt64[CompareGT]=simdAMD256Int64GT
+s.d.compareInt64[CompareGE]=simdAMD256Int64GE
+s.d.compareInt64[CompareLT]=simdAMD256Int64LT
+s.d.compareInt64[CompareLE]=simdAMD256Int64LE
+s.d.compareInt64[CompareEQ]=simdAMD256Int64EQ
+s.d.compareUint32[CompareGT]=simdAMD256Uint32GT
+s.d.compareUint32Columns[CompareGT]=simdAMD256Uint32ColumnsGT
+s.d.compareUint32[CompareGE]=simdAMD256Uint32GE
+s.d.compareUint32Columns[CompareGE]=simdAMD256Uint32ColumnsGE
+s.d.compareUint32[CompareLT]=simdAMD256Uint32LT
+s.d.compareUint32Columns[CompareLT]=simdAMD256Uint32ColumnsLT
+s.d.compareUint32[CompareLE]=simdAMD256Uint32LE
+s.d.compareUint32Columns[CompareLE]=simdAMD256Uint32ColumnsLE
+s.d.compareUint32[CompareEQ]=simdAMD256Uint32EQ
+s.d.compareUint32Columns[CompareEQ]=simdAMD256Uint32ColumnsEQ
+s.d.compareUint64[CompareGT]=simdAMD256Uint64GT
+s.d.compareUint64[CompareGE]=simdAMD256Uint64GE
+s.d.compareUint64[CompareLT]=simdAMD256Uint64LT
+s.d.compareUint64[CompareLE]=simdAMD256Uint64LE
+s.d.compareUint64[CompareEQ]=simdAMD256Uint64EQ
+s.d.compareFloat32[CompareGT]=simdAMD256Float32GT
+s.d.compareFloat32Columns[CompareGT]=simdAMD256Float32ColumnsGT
+s.d.compareFloat32[CompareGE]=simdAMD256Float32GE
+s.d.compareFloat32Columns[CompareGE]=simdAMD256Float32ColumnsGE
+s.d.compareFloat32[CompareLT]=simdAMD256Float32LT
+s.d.compareFloat32Columns[CompareLT]=simdAMD256Float32ColumnsLT
+s.d.compareFloat32[CompareLE]=simdAMD256Float32LE
+s.d.compareFloat32Columns[CompareLE]=simdAMD256Float32ColumnsLE
+s.d.compareFloat32[CompareEQ]=simdAMD256Float32EQ
+s.d.compareFloat32Columns[CompareEQ]=simdAMD256Float32ColumnsEQ
+s.d.compareFloat64[CompareGT]=simdAMD256Float64GT
+s.d.compareFloat64Columns[CompareGT]=simdAMD256Float64ColumnsGT
+s.d.compareFloat64[CompareGE]=simdAMD256Float64GE
+s.d.compareFloat64Columns[CompareGE]=simdAMD256Float64ColumnsGE
+s.d.compareFloat64[CompareLT]=simdAMD256Float64LT
+s.d.compareFloat64Columns[CompareLT]=simdAMD256Float64ColumnsLT
+s.d.compareFloat64[CompareLE]=simdAMD256Float64LE
+s.d.compareFloat64Columns[CompareLE]=simdAMD256Float64ColumnsLE
+s.d.compareFloat64[CompareEQ]=simdAMD256Float64EQ
+s.d.compareFloat64Columns[CompareEQ]=simdAMD256Float64ColumnsEQ
+case 512:
+s.d.compareInt8[CompareGT]=simdAMD512Int8GT
+s.d.compareInt8[CompareGE]=simdAMD512Int8GE
+s.d.compareInt8[CompareLT]=simdAMD512Int8LT
+s.d.compareInt8[CompareLE]=simdAMD512Int8LE
+s.d.compareInt8[CompareEQ]=simdAMD512Int8EQ
+s.d.compareInt32[CompareGT]=simdAMD512Int32GT
+s.d.compareInt32Columns[CompareGT]=simdAMD512Int32ColumnsGT
+s.d.compareInt32[CompareGE]=simdAMD512Int32GE
+s.d.compareInt32Columns[CompareGE]=simdAMD512Int32ColumnsGE
+s.d.compareInt32[CompareLT]=simdAMD512Int32LT
+s.d.compareInt32Columns[CompareLT]=simdAMD512Int32ColumnsLT
+s.d.compareInt32[CompareLE]=simdAMD512Int32LE
+s.d.compareInt32Columns[CompareLE]=simdAMD512Int32ColumnsLE
+s.d.compareInt32[CompareEQ]=simdAMD512Int32EQ
+s.d.compareInt32Columns[CompareEQ]=simdAMD512Int32ColumnsEQ
+s.d.compareInt64[CompareGT]=simdAMD512Int64GT
+s.d.compareInt64[CompareGE]=simdAMD512Int64GE
+s.d.compareInt64[CompareLT]=simdAMD512Int64LT
+s.d.compareInt64[CompareLE]=simdAMD512Int64LE
+s.d.compareInt64[CompareEQ]=simdAMD512Int64EQ
+s.d.compareUint32[CompareGT]=simdAMD512Uint32GT
+s.d.compareUint32Columns[CompareGT]=simdAMD512Uint32ColumnsGT
+s.d.compareUint32[CompareGE]=simdAMD512Uint32GE
+s.d.compareUint32Columns[CompareGE]=simdAMD512Uint32ColumnsGE
+s.d.compareUint32[CompareLT]=simdAMD512Uint32LT
+s.d.compareUint32Columns[CompareLT]=simdAMD512Uint32ColumnsLT
+s.d.compareUint32[CompareLE]=simdAMD512Uint32LE
+s.d.compareUint32Columns[CompareLE]=simdAMD512Uint32ColumnsLE
+s.d.compareUint32[CompareEQ]=simdAMD512Uint32EQ
+s.d.compareUint32Columns[CompareEQ]=simdAMD512Uint32ColumnsEQ
+s.d.compareUint64[CompareGT]=simdAMD512Uint64GT
+s.d.compareUint64[CompareGE]=simdAMD512Uint64GE
+s.d.compareUint64[CompareLT]=simdAMD512Uint64LT
+s.d.compareUint64[CompareLE]=simdAMD512Uint64LE
+s.d.compareUint64[CompareEQ]=simdAMD512Uint64EQ
+s.d.compareFloat32[CompareGT]=simdAMD512Float32GT
+s.d.compareFloat32Columns[CompareGT]=simdAMD512Float32ColumnsGT
+s.d.compareFloat32[CompareGE]=simdAMD512Float32GE
+s.d.compareFloat32Columns[CompareGE]=simdAMD512Float32ColumnsGE
+s.d.compareFloat32[CompareLT]=simdAMD512Float32LT
+s.d.compareFloat32Columns[CompareLT]=simdAMD512Float32ColumnsLT
+s.d.compareFloat32[CompareLE]=simdAMD512Float32LE
+s.d.compareFloat32Columns[CompareLE]=simdAMD512Float32ColumnsLE
+s.d.compareFloat32[CompareEQ]=simdAMD512Float32EQ
+s.d.compareFloat32Columns[CompareEQ]=simdAMD512Float32ColumnsEQ
+s.d.compareFloat64[CompareGT]=simdAMD512Float64GT
+s.d.compareFloat64Columns[CompareGT]=simdAMD512Float64ColumnsGT
+s.d.compareFloat64[CompareGE]=simdAMD512Float64GE
+s.d.compareFloat64Columns[CompareGE]=simdAMD512Float64ColumnsGE
+s.d.compareFloat64[CompareLT]=simdAMD512Float64LT
+s.d.compareFloat64Columns[CompareLT]=simdAMD512Float64ColumnsLT
+s.d.compareFloat64[CompareLE]=simdAMD512Float64LE
+s.d.compareFloat64Columns[CompareLE]=simdAMD512Float64ColumnsLE
+s.d.compareFloat64[CompareEQ]=simdAMD512Float64EQ
+s.d.compareFloat64Columns[CompareEQ]=simdAMD512Float64ColumnsEQ
+}
+
+t.Run("Int8"+fmt.Sprint(w),func(t *testing.T){reviewCheck(t,[]int8{-128,-1,0,1,127},s.CompareInt8,nil)})
+t.Run("Int32"+fmt.Sprint(w),func(t *testing.T){reviewCheck(t,[]int32{-1<<31,-1,0,1,1<<31-1},s.CompareInt32,s.CompareInt32Columns)})
+t.Run("Int64"+fmt.Sprint(w),func(t *testing.T){reviewCheck(t,[]int64{-1<<63,-1,0,1,1<<63-1},s.CompareInt64,nil)})
+t.Run("Uint32"+fmt.Sprint(w),func(t *testing.T){reviewCheck(t,[]uint32{0,1,1<<31-1,1<<31,1<<32-1},s.CompareUint32,s.CompareUint32Columns)})
+t.Run("Uint64"+fmt.Sprint(w),func(t *testing.T){reviewCheck(t,[]uint64{0,1,1<<63-1,1<<63,1<<64-1},s.CompareUint64,nil)})
+t.Run("Float32"+fmt.Sprint(w),func(t *testing.T){reviewCheck(t,[]float32{math.Float32frombits(0x7f800001),float32(math.NaN()),float32(math.Inf(-1)),float32(math.Inf(1)),float32(math.Copysign(0,-1)),0,-1,1,math.SmallestNonzeroFloat32,math.MaxFloat32},s.CompareFloat32,s.CompareFloat32Columns)})
+t.Run("Float64"+fmt.Sprint(w),func(t *testing.T){reviewCheck(t,[]float64{math.Float64frombits(0x7ff0000000000001),math.NaN(),math.Inf(-1),math.Inf(1),math.Copysign(0,-1),0,-1,1,math.SmallestNonzeroFloat64,math.MaxFloat64},s.CompareFloat64,s.CompareFloat64Columns)})
+}}
+func TestReviewGuardMatrix(t *testing.T) {
+ for _,mode:=range []Mode{ModeScalar,ModeAuto,ModeSIMD} {for _,w:=range []int{0,64,128,256,512,1024} {s:=newScalarSet(mode);installGeneratedArchSIMD(&s,mode,w);id,_:=ComparisonID(memory.TypeInt32,CompareGT);cap,_:=s.Capability(id);feature:=(w==128&&archsimd.X86.AVX())||(w==256&&archsimd.X86.AVX2())||(w==512&&archsimd.X86.AVX512());want:=mode!=ModeScalar&&!simd.Emulated()&&w==simd.Int64s{}.Len()*64&&feature;if cap.HardwareSIMD!=want {t.Fatalf("mode=%v width=%d cap=%+v",mode,w,cap)};if want&&cap.Backend!="archsimd-amd64-mask"{t.Fatal(cap)}}}
+}
+func TestReviewPortableColumnValidity(t *testing.T){
+ if simd.Emulated(){t.Skip("portable native unavailable")}
+ s:=newScalarSet(ModeSIMD);installInt32ColumnSIMD(&s,ModeSIMD,simd.Int64s{}.Len()*64);installUint32ColumnSIMD(&s,ModeSIMD,simd.Int64s{}.Len()*64);installFloat32ColumnSIMD(&s,ModeSIMD,simd.Int64s{}.Len()*64)
+ reviewCheck(t,[]int32{-1<<31,-1,0,1,1<<31-1},s.CompareInt32,s.CompareInt32Columns)
+ reviewCheck(t,[]uint32{0,1,1<<31,1<<32-1},s.CompareUint32,s.CompareUint32Columns)
+ reviewCheck(t,[]float32{float32(math.NaN()),float32(math.Inf(1)),float32(math.Inf(-1)),0,-1,1,math.SmallestNonzeroFloat32},s.CompareFloat32,s.CompareFloat32Columns)
+}

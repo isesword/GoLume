@@ -1,0 +1,107 @@
+go version go1.27.3 linux/amd64
+linux
+amd64
+v1
+Linux x86_64
+baseline_commit=d12aa9edc62cd9db82777b8cc6379aca431b9306
+GODEBUG=
+GOMAXPROCS=1
+benchtime=100ms
+count=6
+mode=auto
+order=before-after/after-before
+7e370861dfed27f7a280e1727c95f10841fa0add2673c16788dbd0e6cde579df  scripts/bench_bitmap.sh
+49cc95f6e7d06c5a4a6fa2792d5d00dcaf7a17f14257b6eb4dbd561473bacf16  kernel.test
+5b0ce6278f6e4afe3143a70d320e234a1cdeb93f835086407c5e911e40dd1d5c  physical.test
+/workspace/scratch/ac8e1e118737/bitmap-baseline/kernel.test: go1.27.3-X:simd
+	path	gocolumn/kernel.test
+	mod	gocolumn	(devel)	
+	dep	github.com/apache/arrow-go/v18	v18.7.0	h1:Vw/i+cJyebUofT7JlqFpe65LrmwxULn166jjwStM4HY=
+	dep	github.com/goccy/go-json	v0.10.6	h1:p8HrPJzOakx/mn/bQtjgNjdTcN+/S6FcG2CTtQOrHVU=
+	dep	github.com/google/flatbuffers	v25.12.19+incompatible	h1:haMV2JRRJCe1998HeW/p0X9UaMTK6SDo0ffLn2+DbLs=
+	dep	github.com/klauspost/cpuid/v2	v2.4.0	h1:S6Hrbc7+ywsr0r+RLapfGBHfyefhCTwEh3A0tV913Dw=
+	dep	github.com/zeebo/xxh3	v1.1.0	h1:s7DLGDK45Dyfg7++yxI0khrfwq9661w9EN78eP/UZVs=
+	dep	golang.org/x/exp	v0.0.0-20260812173653-3d80eb74bc5b	h1:3XR0v9KL97wjTmRb+6RqMylL4d7ZWM1sQYIITGDxtmg=
+	dep	golang.org/x/sys	v0.47.0	h1:o7XGOvZQCADBQQ4Y7VNq2dRWQR7JmOUW8Kxx4ZsNgWs=
+	build	-buildmode=exe
+	build	-compiler=gc
+	build	CGO_ENABLED=1
+	build	CGO_CFLAGS=
+	build	CGO_CPPFLAGS=
+	build	CGO_CXXFLAGS=
+	build	CGO_LDFLAGS=
+	build	GOARCH=amd64
+	build	GOEXPERIMENT=simd
+	build	GOOS=linux
+	build	GOAMD64=v1
+/workspace/scratch/ac8e1e118737/bitmap-baseline/physical.test: go1.27.3-X:simd
+	path	gocolumn/physical.test
+	mod	gocolumn	(devel)	
+	dep	github.com/apache/arrow-go/v18	v18.7.0	h1:Vw/i+cJyebUofT7JlqFpe65LrmwxULn166jjwStM4HY=
+	dep	github.com/goccy/go-json	v0.10.6	h1:p8HrPJzOakx/mn/bQtjgNjdTcN+/S6FcG2CTtQOrHVU=
+	dep	github.com/google/flatbuffers	v25.12.19+incompatible	h1:haMV2JRRJCe1998HeW/p0X9UaMTK6SDo0ffLn2+DbLs=
+	dep	github.com/klauspost/cpuid/v2	v2.4.0	h1:S6Hrbc7+ywsr0r+RLapfGBHfyefhCTwEh3A0tV913Dw=
+	dep	github.com/zeebo/xxh3	v1.1.0	h1:s7DLGDK45Dyfg7++yxI0khrfwq9661w9EN78eP/UZVs=
+	dep	golang.org/x/exp	v0.0.0-20260812173653-3d80eb74bc5b	h1:3XR0v9KL97wjTmRb+6RqMylL4d7ZWM1sQYIITGDxtmg=
+	dep	golang.org/x/sync	v0.22.0	h1:SZjpbeLmrCk4xhRSZFNZW5gFUeCeFgjekvI/+gfScek=
+	dep	golang.org/x/sys	v0.47.0	h1:o7XGOvZQCADBQQ4Y7VNq2dRWQR7JmOUW8Kxx4ZsNgWs=
+	build	-buildmode=exe
+	build	-compiler=gc
+	build	CGO_ENABLED=1
+	build	CGO_CFLAGS=
+	build	CGO_CPPFLAGS=
+	build	CGO_CXXFLAGS=
+	build	CGO_LDFLAGS=
+	build	GOARCH=amd64
+	build	GOEXPERIMENT=simd
+	build	GOOS=linux
+	build	GOAMD64=v1
+48f82fc70ffe5e236395dd2419d50bb11529a6b9c05f17c1de0c5b7326639c1c  kernel.test
+d6d216374b7007838ac9c3df6086f034d2e9116cccc3a975fa11e240f2a8c1a5  physical.test
+/tmp/tmp.9wAKXpE7TJ/kernel.test: go1.27.3-X:simd
+	path	gocolumn/kernel.test
+	mod	gocolumn	(devel)	
+	dep	github.com/apache/arrow-go/v18	v18.7.0	h1:Vw/i+cJyebUofT7JlqFpe65LrmwxULn166jjwStM4HY=
+	dep	github.com/goccy/go-json	v0.10.6	h1:p8HrPJzOakx/mn/bQtjgNjdTcN+/S6FcG2CTtQOrHVU=
+	dep	github.com/google/flatbuffers	v25.12.19+incompatible	h1:haMV2JRRJCe1998HeW/p0X9UaMTK6SDo0ffLn2+DbLs=
+	dep	github.com/klauspost/cpuid/v2	v2.4.0	h1:S6Hrbc7+ywsr0r+RLapfGBHfyefhCTwEh3A0tV913Dw=
+	dep	github.com/zeebo/xxh3	v1.1.0	h1:s7DLGDK45Dyfg7++yxI0khrfwq9661w9EN78eP/UZVs=
+	dep	golang.org/x/exp	v0.0.0-20260812173653-3d80eb74bc5b	h1:3XR0v9KL97wjTmRb+6RqMylL4d7ZWM1sQYIITGDxtmg=
+	dep	golang.org/x/sys	v0.47.0	h1:o7XGOvZQCADBQQ4Y7VNq2dRWQR7JmOUW8Kxx4ZsNgWs=
+	build	-buildmode=exe
+	build	-compiler=gc
+	build	CGO_ENABLED=1
+	build	CGO_CFLAGS=
+	build	CGO_CPPFLAGS=
+	build	CGO_CXXFLAGS=
+	build	CGO_LDFLAGS=
+	build	GOARCH=amd64
+	build	GOEXPERIMENT=simd
+	build	GOOS=linux
+	build	GOAMD64=v1
+/tmp/tmp.9wAKXpE7TJ/physical.test: go1.27.3-X:simd
+	path	gocolumn/physical.test
+	mod	gocolumn	(devel)	
+	dep	github.com/apache/arrow-go/v18	v18.7.0	h1:Vw/i+cJyebUofT7JlqFpe65LrmwxULn166jjwStM4HY=
+	dep	github.com/goccy/go-json	v0.10.6	h1:p8HrPJzOakx/mn/bQtjgNjdTcN+/S6FcG2CTtQOrHVU=
+	dep	github.com/google/flatbuffers	v25.12.19+incompatible	h1:haMV2JRRJCe1998HeW/p0X9UaMTK6SDo0ffLn2+DbLs=
+	dep	github.com/klauspost/cpuid/v2	v2.4.0	h1:S6Hrbc7+ywsr0r+RLapfGBHfyefhCTwEh3A0tV913Dw=
+	dep	github.com/zeebo/xxh3	v1.1.0	h1:s7DLGDK45Dyfg7++yxI0khrfwq9661w9EN78eP/UZVs=
+	dep	golang.org/x/exp	v0.0.0-20260812173653-3d80eb74bc5b	h1:3XR0v9KL97wjTmRb+6RqMylL4d7ZWM1sQYIITGDxtmg=
+	dep	golang.org/x/sync	v0.22.0	h1:SZjpbeLmrCk4xhRSZFNZW5gFUeCeFgjekvI/+gfScek=
+	dep	golang.org/x/sys	v0.47.0	h1:o7XGOvZQCADBQQ4Y7VNq2dRWQR7JmOUW8Kxx4ZsNgWs=
+	build	-buildmode=exe
+	build	-compiler=gc
+	build	CGO_ENABLED=1
+	build	CGO_CFLAGS=
+	build	CGO_CPPFLAGS=
+	build	CGO_CXXFLAGS=
+	build	CGO_LDFLAGS=
+	build	GOARCH=amd64
+	build	GOEXPERIMENT=simd
+	build	GOOS=linux
+	build	GOAMD64=v1
+PASS
+PASS
+PASS
+PASS

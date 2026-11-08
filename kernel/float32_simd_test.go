@@ -15,7 +15,7 @@ func TestFloat32ForcedSIMDRegistrationAndDifferential(t *testing.T) {
 	set := New(ModeSIMD)
 	id, _ := ComparisonID(memory.TypeFloat32, CompareGT)
 	capability, ok := set.Capability(id)
-	if !ok || capability.Backend != "portable-simd" || !capability.HardwareSIMD {
+	if !ok || capability.Backend != expectedComparisonBackend() || !capability.HardwareSIMD {
 		t.Fatalf("Float32 forced backend not registered: %+v, ok=%t", capability, ok)
 	}
 	values := []float32{-2, -0, 0, 1, 2, 3, 4, 5, 6, 7, 8}
