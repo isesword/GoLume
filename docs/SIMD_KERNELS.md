@@ -175,3 +175,18 @@ The native operation counts are unchanged; this stage improves 55 existing
 comparison dispatch entries rather than claiming 165 new public operations.
 All three amd64 widths and CPU-feature-masked fallback paths were checked.
 arm64 is cross-compiled only, and its literal overrides remain unchanged.
+
+## Narrow masked MIN/MAX
+
+`MinMaxID` and `Set.MinMax{Int8,Int16,Uint8,Uint16}Masked` expose bounded,
+allocation-free extrema alongside the 32/64-bit reducers. Inputs are limited to
+64 rows, high selection bits are ignored, and an empty selection returns zero
+extrema. Native kernels widen exact, in-bounds typed loads into Int32 registers,
+where all narrow signed and unsigned values are representable, then use vector
+min/max and horizontal reduction. Sparse masks and scalar tails preserve exact
+selection semantics. AMD64 extracts both results before clearing upper AVX bits.
+
+Dispatch remains behind existing CPU and SIMD-width guards. The four registry
+entries are candidates, not statistical-gate approvals. ARM64 has been
+cross-compiled only. Engine batch support preserves narrow output types and
+promoted Int64 sums without changing the pure-Int64 legacy query boundary.

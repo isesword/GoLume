@@ -63,13 +63,16 @@ func main() {
 		panic(err)
 	}
 	outputs := map[string][]byte{
-		"kernel/zz_generated_minmax_simd.go":     generateMinMaxSIMD(),
-		"memory/zz_generated_numeric.go":         generateNumericVectors(),
-		"kernel/zz_generated_scalar.go":          generateScalar(),
-		"kernel/zz_generated_simd.go":            generatePortableSIMD(),
-		"kernel/zz_generated_simd_amd64.go":      generateAMD64SIMD(),
-		"kernel/zz_generated_simd_arm64.go":      generateArm64SIMD(),
-		"kernel/zz_generated_simd_arch_other.go": generateOtherArch(),
+		"kernel/zz_generated_minmax_narrow_amd64.go": generateNarrowMinMaxSIMD("amd64"),
+		"kernel/zz_generated_minmax_narrow_arm64.go": generateNarrowMinMaxSIMD("arm64"),
+		"kernel/zz_generated_minmax_narrow_other.go": generateNarrowMinMaxSIMD("other"),
+		"kernel/zz_generated_minmax_simd.go":         generateMinMaxSIMD(),
+		"memory/zz_generated_numeric.go":             generateNumericVectors(),
+		"kernel/zz_generated_scalar.go":              generateScalar(),
+		"kernel/zz_generated_simd.go":                generatePortableSIMD(),
+		"kernel/zz_generated_simd_amd64.go":          generateAMD64SIMD(),
+		"kernel/zz_generated_simd_arm64.go":          generateArm64SIMD(),
+		"kernel/zz_generated_simd_arch_other.go":     generateOtherArch(),
 	}
 	for path, source := range outputs {
 		formatted, err := format.Source(source)

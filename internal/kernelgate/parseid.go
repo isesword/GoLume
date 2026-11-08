@@ -50,7 +50,7 @@ func ParseKernelID(id string) (family, typ, op string, err error) {
 			return "", "", "", fmt.Errorf("kernelgate: malformed masked min/max id %q", id)
 		}
 		switch typ {
-		case "int32", "int64", "uint32", "uint64", "float32", "float64":
+		case "int8", "int16", "uint8", "uint16", "int32", "int64", "uint32", "uint64", "float32", "float64":
 			return "reduction", typ, "minmax-masked", nil
 		default:
 			return "", "", "", fmt.Errorf("kernelgate: unsupported masked min/max type in %q", id)

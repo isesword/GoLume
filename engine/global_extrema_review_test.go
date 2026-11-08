@@ -39,7 +39,7 @@ func extremaReviewRaw(typ memory.DataType, row, phase int) uint64 {
 // The original row update is the oracle. State survives empty/null batches and
 // bundle growth; poisoned bitmap tails and source buffers expose stale reads.
 func TestGlobalExtremaReviewStateBitsAndLifetime(t *testing.T) {
-	types := []memory.DataType{memory.TypeInt32, memory.TypeInt64, memory.TypeUint32, memory.TypeUint64, memory.TypeFloat32, memory.TypeFloat64}
+	types := []memory.DataType{memory.TypeInt8, memory.TypeInt16, memory.TypeUint8, memory.TypeUint16, memory.TypeInt32, memory.TypeInt64, memory.TypeUint32, memory.TypeUint64, memory.TypeFloat32, memory.TypeFloat64}
 	for _, mode := range []kernel.Mode{kernel.ModeScalar, kernel.ModeAuto, kernel.ModeSIMD} {
 		for _, typ := range types {
 			for _, kind := range []string{"min", "max", "minmax", "mixed"} {
@@ -178,7 +178,7 @@ func TestGlobalExtremaReviewPriorFloatSum(t *testing.T) {
 }
 
 func TestGlobalExtremaReviewEligibilityLimits(t *testing.T) {
-	for _, typ := range []memory.DataType{memory.TypeInt8, memory.TypeInt16, memory.TypeUint8, memory.TypeUint16, memory.TypeDate32, memory.TypeString, memory.TypeArrow} {
+	for _, typ := range []memory.DataType{memory.TypeDate32, memory.TypeDate64, memory.TypeTimestamp, memory.TypeTime32, memory.TypeTime64, memory.TypeDuration, memory.TypeString, memory.TypeArrow} {
 		m := &CompiledMultiAggregate{Native: true, Columns: []string{"wide", "other"}, Types: []memory.DataType{memory.TypeFloat64, typ}, Layouts: []aggregate.Layout{{Min: true}, {Max: true}}}
 		p := &PreparedQuery{cq: CompiledQuery{GroupShape: GroupShapeGlobal, MultiAggregate: m}}
 		if p.globalAggregateBindingsEligible() {

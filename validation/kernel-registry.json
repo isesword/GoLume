@@ -1482,6 +1482,25 @@
       }
     },
     {
+      "id": "minmax-int16-masked",
+      "family": "reduction",
+      "type": "int16",
+      "operation": "minmax-masked",
+      "source": "handwritten",
+      "arches": {
+        "linux/amd64": {
+          "state": "candidate",
+          "reason": "Native register widening and 128/256/512-bit masked extrema; candidate without archived statistical approval-gate evidence.",
+          "updated": "2026-11-08"
+        },
+        "linux/arm64": {
+          "state": "candidate",
+          "reason": "NEON register widening and horizontal extrema cross-compiled only. No ARM64 execution or benchmark approval evidence.",
+          "updated": "2026-11-08"
+        }
+      }
+    },
+    {
       "id": "minmax-int32-masked",
       "family": "reduction",
       "type": "int32",
@@ -1520,6 +1539,44 @@
       }
     },
     {
+      "id": "minmax-int8-masked",
+      "family": "reduction",
+      "type": "int8",
+      "operation": "minmax-masked",
+      "source": "handwritten",
+      "arches": {
+        "linux/amd64": {
+          "state": "candidate",
+          "reason": "Native register widening and 128/256/512-bit masked extrema; candidate without archived statistical approval-gate evidence.",
+          "updated": "2026-11-08"
+        },
+        "linux/arm64": {
+          "state": "candidate",
+          "reason": "NEON register widening and horizontal extrema cross-compiled only. No ARM64 execution or benchmark approval evidence.",
+          "updated": "2026-11-08"
+        }
+      }
+    },
+    {
+      "id": "minmax-uint16-masked",
+      "family": "reduction",
+      "type": "uint16",
+      "operation": "minmax-masked",
+      "source": "handwritten",
+      "arches": {
+        "linux/amd64": {
+          "state": "candidate",
+          "reason": "Native register widening and 128/256/512-bit masked extrema; candidate without archived statistical approval-gate evidence.",
+          "updated": "2026-11-08"
+        },
+        "linux/arm64": {
+          "state": "candidate",
+          "reason": "NEON register widening and horizontal extrema cross-compiled only. No ARM64 execution or benchmark approval evidence.",
+          "updated": "2026-11-08"
+        }
+      }
+    },
+    {
       "id": "minmax-uint32-masked",
       "family": "reduction",
       "type": "uint32",
@@ -1553,6 +1610,25 @@
         "linux/arm64": {
           "state": "candidate",
           "reason": "Portable SIMD order-key accumulation and native horizontal extrema cross-compiled only. No ARM64 execution or benchmark approval evidence.",
+          "updated": "2026-11-08"
+        }
+      }
+    },
+    {
+      "id": "minmax-uint8-masked",
+      "family": "reduction",
+      "type": "uint8",
+      "operation": "minmax-masked",
+      "source": "handwritten",
+      "arches": {
+        "linux/amd64": {
+          "state": "candidate",
+          "reason": "Native register widening and 128/256/512-bit masked extrema; candidate without archived statistical approval-gate evidence.",
+          "updated": "2026-11-08"
+        },
+        "linux/arm64": {
+          "state": "candidate",
+          "reason": "NEON register widening and horizontal extrema cross-compiled only. No ARM64 execution or benchmark approval evidence.",
           "updated": "2026-11-08"
         }
       }

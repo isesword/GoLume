@@ -24,6 +24,10 @@ func BenchmarkMaskedMinMax(b *testing.B) {
 			mask uint64
 		}{{"dense", ^uint64(0)}, {"half", 0xaaaaaaaaaaaaaaaa}} {
 			prefix := mode.String() + "/" + m.name + "/"
+			b.Run(prefix+"int8", func(b *testing.B) { benchmarkMaskedMinMax(b, s.MinMaxInt8Masked, m.mask) })
+			b.Run(prefix+"int16", func(b *testing.B) { benchmarkMaskedMinMax(b, s.MinMaxInt16Masked, m.mask) })
+			b.Run(prefix+"uint8", func(b *testing.B) { benchmarkMaskedMinMax(b, s.MinMaxUint8Masked, m.mask) })
+			b.Run(prefix+"uint16", func(b *testing.B) { benchmarkMaskedMinMax(b, s.MinMaxUint16Masked, m.mask) })
 			b.Run(prefix+"int32", func(b *testing.B) { benchmarkMaskedMinMax(b, s.MinMaxInt32Masked, m.mask) })
 			b.Run(prefix+"int64", func(b *testing.B) { benchmarkMaskedMinMax(b, s.MinMaxInt64Masked, m.mask) })
 			b.Run(prefix+"uint32", func(b *testing.B) { benchmarkMaskedMinMax(b, s.MinMaxUint32Masked, m.mask) })

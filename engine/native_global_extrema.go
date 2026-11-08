@@ -15,6 +15,14 @@ import (
 // SUM stays in encounter order for floats; extrema use bounded SIMD reducers.
 func (b *globalAggregateLaneBinding) consumeExtremaBatch(ctx context.Context, kernels kernel.Set, selection memory.Bitmap, rows int, selectedRows uint64, state *aggregate.NumericResult) error {
 	switch b.typ {
+	case memory.TypeInt8:
+		return consumeGlobalIntegerExtremaBatch(ctx, b.int8s.Values[:rows], b.validity, selection, selectedRows, state, kernels.SumInt8Masked, kernels.MinMaxInt8Masked)
+	case memory.TypeInt16:
+		return consumeGlobalIntegerExtremaBatch(ctx, b.int16s.Values[:rows], b.validity, selection, selectedRows, state, kernels.SumInt16Masked, kernels.MinMaxInt16Masked)
+	case memory.TypeUint8:
+		return consumeGlobalIntegerExtremaBatch(ctx, b.uint8s.Values[:rows], b.validity, selection, selectedRows, state, kernels.SumUint8Masked, kernels.MinMaxUint8Masked)
+	case memory.TypeUint16:
+		return consumeGlobalIntegerExtremaBatch(ctx, b.uint16s.Values[:rows], b.validity, selection, selectedRows, state, kernels.SumUint16Masked, kernels.MinMaxUint16Masked)
 	case memory.TypeInt32:
 		return consumeGlobalIntegerExtremaBatch(ctx, b.int32s.Values[:rows], b.validity, selection, selectedRows, state, kernels.SumInt32Masked, kernels.MinMaxInt32Masked)
 	case memory.TypeInt64:
@@ -32,8 +40,9 @@ func (b *globalAggregateLaneBinding) consumeExtremaBatch(ctx context.Context, ke
 	}
 }
 
-func consumeGlobalIntegerExtremaBatch[T int32 | int64 | uint32 | uint64](ctx context.Context, values []T, validity, selection memory.Bitmap, selectedRows uint64, state *aggregate.NumericResult, reduceSum func([]T, uint64) T, reduceExtrema func([]T, uint64) (T, T)) error {
-	sum, lo, hi := T(state.SumBits), T(state.MinBits), T(state.MaxBits)
+func consumeGlobalIntegerExtremaBatch[T int8 | int16 | int32 | int64 | uint8 | uint16 | uint32 | uint64, R int32 | int64 | uint32 | uint64](ctx context.Context, values []T, validity, selection memory.Bitmap, selectedRows uint64, state *aggregate.NumericResult, reduceSum func([]T, uint64) R, reduceExtrema func([]T, uint64) (T, T)) error {
+	// Narrow SUM is promoted to Int64; extrema retain the input width.
+	sum, lo, hi := R(state.SumBits), T(state.MinBits), T(state.MaxBits)
 	var validValues uint64
 	for base := 0; base < len(values); base += 64 {
 		if err := ctx.Err(); err != nil {

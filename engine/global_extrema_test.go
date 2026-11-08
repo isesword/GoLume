@@ -15,10 +15,15 @@ import (
 // pre-extrema tree for paired complete-query benchmarks.
 func makeGlobalExtremaFixture(tb testing.TB, c globalBindingCase, typ memory.DataType, layout string) (globalBindingFixture, []TypedValue) {
 	tb.Helper()
+	return makeGlobalExtremaFixtureWithNarrow(tb, c, typ, layout, false)
+}
+
+func makeGlobalExtremaFixtureWithNarrow(tb testing.TB, c globalBindingCase, typ memory.DataType, layout string, includeNarrow bool) (globalBindingFixture, []TypedValue) {
+	tb.Helper()
 	_, seeds := nativeAggregateFixture(tb)
 	var columns []nativeTestColumn
 	for _, seed := range seeds[:10] {
-		if seed.typ == memory.TypeInt8 || seed.typ == memory.TypeInt16 || seed.typ == memory.TypeUint8 || seed.typ == memory.TypeUint16 {
+		if !includeNarrow && (seed.typ == memory.TypeInt8 || seed.typ == memory.TypeInt16 || seed.typ == memory.TypeUint8 || seed.typ == memory.TypeUint16) {
 			continue
 		}
 		if typ == memory.TypeInvalid || typ == seed.typ {
@@ -49,7 +54,11 @@ func makeGlobalExtremaFixture(tb testing.TB, c globalBindingCase, typ memory.Dat
 		}
 		if layout == "mixed" {
 			f.query.Aggregates = append(f.query.Aggregates, expr.Sum(seed.name, seed.name+"_sum"), expr.CountColumn(seed.name, seed.name+"_count"))
-			want = append(want, TypedValue{Type: seed.typ}, TypedValue{Type: memory.TypeUint64, Valid: true})
+			sumType := seed.typ
+			if seed.typ == memory.TypeInt8 || seed.typ == memory.TypeInt16 || seed.typ == memory.TypeUint8 || seed.typ == memory.TypeUint16 {
+				sumType = memory.TypeInt64
+			}
+			want = append(want, TypedValue{Type: sumType}, TypedValue{Type: memory.TypeUint64, Valid: true})
 		}
 	}
 	if c.pattern == "selective" || c.pattern == "emptyselection" {
@@ -157,9 +166,9 @@ func updateExtremaOracle(out *TypedValue, raw uint64, minimum bool) {
 	}
 	var less, greater bool
 	switch out.Type {
-	case memory.TypeInt32, memory.TypeInt64:
+	case memory.TypeInt8, memory.TypeInt16, memory.TypeInt32, memory.TypeInt64:
 		less, greater = int64(raw) < int64(out.Bits), int64(raw) > int64(out.Bits)
-	case memory.TypeUint32, memory.TypeUint64:
+	case memory.TypeUint8, memory.TypeUint16, memory.TypeUint32, memory.TypeUint64:
 		less, greater = raw < out.Bits, raw > out.Bits
 	case memory.TypeFloat32, memory.TypeFloat64:
 		a, b := math.Float64frombits(out.Bits), math.Float64frombits(raw)

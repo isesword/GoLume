@@ -17,6 +17,7 @@ func installMinMaxSIMD(set *Set, mode Mode, vectorBits int) {
 	if vectorBits != 128 && vectorBits != 256 && vectorBits != 512 {
 		return
 	}
+	installNarrowMinMaxSIMD(set, vectorBits)
 	set.d.minMaxInt32Masked = simdMinMaxInt32Masked
 	set.d.minMaxInt64Masked = simdMinMaxInt64Masked
 	set.d.minMaxUint32Masked = simdMinMaxUint32Masked

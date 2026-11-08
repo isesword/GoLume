@@ -92,11 +92,11 @@ func TestGlobalAggregateBindingsEligibility(t *testing.T) {
 		{"narrow-min", func(m *CompiledMultiAggregate, _ *PreparedQuery) {
 			m.Types[0] = memory.TypeInt16
 			m.Layouts[0].Min = true
-		}, false},
+		}, true},
 		{"narrow-max", func(m *CompiledMultiAggregate, _ *PreparedQuery) {
 			m.Types[0] = memory.TypeUint8
 			m.Layouts[0].Max = true
-		}, false},
+		}, true},
 		{"avg", func(m *CompiledMultiAggregate, _ *PreparedQuery) { m.Layouts[0].Avg = true }, false},
 		{"statistics", func(m *CompiledMultiAggregate, _ *PreparedQuery) { m.Statistics = &CompiledStatistics{} }, false},
 		{"distinct", func(m *CompiledMultiAggregate, _ *PreparedQuery) { m.Distinct = &CompiledDistinct{} }, false},

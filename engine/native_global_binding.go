@@ -46,7 +46,8 @@ func (p *PreparedQuery) globalAggregateBindingsEligible() bool {
 		}
 		if layout.Min || layout.Max {
 			switch m.Types[lane] {
-			case memory.TypeInt32, memory.TypeInt64, memory.TypeUint32, memory.TypeUint64, memory.TypeFloat32, memory.TypeFloat64:
+			case memory.TypeInt8, memory.TypeInt16, memory.TypeInt32, memory.TypeInt64,
+				memory.TypeUint8, memory.TypeUint16, memory.TypeUint32, memory.TypeUint64, memory.TypeFloat32, memory.TypeFloat64:
 			default:
 				return false
 			}
@@ -125,7 +126,7 @@ func (s *sortedAggregateStream) bindGlobalAggregateInputs() {
 }
 
 // consumeGlobalAggregateInput bypasses the adjacent-key state machine only for
-// the already-bound global SUM/COUNT and wide numeric MIN/MAX lanes. Predicate evaluation still uses the
+// the already-bound global SUM/COUNT and numeric MIN/MAX lanes. Predicate evaluation still uses the
 // selected kernel set. Each SUM retains its original encounter order:
 // horizontal floating-point reductions would change rounding and NaN results.
 // No row-sized scratch or additional retained state is required.

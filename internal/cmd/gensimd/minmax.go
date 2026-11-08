@@ -25,6 +25,7 @@ import (
 func installMinMaxSIMD(set *Set, mode Mode, vectorBits int) {
  if mode == ModeScalar || !nativeSIMDAvailable() { return }
  if vectorBits != 128 && vectorBits != 256 && vectorBits != 512 { return }
+ installNarrowMinMaxSIMD(set, vectorBits)
 `)
 	types := []string{"Int32", "Int64", "Uint32", "Uint64", "Float32", "Float64"}
 	for _, t := range types {

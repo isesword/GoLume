@@ -69,7 +69,24 @@ Native spill uses `aggregate-native-state-v3`, with exact type/layout descriptor
 raw integer/IEEE state bits and a raw Float64 AVG total. Restore validates framing,
 types, layouts, flags and lengths before merge; UInt64 and NaN bit patterns are
 not converted through floats or interface serialization. Legacy V1 and multi-int64
-V2 remain separate. No new SIMD aggregation dispatch is enabled by this increment:
-new scatter updates have a scalar reference, while existing predicate and
-single-column int64 dispatch remain in place. Architecture-specific SIMD work
-requires independent correctness and measured gates.
+V2 remain separate. Scatter updates retain a scalar reference, while existing
+predicate and single-column Int64 dispatch remain in place. Global batch
+reductions are described below; architecture-specific work requires independent
+correctness and measured gates.
+
+## Global masked extrema batches
+
+Eligible native global SUM/COUNT/MIN/MAX queries bind source columns once per
+batch. All integer widths and both floating widths support bounded masked
+MIN/MAX reductions; Int8/Int16/Uint8/Uint16 extrema no longer force every lane
+of a mixed query back to row updates. Each reduction consumes at most 64 values,
+intersecting selection with validity. Empty words leave extrema invalid.
+Narrow SUM still accumulates in Int64 and MIN/MAX output keeps the input dtype.
+The existing pure-Int64 legacy query boundary is unchanged.
+
+The narrow native kernels widen complete typed loads into SIMD registers and
+reduce without row-sized scratch, heap allocation or stored-lane scans. AMD64
+uses runtime-guarded 128/256/512-bit paths; ARM64 has a 128-bit implementation.
+Scalar, disabled-SIMD and unsupported-ISA fallbacks retain the same contract.
+ARM64 validation for this addition is cross-compilation only, not execution or
+a performance claim. Kernel coverage does not imply a whole query is vectorized.

@@ -12,7 +12,7 @@ func MinMaxID(typ memory.DataType) (KernelID, bool) {
 		typ = memory.TypeInt32
 	case memory.TypeInt64, memory.TypeDate64, memory.TypeTimestamp, memory.TypeTime64, memory.TypeDuration:
 		typ = memory.TypeInt64
-	case memory.TypeUint32, memory.TypeUint64, memory.TypeFloat32, memory.TypeFloat64:
+	case memory.TypeInt8, memory.TypeInt16, memory.TypeUint8, memory.TypeUint16, memory.TypeUint32, memory.TypeUint64, memory.TypeFloat32, memory.TypeFloat64:
 	default:
 		return KernelID{}, false
 	}
@@ -27,7 +27,7 @@ func checkedMinMaxMask(n int, mask uint64) uint64 {
 }
 
 type extremeNumber interface {
-	int32 | int64 | uint32 | uint64 | float32 | float64
+	int8 | int16 | int32 | int64 | uint8 | uint16 | uint32 | uint64 | float32 | float64
 }
 
 func scalarMinMaxMasked[T extremeNumber](v []T, mask uint64) (lo, hi T) {
@@ -52,6 +52,11 @@ func scalarMinMaxMasked[T extremeNumber](v []T, mask uint64) (lo, hi T) {
 }
 
 func installMinMaxScalar(d *dispatch) {
+	d.minMaxInt8Masked = scalarMinMaxMasked[int8]
+	d.minMaxInt16Masked = scalarMinMaxMasked[int16]
+	d.minMaxUint8Masked = scalarMinMaxMasked[uint8]
+	d.minMaxUint16Masked = scalarMinMaxMasked[uint16]
+
 	d.minMaxInt32Masked = scalarMinMaxMasked[int32]
 	d.minMaxInt64Masked = scalarMinMaxMasked[int64]
 	d.minMaxUint32Masked = scalarMinMaxMasked[uint32]
@@ -98,4 +103,28 @@ func (s Set) MinMaxFloat32Masked(v []float32, mask uint64) (float32, float32) {
 // For zero ties the minimum is -0 and the maximum is +0.
 func (s Set) MinMaxFloat64Masked(v []float64, mask uint64) (float64, float64) {
 	return s.d.minMaxFloat64Masked(v, mask)
+}
+
+// MinMaxInt8Masked returns extrema of selected elements. Bits beyond len(v) are
+// ignored; empty selections return (0,0). It allocates nothing and panics above 64 rows.
+func (s Set) MinMaxInt8Masked(v []int8, mask uint64) (int8, int8) {
+	return s.d.minMaxInt8Masked(v, mask)
+}
+
+// MinMaxInt16Masked returns extrema of selected elements. Bits beyond len(v) are
+// ignored; empty selections return (0,0). It allocates nothing and panics above 64 rows.
+func (s Set) MinMaxInt16Masked(v []int16, mask uint64) (int16, int16) {
+	return s.d.minMaxInt16Masked(v, mask)
+}
+
+// MinMaxUint8Masked returns extrema of selected elements. Bits beyond len(v) are
+// ignored; empty selections return (0,0). It allocates nothing and panics above 64 rows.
+func (s Set) MinMaxUint8Masked(v []uint8, mask uint64) (uint8, uint8) {
+	return s.d.minMaxUint8Masked(v, mask)
+}
+
+// MinMaxUint16Masked returns extrema of selected elements. Bits beyond len(v) are
+// ignored; empty selections return (0,0). It allocates nothing and panics above 64 rows.
+func (s Set) MinMaxUint16Masked(v []uint16, mask uint64) (uint16, uint16) {
+	return s.d.minMaxUint16Masked(v, mask)
 }

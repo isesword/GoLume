@@ -70,6 +70,26 @@ func checkMaskedMinMax[T extremeNumber](t *testing.T, values []T, call func([]T,
 }
 func TestMaskedMinMax(t *testing.T) {
 	rng := rand.New(rand.NewSource(871))
+	vInt8 := make([]int8, 67)
+	for i := range vInt8 {
+		vInt8[i] = int8(rng.Uint64())
+	}
+	vInt8[1], vInt8[2] = math.MinInt8, math.MaxInt8
+	vInt16 := make([]int16, 67)
+	for i := range vInt16 {
+		vInt16[i] = int16(rng.Uint64())
+	}
+	vInt16[1], vInt16[2] = math.MinInt16, math.MaxInt16
+	vUint8 := make([]uint8, 67)
+	for i := range vUint8 {
+		vUint8[i] = uint8(rng.Uint64())
+	}
+	vUint8[1], vUint8[2] = 0, math.MaxUint8
+	vUint16 := make([]uint16, 67)
+	for i := range vUint16 {
+		vUint16[i] = uint16(rng.Uint64())
+	}
+	vUint16[1], vUint16[2] = 0, math.MaxUint16
 	vInt32 := make([]int32, 67)
 	for i := range vInt32 {
 		vInt32[i] = int32(rng.Uint64())
@@ -106,6 +126,10 @@ func TestMaskedMinMax(t *testing.T) {
 	}
 	for _, mode := range []Mode{ModeScalar, ModeAuto, ModeSIMD} {
 		set := New(mode)
+		t.Run(mode.String()+"/Int8", func(t *testing.T) { checkMaskedMinMax(t, vInt8, set.MinMaxInt8Masked) })
+		t.Run(mode.String()+"/Int16", func(t *testing.T) { checkMaskedMinMax(t, vInt16, set.MinMaxInt16Masked) })
+		t.Run(mode.String()+"/Uint8", func(t *testing.T) { checkMaskedMinMax(t, vUint8, set.MinMaxUint8Masked) })
+		t.Run(mode.String()+"/Uint16", func(t *testing.T) { checkMaskedMinMax(t, vUint16, set.MinMaxUint16Masked) })
 		t.Run(mode.String()+"/Int32", func(t *testing.T) { checkMaskedMinMax(t, vInt32, set.MinMaxInt32Masked) })
 		t.Run(mode.String()+"/Int64", func(t *testing.T) { checkMaskedMinMax(t, vInt64, set.MinMaxInt64Masked) })
 		t.Run(mode.String()+"/Uint32", func(t *testing.T) { checkMaskedMinMax(t, vUint32, set.MinMaxUint32Masked) })
@@ -157,7 +181,7 @@ func TestMaskedMinMaxFloatPayloads(t *testing.T) {
 	}
 }
 func TestMinMaxIDs(t *testing.T) {
-	for _, typ := range []memory.DataType{memory.TypeInt32, memory.TypeInt64, memory.TypeUint32, memory.TypeUint64, memory.TypeFloat32, memory.TypeFloat64} {
+	for _, typ := range []memory.DataType{memory.TypeInt8, memory.TypeInt16, memory.TypeUint8, memory.TypeUint16, memory.TypeInt32, memory.TypeInt64, memory.TypeUint32, memory.TypeUint64, memory.TypeFloat32, memory.TypeFloat64} {
 		id, ok := MinMaxID(typ)
 		if !ok || id.Kind() != KernelReduction || id.String() != fmt.Sprintf("minmax-%s-masked", typ) {
 			t.Fatalf("bad id=%v", id)
@@ -176,7 +200,7 @@ func TestMinMaxIDs(t *testing.T) {
 			t.Fatalf("capability=%+v", c)
 		}
 	}
-	for _, typ := range []memory.DataType{memory.TypeInt8, memory.TypeUint16, memory.TypeString} {
+	for _, typ := range []memory.DataType{memory.TypeBool, memory.TypeString} {
 		if _, ok := MinMaxID(typ); ok {
 			t.Fatal("unexpected supported type")
 		}

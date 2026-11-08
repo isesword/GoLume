@@ -372,7 +372,7 @@ func buildKernelIDs() []KernelID {
 		id, _ := SumID(typ)
 		ids = append(ids, id)
 	}
-	for _, typ := range []memory.DataType{memory.TypeInt32, memory.TypeInt64, memory.TypeUint32, memory.TypeUint64, memory.TypeFloat32, memory.TypeFloat64} {
+	for _, typ := range []memory.DataType{memory.TypeInt8, memory.TypeInt16, memory.TypeUint8, memory.TypeUint16, memory.TypeInt32, memory.TypeInt64, memory.TypeUint32, memory.TypeUint64, memory.TypeFloat32, memory.TypeFloat64} {
 		id, _ := MinMaxID(typ)
 		ids = append(ids, id)
 	}
@@ -550,6 +550,10 @@ type dispatch struct {
 	compactUint16         uint16CompactFunc
 	compactFloat32        float32CompactFunc
 	caps                  *capabilityState
+	minMaxInt8Masked      func([]int8, uint64) (int8, int8)
+	minMaxInt16Masked     func([]int16, uint64) (int16, int16)
+	minMaxUint8Masked     func([]uint8, uint64) (uint8, uint8)
+	minMaxUint16Masked    func([]uint16, uint64) (uint16, uint16)
 }
 
 // Set is an immutable, comparable handle to one complete dispatch table.
