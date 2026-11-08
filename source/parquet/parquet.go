@@ -28,7 +28,7 @@ type columnBinding struct {
 }
 
 // Source exposes projected flat Parquet columns as row-group partitions. It
-// supports integers, floats, booleans, UTF-8 strings, dates, and UTC
+// supports signed and unsigned integers, floats, booleans, UTF-8 strings, dates, and UTC
 // timestamps. Pushdown clones are immutable and safe to prepare independently
 // from the same base source.
 type Source struct {
@@ -51,7 +51,8 @@ func (s *Source) PlanIdentity() string { return fmt.Sprintf("parquet:%p", s.meta
 // OpenFile discovers a flat primitive Parquet schema and exposes supported
 // integer, float, boolean, UTF-8 string, date, and UTC timestamp columns.
 // Repeated/nested columns and unsupported physical or logical types are
-// rejected rather than silently decoded incorrectly.
+// rejected rather than silently decoded incorrectly. DECIMAL and TIME annotations
+// are not supported by this native reader.
 func OpenFile(path string) (*Source, error) {
 	base, err := openMetadata(path)
 	if err != nil {
@@ -116,6 +117,17 @@ func bindingAt(meta *metadata.FileMetaData, index int, logicalName string) (colu
 	}
 	d := meta.Schema.Column(index)
 	binding := columnBinding{Name: logicalName, Index: index, Nullable: d.MaxDefinitionLevel() > 0, TimestampScale: 1}
+	// Physical storage is not a logical type: DECIMAL stores unscaled integers,
+	// TIME has units/UTC semantics, and UNKNOWN denotes nulls. Only annotations
+	// whose semantics this native reader preserves may reach the decoder. Arrow
+	// also normalizes legacy converted types into these logical types.
+	switch d.LogicalType().(type) {
+	case schema.NoLogicalType, schema.IntLogicalType, schema.StringLogicalType, schema.DateLogicalType, schema.TimestampLogicalType:
+	case schema.DecimalLogicalType:
+		return columnBinding{}, fmt.Errorf("parquet column %q logical type %s is not supported by native scan; DECIMAL precision and scale must be preserved", d.Path(), d.LogicalType())
+	default:
+		return columnBinding{}, fmt.Errorf("parquet column %q logical type %s is not supported by native scan", d.Path(), d.LogicalType())
+	}
 	switch d.PhysicalType() {
 	case arrowparquet.Types.Boolean:
 		binding.Type = memory.TypeBool
@@ -140,8 +152,14 @@ func bindingAt(meta *metadata.FileMetaData, index int, logicalName string) (colu
 				} else {
 					binding.Type = memory.TypeUint16
 				}
+			case 32:
+				if integer.IsSigned() {
+					binding.Type = memory.TypeInt32
+				} else {
+					binding.Type = memory.TypeUint32
+				}
 			default:
-				binding.Type = memory.TypeInt32
+				return columnBinding{}, fmt.Errorf("parquet column %q integer width %d is not supported for INT32", d.Path(), integer.BitWidth())
 			}
 		} else {
 			binding.Type = memory.TypeInt32
@@ -157,6 +175,8 @@ func bindingAt(meta *metadata.FileMetaData, index int, logicalName string) (colu
 			}
 			binding.Type = memory.TypeTimestamp
 			binding.TimestampScale = scale
+		} else if integer, ok := d.LogicalType().(schema.IntLogicalType); ok && !integer.IsSigned() {
+			binding.Type = memory.TypeUint64
 		} else {
 			binding.Type = memory.TypeInt64
 		}
@@ -463,6 +483,94 @@ func (r *typedDecoder) readInt32(chunk file.ColumnChunkReader, b columnBinding, 
 		return err
 	}
 	return nil
+}
+
+// scatterUnsigned preserves the physical integer bit pattern, including the
+// sign bit, without a float64 or signed widening intermediate. Scratch and
+// output capacity are both reserved by the batch stream.
+func scatterUnsigned[U uint32 | uint64, S int32 | int64](out []U, dense []S, defs []int16, validity memory.Bitmap, count int, column string) error {
+	if count < 0 || count > len(dense) {
+		return fmt.Errorf("column %q invalid dense count %d", column, count)
+	}
+	if validity == nil {
+		if count != len(out) {
+			return fmt.Errorf("column %q dense mismatch got=%d want=%d", column, count, len(out))
+		}
+		for i, value := range dense[:count] {
+			out[i] = U(value)
+		}
+		return nil
+	}
+	clear(validity)
+	next := 0
+	for i := range out {
+		if defs[i] == 0 {
+			out[i] = 0
+			continue
+		}
+		if next >= count {
+			return fmt.Errorf("column %q dense overflow", column)
+		}
+		out[i] = U(dense[next])
+		next++
+		memory.Set(validity, i)
+	}
+	if next != count {
+		return fmt.Errorf("column %q dense mismatch got=%d want=%d", column, next, count)
+	}
+	return nil
+}
+
+func (r *typedDecoder) readUint32(chunk file.ColumnChunkReader, b columnBinding, rows int, dst *memory.Batch) error {
+	c, ok := chunk.(*file.Int32ColumnChunkReader)
+	if !ok {
+		return fmt.Errorf("column %q is not an int32 chunk reader", b.Name)
+	}
+	v := dst.Uint32s[b.Name]
+	v.Values = v.Values[:rows]
+	v.Encoding = memory.EncodingPlain
+	var defs []int16
+	if b.Nullable {
+		defs = r.defs[:rows]
+		v.Validity = v.Validity[:memory.WordsFor(rows)]
+	} else {
+		v.Validity = nil
+	}
+	dense := r.dense32[:rows]
+	total, values, err := c.ReadBatch(int64(rows), dense, defs, nil)
+	if err != nil {
+		return err
+	}
+	if int(total) != rows {
+		return fmt.Errorf("column %q row count mismatch total=%d want=%d", b.Name, total, rows)
+	}
+	return scatterUnsigned(v.Values, dense, defs, v.Validity, values, b.Name)
+}
+
+func (r *typedDecoder) readUint64(chunk file.ColumnChunkReader, b columnBinding, rows int, dst *memory.Batch) error {
+	c, ok := chunk.(*file.Int64ColumnChunkReader)
+	if !ok {
+		return fmt.Errorf("column %q is not an int64 chunk reader", b.Name)
+	}
+	v := dst.Uint64s[b.Name]
+	v.Values = v.Values[:rows]
+	v.Encoding = memory.EncodingPlain
+	var defs []int16
+	if b.Nullable {
+		defs = r.defs[:rows]
+		v.Validity = v.Validity[:memory.WordsFor(rows)]
+	} else {
+		v.Validity = nil
+	}
+	dense := r.dense64[:rows]
+	total, values, err := c.ReadBatch(int64(rows), dense, defs, nil)
+	if err != nil {
+		return err
+	}
+	if int(total) != rows {
+		return fmt.Errorf("column %q row count mismatch total=%d want=%d", b.Name, total, rows)
+	}
+	return scatterUnsigned(v.Values, dense, defs, v.Validity, values, b.Name)
 }
 
 func (r *typedDecoder) readNarrowInt32(chunk file.ColumnChunkReader, b columnBinding, rows int, dst *memory.Batch) error {
@@ -810,7 +918,11 @@ func comparisonTruth(rg *metadata.RowGroupMetaData, b expr.Binary, bindings map[
 	// Parquet has no portable way to tell whether arbitrary BYTE_ARRAY min/max
 	// statistics were prefix-truncated. They are therefore never used to infer
 	// string value ranges; null-count-only pruning remains safe.
-	if binding.Type == memory.TypeString {
+	// Unsigned min/max are physical signed Go values and cannot enter the
+	// int64 range evaluator (UINT64 can exceed MaxInt64). Until a matching
+	// unsigned metadata evaluator is available, retain value ranges and use
+	// only null counts; the residual evaluator compares unsigned values exactly.
+	if binding.Type == memory.TypeString || binding.Type == memory.TypeUint32 || binding.Type == memory.TypeUint64 {
 		if stats.HasNullCount() && stats.NullCount() >= rg.NumRows() {
 			return truthNull, nil
 		}

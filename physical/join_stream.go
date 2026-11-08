@@ -1190,12 +1190,10 @@ func (s *spillableJoinStream) closeDecoded() {
 
 func bindDecodedBatch(dst *memory.Batch, decoded *memory.Batch) {
 	dst.ClearColumns()
-	dst.Rows = decoded.Rows
-	dst.Int64s, dst.Int32s = decoded.Int64s, decoded.Int32s
-	dst.Uint32s, dst.Uint64s = decoded.Uint32s, decoded.Uint64s
-	dst.Float64s, dst.Strings = decoded.Float64s, decoded.Strings
-	dst.DictStrings, dst.StringLists = decoded.DictStrings, decoded.StringLists
-	dst.Structs, dst.Opaque = decoded.Structs, decoded.Opaque
+	// Borrow every vector map, including native narrow numeric columns. The
+	// stream retains the backing run until its next Next call or Close; copying
+	// the complete header keeps newly added Batch types in this binding path.
+	*dst = *decoded
 }
 
 // Next emits one bounded output run. Inputs are radix-partitioned on first

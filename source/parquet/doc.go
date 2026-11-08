@@ -1,5 +1,11 @@
 // Package parquet exposes flat Parquet files through native, bounded batch
 // streams. Prepared partition lists preserve their exact order and subset.
+// Signed and unsigned integer annotations retain their native widths and exact
+// values. UTF-8 STRING, DATE, and UTC TIMESTAMP annotations are supported;
+// DECIMAL, TIME, UNKNOWN, and other unsupported logical annotations fail at
+// OpenFile rather than being exposed as their physical storage values. Native
+// DECIMAL execution is not implemented. Unsigned value statistics are not used
+// for row-group range pruning; null-count pruning remains available.
 //
 // Strings use charged, page-bounded view headers and copy only an admitted
 // row span into owned output. No borrowed page is advanced until its views
