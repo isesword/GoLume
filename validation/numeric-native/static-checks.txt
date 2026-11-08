@@ -1,0 +1,15 @@
+simd_vet=0
+scalar_vet=0
+SIMD structure checks passed
+structure=0
+stat /workspace/scratch/ac8e1e118737/GoLume-next/internal/cmd/checkregistry: directory not found
+registry=1
+stat /workspace/scratch/ac8e1e118737/GoLume-next/internal/cmd/checkgodoc: directory not found
+godoc=1
+arm64_cross_compile=0
+=== RUN   TestNativeFloatArithmeticBitPatterns
+--- PASS: TestNativeFloatArithmeticBitPatterns (0.11s)
+=== RUN   TestExpandedNumericNativeDispatch
+--- PASS: TestExpandedNumericNativeDispatch (0.00s)
+PASS
+ok  	gocolumn/kernel	0.114s

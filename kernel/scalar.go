@@ -55,6 +55,22 @@ func clearInvalidFloat64(out []float64, validity memory.Bitmap) {
 	}
 }
 
+func clearInvalidFloat32(out []float32, validity memory.Bitmap) {
+	if validity == nil {
+		return
+	}
+	for wi := 0; wi < memory.WordsFor(len(out)); wi++ {
+		base := wi * 64
+		wordRows := min(64, len(out)-base)
+		invalid := ^bitmapWord(validity, wi) & memory.TailMask(wordRows)
+		for invalid != 0 {
+			bit := bits.TrailingZeros64(invalid)
+			out[base+bit] = 0
+			invalid &= invalid - 1
+		}
+	}
+}
+
 func bitmapWord(bitmap memory.Bitmap, wi int) uint64 {
 	if bitmap == nil {
 		return ^uint64(0)

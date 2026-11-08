@@ -44,12 +44,18 @@ its Auto backend can differ from the explicit-SIMD `available_backend`.
 
 ## Current native coverage
 
-- Portable native SIMD in Auto and explicit SIMD: Float32 literal and
-  column-to-column `GT/GE/LT/LE/EQ`; Int32/Uint32 column-to-column
-  `GT/GE/LT/LE/EQ`; Float64 `Sub/Mul/Div`; dense Float32/Float64 `Abs/Sqrt`.
-- arm64 additionally retains `archsimd-arm64-mask` literal Int32
-  `GT/GE/LT/LE` and Uint32 `GT/GE/LT/LE/EQ`, at 128 bits. Int32 literal EQ is
-  still scalar. The existing Auto Hash64 unroll remains a scalar MUL pipeline.
+- Portable native SIMD in Auto and explicit SIMD: literal `GT/GE/LT/LE/EQ`
+  for Int8/Int32/Int64/Uint32/Uint64/Float32/Float64; column comparisons for
+  Int32/Uint32/Float32/Float64; Float32/Float64 `Add/Sub/Mul/Div`; dense
+  Float32/Float64 `Abs/Sqrt`.
+- arm64 retains `archsimd-arm64-mask` overrides for literal Int32
+  `GT/GE/LT/LE` and Uint32 `GT/GE/LT/LE/EQ`, at 128 bits. Int32 literal EQ now
+  uses portable SIMD. The existing Auto Hash64 unroll remains a scalar MUL pipeline.
+- Float32 arithmetic kernels preserve native Float32 precision, but ordinary
+  expression arithmetic still promotes Float32 operands to Float64. This stage
+  does not change result types or claim SIMD acceleration of that expression path.
+- Int16/Uint8/Uint16 literal comparisons and Int8/Int16/Int64/Uint8/Uint16/Uint64
+  column comparisons remain scalar. Checked integer arithmetic is unchanged.
 - amd64 Hash64 and Int32/Int64/Uint32/Uint64/Float64 compaction use AVX-512
   only when the runtime reports AVX-512, portable SIMD is non-emulated, and
   the selected native width is at least 512 bits. Narrower widths fall back
@@ -72,6 +78,14 @@ entry and reuses one 64-row transient word. The separately maintained
 Int32/Uint32/Float32 column-comparison implementations still use an operator
 switch and a stored-mask lane scan. Selecting those native implementations
 in Auto does not imply they have the generated literal-kernel shape.
+
+Portable literal and generated Float64 column comparisons use bounded stack
+mask storage and combine validity once per bitmap word. Arithmetic writes its
+caller-owned output, then zeros invalid rows; both exact input aliases are
+supported. There are no heap scratch buffers or widened Float32 arithmetic.
+Float comparison predicates are ordered: every predicate is false for NaN,
+including EQ, while positive and negative zero compare equal. NaN arithmetic
+payload identity is not part of the contract.
 
 Checked integer arithmetic is operation-specialized scalar code with exact
 first-overflow rows. Int64 scale has dedicated factor `0`, `1`, and `-1` paths
@@ -126,3 +140,12 @@ Ordering, Top-K heap, window execution, substring matching, random hash-table
 probes, opaque Arrow operations, and random gathers have no general native
 SIMD implementation. Native-preferred selection does not claim these loops,
 all math operations, or an entire query are vectorized.
+
+## Numeric native expansion validation
+
+The [numeric stage report](../validation/numeric-native/README.md) records
+native amd64 128/256/512-bit execution, runtime-disabled fallback, dispatch
+identity checks, IEEE/boundary tests, allocations, and complete query measurements.
+Linux/arm64 validation for this stage is cross-compilation only, not native execution.
+Kernel coverage does not imply whole-query acceleration; measured query timings
+are mixed and managed-memory/heap allocation comparisons are reported separately.

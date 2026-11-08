@@ -31,7 +31,7 @@ func TestFloat32ForcedSIMDRegistrationAndDifferential(t *testing.T) {
 	}
 }
 
-func TestFloat32ArithmeticHasHonestScalarCapability(t *testing.T) {
+func TestFloat32ArithmeticHasHonestNativeCapability(t *testing.T) {
 	if simd.Emulated() {
 		t.Skip("Go SIMD is emulated on this host")
 	}
@@ -39,7 +39,7 @@ func TestFloat32ArithmeticHasHonestScalarCapability(t *testing.T) {
 	for _, op := range []ArithmeticOp{ArithmeticAdd, ArithmeticSub, ArithmeticMul, ArithmeticDiv} {
 		id, _ := ArithmeticID(memory.TypeFloat32, op)
 		capability, ok := set.Capability(id)
-		if !ok || capability.Backend != "scalar" || capability.HardwareSIMD {
+		if !ok || capability.Backend != "portable-simd" || !capability.HardwareSIMD {
 			t.Fatalf("op=%s capability=%+v ok=%t", op, capability, ok)
 		}
 	}

@@ -2,9 +2,9 @@ package kernel
 
 import "gocolumn/memory"
 
-// Native-width comparison entry points use the scalar reference backend until
-// each architecture has an independent performance gate. Keeping them on Set
-// prevents physical operators from bypassing dispatch while storage narrows.
+// These narrow comparison entry points retain the scalar reference backend
+// until native implementations and dispatch entries are added. Keeping them on
+// Set preserves one public entry point while storage narrows.
 
 // CompareInt16 compares nullable int16 values and writes a packed selection bitmap.
 func (s Set) CompareInt16(v []int16, valid, out memory.Bitmap, lit int16, op CompareOp) int {

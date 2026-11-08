@@ -1,0 +1,22 @@
+kernel registry, gates file, and code are consistent
+registry=0
+GoDoc check: PASS (package docs and exported API comments follow naming conventions)
+godoc=0
+simd_build=0
+scalar_build=0
+== GODEBUG=simd=0 ==
+ok  	gocolumn/kernel	8.691s
+ok  	gocolumn/expr	8.311s
+ok  	gocolumn/cmd/kernel-info	0.024s
+== GODEBUG=simd=+128 ==
+ok  	gocolumn/kernel	8.194s
+ok  	gocolumn/expr	7.441s
+ok  	gocolumn/cmd/kernel-info	0.012s
+== GODEBUG=simd=+256 ==
+ok  	gocolumn/kernel	8.415s
+ok  	gocolumn/expr	7.158s
+ok  	gocolumn/cmd/kernel-info	0.011s
+== GODEBUG=simd=+512 ==
+ok  	gocolumn/kernel	14.815s
+ok  	gocolumn/expr	11.907s
+ok  	gocolumn/cmd/kernel-info	0.010s

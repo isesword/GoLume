@@ -72,12 +72,12 @@ func TestCompareInt8NilValidityAndTailBits(t *testing.T) {
 	}
 }
 
-func TestCompareInt8CapabilityIsScalarAndPhysical(t *testing.T) {
+func TestCompareInt8CapabilityIsPhysical(t *testing.T) {
 	id, ok := ComparisonID(memory.TypeInt8, CompareGT)
 	if !ok || id.typ != memory.TypeInt8 || id.String() != "compare-int8-gt" {
 		t.Fatalf("id=%s ok=%t", id, ok)
 	}
-	for _, mode := range []Mode{ModeScalar, ModeAuto, ModeSIMD} {
+	for _, mode := range []Mode{ModeScalar} {
 		capability, ok := New(mode).Capability(id)
 		if !ok || capability.Backend != "scalar" || capability.HardwareSIMD || capability.VectorBits != 0 {
 			t.Fatalf("mode=%s capability=%+v ok=%t", mode, capability, ok)

@@ -308,72 +308,111 @@ func integerArithmetic(typ numericType, op operation) string {
 func generatePortableSIMD() []byte {
 	b := header("goexperiment.simd")
 	b.WriteString("import (\n\t\"gocolumn/memory\"\n\t\"math/bits\"\n\t\"simd\"\n)\n\n")
+	floatTypes := []numericType{{"Float32", "float32", "arithmeticFloat32"}, {"Float64", "float64", "arithmeticFloat64"}}
+	arithmeticOps := []operation{{"Add", "ArithmeticAdd", "+"}, {"Sub", "ArithmeticSub", "-"}, {"Mul", "ArithmeticMul", "*"}, {"Div", "ArithmeticDiv", "/"}}
+	literalTypes := append([]numericType{{"Float32", "float32", "compareFloat32"}}, comparisonTypes...)
 	b.WriteString(`func installGeneratedPortableSIMD(set *Set, mode Mode, vectorBits int) {
-	if mode == ModeScalar || simd.Emulated() {
-		return
-	}
-	capability := KernelCapability{HardwareSIMD: true, VectorBits: vectorBits, Backend: "portable-simd"}
+ if mode == ModeScalar || simd.Emulated() { return }
+ capability := KernelCapability{HardwareSIMD: true, VectorBits: vectorBits, Backend: "portable-simd"}
 `)
-	for _, op := range []operation{{"Sub", "ArithmeticSub", "-"}, {"Mul", "ArithmeticMul", "*"}, {"Div", "ArithmeticDiv", "/"}} {
-		fmt.Fprintf(b, "\tset.d.arithmeticFloat64[%s] = simdFloat64%s\n", op.constant, op.name)
-		fmt.Fprintf(b, "\tid%s, _ := ArithmeticID(memory.TypeFloat64, %s)\n\tset.setCapability(id%s, capability)\n", op.name, op.constant, op.name)
+	for _, typ := range floatTypes {
+		for _, op := range arithmeticOps {
+			fmt.Fprintf(b, "set.d.%s[%s] = simd%s%s\n", typ.field, op.constant, typ.name, op.name)
+			fmt.Fprintf(b, "id%s%s, _ := ArithmeticID(memory.Type%s, %s)\nset.setCapability(id%s%s, capability)\n", typ.name, op.name, typ.name, op.constant, typ.name, op.name)
+		}
+	}
+	for _, typ := range literalTypes {
+		for _, op := range comparisonOps {
+			fmt.Fprintf(b, "set.d.%s[%s] = simd%s%s\n", typ.field, op.constant, typ.name, op.name)
+			fmt.Fprintf(b, "id%s%s, _ := ComparisonID(memory.Type%s, %s)\nset.setCapability(id%s%s, capability)\n", typ.name, op.name, typ.name, op.constant, typ.name, op.name)
+		}
 	}
 	for _, op := range comparisonOps {
-		fmt.Fprintf(b, "\tset.d.compareFloat32[%s] = simdFloat32%s\n", op.constant, op.name)
-		fmt.Fprintf(b, "\tidFloat32%s, _ := ComparisonID(memory.TypeFloat32, %s)\n\tset.setCapability(idFloat32%s, capability)\n", op.name, op.constant, op.name)
+		fmt.Fprintf(b, "set.d.compareFloat64Columns[%s] = simdFloat64Columns%s\nset.d.caps.columns[idFloat64%s] = capability\n", op.constant, op.name, op.name)
 	}
 	b.WriteString("}\n\n")
-	for _, op := range []operation{{"Sub", "ArithmeticSub", "-"}, {"Mul", "ArithmeticMul", "*"}, {"Div", "ArithmeticDiv", "/"}} {
-		fmt.Fprintf(b, `func simdFloat64%s(left, right, out []float64, validity memory.Bitmap) {
-	if len(left) != len(right) || len(out) < len(left) {
-		panic("kernel: float64 arithmetic length mismatch")
-	}
-	lanes := simd.Float64s{}.Len()
-	row := 0
-	for ; row+lanes <= len(left); row += lanes {
-		simd.LoadFloat64s(left[row:]).%s(simd.LoadFloat64s(right[row:])).Store(out[row:])
-	}
-	for ; row < len(left); row++ {
-		out[row] = left[row] %s right[row]
-	}
-	clearInvalidFloat64(out[:len(left)], validity)
+	for _, typ := range floatTypes {
+		for _, op := range arithmeticOps {
+			fmt.Fprintf(b, `func simd%s%s(left, right, out []%s, validity memory.Bitmap) {
+ if len(left) != len(right) || len(out) < len(left) { panic("kernel: %s arithmetic length mismatch") }
+ lanes := simd.%ss{}.Len()
+ row := 0
+ for ; row+lanes <= len(left); row += lanes {
+  simd.Load%ss(left[row:]).%s(simd.Load%ss(right[row:])).Store(out[row:])
+ }
+ for ; row < len(left); row++ { out[row] = left[row] %s right[row] }
+ clearInvalid%s(out[:len(left)], validity)
 }
 
-`, op.name, op.name, op.symbol)
+`, typ.name, op.name, typ.goType, typ.goType, typ.name, typ.name, op.name, typ.name, op.symbol, typ.name)
+		}
+	}
+	for _, typ := range literalTypes {
+		width := strings.TrimLeft(typ.name, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+		for _, op := range comparisonOps {
+			fmt.Fprintf(b, `func simd%s%s(values []%s, validity memory.Bitmap, out memory.Bitmap, threshold %s) int {
+ lanes := simd.%ss{}.Len()
+ if len(values) < lanes { return scalar%s%s(values, validity, out, threshold) }
+ words := prepareComparison(len(values), out)
+ vectorThreshold := simd.Broadcast%ss(threshold)
+ var laneMaskStorage [64]int%s
+ laneMask := laneMaskStorage[:lanes]
+ selected := 0
+ for wi := 0; wi < words; wi++ {
+  base := wi * 64
+  wordRows := min(64, len(values)-base)
+  var selectedWord uint64
+  off := 0
+  for ; off+lanes <= wordRows; off += lanes {
+   simd.Load%ss(values[base+off:]).%s(vectorThreshold).ToInt%ss().Store(laneMask)
+   for lane := 0; lane < lanes; lane++ {
+    if laneMask[lane] < 0 { selectedWord |= uint64(1) << uint(off+lane) }
+   }
+  }
+  for ; off < wordRows; off++ {
+   if values[base+off] %s threshold { selectedWord |= uint64(1) << uint(off) }
+  }
+  selectedWord &= bitmapWord(validity, wi) & memory.TailMask(wordRows)
+  out[wi] = selectedWord
+  selected += bits.OnesCount64(selectedWord)
+ }
+ return selected
+}
+
+`, typ.name, op.name, typ.goType, typ.goType, typ.name, typ.name, op.name, typ.name, width, typ.name, op.nameForArch(), width, op.symbol)
+		}
 	}
 	for _, op := range comparisonOps {
-		fmt.Fprintf(b, `func simdFloat32%s(values []float32, validity memory.Bitmap, out memory.Bitmap, threshold float32) int {
-	words := prepareComparison(len(values), out)
-	vectorThreshold := simd.BroadcastFloat32s(threshold)
-	lanes := simd.Float32s{}.Len()
-	var laneMaskStorage [64]int32
-	laneMask := laneMaskStorage[:lanes]
-	selected := 0
-	for wi := 0; wi < words; wi++ {
-		base := wi * 64
-		wordRows := min(64, len(values)-base)
-		var selectedWord uint64
-		off := 0
-		for ; off+lanes <= wordRows; off += lanes {
-			simd.LoadFloat32s(values[base+off:]).%s(vectorThreshold).ToInt32s().Store(laneMask)
-			for lane := 0; lane < lanes; lane++ {
-				if uint32(laneMask[lane])>>31 != 0 {
-					selectedWord |= uint64(1) << uint(off+lane)
-				}
-			}
-		}
-		for ; off < wordRows; off++ {
-			if values[base+off] %s threshold { selectedWord |= uint64(1) << uint(off) }
-		}
-		selectedWord &= bitmapWord(validity, wi)
-		if wordRows < 64 { selectedWord &= memory.TailMask(wordRows) }
-		out[wi] = selectedWord
-		selected += bits.OnesCount64(selectedWord)
-	}
-	return selected
+		fmt.Fprintf(b, `func simdFloat64Columns%s(left, right []float64, leftValid, rightValid, out memory.Bitmap) int {
+ if len(left) != len(right) { panic("kernel: float64 column comparison length mismatch") }
+ lanes := simd.Float64s{}.Len()
+ if len(left) < lanes { return scalarFloat64Columns%s(left, right, leftValid, rightValid, out) }
+ words := prepareComparison(len(left), out)
+ var laneMaskStorage [64]int64
+ laneMask := laneMaskStorage[:lanes]
+ selected := 0
+ for wi := 0; wi < words; wi++ {
+  base := wi * 64
+  rows := min(64, len(left)-base)
+  var word uint64
+  off := 0
+  for ; off+lanes <= rows; off += lanes {
+   simd.LoadFloat64s(left[base+off:]).%s(simd.LoadFloat64s(right[base+off:])).ToInt64s().Store(laneMask)
+   for lane := 0; lane < lanes; lane++ {
+    if laneMask[lane] < 0 { word |= uint64(1) << uint(off+lane) }
+   }
+  }
+  for ; off < rows; off++ {
+   if left[base+off] %s right[base+off] { word |= uint64(1) << uint(off) }
+  }
+  word &= bitmapWord(leftValid, wi) & bitmapWord(rightValid, wi) & memory.TailMask(rows)
+  out[wi] = word
+  selected += bits.OnesCount64(word)
+ }
+ return selected
 }
 
-`, op.name, map[string]string{"GT": "Greater", "GE": "GreaterEqual", "LT": "Less", "LE": "LessEqual", "EQ": "Equal"}[op.name], op.symbol)
+`, op.name, op.name, op.nameForArch(), op.symbol)
 	}
 	return []byte(b.String())
 }

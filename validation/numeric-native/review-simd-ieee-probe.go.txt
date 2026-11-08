@@ -1,0 +1,15 @@
+package main
+import("fmt";"math";"math/rand";"simd")
+//go:noinline
+func ref32(a,b float32, op int) float32 {switch op {case 0:return a+b;case 1:return a-b;case 2:return a*b;default:return a/b}}
+//go:noinline
+func ref64(a,b float64) float64{return a+b}
+func main(){
+ r:=rand.New(rand.NewSource(791)); e32:=[]uint32{0,1,0x80000000,0x80000001,0x007fffff,0x00800000,0x3f800000,0x3f800001,0x3f7fffff,0x7f7fffff,0xff7fffff,0x7f800000,0xff800000,0x7fc00001,0xffc00002,0x7f800001,0xff800002};e64:=[]uint64{0,1,0x8000000000000000,0x8000000000000001,0x000fffffffffffff,0x0010000000000000,0x3ff0000000000000,0x3ff0000000000001,0x3fefffffffffffff,0x7fefffffffffffff,0xffefffffffffffff,0x7ff0000000000000,0xfff0000000000000,0x7ff8000000000001,0xfff8000000000002,0x7ff0000000000001,0xfff0000000000002}
+ const n=65536;a32,b32,o32:=make([]float32,n),make([]float32,n),make([]float32,n);a64,b64,o64:=make([]float64,n),make([]float64,n),make([]float64,n)
+ for i:=range n{if i<len(e32)*len(e32){a32[i],b32[i]=math.Float32frombits(e32[i/len(e32)]),math.Float32frombits(e32[i%len(e32)]);a64[i],b64[i]=math.Float64frombits(e64[i/len(e64)]),math.Float64frombits(e64[i%len(e64)])}else{a32[i],b32[i]=math.Float32frombits(r.Uint32()),math.Float32frombits(r.Uint32());a64[i],b64[i]=math.Float64frombits(r.Uint64()),math.Float64frombits(r.Uint64())}}
+ nanBits:=0;for op:=0;op<4;op++{lanes:=simd.Float32s{}.Len();for i:=0;i<n;i+=lanes{a,b:=simd.LoadFloat32s(a32[i:]),simd.LoadFloat32s(b32[i:]);switch op{case 0:a.Add(b).Store(o32[i:]);case 1:a.Sub(b).Store(o32[i:]);case 2:a.Mul(b).Store(o32[i:]);case 3:a.Div(b).Store(o32[i:])}};for i:=range n{want:=ref32(a32[i],b32[i],op);if math.Float32bits(want)!=math.Float32bits(o32[i]){if math.IsNaN(float64(want))&&math.IsNaN(float64(o32[i])){nanBits++;continue};panic(fmt.Sprintf("f32 op=%d i=%d a=%08x b=%08x got=%08x want=%08x",op,i,math.Float32bits(a32[i]),math.Float32bits(b32[i]),math.Float32bits(o32[i]),math.Float32bits(want)))}}}
+ lanes:=simd.Float64s{}.Len();for i:=0;i<n;i+=lanes{simd.LoadFloat64s(a64[i:]).Add(simd.LoadFloat64s(b64[i:])).Store(o64[i:])};for i:=range n{want:=ref64(a64[i],b64[i]);if math.Float64bits(want)!=math.Float64bits(o64[i]){if math.IsNaN(want)&&math.IsNaN(o64[i]){nanBits++;continue};panic(fmt.Sprintf("f64 i=%d got=%016x want=%016x",i,math.Float64bits(o64[i]),math.Float64bits(want)))}}
+ masks:=make([]int64,lanes);for op:=0;op<5;op++{for i:=0;i<n;i+=lanes{a,b:=simd.LoadFloat64s(a64[i:]),simd.LoadFloat64s(b64[i:]);var m simd.Mask64s;switch op{case 0:m=a.Greater(b);case 1:m=a.GreaterEqual(b);case 2:m=a.Less(b);case 3:m=a.LessEqual(b);case 4:m=a.Equal(b)};m.ToInt64s().Store(masks);for j,v:=range masks{a,b:=a64[i+j],b64[i+j];want:=false;switch op{case 0:want=a>b;case 1:want=a>=b;case 2:want=a<b;case 3:want=a<=b;case 4:want=a==b};if (v<0)!=want{panic(fmt.Sprintf("cmp64 op=%d i=%d a=%x b=%x",op,i+j,math.Float64bits(a),math.Float64bits(b)))}}}}
+ fmt.Printf("PASS emulated=%t width=%d rows=%d arithmetic_non_nan_bit_exact=true ordered_comparisons=true nan_payload_differences=%d\n",simd.Emulated(),simd.VectorBitSize(),n,nanBits)
+}

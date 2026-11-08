@@ -1,0 +1,828 @@
+go version go1.27.3 linux/amd64
+linux
+amd64
+v1
+Linux x86_64
+GODEBUG=
+GOMAXPROCS=1
+benchtime=100ms
+count=6
+build_GOEXPERIMENT=simd
+mode_order=all-six-permutations
+df66d8f61656507e91fbb41f4bab03d6888c493e71d04d4fa2dee56755e12b1f  scripts/bench_numeric.sh
+add25d5473ce9aec1d5a74a305af918355026a59882727525b171e2fe8e32842  internal/cmd/gensimd/main.go
+f7c6f7602ab5351ead885ddaf403da519ed4637079909221b706255cf338a9d1  internal/cmd/gensimd/vectors.go
+42095571179fa8d5049f6141f36b5237e5cc1c6e91b3f1fcaa7dad79673f3ecc  kernel/api.go
+0338086902746ac8a57d15cac73949ee5504dcef5f401000ee741729ed371558  kernel/auto_simd_arm64_test.go
+e5a8112da6a83c8aa33ac34c6f13e648dccbf102933f82adcc2e44651cf04bec  kernel/column_capability_test.go
+6f1a9c55e7d8de9ccee08af3fd67f6325b1d01ef6a0089c3447d28f18b5bac7d  kernel/doc.go
+de7339ad97f23c3779537feee4da369361f4434bd8d0a40fda08f0f9d999edf6  kernel/float32_arithmetic_native_test.go
+6ebfe14455c95dd5aad9d12a5cc204815566178b7b8d6e43aad0261c2618bf3b  kernel/float32_arithmetic_test.go
+c07b33ab1f2115e5f5be4dbda57700938570f0731b73232ac530fcf3f52da0c4  kernel/float32_columns_fuzz_test.go
+7a15e413fdfa194b5bdd9c72bc7d0b8f7f99790f8f2484b6cc50215210378a8a  kernel/float32_columns_simd.go
+80d8f0daf718ffbc327e04a0926cf73f0cb9ff4c6862a948fbedf1af5f17e542  kernel/float32_columns_stub.go
+44438215368e88b744b0ed36915ef2982a1f16ec589034b125e2748cc9796a28  kernel/float32_compare_benchmark_test.go
+9ed6a4e21386f63bb1b66d01ef2a3a15bd9bfcdb368aa7ec5c1482fe8fa4a53c  kernel/float32_native_defaults_test.go
+677017771fe6fcc162d6b92c722ae13593c6576139a0137e8cd7b90ea2ea9071  kernel/float32_scalar.go
+12a0b3ca5cf3f517c3273a74bad0ef10e710954f6850c9713c682ed77f0a0b93  kernel/float32_simd_test.go
+cab4775f5bad4ff3ae6340ea7934ff9d67cda441e7795687723c911d832d0224  kernel/float64_columns_scalar.go
+cdc1c5ea63039ba7a1ecd40a561476cd341c25c27db548630b07f459cefa6f2b  kernel/float64_comparison_native_test.go
+5424fc108195e29b5ece18875eea824d44ee6cf57d99d046a98ae318bb240ed6  kernel/float64_native_defaults_test.go
+da009f04d29d38e20098bbfa513f70ddaaea45e455c9c274b267a0d06fb002ba  kernel/generate.go
+eb4c0ec55230cacbc7dc96214faedad28b90512cd093cccebd391ab645b8b844  kernel/hash_simd_amd64.go
+62d7334096b8ebd8171d18f7bd76e3a1ce7f84d93513169af93266785cc68709  kernel/hash_simd_arm64.go
+9b49c39af77cbe7072f7a50fc97f4dcb82d78970b533a3896cc0d369889a0ffb  kernel/hash_simd_other.go
+7779b4abfdb5f511238b55167f0c2703ad494a57daff156c04b0fe29f87d094c  kernel/hotpath_benchmark_test.go
+171490b2adf4d2cd1977a9d40f49d5744fb29a2a4f3b7c7508382b9b362be774  kernel/int16_columns_scalar.go
+75f4cfa4845331a9b5b54331866cb84dd84ea422e334e9139855d158b902ad34  kernel/int32_columns_gate_nosimd_test.go
+ea24f2576b4ba4490944ce96e7e6a48a8fe3531dd0012b6409370ececb258a62  kernel/int32_columns_gate_simd_test.go
+6b3dbbc5aabff4240177eddb312ebcdc3277c7f29a63ece46c236e4dd954b048  kernel/int32_columns_gate_test.go
+d5cae54deb16f9c3b5431a9104696391188606515bb7bbfe770a22bdfcebc449  kernel/int32_columns_scalar.go
+c059b2990fcf5bd9baa56f9e8481773efbcf2bf00bdf17b8fd648beb80969ded  kernel/int32_columns_simd.go
+8f175df539a892aed0210711eb779592748fda73adef102a9e5f7a235a85d330  kernel/int32_columns_simd_stub.go
+cffaebcf7f57e6c3e08ae12cb942ccb1d60489a29d16c81579dbfe393365b160  kernel/int64_columns_scalar.go
+b1032bcadf23d9f4c8732252d26e5d33d420c9659968f3afcdd31713c7ae0411  kernel/int8_columns_scalar.go
+2048d392e95d0188d536d8540664462a6753a163a7920f3a39a11860d49a2470  kernel/int8_compare_test.go
+764e4610219ae94227af5063beee99a6d25b5dfc05018da400899d38b8aaba07  kernel/kernel_id_benchmark_test.go
+f6332ec3476be3c17b4faa26f438c8601fb642870ac9a2a7d139d3afe3e1842d  kernel/kernel_test.go
+512a8a4411234a0f161f7f2daa020d5f74e5e48d9841d61ac103450e4804a93f  kernel/math_api.go
+4716f168e0c01d9ce0d88deed87e1e2c7e115387a8f3b515ded90d8869522405  kernel/math_review_test.go
+a7d3324210eb11616e312ece8190f1a3b65b6dd0d076e42f2e7bfa3fb13b624a  kernel/math_scalar.go
+03cfadbbdb0a38b603772adf9d6dc07b1f017ddf9209f2d7b7bebaa1ba796a07  kernel/math_scalar_test.go
+e2a8e234bfb0685ef7970434d08e6aff0525b338bbae917ef868bb4ba428d895  kernel/math_simd.go
+8a7d600788a2d498d8ab9abc5a4111bcc909d8a30b35a1d172a487c68018c504  kernel/math_simd_test.go
+361b7ecac8cee6003cd6eeff6ad4e97e9f05f68411786574d49ce4b72cfd35ba  kernel/narrow_compact.go
+f00a90de7369aaa514b51dcdf8b23b1a5b933a63ce836e01f85b6dca971ca337  kernel/native_compare_scalar.go
+7debff66e830b157e1fb1debc1af5d2032c38a1a68f9f27d769e3ae009fdaf9b  kernel/native_simd_amd64_test.go
+dcdacc9968e0ebd64a15cdc461313438226de22095355f9e9ac3e8963ae7ce19  kernel/native_simd_defaults_test.go
+0beb5adf3812c781acb3d443f289bfefed233680368b86c24a9f59047937aa07  kernel/native_simd_disabled_test.go
+3e35765a631dcf2a8cd43bd5599b5849fe728757fc0801a1932b0523d6cd2d9b  kernel/numeric_float_native_test.go
+8e18b292798bd2d44a43b71bc903858d49b4a9bcae53d02dcb95eff1ac67865d  kernel/numeric_literal_native_test.go
+08ac5a93f961418566bcd78cca6e2301d678e24492ab163df6e9213f89bde832  kernel/numeric_native_dispatch_test.go
+0889ca1a6fcba663dbd858bf29689a7d1c8b7e0b5488885139d72d85f3eb83c1  kernel/runtime.go
+d5eb6309902110cad1391bbd2760640e72299a255df41ff00a1195e6ba6d16b4  kernel/scalar.go
+3df36d0c5ddcd457c91bc5b74e705130fd29822752caaaf6cc1fa6a2d392b53c  kernel/simd_disabled.go
+4e9d598ffcc3d2c8e1d622789ab26d2161f30fbbb7f5bf80b471a02d4f7717b5  kernel/simd_go127.go
+e1f7189b128484ec64c5b83c76479e9b54fa7594ba66693f80648b4a099c6127  kernel/string_match_benchmark_test.go
+2010f5347e236a0bf3ea7b0ec0301d66ebc747e1ad1e0d72ba569c07344c31a4  kernel/string_match_scalar.go
+74857ddd2e9ebd94a5b7837ad4176a093dd5764ffa9fbaba5c49ac294b54cf76  kernel/uint16_columns_scalar.go
+2501030aaec643d13f0d8c165ee80dd48cd9e29372025c4829e58d3712009f14  kernel/uint32_columns_scalar.go
+98af5c3b2cdb46bf22046c3f50370769456147770a1dc3da42d5cd28099ddacc  kernel/uint32_columns_simd.go
+c2b9672fb2ad77205db7b66a6a661979163efbaba6844ac60c3aaa14c9d88e5e  kernel/uint32_columns_simd_stub.go
+7fd1e76391f5e52d0e40577fa1600909ae548ebb82530d4320b6fc9663793d3c  kernel/uint64_columns_scalar.go
+69c341530462f3c67bcf1c0ea7da4e5915e6de581d6bb34b3b7588b89c83a162  kernel/uint8_columns_scalar.go
+53ba1069e728ba2add7ddbf188982f6cfcd0a81dcbb7d6a58ca6d30800aebfaa  kernel/zz_generated_scalar.go
+96d9a5bc9debe07597f0a5f116dcd0a99096fdeaef50f662d0cd987236ac671d  kernel/zz_generated_simd.go
+def9fc5bb444309bb0e7e396f8efc08b30dfd2ffa1e51fe81e62d359d066ab47  kernel/zz_generated_simd_arch_other.go
+a24367f580113b835ed90a43ede970c1f3e490aac7ae3caef00505b55bb14893  kernel/zz_generated_simd_arm64.go
+aa38f039dc53b7935e573f12beb841ddf9136f30d56d85626dd7f0dc71ab5716  memory/arrow_export.go
+e5ff095ad3db4eb014a2decd7a61de2e6bc62ed7e61314b75874cb1d45cf4337  memory/arrow_export_test.go
+5b46d88efb49d0a054d3b94ca1cf26dc18c2b5541f4f721d9a8fd44ffae3021a  memory/batch.go
+26bff2c2a33014072b0365269fadce080ed9fa1a3297d0101bd86bd816a8761b  memory/bitmap.go
+97a96f8b649e705d43a65847778594aae7e8d61da1d8432e5ea7352b06a074fe  memory/borrow.go
+45175a78f16afe7b3194c88b957129e40449b5bc730eea02ebbda48cc5072a18  memory/borrow_test.go
+d1fa71941fe8fbdd2022623b7bcbc71bf32ad432f33ae84c674f0cac4fb96803  memory/budget.go
+4036eb8c7e023e613a0740ce2b3a1490e2be1034e809c6c75662bf85b6220a08  memory/budget_test.go
+c572c83ab8bdb7bd381ae4649db499996834c921b7a4b666bc62a79991925f7d  memory/bytes.go
+30b4d0e4972d6adc90713e229e761f2c8fa240af514fd5fd9d45a4b460edd212  memory/clone.go
+e53650356d18bc03a95fdb874279fbb5aeca24a87f6318ba5d38842e987ee34c  memory/clone_test.go
+53f8c8c30f6b996f8482c938d6fc4622d5d5deb3e05e9cb9152a39532cdec636  memory/doc.go
+075714835d797df931401a5119f72d9d8d7ef93abef53aee9a0be62ac8b35c47  memory/list_string_test.go
+0cc57e9d2919ed3e4e7fb815e95009f984f3fd2973b74892c0b46b50e6a4731d  memory/manager.go
+d5fdd4ca713ea20321416f6acc8bd88a2a653427fc9f71aedba613e21c614d69  memory/manager_test.go
+7e14de330ca9e4b21d320c00b043bbf243c1d1cc802ce567ffcb51b235564290  memory/native_numeric_test.go
+4e992a23708165b48f5170c05e0988c7cb0542ac38285d8a67309d951e29504f  memory/range.go
+4b01ca684ccdbdf1417e9fd8f2e4805d6717a28677d736fa41c25e1aae681594  memory/range_native_test.go
+c18527aaab907c350c3ad9b584108e1875c4ae563543b3a503c3d02cd424abd0  memory/range_test.go
+e7065b4db7978fa0f7e0b1db62b2e62c1fd34285af5929ffe887be2a92222248  memory/reclaim.go
+9a245a68b4ac4a679dff773d495ad436b089e8af55bd24d87ca56692a42e56d3  memory/reclaim_test.go
+dd28d3a9c6d4160c307ec4862aaea9b7d076e03313e0a2219583d89f8fb4eb7f  memory/reusable.go
+c33a9a59d6864bac988dceaa7fd487d7c00113b11ee63015c9fd7cb005c5cf0c  memory/reusable_test.go
+4291843e3b7aaeace30d11a26f43cee585557e95b4741f5ff0491207ba3c7c2a  memory/spill.go
+0bfddb12bf1d5381f7e9864fb659a3b7630811cd8737407dcba74ce318bc1370  memory/spill_columnar.go
+7a195f540ea63e1ec77f432375f859ae4c120ab57310bbb9c9632ba01ef3a2aa  memory/spill_columnar_test.go
+e1696ef4de455e87c8ada06e610e8bfbf93cf61a979282ba26d55c920ec9fcfd  memory/spill_metadata_review_test.go
+20661addc57fcdfe7df27b01e7f71e6a6401b11b4ec834ad34602fc72ad1e6eb  memory/spill_metadata_test.go
+d1c79151f6e0fb1fc0046ff5ecf77152f6979ab09511b6c5cd86808f6f5983c3  memory/spill_test.go
+56d8ac4f0bdfc74ca89e9b402a071d747a2d5bc9f3e40b5f465182cde53c8e28  memory/struct.go
+d562e96681636e423883b9da4533619c90781b7940bde8fda5458e27237a0936  memory/struct_range_budget_test.go
+8c3d62ebfaff92bb6ba31d17a2e6b16618de8815acdc86f2607e1edd411e57c9  memory/struct_test.go
+02d7ab727ce7474f2d1517effcd03d075f61bce274a6ef691166dd07c6ad1571  memory/types.go
+c8cc60bcff46c2ee8ff9976df3bb17dc3189865b4a64f12f476ed8490842fb2b  memory/vector.go
+fed5ad8b03de9dc4bbd69ad3ee50f2cf8124f24366b05319a4801a6cff3f8fb9  memory/zz_generated_numeric.go
+f59ae6177fde1ad762269bdffb24f421efe86a682f3e74413be79a58d9bba72d  physical/compact.go
+7a407e296b26b0dce215dc8017faa8e6366e2c186f5e2fc5173f2826c7a611df  physical/compact_workspace.go
+6d4ee65778e3d37d1580a402f7df2807f74db92b3770768e53f385e0492369f0  physical/compare32_query_benchmark_test.go
+5e3f32439408d8fbc3b4d1e6418027fb713c9b79f6f973c4319e164825be3e42  physical/directional_fill_review_test.go
+f6f7369dbe3d46d068ad681cc138ef1617af46d51fc4e2eb0060275822b69f7a  physical/doc.go
+d3aa81e46c156f9991d87d9e581c7742703cca8faa53a95c509429b59bb91822  physical/filter.go
+a6b0560732e4737b393a3333a6360f51a3d50521862e6bb971e530eee2344d7c  physical/filter_budget_test.go
+290239b02e7e84854954a109ac2a2ff46616dc5710a145bedd77797960ebe5a0  physical/filter_selection_test.go
+7fa37b463f222464e45a0e60e34cdac44660d083e89712022f01428c44dbed9c  physical/join.go
+825822bf3ff31137f46aaa5229d07260f0ab602aac55f782138c2643241a4bb4  physical/join_materialize.go
+8e5c9826cdb4a3d1841aa9c6a217bf6eb1fdc7ecf7fbe7d27fdacaf351e98eca  physical/join_merge.go
+a55d5ed2875849df37e87c8cecdb71fa55a93b55fe98e2705b5da58a7bdc5aa7  physical/join_reservation_test.go
+a3e4d5924cb594dbc026b06e6579b5eba4d7bd22bca43d641e35e2d479ace157  physical/join_stream.go
+4ed1e587687ea97946ffc7aa61dbefe06402a6b87b06bc613dd2d3cc65ad566a  physical/join_test.go
+0c6b2b2fb228341bd62f38e9f1da22926e9f2899d53ac1b4b170992bf7413d56  physical/kernel_propagation_test.go
+d0e0a8746c19f6472efa7fa68b01deed865451baa8146285abdc08bcadabd1e7  physical/limit.go
+f4fffe33b68606469fb4cd2a1f7e6b52074745b424bacb3243cb773468860417  physical/list_string_test.go
+901d393e47d0e6fb33036126f20d9baaedfc14061ea234110ad5126eb58b4b69  physical/multi_fill_review_test.go
+64baf36db9a87720d655252b90eba65b7ec47ad3983b8225be1877adf335cebc  physical/native_numeric_test.go
+cd256f4e88a2345dcee313cef1558ab923facdb392f3434d68b890d33c8b88a2  physical/numeric_simd_query_test.go
+cd7ea448b89ae59c37d87acf3d11f47d07e7cceff8ccae901b1a11318ec4b6c7  physical/opaque_projection_test.go
+9c5ced9ea6935fbbf9a7a797ec91f0f1c7c54feee65fa544034afffe92bc2f03  physical/order.go
+aa9b79b619c124f223192cc15239e7040328d8c7574c89c0c60df639b2bfc7f0  physical/order_benchmark_test.go
+dc41b7ad2773139bdb0776e77a85643511192a54d8915b3342cb6c42dd1ef30a  physical/order_bool_test.go
+0209d22faf1193f157d0b2158c1841228128f56b5dc2be459c87fb1e2e263847  physical/order_ordinals_test.go
+b55306b45c9fd8f5c4f5b2bf3b965d832f46391ad41982814d458c5566683b22  physical/order_replay_test.go
+8cd6adf2a7e9b033c1a08677abe5f8759ed9379daf06b4ad402cc915333717cc  physical/order_stream.go
+d0e71d4812242a68c8d940bceffbe3969711176abc00830e939e3b4dcd3dc9b6  physical/order_stream_test.go
+f9ec745be2356c3b052061710c13c91aea43d14af84b28b0f145fdf60432ab51  physical/order_test.go
+fe45e372a3d75c84a8cd7fa05ab7bc56fc2444479e4885879ebae87fabcef99b  physical/profile.go
+6a8364bce52e5edf61fa3819331677075f7a7a107fa2702a1561611bc136f598  physical/project.go
+b59d12642b3a37d2c3acc92ae6491a2092691114090c42f4e06efd60a80db607  physical/project_budget_test.go
+4286f2633cc6b2b1c9ce84581ffc3e44ad72ed9ab0c228b2c67f5ca7abba8130  physical/project_payload_test.go
+7f1fcbebfb20d217a8c9f106b488c2e9f81e68c5c03c49d4cab23cc7284fcbcb  physical/project_test.go
+63fd1178f79310137305555635f993c63c87b290f87374d52f29a9ba39ab6026  physical/read_options_test.go
+f9ba4f1b01cf38dbdceee1fd1c78045d7eecebc536a6dc1332c1fd117ddea364  physical/selection_lifetime_review_test.go
+a9cf71f15e3b792d036ea39c7ea81106f16f2fcbaafccaa5eabe735f344b7fe9  physical/selection_project.go
+b910541e6d2fa68eb4f55313e1eaa498276c12e13e9924e8a243f244f09afa60  physical/selection_project_benchmark_test.go
+bb9c0acd46f4bb4f0fab93d80a33950b471f4e5316e1ce0992a910fb8d32391f  physical/selection_project_test.go
+dbc86161d414d2f564f2bfdf54b3457bcc42ccd2dfdf5a4175cf54ef81ffc17b  physical/stream.go
+daa607b5a24df3dd89b6308c859d3274e253717da8e921ba366de25708c08346  physical/stream_test.go
+d82a82858319402b297193ba562ba2b246e301a959599261a8ba7eaf36fe8460  physical/take.go
+1020d43bca85ce6aa3ba7835c13a6aca4bdce8db6e30df39e025e93eee1f207e  physical/unified_expressions_test.go
+553e1d71324422fb01319e3883817a4c42f30fb127e1edcb1690a10e51bd2f3d  physical/window.go
+2d4b1a5539253a086b932c43b1ee6be08b551e10664ca1c932e3c7a039bc5db1  physical/window_fills.go
+4dfb79a6420f3b057229776bce015a5388e396845479d1945386fb653e92f16a  physical/window_fills_benchmark_test.go
+b457514f65081e09690b45779db5e9eea7afdb1edc91a7c9867a6e98f74573e5  physical/window_fills_oracle_test.go
+f7bc448dd4502ae202cd99ea4f777cbb6e99d4827cb8e02dc4eefc9ea5f276fa  physical/window_fills_test.go
+dcb53c0769bca5508e02f793bffe756fbb42bd4ef83352656a25c72265f21eb1  physical/window_lookahead.go
+b38bb258d5a1904bd9b537652b3f602f863f1d846eacc27743bc3a81ef3cde56  physical/window_lookahead_budget.go
+2a5a277a6c0f763759985adcddff08d2f89fa4249df5079d53c80558b8fa61e5  physical/window_lookahead_budget_test.go
+88a3c54b942835303ccdaf6409f3665bf303c8ff39657d10571f8686cef176fd  physical/window_lookahead_review_test.go
+618a64b05f4e4f8dd9e212b215042023b44501c961eaee88620987b635f30597  physical/window_lookahead_test.go
+eb2d96da66741ba158dfeb172a102469b82f4c3a7580c77f2b60749d196dbc25  physical/window_offsets.go
+a24c368229e882359914f684bdaecd1167466a2cb8bf60f1191c85ad54961d79  physical/window_offsets_benchmark_test.go
+3b4f7fd589b21331abc1baad492acc385bb47a84331e7d9ac9e097e9ab4187e0  physical/window_offsets_test.go
+755dd232f9d1e6abb95011e078c0f25873c40822e9dcae83d1e60ac2c0396d2d  physical/window_stream.go
+49cc95f6e7d06c5a4a6fa2792d5d00dcaf7a17f14257b6eb4dbd561473bacf16  kernel.test
+5b0ce6278f6e4afe3143a70d320e234a1cdeb93f835086407c5e911e40dd1d5c  physical.test
+/tmp/tmp.SRxRazVvUY/kernel.test: go1.27.3-X:simd
+	path	gocolumn/kernel.test
+	mod	gocolumn	(devel)	
+	dep	github.com/apache/arrow-go/v18	v18.7.0	h1:Vw/i+cJyebUofT7JlqFpe65LrmwxULn166jjwStM4HY=
+	dep	github.com/goccy/go-json	v0.10.6	h1:p8HrPJzOakx/mn/bQtjgNjdTcN+/S6FcG2CTtQOrHVU=
+	dep	github.com/google/flatbuffers	v25.12.19+incompatible	h1:haMV2JRRJCe1998HeW/p0X9UaMTK6SDo0ffLn2+DbLs=
+	dep	github.com/klauspost/cpuid/v2	v2.4.0	h1:S6Hrbc7+ywsr0r+RLapfGBHfyefhCTwEh3A0tV913Dw=
+	dep	github.com/zeebo/xxh3	v1.1.0	h1:s7DLGDK45Dyfg7++yxI0khrfwq9661w9EN78eP/UZVs=
+	dep	golang.org/x/exp	v0.0.0-20260812173653-3d80eb74bc5b	h1:3XR0v9KL97wjTmRb+6RqMylL4d7ZWM1sQYIITGDxtmg=
+	dep	golang.org/x/sys	v0.47.0	h1:o7XGOvZQCADBQQ4Y7VNq2dRWQR7JmOUW8Kxx4ZsNgWs=
+	build	-buildmode=exe
+	build	-compiler=gc
+	build	CGO_ENABLED=1
+	build	CGO_CFLAGS=
+	build	CGO_CPPFLAGS=
+	build	CGO_CXXFLAGS=
+	build	CGO_LDFLAGS=
+	build	GOARCH=amd64
+	build	GOEXPERIMENT=simd
+	build	GOOS=linux
+	build	GOAMD64=v1
+/tmp/tmp.SRxRazVvUY/physical.test: go1.27.3-X:simd
+	path	gocolumn/physical.test
+	mod	gocolumn	(devel)	
+	dep	github.com/apache/arrow-go/v18	v18.7.0	h1:Vw/i+cJyebUofT7JlqFpe65LrmwxULn166jjwStM4HY=
+	dep	github.com/goccy/go-json	v0.10.6	h1:p8HrPJzOakx/mn/bQtjgNjdTcN+/S6FcG2CTtQOrHVU=
+	dep	github.com/google/flatbuffers	v25.12.19+incompatible	h1:haMV2JRRJCe1998HeW/p0X9UaMTK6SDo0ffLn2+DbLs=
+	dep	github.com/klauspost/cpuid/v2	v2.4.0	h1:S6Hrbc7+ywsr0r+RLapfGBHfyefhCTwEh3A0tV913Dw=
+	dep	github.com/zeebo/xxh3	v1.1.0	h1:s7DLGDK45Dyfg7++yxI0khrfwq9661w9EN78eP/UZVs=
+	dep	golang.org/x/exp	v0.0.0-20260812173653-3d80eb74bc5b	h1:3XR0v9KL97wjTmRb+6RqMylL4d7ZWM1sQYIITGDxtmg=
+	dep	golang.org/x/sync	v0.22.0	h1:SZjpbeLmrCk4xhRSZFNZW5gFUeCeFgjekvI/+gfScek=
+	dep	golang.org/x/sys	v0.47.0	h1:o7XGOvZQCADBQQ4Y7VNq2dRWQR7JmOUW8Kxx4ZsNgWs=
+	build	-buildmode=exe
+	build	-compiler=gc
+	build	CGO_ENABLED=1
+	build	CGO_CFLAGS=
+	build	CGO_CPPFLAGS=
+	build	CGO_CXXFLAGS=
+	build	CGO_LDFLAGS=
+	build	GOARCH=amd64
+	build	GOEXPERIMENT=simd
+	build	GOOS=linux
+	build	GOAMD64=v1
+=== RUN   TestFloat32NativeArithmeticModesTailsAndNulls
+--- PASS: TestFloat32NativeArithmeticModesTailsAndNulls (0.01s)
+=== RUN   TestFloat32NativeComparisonModesTailsAndNulls
+=== RUN   TestFloat32NativeComparisonModesTailsAndNulls/0
+=== RUN   TestFloat32NativeComparisonModesTailsAndNulls/1
+=== RUN   TestFloat32NativeComparisonModesTailsAndNulls/3
+=== RUN   TestFloat32NativeComparisonModesTailsAndNulls/4
+=== RUN   TestFloat32NativeComparisonModesTailsAndNulls/7
+=== RUN   TestFloat32NativeComparisonModesTailsAndNulls/8
+=== RUN   TestFloat32NativeComparisonModesTailsAndNulls/15
+=== RUN   TestFloat32NativeComparisonModesTailsAndNulls/16
+=== RUN   TestFloat32NativeComparisonModesTailsAndNulls/17
+=== RUN   TestFloat32NativeComparisonModesTailsAndNulls/63
+=== RUN   TestFloat32NativeComparisonModesTailsAndNulls/64
+=== RUN   TestFloat32NativeComparisonModesTailsAndNulls/65
+=== RUN   TestFloat32NativeComparisonModesTailsAndNulls/127
+=== RUN   TestFloat32NativeComparisonModesTailsAndNulls/129
+=== RUN   TestFloat32NativeComparisonModesTailsAndNulls/1025
+--- PASS: TestFloat32NativeComparisonModesTailsAndNulls (0.01s)
+    --- PASS: TestFloat32NativeComparisonModesTailsAndNulls/0 (0.00s)
+    --- PASS: TestFloat32NativeComparisonModesTailsAndNulls/1 (0.00s)
+    --- PASS: TestFloat32NativeComparisonModesTailsAndNulls/3 (0.00s)
+    --- PASS: TestFloat32NativeComparisonModesTailsAndNulls/4 (0.00s)
+    --- PASS: TestFloat32NativeComparisonModesTailsAndNulls/7 (0.00s)
+    --- PASS: TestFloat32NativeComparisonModesTailsAndNulls/8 (0.00s)
+    --- PASS: TestFloat32NativeComparisonModesTailsAndNulls/15 (0.00s)
+    --- PASS: TestFloat32NativeComparisonModesTailsAndNulls/16 (0.00s)
+    --- PASS: TestFloat32NativeComparisonModesTailsAndNulls/17 (0.00s)
+    --- PASS: TestFloat32NativeComparisonModesTailsAndNulls/63 (0.00s)
+    --- PASS: TestFloat32NativeComparisonModesTailsAndNulls/64 (0.00s)
+    --- PASS: TestFloat32NativeComparisonModesTailsAndNulls/65 (0.00s)
+    --- PASS: TestFloat32NativeComparisonModesTailsAndNulls/127 (0.00s)
+    --- PASS: TestFloat32NativeComparisonModesTailsAndNulls/129 (0.00s)
+    --- PASS: TestFloat32NativeComparisonModesTailsAndNulls/1025 (0.01s)
+=== RUN   TestFloat32NativeComparisonsAllocateZero
+--- PASS: TestFloat32NativeComparisonsAllocateZero (0.01s)
+=== RUN   TestFloat64NativeComparisonModesTailsAndNulls
+=== RUN   TestFloat64NativeComparisonModesTailsAndNulls/0
+=== RUN   TestFloat64NativeComparisonModesTailsAndNulls/1
+=== RUN   TestFloat64NativeComparisonModesTailsAndNulls/3
+=== RUN   TestFloat64NativeComparisonModesTailsAndNulls/4
+=== RUN   TestFloat64NativeComparisonModesTailsAndNulls/7
+=== RUN   TestFloat64NativeComparisonModesTailsAndNulls/8
+=== RUN   TestFloat64NativeComparisonModesTailsAndNulls/15
+=== RUN   TestFloat64NativeComparisonModesTailsAndNulls/16
+=== RUN   TestFloat64NativeComparisonModesTailsAndNulls/17
+=== RUN   TestFloat64NativeComparisonModesTailsAndNulls/63
+=== RUN   TestFloat64NativeComparisonModesTailsAndNulls/64
+=== RUN   TestFloat64NativeComparisonModesTailsAndNulls/65
+=== RUN   TestFloat64NativeComparisonModesTailsAndNulls/127
+=== RUN   TestFloat64NativeComparisonModesTailsAndNulls/129
+=== RUN   TestFloat64NativeComparisonModesTailsAndNulls/1025
+--- PASS: TestFloat64NativeComparisonModesTailsAndNulls (0.01s)
+    --- PASS: TestFloat64NativeComparisonModesTailsAndNulls/0 (0.00s)
+    --- PASS: TestFloat64NativeComparisonModesTailsAndNulls/1 (0.00s)
+    --- PASS: TestFloat64NativeComparisonModesTailsAndNulls/3 (0.00s)
+    --- PASS: TestFloat64NativeComparisonModesTailsAndNulls/4 (0.00s)
+    --- PASS: TestFloat64NativeComparisonModesTailsAndNulls/7 (0.00s)
+    --- PASS: TestFloat64NativeComparisonModesTailsAndNulls/8 (0.00s)
+    --- PASS: TestFloat64NativeComparisonModesTailsAndNulls/15 (0.00s)
+    --- PASS: TestFloat64NativeComparisonModesTailsAndNulls/16 (0.00s)
+    --- PASS: TestFloat64NativeComparisonModesTailsAndNulls/17 (0.00s)
+    --- PASS: TestFloat64NativeComparisonModesTailsAndNulls/63 (0.00s)
+    --- PASS: TestFloat64NativeComparisonModesTailsAndNulls/64 (0.00s)
+    --- PASS: TestFloat64NativeComparisonModesTailsAndNulls/65 (0.00s)
+    --- PASS: TestFloat64NativeComparisonModesTailsAndNulls/127 (0.00s)
+    --- PASS: TestFloat64NativeComparisonModesTailsAndNulls/129 (0.00s)
+    --- PASS: TestFloat64NativeComparisonModesTailsAndNulls/1025 (0.01s)
+=== RUN   TestFloat64NativeComparisonsAllocateZero
+--- PASS: TestFloat64NativeComparisonsAllocateZero (0.01s)
+=== RUN   TestFloat64NativeArithmeticModesTailsAndNulls
+--- PASS: TestFloat64NativeArithmeticModesTailsAndNulls (0.01s)
+=== RUN   TestNativeWidthCompactionPreservesSelectionOrder
+--- PASS: TestNativeWidthCompactionPreservesSelectionOrder (0.00s)
+=== RUN   TestNativeCompactKernelIDsHaveScalarCapabilities
+--- PASS: TestNativeCompactKernelIDsHaveScalarCapabilities (0.00s)
+=== RUN   TestNativeFloatArithmeticBitPatterns
+--- PASS: TestNativeFloatArithmeticBitPatterns (0.08s)
+=== RUN   TestNativeIntegerLiteralComparisons
+=== RUN   TestNativeIntegerLiteralComparisons/int8
+=== RUN   TestNativeIntegerLiteralComparisons/int32
+=== RUN   TestNativeIntegerLiteralComparisons/int64
+=== RUN   TestNativeIntegerLiteralComparisons/uint32
+=== RUN   TestNativeIntegerLiteralComparisons/uint64
+--- PASS: TestNativeIntegerLiteralComparisons (0.14s)
+    --- PASS: TestNativeIntegerLiteralComparisons/int8 (0.03s)
+    --- PASS: TestNativeIntegerLiteralComparisons/int32 (0.02s)
+    --- PASS: TestNativeIntegerLiteralComparisons/int64 (0.03s)
+    --- PASS: TestNativeIntegerLiteralComparisons/uint32 (0.02s)
+    --- PASS: TestNativeIntegerLiteralComparisons/uint64 (0.03s)
+=== RUN   TestExpandedNumericNativeDispatch
+--- PASS: TestExpandedNumericNativeDispatch (0.00s)
+PASS
+=== RUN   TestNumericSIMDWholeQuery
+=== RUN   TestNumericSIMDWholeQuery/type=int8/op=gt/column=false/nullable=false/mode=scalar
+=== RUN   TestNumericSIMDWholeQuery/type=int8/op=gt/column=false/nullable=false/mode=auto
+=== RUN   TestNumericSIMDWholeQuery/type=int8/op=gt/column=false/nullable=false/mode=forced-simd
+=== RUN   TestNumericSIMDWholeQuery/type=int8/op=gt/column=false/nullable=true/mode=scalar
+=== RUN   TestNumericSIMDWholeQuery/type=int8/op=gt/column=false/nullable=true/mode=auto
+=== RUN   TestNumericSIMDWholeQuery/type=int8/op=gt/column=false/nullable=true/mode=forced-simd
+=== RUN   TestNumericSIMDWholeQuery/type=int8/op=ge/column=false/nullable=false/mode=scalar
+=== RUN   TestNumericSIMDWholeQuery/type=int8/op=ge/column=false/nullable=false/mode=auto
+=== RUN   TestNumericSIMDWholeQuery/type=int8/op=ge/column=false/nullable=false/mode=forced-simd
+=== RUN   TestNumericSIMDWholeQuery/type=int8/op=ge/column=false/nullable=true/mode=scalar
+=== RUN   TestNumericSIMDWholeQuery/type=int8/op=ge/column=false/nullable=true/mode=auto
+=== RUN   TestNumericSIMDWholeQuery/type=int8/op=ge/column=false/nullable=true/mode=forced-simd
+=== RUN   TestNumericSIMDWholeQuery/type=int8/op=lt/column=false/nullable=false/mode=scalar
+=== RUN   TestNumericSIMDWholeQuery/type=int8/op=lt/column=false/nullable=false/mode=auto
+=== RUN   TestNumericSIMDWholeQuery/type=int8/op=lt/column=false/nullable=false/mode=forced-simd
+=== RUN   TestNumericSIMDWholeQuery/type=int8/op=lt/column=false/nullable=true/mode=scalar
+=== RUN   TestNumericSIMDWholeQuery/type=int8/op=lt/column=false/nullable=true/mode=auto
+=== RUN   TestNumericSIMDWholeQuery/type=int8/op=lt/column=false/nullable=true/mode=forced-simd
+=== RUN   TestNumericSIMDWholeQuery/type=int8/op=le/column=false/nullable=false/mode=scalar
+=== RUN   TestNumericSIMDWholeQuery/type=int8/op=le/column=false/nullable=false/mode=auto
+=== RUN   TestNumericSIMDWholeQuery/type=int8/op=le/column=false/nullable=false/mode=forced-simd
+=== RUN   TestNumericSIMDWholeQuery/type=int8/op=le/column=false/nullable=true/mode=scalar
+=== RUN   TestNumericSIMDWholeQuery/type=int8/op=le/column=false/nullable=true/mode=auto
+=== RUN   TestNumericSIMDWholeQuery/type=int8/op=le/column=false/nullable=true/mode=forced-simd
+=== RUN   TestNumericSIMDWholeQuery/type=int8/op=eq/column=false/nullable=false/mode=scalar
+=== RUN   TestNumericSIMDWholeQuery/type=int8/op=eq/column=false/nullable=false/mode=auto
+=== RUN   TestNumericSIMDWholeQuery/type=int8/op=eq/column=false/nullable=false/mode=forced-simd
+=== RUN   TestNumericSIMDWholeQuery/type=int8/op=eq/column=false/nullable=true/mode=scalar
+=== RUN   TestNumericSIMDWholeQuery/type=int8/op=eq/column=false/nullable=true/mode=auto
+=== RUN   TestNumericSIMDWholeQuery/type=int8/op=eq/column=false/nullable=true/mode=forced-simd
+=== RUN   TestNumericSIMDWholeQuery/type=int32/op=gt/column=false/nullable=false/mode=scalar
+=== RUN   TestNumericSIMDWholeQuery/type=int32/op=gt/column=false/nullable=false/mode=auto
+=== RUN   TestNumericSIMDWholeQuery/type=int32/op=gt/column=false/nullable=false/mode=forced-simd
+=== RUN   TestNumericSIMDWholeQuery/type=int32/op=gt/column=false/nullable=true/mode=scalar
+=== RUN   TestNumericSIMDWholeQuery/type=int32/op=gt/column=false/nullable=true/mode=auto
+=== RUN   TestNumericSIMDWholeQuery/type=int32/op=gt/column=false/nullable=true/mode=forced-simd
+=== RUN   TestNumericSIMDWholeQuery/type=int32/op=ge/column=false/nullable=false/mode=scalar
+=== RUN   TestNumericSIMDWholeQuery/type=int32/op=ge/column=false/nullable=false/mode=auto
+=== RUN   TestNumericSIMDWholeQuery/type=int32/op=ge/column=false/nullable=false/mode=forced-simd
+=== RUN   TestNumericSIMDWholeQuery/type=int32/op=ge/column=false/nullable=true/mode=scalar
+=== RUN   TestNumericSIMDWholeQuery/type=int32/op=ge/column=false/nullable=true/mode=auto
+=== RUN   TestNumericSIMDWholeQuery/type=int32/op=ge/column=false/nullable=true/mode=forced-simd
+=== RUN   TestNumericSIMDWholeQuery/type=int32/op=lt/column=false/nullable=false/mode=scalar
+=== RUN   TestNumericSIMDWholeQuery/type=int32/op=lt/column=false/nullable=false/mode=auto
+=== RUN   TestNumericSIMDWholeQuery/type=int32/op=lt/column=false/nullable=false/mode=forced-simd
+=== RUN   TestNumericSIMDWholeQuery/type=int32/op=lt/column=false/nullable=true/mode=scalar
+=== RUN   TestNumericSIMDWholeQuery/type=int32/op=lt/column=false/nullable=true/mode=auto
+=== RUN   TestNumericSIMDWholeQuery/type=int32/op=lt/column=false/nullable=true/mode=forced-simd
+=== RUN   TestNumericSIMDWholeQuery/type=int32/op=le/column=false/nullable=false/mode=scalar
+=== RUN   TestNumericSIMDWholeQuery/type=int32/op=le/column=false/nullable=false/mode=auto
+=== RUN   TestNumericSIMDWholeQuery/type=int32/op=le/column=false/nullable=false/mode=forced-simd
+=== RUN   TestNumericSIMDWholeQuery/type=int32/op=le/column=false/nullable=true/mode=scalar
+=== RUN   TestNumericSIMDWholeQuery/type=int32/op=le/column=false/nullable=true/mode=auto
+=== RUN   TestNumericSIMDWholeQuery/type=int32/op=le/column=false/nullable=true/mode=forced-simd
+=== RUN   TestNumericSIMDWholeQuery/type=int32/op=eq/column=false/nullable=false/mode=scalar
+=== RUN   TestNumericSIMDWholeQuery/type=int32/op=eq/column=false/nullable=false/mode=auto
+=== RUN   TestNumericSIMDWholeQuery/type=int32/op=eq/column=false/nullable=false/mode=forced-simd
+=== RUN   TestNumericSIMDWholeQuery/type=int32/op=eq/column=false/nullable=true/mode=scalar
+=== RUN   TestNumericSIMDWholeQuery/type=int32/op=eq/column=false/nullable=true/mode=auto
+=== RUN   TestNumericSIMDWholeQuery/type=int32/op=eq/column=false/nullable=true/mode=forced-simd
+=== RUN   TestNumericSIMDWholeQuery/type=int64/op=gt/column=false/nullable=false/mode=scalar
+=== RUN   TestNumericSIMDWholeQuery/type=int64/op=gt/column=false/nullable=false/mode=auto
+=== RUN   TestNumericSIMDWholeQuery/type=int64/op=gt/column=false/nullable=false/mode=forced-simd
+=== RUN   TestNumericSIMDWholeQuery/type=int64/op=gt/column=false/nullable=true/mode=scalar
+=== RUN   TestNumericSIMDWholeQuery/type=int64/op=gt/column=false/nullable=true/mode=auto
+=== RUN   TestNumericSIMDWholeQuery/type=int64/op=gt/column=false/nullable=true/mode=forced-simd
+=== RUN   TestNumericSIMDWholeQuery/type=int64/op=ge/column=false/nullable=false/mode=scalar
+=== RUN   TestNumericSIMDWholeQuery/type=int64/op=ge/column=false/nullable=false/mode=auto
+=== RUN   TestNumericSIMDWholeQuery/type=int64/op=ge/column=false/nullable=false/mode=forced-simd
+=== RUN   TestNumericSIMDWholeQuery/type=int64/op=ge/column=false/nullable=true/mode=scalar
+=== RUN   TestNumericSIMDWholeQuery/type=int64/op=ge/column=false/nullable=true/mode=auto
+=== RUN   TestNumericSIMDWholeQuery/type=int64/op=ge/column=false/nullable=true/mode=forced-simd
+=== RUN   TestNumericSIMDWholeQuery/type=int64/op=lt/column=false/nullable=false/mode=scalar
+=== RUN   TestNumericSIMDWholeQuery/type=int64/op=lt/column=false/nullable=false/mode=auto
+=== RUN   TestNumericSIMDWholeQuery/type=int64/op=lt/column=false/nullable=false/mode=forced-simd
+=== RUN   TestNumericSIMDWholeQuery/type=int64/op=lt/column=false/nullable=true/mode=scalar
+=== RUN   TestNumericSIMDWholeQuery/type=int64/op=lt/column=false/nullable=true/mode=auto
+=== RUN   TestNumericSIMDWholeQuery/type=int64/op=lt/column=false/nullable=true/mode=forced-simd
+=== RUN   TestNumericSIMDWholeQuery/type=int64/op=le/column=false/nullable=false/mode=scalar
+=== RUN   TestNumericSIMDWholeQuery/type=int64/op=le/column=false/nullable=false/mode=auto
+=== RUN   TestNumericSIMDWholeQuery/type=int64/op=le/column=false/nullable=false/mode=forced-simd
+=== RUN   TestNumericSIMDWholeQuery/type=int64/op=le/column=false/nullable=true/mode=scalar
+=== RUN   TestNumericSIMDWholeQuery/type=int64/op=le/column=false/nullable=true/mode=auto
+=== RUN   TestNumericSIMDWholeQuery/type=int64/op=le/column=false/nullable=true/mode=forced-simd
+=== RUN   TestNumericSIMDWholeQuery/type=int64/op=eq/column=false/nullable=false/mode=scalar
+=== RUN   TestNumericSIMDWholeQuery/type=int64/op=eq/column=false/nullable=false/mode=auto
+=== RUN   TestNumericSIMDWholeQuery/type=int64/op=eq/column=false/nullable=false/mode=forced-simd
+=== RUN   TestNumericSIMDWholeQuery/type=int64/op=eq/column=false/nullable=true/mode=scalar
+=== RUN   TestNumericSIMDWholeQuery/type=int64/op=eq/column=false/nullable=true/mode=auto
+=== RUN   TestNumericSIMDWholeQuery/type=int64/op=eq/column=false/nullable=true/mode=forced-simd
+=== RUN   TestNumericSIMDWholeQuery/type=uint32/op=gt/column=false/nullable=false/mode=scalar
+=== RUN   TestNumericSIMDWholeQuery/type=uint32/op=gt/column=false/nullable=false/mode=auto
+=== RUN   TestNumericSIMDWholeQuery/type=uint32/op=gt/column=false/nullable=false/mode=forced-simd
+=== RUN   TestNumericSIMDWholeQuery/type=uint32/op=gt/column=false/nullable=true/mode=scalar
+=== RUN   TestNumericSIMDWholeQuery/type=uint32/op=gt/column=false/nullable=true/mode=auto
+=== RUN   TestNumericSIMDWholeQuery/type=uint32/op=gt/column=false/nullable=true/mode=forced-simd
+=== RUN   TestNumericSIMDWholeQuery/type=uint32/op=ge/column=false/nullable=false/mode=scalar
+=== RUN   TestNumericSIMDWholeQuery/type=uint32/op=ge/column=false/nullable=false/mode=auto
+=== RUN   TestNumericSIMDWholeQuery/type=uint32/op=ge/column=false/nullable=false/mode=forced-simd
+=== RUN   TestNumericSIMDWholeQuery/type=uint32/op=ge/column=false/nullable=true/mode=scalar
+=== RUN   TestNumericSIMDWholeQuery/type=uint32/op=ge/column=false/nullable=true/mode=auto
+=== RUN   TestNumericSIMDWholeQuery/type=uint32/op=ge/column=false/nullable=true/mode=forced-simd
+=== RUN   TestNumericSIMDWholeQuery/type=uint32/op=lt/column=false/nullable=false/mode=scalar
+=== RUN   TestNumericSIMDWholeQuery/type=uint32/op=lt/column=false/nullable=false/mode=auto
+=== RUN   TestNumericSIMDWholeQuery/type=uint32/op=lt/column=false/nullable=false/mode=forced-simd
+=== RUN   TestNumericSIMDWholeQuery/type=uint32/op=lt/column=false/nullable=true/mode=scalar
+=== RUN   TestNumericSIMDWholeQuery/type=uint32/op=lt/column=false/nullable=true/mode=auto
+=== RUN   TestNumericSIMDWholeQuery/type=uint32/op=lt/column=false/nullable=true/mode=forced-simd
+=== RUN   TestNumericSIMDWholeQuery/type=uint32/op=le/column=false/nullable=false/mode=scalar
+=== RUN   TestNumericSIMDWholeQuery/type=uint32/op=le/column=false/nullable=false/mode=auto
+=== RUN   TestNumericSIMDWholeQuery/type=uint32/op=le/column=false/nullable=false/mode=forced-simd
+=== RUN   TestNumericSIMDWholeQuery/type=uint32/op=le/column=false/nullable=true/mode=scalar
+=== RUN   TestNumericSIMDWholeQuery/type=uint32/op=le/column=false/nullable=true/mode=auto
+=== RUN   TestNumericSIMDWholeQuery/type=uint32/op=le/column=false/nullable=true/mode=forced-simd
+=== RUN   TestNumericSIMDWholeQuery/type=uint32/op=eq/column=false/nullable=false/mode=scalar
+=== RUN   TestNumericSIMDWholeQuery/type=uint32/op=eq/column=false/nullable=false/mode=auto
+=== RUN   TestNumericSIMDWholeQuery/type=uint32/op=eq/column=false/nullable=false/mode=forced-simd
+=== RUN   TestNumericSIMDWholeQuery/type=uint32/op=eq/column=false/nullable=true/mode=scalar
+=== RUN   TestNumericSIMDWholeQuery/type=uint32/op=eq/column=false/nullable=true/mode=auto
+=== RUN   TestNumericSIMDWholeQuery/type=uint32/op=eq/column=false/nullable=true/mode=forced-simd
+=== RUN   TestNumericSIMDWholeQuery/type=uint64/op=gt/column=false/nullable=false/mode=scalar
+=== RUN   TestNumericSIMDWholeQuery/type=uint64/op=gt/column=false/nullable=false/mode=auto
+=== RUN   TestNumericSIMDWholeQuery/type=uint64/op=gt/column=false/nullable=false/mode=forced-simd
+=== RUN   TestNumericSIMDWholeQuery/type=uint64/op=gt/column=false/nullable=true/mode=scalar
+=== RUN   TestNumericSIMDWholeQuery/type=uint64/op=gt/column=false/nullable=true/mode=auto
+=== RUN   TestNumericSIMDWholeQuery/type=uint64/op=gt/column=false/nullable=true/mode=forced-simd
+=== RUN   TestNumericSIMDWholeQuery/type=uint64/op=ge/column=false/nullable=false/mode=scalar
+=== RUN   TestNumericSIMDWholeQuery/type=uint64/op=ge/column=false/nullable=false/mode=auto
+=== RUN   TestNumericSIMDWholeQuery/type=uint64/op=ge/column=false/nullable=false/mode=forced-simd
+=== RUN   TestNumericSIMDWholeQuery/type=uint64/op=ge/column=false/nullable=true/mode=scalar
+=== RUN   TestNumericSIMDWholeQuery/type=uint64/op=ge/column=false/nullable=true/mode=auto
+=== RUN   TestNumericSIMDWholeQuery/type=uint64/op=ge/column=false/nullable=true/mode=forced-simd
+=== RUN   TestNumericSIMDWholeQuery/type=uint64/op=lt/column=false/nullable=false/mode=scalar
+=== RUN   TestNumericSIMDWholeQuery/type=uint64/op=lt/column=false/nullable=false/mode=auto
+=== RUN   TestNumericSIMDWholeQuery/type=uint64/op=lt/column=false/nullable=false/mode=forced-simd
+=== RUN   TestNumericSIMDWholeQuery/type=uint64/op=lt/column=false/nullable=true/mode=scalar
+=== RUN   TestNumericSIMDWholeQuery/type=uint64/op=lt/column=false/nullable=true/mode=auto
+=== RUN   TestNumericSIMDWholeQuery/type=uint64/op=lt/column=false/nullable=true/mode=forced-simd
+=== RUN   TestNumericSIMDWholeQuery/type=uint64/op=le/column=false/nullable=false/mode=scalar
+=== RUN   TestNumericSIMDWholeQuery/type=uint64/op=le/column=false/nullable=false/mode=auto
+=== RUN   TestNumericSIMDWholeQuery/type=uint64/op=le/column=false/nullable=false/mode=forced-simd
+=== RUN   TestNumericSIMDWholeQuery/type=uint64/op=le/column=false/nullable=true/mode=scalar
+=== RUN   TestNumericSIMDWholeQuery/type=uint64/op=le/column=false/nullable=true/mode=auto
+=== RUN   TestNumericSIMDWholeQuery/type=uint64/op=le/column=false/nullable=true/mode=forced-simd
+=== RUN   TestNumericSIMDWholeQuery/type=uint64/op=eq/column=false/nullable=false/mode=scalar
+=== RUN   TestNumericSIMDWholeQuery/type=uint64/op=eq/column=false/nullable=false/mode=auto
+=== RUN   TestNumericSIMDWholeQuery/type=uint64/op=eq/column=false/nullable=false/mode=forced-simd
+=== RUN   TestNumericSIMDWholeQuery/type=uint64/op=eq/column=false/nullable=true/mode=scalar
+=== RUN   TestNumericSIMDWholeQuery/type=uint64/op=eq/column=false/nullable=true/mode=auto
+=== RUN   TestNumericSIMDWholeQuery/type=uint64/op=eq/column=false/nullable=true/mode=forced-simd
+=== RUN   TestNumericSIMDWholeQuery/type=float64/op=gt/column=false/nullable=false/mode=scalar
+=== RUN   TestNumericSIMDWholeQuery/type=float64/op=gt/column=false/nullable=false/mode=auto
+=== RUN   TestNumericSIMDWholeQuery/type=float64/op=gt/column=false/nullable=false/mode=forced-simd
+=== RUN   TestNumericSIMDWholeQuery/type=float64/op=gt/column=false/nullable=true/mode=scalar
+=== RUN   TestNumericSIMDWholeQuery/type=float64/op=gt/column=false/nullable=true/mode=auto
+=== RUN   TestNumericSIMDWholeQuery/type=float64/op=gt/column=false/nullable=true/mode=forced-simd
+=== RUN   TestNumericSIMDWholeQuery/type=float64/op=gt/column=true/nullable=false/mode=scalar
+=== RUN   TestNumericSIMDWholeQuery/type=float64/op=gt/column=true/nullable=false/mode=auto
+=== RUN   TestNumericSIMDWholeQuery/type=float64/op=gt/column=true/nullable=false/mode=forced-simd
+=== RUN   TestNumericSIMDWholeQuery/type=float64/op=gt/column=true/nullable=true/mode=scalar
+=== RUN   TestNumericSIMDWholeQuery/type=float64/op=gt/column=true/nullable=true/mode=auto
+=== RUN   TestNumericSIMDWholeQuery/type=float64/op=gt/column=true/nullable=true/mode=forced-simd
+=== RUN   TestNumericSIMDWholeQuery/type=float64/op=ge/column=false/nullable=false/mode=scalar
+=== RUN   TestNumericSIMDWholeQuery/type=float64/op=ge/column=false/nullable=false/mode=auto
+=== RUN   TestNumericSIMDWholeQuery/type=float64/op=ge/column=false/nullable=false/mode=forced-simd
+=== RUN   TestNumericSIMDWholeQuery/type=float64/op=ge/column=false/nullable=true/mode=scalar
+=== RUN   TestNumericSIMDWholeQuery/type=float64/op=ge/column=false/nullable=true/mode=auto
+=== RUN   TestNumericSIMDWholeQuery/type=float64/op=ge/column=false/nullable=true/mode=forced-simd
+=== RUN   TestNumericSIMDWholeQuery/type=float64/op=ge/column=true/nullable=false/mode=scalar
+=== RUN   TestNumericSIMDWholeQuery/type=float64/op=ge/column=true/nullable=false/mode=auto
+=== RUN   TestNumericSIMDWholeQuery/type=float64/op=ge/column=true/nullable=false/mode=forced-simd
+=== RUN   TestNumericSIMDWholeQuery/type=float64/op=ge/column=true/nullable=true/mode=scalar
+=== RUN   TestNumericSIMDWholeQuery/type=float64/op=ge/column=true/nullable=true/mode=auto
+=== RUN   TestNumericSIMDWholeQuery/type=float64/op=ge/column=true/nullable=true/mode=forced-simd
+=== RUN   TestNumericSIMDWholeQuery/type=float64/op=lt/column=false/nullable=false/mode=scalar
+=== RUN   TestNumericSIMDWholeQuery/type=float64/op=lt/column=false/nullable=false/mode=auto
+=== RUN   TestNumericSIMDWholeQuery/type=float64/op=lt/column=false/nullable=false/mode=forced-simd
+=== RUN   TestNumericSIMDWholeQuery/type=float64/op=lt/column=false/nullable=true/mode=scalar
+=== RUN   TestNumericSIMDWholeQuery/type=float64/op=lt/column=false/nullable=true/mode=auto
+=== RUN   TestNumericSIMDWholeQuery/type=float64/op=lt/column=false/nullable=true/mode=forced-simd
+=== RUN   TestNumericSIMDWholeQuery/type=float64/op=lt/column=true/nullable=false/mode=scalar
+=== RUN   TestNumericSIMDWholeQuery/type=float64/op=lt/column=true/nullable=false/mode=auto
+=== RUN   TestNumericSIMDWholeQuery/type=float64/op=lt/column=true/nullable=false/mode=forced-simd
+=== RUN   TestNumericSIMDWholeQuery/type=float64/op=lt/column=true/nullable=true/mode=scalar
+=== RUN   TestNumericSIMDWholeQuery/type=float64/op=lt/column=true/nullable=true/mode=auto
+=== RUN   TestNumericSIMDWholeQuery/type=float64/op=lt/column=true/nullable=true/mode=forced-simd
+=== RUN   TestNumericSIMDWholeQuery/type=float64/op=le/column=false/nullable=false/mode=scalar
+=== RUN   TestNumericSIMDWholeQuery/type=float64/op=le/column=false/nullable=false/mode=auto
+=== RUN   TestNumericSIMDWholeQuery/type=float64/op=le/column=false/nullable=false/mode=forced-simd
+=== RUN   TestNumericSIMDWholeQuery/type=float64/op=le/column=false/nullable=true/mode=scalar
+=== RUN   TestNumericSIMDWholeQuery/type=float64/op=le/column=false/nullable=true/mode=auto
+=== RUN   TestNumericSIMDWholeQuery/type=float64/op=le/column=false/nullable=true/mode=forced-simd
+=== RUN   TestNumericSIMDWholeQuery/type=float64/op=le/column=true/nullable=false/mode=scalar
+=== RUN   TestNumericSIMDWholeQuery/type=float64/op=le/column=true/nullable=false/mode=auto
+=== RUN   TestNumericSIMDWholeQuery/type=float64/op=le/column=true/nullable=false/mode=forced-simd
+=== RUN   TestNumericSIMDWholeQuery/type=float64/op=le/column=true/nullable=true/mode=scalar
+=== RUN   TestNumericSIMDWholeQuery/type=float64/op=le/column=true/nullable=true/mode=auto
+=== RUN   TestNumericSIMDWholeQuery/type=float64/op=le/column=true/nullable=true/mode=forced-simd
+=== RUN   TestNumericSIMDWholeQuery/type=float64/op=eq/column=false/nullable=false/mode=scalar
+=== RUN   TestNumericSIMDWholeQuery/type=float64/op=eq/column=false/nullable=false/mode=auto
+=== RUN   TestNumericSIMDWholeQuery/type=float64/op=eq/column=false/nullable=false/mode=forced-simd
+=== RUN   TestNumericSIMDWholeQuery/type=float64/op=eq/column=false/nullable=true/mode=scalar
+=== RUN   TestNumericSIMDWholeQuery/type=float64/op=eq/column=false/nullable=true/mode=auto
+=== RUN   TestNumericSIMDWholeQuery/type=float64/op=eq/column=false/nullable=true/mode=forced-simd
+=== RUN   TestNumericSIMDWholeQuery/type=float64/op=eq/column=true/nullable=false/mode=scalar
+=== RUN   TestNumericSIMDWholeQuery/type=float64/op=eq/column=true/nullable=false/mode=auto
+=== RUN   TestNumericSIMDWholeQuery/type=float64/op=eq/column=true/nullable=false/mode=forced-simd
+=== RUN   TestNumericSIMDWholeQuery/type=float64/op=eq/column=true/nullable=true/mode=scalar
+=== RUN   TestNumericSIMDWholeQuery/type=float64/op=eq/column=true/nullable=true/mode=auto
+=== RUN   TestNumericSIMDWholeQuery/type=float64/op=eq/column=true/nullable=true/mode=forced-simd
+=== RUN   TestNumericSIMDWholeQuery/type=float64/op=add/column=true/nullable=false/mode=scalar
+=== RUN   TestNumericSIMDWholeQuery/type=float64/op=add/column=true/nullable=false/mode=auto
+=== RUN   TestNumericSIMDWholeQuery/type=float64/op=add/column=true/nullable=false/mode=forced-simd
+=== RUN   TestNumericSIMDWholeQuery/type=float64/op=add/column=true/nullable=true/mode=scalar
+=== RUN   TestNumericSIMDWholeQuery/type=float64/op=add/column=true/nullable=true/mode=auto
+=== RUN   TestNumericSIMDWholeQuery/type=float64/op=add/column=true/nullable=true/mode=forced-simd
+=== RUN   TestNumericSIMDWholeQuery/type=float32/op=add/column=true/nullable=false/mode=scalar
+=== RUN   TestNumericSIMDWholeQuery/type=float32/op=add/column=true/nullable=false/mode=auto
+=== RUN   TestNumericSIMDWholeQuery/type=float32/op=add/column=true/nullable=false/mode=forced-simd
+=== RUN   TestNumericSIMDWholeQuery/type=float32/op=add/column=true/nullable=true/mode=scalar
+=== RUN   TestNumericSIMDWholeQuery/type=float32/op=add/column=true/nullable=true/mode=auto
+=== RUN   TestNumericSIMDWholeQuery/type=float32/op=add/column=true/nullable=true/mode=forced-simd
+=== RUN   TestNumericSIMDWholeQuery/type=float32/op=sub/column=true/nullable=false/mode=scalar
+=== RUN   TestNumericSIMDWholeQuery/type=float32/op=sub/column=true/nullable=false/mode=auto
+=== RUN   TestNumericSIMDWholeQuery/type=float32/op=sub/column=true/nullable=false/mode=forced-simd
+=== RUN   TestNumericSIMDWholeQuery/type=float32/op=sub/column=true/nullable=true/mode=scalar
+=== RUN   TestNumericSIMDWholeQuery/type=float32/op=sub/column=true/nullable=true/mode=auto
+=== RUN   TestNumericSIMDWholeQuery/type=float32/op=sub/column=true/nullable=true/mode=forced-simd
+=== RUN   TestNumericSIMDWholeQuery/type=float32/op=mul/column=true/nullable=false/mode=scalar
+=== RUN   TestNumericSIMDWholeQuery/type=float32/op=mul/column=true/nullable=false/mode=auto
+=== RUN   TestNumericSIMDWholeQuery/type=float32/op=mul/column=true/nullable=false/mode=forced-simd
+=== RUN   TestNumericSIMDWholeQuery/type=float32/op=mul/column=true/nullable=true/mode=scalar
+=== RUN   TestNumericSIMDWholeQuery/type=float32/op=mul/column=true/nullable=true/mode=auto
+=== RUN   TestNumericSIMDWholeQuery/type=float32/op=mul/column=true/nullable=true/mode=forced-simd
+=== RUN   TestNumericSIMDWholeQuery/type=float32/op=div/column=true/nullable=false/mode=scalar
+=== RUN   TestNumericSIMDWholeQuery/type=float32/op=div/column=true/nullable=false/mode=auto
+=== RUN   TestNumericSIMDWholeQuery/type=float32/op=div/column=true/nullable=false/mode=forced-simd
+=== RUN   TestNumericSIMDWholeQuery/type=float32/op=div/column=true/nullable=true/mode=scalar
+=== RUN   TestNumericSIMDWholeQuery/type=float32/op=div/column=true/nullable=true/mode=auto
+=== RUN   TestNumericSIMDWholeQuery/type=float32/op=div/column=true/nullable=true/mode=forced-simd
+--- PASS: TestNumericSIMDWholeQuery (0.06s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int8/op=gt/column=false/nullable=false/mode=scalar (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int8/op=gt/column=false/nullable=false/mode=auto (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int8/op=gt/column=false/nullable=false/mode=forced-simd (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int8/op=gt/column=false/nullable=true/mode=scalar (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int8/op=gt/column=false/nullable=true/mode=auto (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int8/op=gt/column=false/nullable=true/mode=forced-simd (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int8/op=ge/column=false/nullable=false/mode=scalar (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int8/op=ge/column=false/nullable=false/mode=auto (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int8/op=ge/column=false/nullable=false/mode=forced-simd (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int8/op=ge/column=false/nullable=true/mode=scalar (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int8/op=ge/column=false/nullable=true/mode=auto (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int8/op=ge/column=false/nullable=true/mode=forced-simd (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int8/op=lt/column=false/nullable=false/mode=scalar (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int8/op=lt/column=false/nullable=false/mode=auto (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int8/op=lt/column=false/nullable=false/mode=forced-simd (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int8/op=lt/column=false/nullable=true/mode=scalar (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int8/op=lt/column=false/nullable=true/mode=auto (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int8/op=lt/column=false/nullable=true/mode=forced-simd (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int8/op=le/column=false/nullable=false/mode=scalar (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int8/op=le/column=false/nullable=false/mode=auto (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int8/op=le/column=false/nullable=false/mode=forced-simd (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int8/op=le/column=false/nullable=true/mode=scalar (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int8/op=le/column=false/nullable=true/mode=auto (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int8/op=le/column=false/nullable=true/mode=forced-simd (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int8/op=eq/column=false/nullable=false/mode=scalar (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int8/op=eq/column=false/nullable=false/mode=auto (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int8/op=eq/column=false/nullable=false/mode=forced-simd (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int8/op=eq/column=false/nullable=true/mode=scalar (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int8/op=eq/column=false/nullable=true/mode=auto (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int8/op=eq/column=false/nullable=true/mode=forced-simd (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int32/op=gt/column=false/nullable=false/mode=scalar (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int32/op=gt/column=false/nullable=false/mode=auto (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int32/op=gt/column=false/nullable=false/mode=forced-simd (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int32/op=gt/column=false/nullable=true/mode=scalar (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int32/op=gt/column=false/nullable=true/mode=auto (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int32/op=gt/column=false/nullable=true/mode=forced-simd (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int32/op=ge/column=false/nullable=false/mode=scalar (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int32/op=ge/column=false/nullable=false/mode=auto (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int32/op=ge/column=false/nullable=false/mode=forced-simd (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int32/op=ge/column=false/nullable=true/mode=scalar (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int32/op=ge/column=false/nullable=true/mode=auto (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int32/op=ge/column=false/nullable=true/mode=forced-simd (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int32/op=lt/column=false/nullable=false/mode=scalar (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int32/op=lt/column=false/nullable=false/mode=auto (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int32/op=lt/column=false/nullable=false/mode=forced-simd (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int32/op=lt/column=false/nullable=true/mode=scalar (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int32/op=lt/column=false/nullable=true/mode=auto (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int32/op=lt/column=false/nullable=true/mode=forced-simd (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int32/op=le/column=false/nullable=false/mode=scalar (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int32/op=le/column=false/nullable=false/mode=auto (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int32/op=le/column=false/nullable=false/mode=forced-simd (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int32/op=le/column=false/nullable=true/mode=scalar (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int32/op=le/column=false/nullable=true/mode=auto (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int32/op=le/column=false/nullable=true/mode=forced-simd (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int32/op=eq/column=false/nullable=false/mode=scalar (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int32/op=eq/column=false/nullable=false/mode=auto (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int32/op=eq/column=false/nullable=false/mode=forced-simd (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int32/op=eq/column=false/nullable=true/mode=scalar (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int32/op=eq/column=false/nullable=true/mode=auto (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int32/op=eq/column=false/nullable=true/mode=forced-simd (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int64/op=gt/column=false/nullable=false/mode=scalar (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int64/op=gt/column=false/nullable=false/mode=auto (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int64/op=gt/column=false/nullable=false/mode=forced-simd (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int64/op=gt/column=false/nullable=true/mode=scalar (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int64/op=gt/column=false/nullable=true/mode=auto (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int64/op=gt/column=false/nullable=true/mode=forced-simd (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int64/op=ge/column=false/nullable=false/mode=scalar (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int64/op=ge/column=false/nullable=false/mode=auto (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int64/op=ge/column=false/nullable=false/mode=forced-simd (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int64/op=ge/column=false/nullable=true/mode=scalar (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int64/op=ge/column=false/nullable=true/mode=auto (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int64/op=ge/column=false/nullable=true/mode=forced-simd (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int64/op=lt/column=false/nullable=false/mode=scalar (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int64/op=lt/column=false/nullable=false/mode=auto (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int64/op=lt/column=false/nullable=false/mode=forced-simd (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int64/op=lt/column=false/nullable=true/mode=scalar (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int64/op=lt/column=false/nullable=true/mode=auto (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int64/op=lt/column=false/nullable=true/mode=forced-simd (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int64/op=le/column=false/nullable=false/mode=scalar (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int64/op=le/column=false/nullable=false/mode=auto (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int64/op=le/column=false/nullable=false/mode=forced-simd (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int64/op=le/column=false/nullable=true/mode=scalar (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int64/op=le/column=false/nullable=true/mode=auto (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int64/op=le/column=false/nullable=true/mode=forced-simd (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int64/op=eq/column=false/nullable=false/mode=scalar (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int64/op=eq/column=false/nullable=false/mode=auto (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int64/op=eq/column=false/nullable=false/mode=forced-simd (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int64/op=eq/column=false/nullable=true/mode=scalar (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int64/op=eq/column=false/nullable=true/mode=auto (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=int64/op=eq/column=false/nullable=true/mode=forced-simd (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=uint32/op=gt/column=false/nullable=false/mode=scalar (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=uint32/op=gt/column=false/nullable=false/mode=auto (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=uint32/op=gt/column=false/nullable=false/mode=forced-simd (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=uint32/op=gt/column=false/nullable=true/mode=scalar (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=uint32/op=gt/column=false/nullable=true/mode=auto (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=uint32/op=gt/column=false/nullable=true/mode=forced-simd (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=uint32/op=ge/column=false/nullable=false/mode=scalar (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=uint32/op=ge/column=false/nullable=false/mode=auto (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=uint32/op=ge/column=false/nullable=false/mode=forced-simd (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=uint32/op=ge/column=false/nullable=true/mode=scalar (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=uint32/op=ge/column=false/nullable=true/mode=auto (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=uint32/op=ge/column=false/nullable=true/mode=forced-simd (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=uint32/op=lt/column=false/nullable=false/mode=scalar (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=uint32/op=lt/column=false/nullable=false/mode=auto (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=uint32/op=lt/column=false/nullable=false/mode=forced-simd (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=uint32/op=lt/column=false/nullable=true/mode=scalar (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=uint32/op=lt/column=false/nullable=true/mode=auto (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=uint32/op=lt/column=false/nullable=true/mode=forced-simd (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=uint32/op=le/column=false/nullable=false/mode=scalar (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=uint32/op=le/column=false/nullable=false/mode=auto (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=uint32/op=le/column=false/nullable=false/mode=forced-simd (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=uint32/op=le/column=false/nullable=true/mode=scalar (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=uint32/op=le/column=false/nullable=true/mode=auto (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=uint32/op=le/column=false/nullable=true/mode=forced-simd (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=uint32/op=eq/column=false/nullable=false/mode=scalar (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=uint32/op=eq/column=false/nullable=false/mode=auto (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=uint32/op=eq/column=false/nullable=false/mode=forced-simd (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=uint32/op=eq/column=false/nullable=true/mode=scalar (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=uint32/op=eq/column=false/nullable=true/mode=auto (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=uint32/op=eq/column=false/nullable=true/mode=forced-simd (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=uint64/op=gt/column=false/nullable=false/mode=scalar (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=uint64/op=gt/column=false/nullable=false/mode=auto (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=uint64/op=gt/column=false/nullable=false/mode=forced-simd (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=uint64/op=gt/column=false/nullable=true/mode=scalar (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=uint64/op=gt/column=false/nullable=true/mode=auto (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=uint64/op=gt/column=false/nullable=true/mode=forced-simd (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=uint64/op=ge/column=false/nullable=false/mode=scalar (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=uint64/op=ge/column=false/nullable=false/mode=auto (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=uint64/op=ge/column=false/nullable=false/mode=forced-simd (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=uint64/op=ge/column=false/nullable=true/mode=scalar (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=uint64/op=ge/column=false/nullable=true/mode=auto (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=uint64/op=ge/column=false/nullable=true/mode=forced-simd (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=uint64/op=lt/column=false/nullable=false/mode=scalar (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=uint64/op=lt/column=false/nullable=false/mode=auto (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=uint64/op=lt/column=false/nullable=false/mode=forced-simd (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=uint64/op=lt/column=false/nullable=true/mode=scalar (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=uint64/op=lt/column=false/nullable=true/mode=auto (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=uint64/op=lt/column=false/nullable=true/mode=forced-simd (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=uint64/op=le/column=false/nullable=false/mode=scalar (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=uint64/op=le/column=false/nullable=false/mode=auto (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=uint64/op=le/column=false/nullable=false/mode=forced-simd (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=uint64/op=le/column=false/nullable=true/mode=scalar (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=uint64/op=le/column=false/nullable=true/mode=auto (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=uint64/op=le/column=false/nullable=true/mode=forced-simd (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=uint64/op=eq/column=false/nullable=false/mode=scalar (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=uint64/op=eq/column=false/nullable=false/mode=auto (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=uint64/op=eq/column=false/nullable=false/mode=forced-simd (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=uint64/op=eq/column=false/nullable=true/mode=scalar (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=uint64/op=eq/column=false/nullable=true/mode=auto (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=uint64/op=eq/column=false/nullable=true/mode=forced-simd (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float64/op=gt/column=false/nullable=false/mode=scalar (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float64/op=gt/column=false/nullable=false/mode=auto (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float64/op=gt/column=false/nullable=false/mode=forced-simd (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float64/op=gt/column=false/nullable=true/mode=scalar (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float64/op=gt/column=false/nullable=true/mode=auto (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float64/op=gt/column=false/nullable=true/mode=forced-simd (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float64/op=gt/column=true/nullable=false/mode=scalar (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float64/op=gt/column=true/nullable=false/mode=auto (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float64/op=gt/column=true/nullable=false/mode=forced-simd (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float64/op=gt/column=true/nullable=true/mode=scalar (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float64/op=gt/column=true/nullable=true/mode=auto (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float64/op=gt/column=true/nullable=true/mode=forced-simd (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float64/op=ge/column=false/nullable=false/mode=scalar (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float64/op=ge/column=false/nullable=false/mode=auto (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float64/op=ge/column=false/nullable=false/mode=forced-simd (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float64/op=ge/column=false/nullable=true/mode=scalar (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float64/op=ge/column=false/nullable=true/mode=auto (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float64/op=ge/column=false/nullable=true/mode=forced-simd (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float64/op=ge/column=true/nullable=false/mode=scalar (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float64/op=ge/column=true/nullable=false/mode=auto (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float64/op=ge/column=true/nullable=false/mode=forced-simd (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float64/op=ge/column=true/nullable=true/mode=scalar (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float64/op=ge/column=true/nullable=true/mode=auto (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float64/op=ge/column=true/nullable=true/mode=forced-simd (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float64/op=lt/column=false/nullable=false/mode=scalar (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float64/op=lt/column=false/nullable=false/mode=auto (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float64/op=lt/column=false/nullable=false/mode=forced-simd (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float64/op=lt/column=false/nullable=true/mode=scalar (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float64/op=lt/column=false/nullable=true/mode=auto (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float64/op=lt/column=false/nullable=true/mode=forced-simd (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float64/op=lt/column=true/nullable=false/mode=scalar (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float64/op=lt/column=true/nullable=false/mode=auto (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float64/op=lt/column=true/nullable=false/mode=forced-simd (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float64/op=lt/column=true/nullable=true/mode=scalar (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float64/op=lt/column=true/nullable=true/mode=auto (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float64/op=lt/column=true/nullable=true/mode=forced-simd (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float64/op=le/column=false/nullable=false/mode=scalar (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float64/op=le/column=false/nullable=false/mode=auto (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float64/op=le/column=false/nullable=false/mode=forced-simd (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float64/op=le/column=false/nullable=true/mode=scalar (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float64/op=le/column=false/nullable=true/mode=auto (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float64/op=le/column=false/nullable=true/mode=forced-simd (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float64/op=le/column=true/nullable=false/mode=scalar (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float64/op=le/column=true/nullable=false/mode=auto (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float64/op=le/column=true/nullable=false/mode=forced-simd (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float64/op=le/column=true/nullable=true/mode=scalar (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float64/op=le/column=true/nullable=true/mode=auto (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float64/op=le/column=true/nullable=true/mode=forced-simd (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float64/op=eq/column=false/nullable=false/mode=scalar (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float64/op=eq/column=false/nullable=false/mode=auto (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float64/op=eq/column=false/nullable=false/mode=forced-simd (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float64/op=eq/column=false/nullable=true/mode=scalar (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float64/op=eq/column=false/nullable=true/mode=auto (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float64/op=eq/column=false/nullable=true/mode=forced-simd (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float64/op=eq/column=true/nullable=false/mode=scalar (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float64/op=eq/column=true/nullable=false/mode=auto (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float64/op=eq/column=true/nullable=false/mode=forced-simd (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float64/op=eq/column=true/nullable=true/mode=scalar (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float64/op=eq/column=true/nullable=true/mode=auto (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float64/op=eq/column=true/nullable=true/mode=forced-simd (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float64/op=add/column=true/nullable=false/mode=scalar (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float64/op=add/column=true/nullable=false/mode=auto (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float64/op=add/column=true/nullable=false/mode=forced-simd (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float64/op=add/column=true/nullable=true/mode=scalar (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float64/op=add/column=true/nullable=true/mode=auto (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float64/op=add/column=true/nullable=true/mode=forced-simd (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float32/op=add/column=true/nullable=false/mode=scalar (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float32/op=add/column=true/nullable=false/mode=auto (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float32/op=add/column=true/nullable=false/mode=forced-simd (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float32/op=add/column=true/nullable=true/mode=scalar (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float32/op=add/column=true/nullable=true/mode=auto (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float32/op=add/column=true/nullable=true/mode=forced-simd (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float32/op=sub/column=true/nullable=false/mode=scalar (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float32/op=sub/column=true/nullable=false/mode=auto (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float32/op=sub/column=true/nullable=false/mode=forced-simd (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float32/op=sub/column=true/nullable=true/mode=scalar (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float32/op=sub/column=true/nullable=true/mode=auto (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float32/op=sub/column=true/nullable=true/mode=forced-simd (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float32/op=mul/column=true/nullable=false/mode=scalar (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float32/op=mul/column=true/nullable=false/mode=auto (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float32/op=mul/column=true/nullable=false/mode=forced-simd (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float32/op=mul/column=true/nullable=true/mode=scalar (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float32/op=mul/column=true/nullable=true/mode=auto (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float32/op=mul/column=true/nullable=true/mode=forced-simd (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float32/op=div/column=true/nullable=false/mode=scalar (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float32/op=div/column=true/nullable=false/mode=auto (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float32/op=div/column=true/nullable=false/mode=forced-simd (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float32/op=div/column=true/nullable=true/mode=scalar (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float32/op=div/column=true/nullable=true/mode=auto (0.00s)
+    --- PASS: TestNumericSIMDWholeQuery/type=float32/op=div/column=true/nullable=true/mode=forced-simd (0.00s)
+=== RUN   TestNumericSIMDWholeQueryAllocations
+=== RUN   TestNumericSIMDWholeQueryAllocations/type=float64/op=add/column=true/nullable=false
+=== RUN   TestNumericSIMDWholeQueryAllocations/type=float64/op=add/column=true/nullable=true
+=== RUN   TestNumericSIMDWholeQueryAllocations/type=float64/op=gt/column=false/nullable=false
+=== RUN   TestNumericSIMDWholeQueryAllocations/type=float64/op=gt/column=false/nullable=true
+=== RUN   TestNumericSIMDWholeQueryAllocations/type=float64/op=le/column=true/nullable=false
+=== RUN   TestNumericSIMDWholeQueryAllocations/type=float64/op=le/column=true/nullable=true
+=== RUN   TestNumericSIMDWholeQueryAllocations/type=int8/op=gt/column=false/nullable=false
+=== RUN   TestNumericSIMDWholeQueryAllocations/type=int8/op=gt/column=false/nullable=true
+=== RUN   TestNumericSIMDWholeQueryAllocations/type=int32/op=gt/column=false/nullable=false
+=== RUN   TestNumericSIMDWholeQueryAllocations/type=int32/op=gt/column=false/nullable=true
+=== RUN   TestNumericSIMDWholeQueryAllocations/type=int64/op=gt/column=false/nullable=false
+=== RUN   TestNumericSIMDWholeQueryAllocations/type=int64/op=gt/column=false/nullable=true
+=== RUN   TestNumericSIMDWholeQueryAllocations/type=uint32/op=gt/column=false/nullable=false
+=== RUN   TestNumericSIMDWholeQueryAllocations/type=uint32/op=gt/column=false/nullable=true
+=== RUN   TestNumericSIMDWholeQueryAllocations/type=uint64/op=gt/column=false/nullable=false
+=== RUN   TestNumericSIMDWholeQueryAllocations/type=uint64/op=gt/column=false/nullable=true
+=== RUN   TestNumericSIMDWholeQueryAllocations/type=float32/op=div/column=true/nullable=false
+=== RUN   TestNumericSIMDWholeQueryAllocations/type=float32/op=div/column=true/nullable=true
+--- PASS: TestNumericSIMDWholeQueryAllocations (0.06s)
+    --- PASS: TestNumericSIMDWholeQueryAllocations/type=float64/op=add/column=true/nullable=false (0.00s)
+    --- PASS: TestNumericSIMDWholeQueryAllocations/type=float64/op=add/column=true/nullable=true (0.00s)
+    --- PASS: TestNumericSIMDWholeQueryAllocations/type=float64/op=gt/column=false/nullable=false (0.00s)
+    --- PASS: TestNumericSIMDWholeQueryAllocations/type=float64/op=gt/column=false/nullable=true (0.00s)
+    --- PASS: TestNumericSIMDWholeQueryAllocations/type=float64/op=le/column=true/nullable=false (0.00s)
+    --- PASS: TestNumericSIMDWholeQueryAllocations/type=float64/op=le/column=true/nullable=true (0.00s)
+    --- PASS: TestNumericSIMDWholeQueryAllocations/type=int8/op=gt/column=false/nullable=false (0.00s)
+    --- PASS: TestNumericSIMDWholeQueryAllocations/type=int8/op=gt/column=false/nullable=true (0.00s)
+    --- PASS: TestNumericSIMDWholeQueryAllocations/type=int32/op=gt/column=false/nullable=false (0.00s)
+    --- PASS: TestNumericSIMDWholeQueryAllocations/type=int32/op=gt/column=false/nullable=true (0.00s)
+    --- PASS: TestNumericSIMDWholeQueryAllocations/type=int64/op=gt/column=false/nullable=false (0.00s)
+    --- PASS: TestNumericSIMDWholeQueryAllocations/type=int64/op=gt/column=false/nullable=true (0.00s)
+    --- PASS: TestNumericSIMDWholeQueryAllocations/type=uint32/op=gt/column=false/nullable=false (0.00s)
+    --- PASS: TestNumericSIMDWholeQueryAllocations/type=uint32/op=gt/column=false/nullable=true (0.00s)
+    --- PASS: TestNumericSIMDWholeQueryAllocations/type=uint64/op=gt/column=false/nullable=false (0.00s)
+    --- PASS: TestNumericSIMDWholeQueryAllocations/type=uint64/op=gt/column=false/nullable=true (0.00s)
+    --- PASS: TestNumericSIMDWholeQueryAllocations/type=float32/op=div/column=true/nullable=false (0.01s)
+    --- PASS: TestNumericSIMDWholeQueryAllocations/type=float32/op=div/column=true/nullable=true (0.01s)
+PASS

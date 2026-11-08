@@ -1,0 +1,34 @@
+go version go1.27.3 linux/amd64
+Final re-review after short-input scalar guards. Independent IEEE vector probe plus actual Set integer oracle.
+=== GODEBUG=simd=0 ===
+PASS emulated=true width=128 rows=65536 arithmetic_non_nan_bit_exact=true ordered_comparisons=true nan_payload_differences=20
+PASS int8
+PASS int32
+PASS int64
+PASS uint32
+PASS uint64
+PASS
+=== GODEBUG=simd=+128 ===
+PASS emulated=false width=128 rows=65536 arithmetic_non_nan_bit_exact=true ordered_comparisons=true nan_payload_differences=0
+PASS int8
+PASS int32
+PASS int64
+PASS uint32
+PASS uint64
+PASS
+=== GODEBUG=simd=+256 ===
+PASS emulated=false width=256 rows=65536 arithmetic_non_nan_bit_exact=true ordered_comparisons=true nan_payload_differences=0
+PASS int8
+PASS int32
+PASS int64
+PASS uint32
+PASS uint64
+PASS
+=== GODEBUG=simd=+512 ===
+PASS emulated=false width=512 rows=65536 arithmetic_non_nan_bit_exact=true ordered_comparisons=true nan_payload_differences=0
+PASS int8
+PASS int32
+PASS int64
+PASS uint32
+PASS uint64
+PASS

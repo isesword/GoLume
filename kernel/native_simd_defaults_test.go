@@ -26,7 +26,7 @@ func TestAutoSelectsAvailableNativeSIMD(t *testing.T) {
 		for op := CompareGT; op <= CompareEQ; op++ {
 			id, _ := ComparisonID(memory.TypeFloat32, op)
 			check(id)
-			for _, typ := range []memory.DataType{memory.TypeInt32, memory.TypeUint32, memory.TypeFloat32} {
+			for _, typ := range []memory.DataType{memory.TypeInt32, memory.TypeUint32, memory.TypeFloat32, memory.TypeFloat64} {
 				capability, ok := set.ColumnComparisonCapability(typ, op)
 				if !ok || capability.HardwareSIMD != wantNative || capability.Emulated {
 					t.Fatalf("mode=%s column type=%s op=%s capability=%+v ok=%t", mode, typ, op, capability, ok)
@@ -36,7 +36,7 @@ func TestAutoSelectsAvailableNativeSIMD(t *testing.T) {
 				}
 			}
 		}
-		for _, op := range []ArithmeticOp{ArithmeticSub, ArithmeticMul, ArithmeticDiv} {
+		for _, op := range []ArithmeticOp{ArithmeticAdd, ArithmeticSub, ArithmeticMul, ArithmeticDiv} {
 			id, _ := ArithmeticID(memory.TypeFloat64, op)
 			check(id)
 		}

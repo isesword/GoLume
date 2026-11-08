@@ -205,3 +205,19 @@
 - [ ] 性能结论来自最终代码版本。
 - [ ] 没有以兼容、临时分支或 forced-only 失败实现掩盖未完成工作。
 - [ ] 最终报告明确哪些真正加速、哪些保持 scalar、原因和仍缺失的硬件验收。
+
+
+## 2026-11-08 contiguous numeric stage
+
+Implemented Float64 Add and ordered literal/column comparisons, native Float32
+Add/Sub/Mul/Div kernels, and all five literal comparisons for the existing
+Int8/Int32/Int64/Uint32/Uint64 dispatch families. Portable native selection preserves
+runtime emulation guards and existing arm64 overrides. See
+[validation/numeric-native](../validation/numeric-native/README.md) for the exact
+correctness, native execution, cross-compilation, and measurement scope.
+
+Remaining: Int16/Uint8/Uint16 literal dispatch; wider integer column comparisons;
+Float32 expression arithmetic currently promotes to Float64 and is not a native
+Float32 kernel call. Keep this public type behavior until a separate semantics
+change is requested. Next optimize mask packing/null handling with measured query
+and memory effects, then profile aggregation/compaction before selecting more work.

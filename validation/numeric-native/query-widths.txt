@@ -1,0 +1,11 @@
+Command: go test ./physical -run ^TestNumericSIMDWholeQuery -count=1
+go version go1.27.3 linux/amd64
+ok  	gocolumn/physical	0.197s
+GOEXPERIMENT=simd GODEBUG=simd=0 go test ./physical -run ^TestNumericSIMDWholeQuery -count=1
+ok  	gocolumn/physical	0.153s
+GOEXPERIMENT=simd GODEBUG=simd=+128 go test ./physical -run ^TestNumericSIMDWholeQuery -count=1
+ok  	gocolumn/physical	0.201s
+GOEXPERIMENT=simd GODEBUG=simd=+256 go test ./physical -run ^TestNumericSIMDWholeQuery -count=1
+ok  	gocolumn/physical	0.182s
+GOEXPERIMENT=simd GODEBUG=simd=+512 go test ./physical -run ^TestNumericSIMDWholeQuery -count=1
+ok  	gocolumn/physical	0.229s

@@ -1,0 +1,658 @@
+go version go1.27.3 linux/amd64
+Linux x86_64
+GOEXPERIMENT=simd GOMAXPROCS=1 go test ./kernel -run ^$ -bench ^BenchmarkNative -benchtime=100ms -count=3 -cpu=1
+Exploratory fixed-order three samples; shared host; fixture/setup excluded
+goos: linux
+goarch: amd64
+pkg: gocolumn/kernel
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkNativeFloatArithmetic/float32/add/rows=7/null=false/scalar         	 2002375	        68.81 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/add/rows=7/null=false/scalar         	 2214592	        82.02 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/add/rows=7/null=false/scalar         	 1882494	        56.51 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float64/add/rows=7/null=false/scalar         	 2793409	        77.22 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float64/add/rows=7/null=false/scalar         	 1000000	       157.8 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float64/add/rows=7/null=false/scalar         	 1000000	       172.2 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/sub/rows=7/null=false/scalar         	 2106819	        87.23 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/sub/rows=7/null=false/scalar         	 1000000	       126.2 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/sub/rows=7/null=false/scalar         	 1310323	        98.84 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/mul/rows=7/null=false/scalar         	 1000000	       121.1 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/mul/rows=7/null=false/scalar         	 3095049	        53.49 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/mul/rows=7/null=false/scalar         	 1000000	       156.2 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/div/rows=7/null=false/scalar         	 3450026	        34.00 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/div/rows=7/null=false/scalar         	 3113140	        73.83 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/div/rows=7/null=false/scalar         	 1000000	       153.8 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/add/rows=7/null=false/auto           	 1313082	        89.52 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/add/rows=7/null=false/auto           	 1208257	        92.35 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/add/rows=7/null=false/auto           	 1000000	       139.7 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float64/add/rows=7/null=false/auto           	 1000000	       171.1 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float64/add/rows=7/null=false/auto           	 1000000	       145.8 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float64/add/rows=7/null=false/auto           	 1000000	       115.7 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/sub/rows=7/null=false/auto           	 1554837	        86.97 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/sub/rows=7/null=false/auto           	 1703941	        60.11 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/sub/rows=7/null=false/auto           	 1363472	        87.72 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/mul/rows=7/null=false/auto           	 1351945	        83.04 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/mul/rows=7/null=false/auto           	 1000000	       127.6 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/mul/rows=7/null=false/auto           	 1708102	        60.87 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/div/rows=7/null=false/auto           	 2767082	        37.40 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/div/rows=7/null=false/auto           	 5647062	        33.60 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/div/rows=7/null=false/auto           	 5021860	        44.47 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/add/rows=7/null=false/forced-simd    	 2078697	        63.15 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/add/rows=7/null=false/forced-simd    	 2516564	        49.69 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/add/rows=7/null=false/forced-simd    	 3884352	        35.19 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float64/add/rows=7/null=false/forced-simd    	 3717658	        31.77 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float64/add/rows=7/null=false/forced-simd    	 4450755	        35.14 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float64/add/rows=7/null=false/forced-simd    	 3954111	        26.50 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/sub/rows=7/null=false/forced-simd    	 2436364	        45.36 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/sub/rows=7/null=false/forced-simd    	 3701353	        28.50 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/sub/rows=7/null=false/forced-simd    	 2773981	        52.04 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/mul/rows=7/null=false/forced-simd    	 1347783	        83.73 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/mul/rows=7/null=false/forced-simd    	 2057347	        59.21 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/mul/rows=7/null=false/forced-simd    	 3281916	        33.23 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/div/rows=7/null=false/forced-simd    	 2538736	        42.32 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/div/rows=7/null=false/forced-simd    	 1000000	       107.8 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/div/rows=7/null=false/forced-simd    	 1521907	        90.31 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/add/rows=7/null=true/scalar          	 1000000	       100.6 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/add/rows=7/null=true/scalar          	 1650433	        76.36 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/add/rows=7/null=true/scalar          	 1684603	        62.95 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float64/add/rows=7/null=true/scalar          	 1578194	        85.99 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float64/add/rows=7/null=true/scalar          	 1805574	        69.83 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float64/add/rows=7/null=true/scalar          	 1230428	        96.62 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/sub/rows=7/null=true/scalar          	 2373774	        43.83 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/sub/rows=7/null=true/scalar          	 6699820	        19.18 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/sub/rows=7/null=true/scalar          	 4006113	        28.55 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/mul/rows=7/null=true/scalar          	 6172155	        22.62 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/mul/rows=7/null=true/scalar          	 2000156	        53.76 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/mul/rows=7/null=true/scalar          	 2116689	        50.83 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/div/rows=7/null=true/scalar          	 2059964	        51.74 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/div/rows=7/null=true/scalar          	 2084139	        48.75 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/div/rows=7/null=true/scalar          	 2392309	        45.00 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/add/rows=7/null=true/auto            	 1381676	        91.87 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/add/rows=7/null=true/auto            	 1646322	        65.65 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/add/rows=7/null=true/auto            	 2542348	        61.60 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float64/add/rows=7/null=true/auto            	 2060330	        64.85 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float64/add/rows=7/null=true/auto            	 1000000	       100.7 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float64/add/rows=7/null=true/auto            	 1000000	       105.5 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/sub/rows=7/null=true/auto            	 2239642	        47.37 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/sub/rows=7/null=true/auto            	 2935218	        46.43 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/sub/rows=7/null=true/auto            	 3516436	        35.88 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/mul/rows=7/null=true/auto            	 3232125	        48.02 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/mul/rows=7/null=true/auto            	 4159728	        53.53 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/mul/rows=7/null=true/auto            	 2735337	        53.92 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/div/rows=7/null=true/auto            	 2873810	        45.03 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/div/rows=7/null=true/auto            	 2308431	        49.04 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/div/rows=7/null=true/auto            	 4091510	        36.26 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/add/rows=7/null=true/forced-simd     	 3425755	        38.00 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/add/rows=7/null=true/forced-simd     	 2987812	        50.35 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/add/rows=7/null=true/forced-simd     	 1000000	       105.3 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float64/add/rows=7/null=true/forced-simd     	 3301993	        41.13 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float64/add/rows=7/null=true/forced-simd     	 1490173	       116.5 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float64/add/rows=7/null=true/forced-simd     	 1259024	        84.46 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/sub/rows=7/null=true/forced-simd     	 3358791	        43.74 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/sub/rows=7/null=true/forced-simd     	 1528267	        69.10 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/sub/rows=7/null=true/forced-simd     	 3395283	        74.25 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/mul/rows=7/null=true/forced-simd     	 2290636	        54.78 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/mul/rows=7/null=true/forced-simd     	 2087703	        55.13 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/mul/rows=7/null=true/forced-simd     	 3464316	        35.10 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/div/rows=7/null=true/forced-simd     	 4801778	        31.34 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/div/rows=7/null=true/forced-simd     	 3187546	        32.75 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/div/rows=7/null=true/forced-simd     	 3167197	        46.34 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/add/rows=1025/null=false/scalar      	   27632	      4972 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/add/rows=1025/null=false/scalar      	   15786	      6920 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/add/rows=1025/null=false/scalar      	   23367	      5412 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float64/add/rows=1025/null=false/scalar      	   28785	      3905 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float64/add/rows=1025/null=false/scalar      	   34689	      7029 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float64/add/rows=1025/null=false/scalar      	   53307	      2618 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/sub/rows=1025/null=false/scalar      	   45404	      2416 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/sub/rows=1025/null=false/scalar      	  106640	      7406 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/sub/rows=1025/null=false/scalar      	   59671	      1776 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/mul/rows=1025/null=false/scalar      	   43678	      2705 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/mul/rows=1025/null=false/scalar      	   44287	      2859 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/mul/rows=1025/null=false/scalar      	   50570	      3039 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/div/rows=1025/null=false/scalar      	   63799	      1864 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/div/rows=1025/null=false/scalar      	   76574	      1690 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/div/rows=1025/null=false/scalar      	   92258	      1317 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/add/rows=1025/null=false/auto        	  327423	       524.6 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/add/rows=1025/null=false/auto        	  321932	       540.9 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/add/rows=1025/null=false/auto        	  253129	       505.7 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float64/add/rows=1025/null=false/auto        	  187174	       856.6 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float64/add/rows=1025/null=false/auto        	  169305	       783.1 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float64/add/rows=1025/null=false/auto        	  219688	       923.9 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/sub/rows=1025/null=false/auto        	  268648	       571.9 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/sub/rows=1025/null=false/auto        	  281636	       504.7 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/sub/rows=1025/null=false/auto        	  335475	       610.1 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/mul/rows=1025/null=false/auto        	  243278	       490.7 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/mul/rows=1025/null=false/auto        	  219280	       575.2 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/mul/rows=1025/null=false/auto        	  259075	       573.5 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/div/rows=1025/null=false/auto        	  223573	       516.0 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/div/rows=1025/null=false/auto        	  270531	       627.0 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/div/rows=1025/null=false/auto        	  263320	       609.6 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/add/rows=1025/null=false/forced-simd 	  198902	       686.9 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/add/rows=1025/null=false/forced-simd 	  161716	       643.6 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/add/rows=1025/null=false/forced-simd 	  145191	       913.5 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float64/add/rows=1025/null=false/forced-simd 	  150020	       854.5 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float64/add/rows=1025/null=false/forced-simd 	  111891	       983.7 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float64/add/rows=1025/null=false/forced-simd 	  158101	       800.8 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/sub/rows=1025/null=false/forced-simd 	  220861	       579.4 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/sub/rows=1025/null=false/forced-simd 	  226663	       561.8 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/sub/rows=1025/null=false/forced-simd 	  268866	       565.2 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/mul/rows=1025/null=false/forced-simd 	  255778	       509.8 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/mul/rows=1025/null=false/forced-simd 	  145119	       706.0 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/mul/rows=1025/null=false/forced-simd 	  203311	       698.0 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/div/rows=1025/null=false/forced-simd 	  148941	       776.0 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/div/rows=1025/null=false/forced-simd 	  257379	       653.4 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/div/rows=1025/null=false/forced-simd 	  206286	       589.3 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/add/rows=1025/null=true/scalar       	   45578	      2933 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/add/rows=1025/null=true/scalar       	   37680	      3301 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/add/rows=1025/null=true/scalar       	   45324	      2867 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float64/add/rows=1025/null=true/scalar       	   48836	      2723 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float64/add/rows=1025/null=true/scalar       	   58729	      2754 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float64/add/rows=1025/null=true/scalar       	   46460	      2623 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/sub/rows=1025/null=true/scalar       	   60652	      2222 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/sub/rows=1025/null=true/scalar       	   63321	      2258 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/sub/rows=1025/null=true/scalar       	   47798	      2378 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/mul/rows=1025/null=true/scalar       	   50769	      2299 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/mul/rows=1025/null=true/scalar       	   43089	      2709 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/mul/rows=1025/null=true/scalar       	   52384	      2372 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/div/rows=1025/null=true/scalar       	   61608	      2124 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/div/rows=1025/null=true/scalar       	   51886	      2111 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/div/rows=1025/null=true/scalar       	   50683	      2517 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/add/rows=1025/null=true/auto         	   91807	      1152 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/add/rows=1025/null=true/auto         	  141661	      1102 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/add/rows=1025/null=true/auto         	  149463	       952.1 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float64/add/rows=1025/null=true/auto         	   71467	      1499 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float64/add/rows=1025/null=true/auto         	  129272	      1595 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float64/add/rows=1025/null=true/auto         	   75264	      1543 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/sub/rows=1025/null=true/auto         	  115376	      1226 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/sub/rows=1025/null=true/auto         	  114225	       984.9 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/sub/rows=1025/null=true/auto         	  106410	      1180 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/mul/rows=1025/null=true/auto         	  166594	      1136 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/mul/rows=1025/null=true/auto         	  105115	      1228 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/mul/rows=1025/null=true/auto         	  137006	      1024 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/div/rows=1025/null=true/auto         	  121155	       940.4 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/div/rows=1025/null=true/auto         	  144420	      1100 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/div/rows=1025/null=true/auto         	  105595	      1138 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/add/rows=1025/null=true/forced-simd  	  140246	      1235 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/add/rows=1025/null=true/forced-simd  	  142411	       929.6 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/add/rows=1025/null=true/forced-simd  	  149067	      1020 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float64/add/rows=1025/null=true/forced-simd  	   85011	      1430 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float64/add/rows=1025/null=true/forced-simd  	   69416	      1623 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float64/add/rows=1025/null=true/forced-simd  	   73208	      1522 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/sub/rows=1025/null=true/forced-simd  	  136258	      1066 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/sub/rows=1025/null=true/forced-simd  	  118335	       973.4 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/sub/rows=1025/null=true/forced-simd  	  117081	      1240 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/mul/rows=1025/null=true/forced-simd  	  149644	      1056 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/mul/rows=1025/null=true/forced-simd  	   88867	      1292 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/mul/rows=1025/null=true/forced-simd  	  110244	      1089 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/div/rows=1025/null=true/forced-simd  	   91460	      1235 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/div/rows=1025/null=true/forced-simd  	  106231	      1089 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/div/rows=1025/null=true/forced-simd  	  116403	      1150 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/add/rows=65536/null=false/scalar     	     842	    134430 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/add/rows=65536/null=false/scalar     	     703	    161277 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/add/rows=65536/null=false/scalar     	    1125	    124930 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float64/add/rows=65536/null=false/scalar     	     790	    147641 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float64/add/rows=65536/null=false/scalar     	     984	    146363 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float64/add/rows=65536/null=false/scalar     	     795	    154287 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/sub/rows=65536/null=false/scalar     	    1580	     88689 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/sub/rows=65536/null=false/scalar     	    1521	     78694 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/sub/rows=65536/null=false/scalar     	    1422	     77951 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/mul/rows=65536/null=false/scalar     	     806	    143497 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/mul/rows=65536/null=false/scalar     	     928	    135349 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/mul/rows=65536/null=false/scalar     	     663	    163603 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/div/rows=65536/null=false/scalar     	    1471	     82769 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/div/rows=65536/null=false/scalar     	    1029	    150467 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/div/rows=65536/null=false/scalar     	    1436	    103859 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/add/rows=65536/null=false/auto       	    4770	     27781 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/add/rows=65536/null=false/auto       	    6499	     36295 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/add/rows=65536/null=false/auto       	    6517	     27206 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float64/add/rows=65536/null=false/auto       	    3060	     44677 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float64/add/rows=65536/null=false/auto       	    3039	     49932 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float64/add/rows=65536/null=false/auto       	    3182	     45817 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/sub/rows=65536/null=false/auto       	    5773	     20327 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/sub/rows=65536/null=false/auto       	    6536	     19553 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/sub/rows=65536/null=false/auto       	    7282	     20505 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/mul/rows=65536/null=false/auto       	    6284	     20495 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/mul/rows=65536/null=false/auto       	    6018	     20340 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/mul/rows=65536/null=false/auto       	    5857	     21268 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/div/rows=65536/null=false/auto       	    8028	     19776 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/div/rows=65536/null=false/auto       	    9079	     18712 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/div/rows=65536/null=false/auto       	    6158	     21512 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/add/rows=65536/null=false/forced-simd         	    4974	     20349 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/add/rows=65536/null=false/forced-simd         	    6986	     19498 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/add/rows=65536/null=false/forced-simd         	    6570	     21497 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float64/add/rows=65536/null=false/forced-simd         	    2698	     47388 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float64/add/rows=65536/null=false/forced-simd         	    2972	     44336 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float64/add/rows=65536/null=false/forced-simd         	    2858	     46054 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/sub/rows=65536/null=false/forced-simd         	    5145	     21240 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/sub/rows=65536/null=false/forced-simd         	    5424	     21147 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/sub/rows=65536/null=false/forced-simd         	    4833	     20698 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/mul/rows=65536/null=false/forced-simd         	    5587	     20552 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/mul/rows=65536/null=false/forced-simd         	    6945	     20594 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/mul/rows=65536/null=false/forced-simd         	    5164	     19974 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/div/rows=65536/null=false/forced-simd         	    7719	     20378 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/div/rows=65536/null=false/forced-simd         	    6922	     17488 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/div/rows=65536/null=false/forced-simd         	    7879	     18039 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/add/rows=65536/null=true/scalar               	     982	    116274 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/add/rows=65536/null=true/scalar               	     954	    108550 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/add/rows=65536/null=true/scalar               	     949	    113678 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float64/add/rows=65536/null=true/scalar               	     938	    132446 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float64/add/rows=65536/null=true/scalar               	    1011	    130329 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float64/add/rows=65536/null=true/scalar               	    1024	    125596 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/sub/rows=65536/null=true/scalar               	    1226	    115051 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/sub/rows=65536/null=true/scalar               	    1462	    110513 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/sub/rows=65536/null=true/scalar               	     949	    112113 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/mul/rows=65536/null=true/scalar               	     991	    114909 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/mul/rows=65536/null=true/scalar               	    1068	    187422 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/mul/rows=65536/null=true/scalar               	     892	    124656 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/div/rows=65536/null=true/scalar               	    1131	    204686 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/div/rows=65536/null=true/scalar               	    1209	     96281 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/div/rows=65536/null=true/scalar               	    1237	    101537 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/add/rows=65536/null=true/auto                 	    2706	     46905 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/add/rows=65536/null=true/auto                 	    2860	     42557 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/add/rows=65536/null=true/auto                 	    3348	     50212 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float64/add/rows=65536/null=true/auto                 	    1563	     77195 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float64/add/rows=65536/null=true/auto                 	    1658	     74538 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float64/add/rows=65536/null=true/auto                 	    1599	     78125 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/sub/rows=65536/null=true/auto                 	    2584	     49658 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/sub/rows=65536/null=true/auto                 	    3482	     43988 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/sub/rows=65536/null=true/auto                 	    3116	     46363 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/mul/rows=65536/null=true/auto                 	    3000	     44987 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/mul/rows=65536/null=true/auto                 	    2504	     46913 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/mul/rows=65536/null=true/auto                 	    2563	     43937 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/div/rows=65536/null=true/auto                 	    3321	     39878 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/div/rows=65536/null=true/auto                 	    2696	     45509 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/div/rows=65536/null=true/auto                 	    2691	     46602 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/add/rows=65536/null=true/forced-simd          	    2246	     47781 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/add/rows=65536/null=true/forced-simd          	    2734	     45929 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/add/rows=65536/null=true/forced-simd          	    2557	     44827 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float64/add/rows=65536/null=true/forced-simd          	    1666	     79726 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float64/add/rows=65536/null=true/forced-simd          	    1339	     81025 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float64/add/rows=65536/null=true/forced-simd          	    1645	     84179 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/sub/rows=65536/null=true/forced-simd          	    2325	     45557 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/sub/rows=65536/null=true/forced-simd          	    2436	     45951 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/sub/rows=65536/null=true/forced-simd          	    2709	     48571 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/mul/rows=65536/null=true/forced-simd          	    2530	     48570 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/mul/rows=65536/null=true/forced-simd          	    2434	     43550 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/mul/rows=65536/null=true/forced-simd          	    2636	     51666 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/div/rows=65536/null=true/forced-simd          	    3114	     38728 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/div/rows=65536/null=true/forced-simd          	    3620	     43574 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloatArithmetic/float32/div/rows=65536/null=true/forced-simd          	    2150	     48177 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=7/null=false/scalar              	 5643609	        21.18 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=7/null=false/scalar              	 6474156	        19.75 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=7/null=false/scalar              	 5929450	        21.78 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=7/null=false/scalar               	 2895835	        38.00 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=7/null=false/scalar               	 3366261	        37.97 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=7/null=false/scalar               	 3301860	        37.96 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=7/null=false/auto                	  400258	       262.7 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=7/null=false/auto                	  480114	       235.0 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=7/null=false/auto                	  629770	       249.7 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=7/null=false/auto                 	 3284434	        34.13 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=7/null=false/auto                 	 3139536	        37.37 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=7/null=false/auto                 	 3978890	        33.89 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=7/null=false/forced-simd         	  503592	       240.4 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=7/null=false/forced-simd         	  485215	       236.2 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=7/null=false/forced-simd         	  558028	       230.7 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=7/null=false/forced-simd          	 3101751	        34.40 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=7/null=false/forced-simd          	 4004644	        30.38 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=7/null=false/forced-simd          	 3280520	        32.87 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=7/null=true/scalar               	 4836562	        24.06 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=7/null=true/scalar               	 5683647	        20.55 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=7/null=true/scalar               	 6363285	        18.02 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=7/null=true/scalar                	 5607444	        24.05 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=7/null=true/scalar                	 3956156	        27.24 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=7/null=true/scalar                	 4146013	        28.04 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=7/null=true/auto                 	  551634	       237.6 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=7/null=true/auto                 	  504502	       221.0 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=7/null=true/auto                 	  472328	       232.3 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=7/null=true/auto                  	 3229855	        33.12 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=7/null=true/auto                  	 3406869	        35.88 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=7/null=true/auto                  	 3501796	        35.16 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=7/null=true/forced-simd          	  435548	       241.5 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=7/null=true/forced-simd          	  453848	       232.7 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=7/null=true/forced-simd          	  525428	       242.0 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=7/null=true/forced-simd           	 3414553	        36.03 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=7/null=true/forced-simd           	 2854035	        37.74 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=7/null=true/forced-simd           	 2816290	        38.91 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=1025/null=false/scalar           	   53658	      2667 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=1025/null=false/scalar           	   46629	      2768 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=1025/null=false/scalar           	   42968	      2462 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=1025/null=false/scalar            	   39984	      3055 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=1025/null=false/scalar            	   32696	      3702 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=1025/null=false/scalar            	   35923	      3424 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=1025/null=false/auto             	   62246	      1934 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=1025/null=false/auto             	   47901	      2682 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=1025/null=false/auto             	   61450	      1947 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=1025/null=false/auto              	   45150	      2394 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=1025/null=false/auto              	   52851	      2511 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=1025/null=false/auto              	   55658	      1990 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=1025/null=false/forced-simd      	   65955	      2119 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=1025/null=false/forced-simd      	   68494	      1969 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=1025/null=false/forced-simd      	   58947	      2515 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=1025/null=false/forced-simd       	   28018	      3585 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=1025/null=false/forced-simd       	   50941	      2274 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=1025/null=false/forced-simd       	   47935	      2365 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=1025/null=true/scalar            	   56743	      1891 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=1025/null=true/scalar            	   56094	      2312 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=1025/null=true/scalar            	   53151	      2197 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=1025/null=true/scalar             	   28720	      3664 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=1025/null=true/scalar             	   27021	      4125 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=1025/null=true/scalar             	   40714	      2812 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=1025/null=true/auto              	   59950	      1911 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=1025/null=true/auto              	   56155	      2074 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=1025/null=true/auto              	   60967	      1723 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=1025/null=true/auto               	   31371	      4067 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=1025/null=true/auto               	   20428	      5155 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=1025/null=true/auto               	   36434	      4432 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=1025/null=true/forced-simd       	   38599	      2991 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=1025/null=true/forced-simd       	   42170	      2871 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=1025/null=true/forced-simd       	   59175	      2488 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=1025/null=true/forced-simd        	   37099	      2920 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=1025/null=true/forced-simd        	   70868	      2489 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=1025/null=true/forced-simd        	   36948	      2980 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=65536/null=false/scalar          	     630	    191543 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=65536/null=false/scalar          	     504	    240372 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=65536/null=false/scalar          	     565	    195793 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=65536/null=false/scalar           	     310	    366327 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=65536/null=false/scalar           	     391	    270618 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=65536/null=false/scalar           	     552	    274700 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=65536/null=false/auto            	     810	    157306 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=65536/null=false/auto            	     939	    142070 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=65536/null=false/auto            	     946	    134781 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=65536/null=false/auto             	     775	    162691 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=65536/null=false/auto             	     504	    202649 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=65536/null=false/auto             	     484	    221433 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=65536/null=false/forced-simd     	     688	    174697 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=65536/null=false/forced-simd     	     750	    174136 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=65536/null=false/forced-simd     	     829	    164495 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=65536/null=false/forced-simd      	    1006	    220852 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=65536/null=false/forced-simd      	     368	    284177 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=65536/null=false/forced-simd      	     356	    305111 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=65536/null=true/scalar           	     408	    433432 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=65536/null=true/scalar           	     249	    402391 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=65536/null=true/scalar           	     606	    316915 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=65536/null=true/scalar            	     174	    729515 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=65536/null=true/scalar            	     132	    795897 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=65536/null=true/scalar            	     337	    729488 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=65536/null=true/auto             	     416	    272730 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=65536/null=true/auto             	     643	    234184 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=65536/null=true/auto             	     808	    237313 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=65536/null=true/auto              	     597	    250889 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=65536/null=true/auto              	     381	    280794 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=65536/null=true/auto              	     282	    456889 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=65536/null=true/forced-simd      	     398	    419516 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=65536/null=true/forced-simd      	     306	    586734 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=false/rows=65536/null=true/forced-simd      	     388	    368654 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=65536/null=true/forced-simd       	     157	    843988 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=65536/null=true/forced-simd       	     308	    343983 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeFloat64Comparison/columns=true/rows=65536/null=true/forced-simd       	     578	    278094 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=7/null=false/scalar                          	 3215442	        55.35 ns/op	         3.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=7/null=false/scalar                          	 3520972	        33.75 ns/op	         3.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=7/null=false/scalar                          	 2624190	        47.62 ns/op	         3.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=7/null=false/auto                            	 2092741	        62.83 ns/op	         3.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=7/null=false/auto                            	 1300363	        85.24 ns/op	         3.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=7/null=false/auto                            	 1472204	        69.89 ns/op	         3.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=7/null=false/forced-simd                     	 2898956	        42.77 ns/op	         3.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=7/null=false/forced-simd                     	 2904877	        72.39 ns/op	         3.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=7/null=false/forced-simd                     	 1000000	       117.9 ns/op	         3.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=7/null=true/scalar                           	 2556951	        51.40 ns/op	         0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=7/null=true/scalar                           	 2514823	        61.69 ns/op	         0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=7/null=true/scalar                           	 5639515	        55.08 ns/op	         0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=7/null=true/auto                             	 1992415	        61.94 ns/op	         0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=7/null=true/auto                             	 2319592	        93.03 ns/op	         0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=7/null=true/auto                             	 2158356	        46.81 ns/op	         0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=7/null=true/forced-simd                      	 2253639	        52.08 ns/op	         0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=7/null=true/forced-simd                      	 2088568	        50.90 ns/op	         0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=7/null=true/forced-simd                      	 1896993	        62.53 ns/op	         0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=1025/null=false/scalar                       	   19428	      6373 ns/op	       440.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=1025/null=false/scalar                       	   34924	      3547 ns/op	       440.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=1025/null=false/scalar                       	   44557	      3302 ns/op	       440.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=1025/null=false/auto                         	   80787	      2124 ns/op	       440.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=1025/null=false/auto                         	   75123	      2514 ns/op	       440.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=1025/null=false/auto                         	   51696	      2278 ns/op	       440.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=1025/null=false/forced-simd                  	   73340	      1842 ns/op	       440.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=1025/null=false/forced-simd                  	   58146	      1955 ns/op	       440.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=1025/null=false/forced-simd                  	   72732	      2032 ns/op	       440.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=1025/null=true/scalar                        	   25815	      5131 ns/op	       229.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=1025/null=true/scalar                        	   43537	      5663 ns/op	       229.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=1025/null=true/scalar                        	   20079	      7376 ns/op	       229.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=1025/null=true/auto                          	   67104	      2002 ns/op	       229.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=1025/null=true/auto                          	   71078	      2216 ns/op	       229.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=1025/null=true/auto                          	   48218	      2231 ns/op	       229.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=1025/null=true/forced-simd                   	   75592	      3081 ns/op	       229.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=1025/null=true/forced-simd                   	   18948	      5904 ns/op	       229.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=1025/null=true/forced-simd                   	   55281	      2091 ns/op	       229.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=65536/null=false/scalar                      	     619	    241248 ns/op	     28160 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=65536/null=false/scalar                      	     723	    233153 ns/op	     28160 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=65536/null=false/scalar                      	     529	    256491 ns/op	     28160 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=65536/null=false/auto                        	     832	    122792 ns/op	     28160 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=65536/null=false/auto                        	    1638	    114456 ns/op	     28160 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=65536/null=false/auto                        	    1304	    126181 ns/op	     28160 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=65536/null=false/forced-simd                 	    1437	     98234 ns/op	     28160 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=65536/null=false/forced-simd                 	    1588	    116114 ns/op	     28160 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=65536/null=false/forced-simd                 	    1758	     89914 ns/op	     28160 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=65536/null=true/scalar                       	     585	    345983 ns/op	     14528 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=65536/null=true/scalar                       	     472	    329681 ns/op	     14528 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=65536/null=true/scalar                       	     800	    222263 ns/op	     14528 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=65536/null=true/auto                         	     601	    205504 ns/op	     14528 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=65536/null=true/auto                         	    1274	    108223 ns/op	     14528 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=65536/null=true/auto                         	    1292	    101206 ns/op	     14528 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=65536/null=true/forced-simd                  	    1214	    107185 ns/op	     14528 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=65536/null=true/forced-simd                  	    1243	    183677 ns/op	     14528 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int8/rows=65536/null=true/forced-simd                  	     828	    226035 ns/op	     14528 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=7/null=false/scalar                         	 2001703	        61.63 ns/op	         6.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=7/null=false/scalar                         	 1264101	        90.92 ns/op	         6.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=7/null=false/scalar                         	 1366574	        74.27 ns/op	         6.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=7/null=false/auto                           	 1798539	        56.21 ns/op	         6.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=7/null=false/auto                           	 2216827	        47.49 ns/op	         6.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=7/null=false/auto                           	 2546078	        67.03 ns/op	         6.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=7/null=false/forced-simd                    	 3468994	        43.32 ns/op	         6.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=7/null=false/forced-simd                    	 3015516	        49.59 ns/op	         6.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=7/null=false/forced-simd                    	 1477090	        93.92 ns/op	         6.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=7/null=true/scalar                          	 3362508	        30.86 ns/op	         1.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=7/null=true/scalar                          	 3550354	        33.05 ns/op	         1.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=7/null=true/scalar                          	 3418076	        32.18 ns/op	         1.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=7/null=true/auto                            	 2742236	        38.42 ns/op	         1.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=7/null=true/auto                            	 3065872	        34.50 ns/op	         1.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=7/null=true/auto                            	 1410606	        75.36 ns/op	         1.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=7/null=true/forced-simd                     	 2247280	        50.74 ns/op	         1.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=7/null=true/forced-simd                     	 2432198	        50.80 ns/op	         1.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=7/null=true/forced-simd                     	 3433233	        44.56 ns/op	         1.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=1025/null=false/scalar                      	   24462	      4645 ns/op	      1024 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=1025/null=false/scalar                      	   25768	      4261 ns/op	      1024 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=1025/null=false/scalar                      	   29497	      3927 ns/op	      1024 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=1025/null=false/auto                        	   62634	      3460 ns/op	      1024 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=1025/null=false/auto                        	   34569	      3108 ns/op	      1024 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=1025/null=false/auto                        	   37041	      3064 ns/op	      1024 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=1025/null=false/forced-simd                 	   80800	      1447 ns/op	      1024 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=1025/null=false/forced-simd                 	   48808	      2439 ns/op	      1024 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=1025/null=false/forced-simd                 	   61390	      2263 ns/op	      1024 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=1025/null=true/scalar                       	   51708	      2572 ns/op	       527.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=1025/null=true/scalar                       	   42064	      2918 ns/op	       527.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=1025/null=true/scalar                       	   73339	      2134 ns/op	       527.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=1025/null=true/auto                         	   74278	      2055 ns/op	       527.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=1025/null=true/auto                         	   39424	      3597 ns/op	       527.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=1025/null=true/auto                         	   36774	      3200 ns/op	       527.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=1025/null=true/forced-simd                  	   37398	      3050 ns/op	       527.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=1025/null=true/forced-simd                  	   27078	      3856 ns/op	       527.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=1025/null=true/forced-simd                  	   59980	      2891 ns/op	       527.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=65536/null=false/scalar                     	     402	    259629 ns/op	     65535 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=65536/null=false/scalar                     	     594	    240526 ns/op	     65535 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=65536/null=false/scalar                     	     624	    220405 ns/op	     65535 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=65536/null=false/auto                       	     525	    190914 ns/op	     65535 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=65536/null=false/auto                       	     746	    194061 ns/op	     65535 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=65536/null=false/auto                       	     631	    191532 ns/op	     65535 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=65536/null=false/forced-simd                	     690	    176785 ns/op	     65535 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=65536/null=false/forced-simd                	     921	    117079 ns/op	     65535 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=65536/null=false/forced-simd                	    1213	    120198 ns/op	     65535 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=65536/null=true/scalar                      	     993	    136928 ns/op	     33791 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=65536/null=true/scalar                      	     898	    136320 ns/op	     33791 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=65536/null=true/scalar                      	     612	    184519 ns/op	     33791 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=65536/null=true/auto                        	    1232	    192909 ns/op	     33791 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=65536/null=true/auto                        	     664	    201091 ns/op	     33791 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=65536/null=true/auto                        	     525	    228972 ns/op	     33791 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=65536/null=true/forced-simd                 	     801	    148629 ns/op	     33791 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=65536/null=true/forced-simd                 	     846	    137323 ns/op	     33791 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int32/rows=65536/null=true/forced-simd                 	    1167	    131113 ns/op	     33791 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=7/null=false/scalar                         	 3934237	        30.22 ns/op	         6.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=7/null=false/scalar                         	 4731700	        26.85 ns/op	         6.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=7/null=false/scalar                         	 3925736	        29.39 ns/op	         6.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=7/null=false/auto                           	 3755146	        41.61 ns/op	         6.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=7/null=false/auto                           	 3149302	        42.78 ns/op	         6.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=7/null=false/auto                           	 2668412	        53.44 ns/op	         6.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=7/null=false/forced-simd                    	 3050107	        41.02 ns/op	         6.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=7/null=false/forced-simd                    	 2622924	        43.72 ns/op	         6.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=7/null=false/forced-simd                    	 3354819	        32.41 ns/op	         6.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=7/null=true/scalar                          	 4571038	        33.32 ns/op	         1.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=7/null=true/scalar                          	 4220392	        28.43 ns/op	         1.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=7/null=true/scalar                          	 3651337	        29.07 ns/op	         1.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=7/null=true/auto                            	 2766153	        42.27 ns/op	         1.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=7/null=true/auto                            	 2505153	        45.54 ns/op	         1.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=7/null=true/auto                            	 2795829	        35.88 ns/op	         1.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=7/null=true/forced-simd                     	 2799610	        42.98 ns/op	         1.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=7/null=true/forced-simd                     	 3960912	        38.16 ns/op	         1.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=7/null=true/forced-simd                     	 3226935	        42.52 ns/op	         1.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=1025/null=false/scalar                      	   31788	      3814 ns/op	      1024 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=1025/null=false/scalar                      	   23637	      4513 ns/op	      1024 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=1025/null=false/scalar                      	   37600	      2922 ns/op	      1024 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=1025/null=false/auto                        	   36345	      3387 ns/op	      1024 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=1025/null=false/auto                        	   28819	      4516 ns/op	      1024 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=1025/null=false/auto                        	   42542	      2574 ns/op	      1024 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=1025/null=false/forced-simd                 	   41858	      2925 ns/op	      1024 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=1025/null=false/forced-simd                 	   34947	      3078 ns/op	      1024 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=1025/null=false/forced-simd                 	   50751	      2972 ns/op	      1024 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=1025/null=true/scalar                       	   62756	      2612 ns/op	       527.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=1025/null=true/scalar                       	   44384	      2778 ns/op	       527.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=1025/null=true/scalar                       	   45008	      2925 ns/op	       527.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=1025/null=true/auto                         	   46542	      2773 ns/op	       527.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=1025/null=true/auto                         	   42468	      2932 ns/op	       527.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=1025/null=true/auto                         	   54171	      2283 ns/op	       527.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=1025/null=true/forced-simd                  	   47617	      2644 ns/op	       527.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=1025/null=true/forced-simd                  	   43269	      2728 ns/op	       527.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=1025/null=true/forced-simd                  	   10000	     17300 ns/op	       527.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=65536/null=false/scalar                     	     334	    328929 ns/op	     65535 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=65536/null=false/scalar                     	     164	    632791 ns/op	     65535 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=65536/null=false/scalar                     	     549	    229199 ns/op	     65535 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=65536/null=false/auto                       	     668	    172303 ns/op	     65535 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=65536/null=false/auto                       	    1093	    470175 ns/op	     65535 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=65536/null=false/auto                       	     674	    181683 ns/op	     65535 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=65536/null=false/forced-simd                	     733	    466966 ns/op	     65535 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=65536/null=false/forced-simd                	     649	    580089 ns/op	     65535 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=65536/null=false/forced-simd                	     614	    193544 ns/op	     65535 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=65536/null=true/scalar                      	     477	    228247 ns/op	     33791 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=65536/null=true/scalar                      	     666	    161723 ns/op	     33791 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=65536/null=true/scalar                      	     770	    175401 ns/op	     33791 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=65536/null=true/auto                        	     812	    155225 ns/op	     33791 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=65536/null=true/auto                        	     853	    173858 ns/op	     33791 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=65536/null=true/auto                        	     601	    202112 ns/op	     33791 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=65536/null=true/forced-simd                 	     578	    186979 ns/op	     33791 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=65536/null=true/forced-simd                 	     633	    178169 ns/op	     33791 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/int64/rows=65536/null=true/forced-simd                 	     753	    176453 ns/op	     33791 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=7/null=false/scalar                        	 4676408	        30.41 ns/op	         6.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=7/null=false/scalar                        	 3714930	        30.92 ns/op	         6.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=7/null=false/scalar                        	 5725578	        25.20 ns/op	         6.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=7/null=false/auto                          	 2435604	        45.62 ns/op	         6.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=7/null=false/auto                          	 2917288	        44.28 ns/op	         6.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=7/null=false/auto                          	 1965997	        57.24 ns/op	         6.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=7/null=false/forced-simd                   	 2792677	        46.25 ns/op	         6.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=7/null=false/forced-simd                   	 2655964	        42.87 ns/op	         6.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=7/null=false/forced-simd                   	 2911138	        41.70 ns/op	         6.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=7/null=true/scalar                         	 4551207	        28.89 ns/op	         1.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=7/null=true/scalar                         	 4494862	        26.84 ns/op	         1.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=7/null=true/scalar                         	 4036786	        28.80 ns/op	         1.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=7/null=true/auto                           	 4613103	        32.38 ns/op	         1.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=7/null=true/auto                           	 3363266	        39.68 ns/op	         1.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=7/null=true/auto                           	 3067836	        39.57 ns/op	         1.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=7/null=true/forced-simd                    	 2201590	        53.23 ns/op	         1.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=7/null=true/forced-simd                    	 3595593	        36.99 ns/op	         1.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=7/null=true/forced-simd                    	 2039426	        51.03 ns/op	         1.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=1025/null=false/scalar                     	   35726	      3434 ns/op	      1024 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=1025/null=false/scalar                     	   35264	      3731 ns/op	      1024 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=1025/null=false/scalar                     	   31479	      3686 ns/op	      1024 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=1025/null=false/auto                       	   36790	      3291 ns/op	      1024 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=1025/null=false/auto                       	   47258	      2461 ns/op	      1024 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=1025/null=false/auto                       	   50866	      2947 ns/op	      1024 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=1025/null=false/forced-simd                	   70198	      2242 ns/op	      1024 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=1025/null=false/forced-simd                	   34362	      3104 ns/op	      1024 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=1025/null=false/forced-simd                	   43399	      2953 ns/op	      1024 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=1025/null=true/scalar                      	   34377	      3066 ns/op	       527.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=1025/null=true/scalar                      	   62082	      2826 ns/op	       527.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=1025/null=true/scalar                      	   49519	      2513 ns/op	       527.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=1025/null=true/auto                        	   60418	      2726 ns/op	       527.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=1025/null=true/auto                        	   72133	      2104 ns/op	       527.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=1025/null=true/auto                        	   47840	      2535 ns/op	       527.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=1025/null=true/forced-simd                 	   58290	      2106 ns/op	       527.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=1025/null=true/forced-simd                 	   68644	      1759 ns/op	       527.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=1025/null=true/forced-simd                 	   74366	      1654 ns/op	       527.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=65536/null=false/scalar                    	     579	    210634 ns/op	     65535 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=65536/null=false/scalar                    	     632	    291126 ns/op	     65535 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=65536/null=false/scalar                    	     664	    246486 ns/op	     65535 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=65536/null=false/auto                      	     811	    131160 ns/op	     65535 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=65536/null=false/auto                      	    1206	    102322 ns/op	     65535 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=65536/null=false/auto                      	     891	    131054 ns/op	     65535 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=65536/null=false/forced-simd               	    1554	    138238 ns/op	     65535 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=65536/null=false/forced-simd               	     896	    120479 ns/op	     65535 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=65536/null=false/forced-simd               	    1130	     94921 ns/op	     65535 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=65536/null=true/scalar                     	    1003	    128789 ns/op	     33791 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=65536/null=true/scalar                     	     684	    159946 ns/op	     33791 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=65536/null=true/scalar                     	     853	    136507 ns/op	     33791 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=65536/null=true/auto                       	    1328	    101828 ns/op	     33791 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=65536/null=true/auto                       	    1138	    103871 ns/op	     33791 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=65536/null=true/auto                       	    1346	    110935 ns/op	     33791 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=65536/null=true/forced-simd                	     698	    196405 ns/op	     33791 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=65536/null=true/forced-simd                	     639	    167846 ns/op	     33791 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint32/rows=65536/null=true/forced-simd                	     739	    150979 ns/op	     33791 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=7/null=false/scalar                        	 5380179	        25.72 ns/op	         6.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=7/null=false/scalar                        	 6549442	        28.18 ns/op	         6.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=7/null=false/scalar                        	 4679203	        23.58 ns/op	         6.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=7/null=false/auto                          	 3050768	        51.90 ns/op	         6.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=7/null=false/auto                          	 2232729	        56.96 ns/op	         6.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=7/null=false/auto                          	 2357751	        45.33 ns/op	         6.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=7/null=false/forced-simd                   	 3194485	        40.27 ns/op	         6.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=7/null=false/forced-simd                   	 3233996	        40.85 ns/op	         6.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=7/null=false/forced-simd                   	 3577681	        44.66 ns/op	         6.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=7/null=true/scalar                         	 3507841	        31.44 ns/op	         1.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=7/null=true/scalar                         	 3473169	        33.08 ns/op	         1.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=7/null=true/scalar                         	 4739065	        30.37 ns/op	         1.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=7/null=true/auto                           	 2936680	        47.79 ns/op	         1.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=7/null=true/auto                           	 3937004	        31.42 ns/op	         1.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=7/null=true/auto                           	 3445051	        44.92 ns/op	         1.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=7/null=true/forced-simd                    	 3166573	        39.82 ns/op	         1.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=7/null=true/forced-simd                    	 2470220	        47.37 ns/op	         1.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=7/null=true/forced-simd                    	 2912452	        35.41 ns/op	         1.000 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=1025/null=false/scalar                     	   37260	      3367 ns/op	      1024 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=1025/null=false/scalar                     	   40495	      3735 ns/op	      1024 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=1025/null=false/scalar                     	   33619	      3408 ns/op	      1024 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=1025/null=false/auto                       	   47042	      2456 ns/op	      1024 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=1025/null=false/auto                       	   73707	      2319 ns/op	      1024 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=1025/null=false/auto                       	   40834	      2815 ns/op	      1024 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=1025/null=false/forced-simd                	   44036	      2317 ns/op	      1024 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=1025/null=false/forced-simd                	   55994	      2506 ns/op	      1024 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=1025/null=false/forced-simd                	   38116	      2711 ns/op	      1024 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=1025/null=true/scalar                      	   46214	      2849 ns/op	       527.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=1025/null=true/scalar                      	   44155	      3070 ns/op	       527.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=1025/null=true/scalar                      	   43958	      2669 ns/op	       527.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=1025/null=true/auto                        	   49882	      2450 ns/op	       527.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=1025/null=true/auto                        	   59086	      2091 ns/op	       527.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=1025/null=true/auto                        	   77002	      2141 ns/op	       527.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=1025/null=true/forced-simd                 	   45271	      2243 ns/op	       527.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=1025/null=true/forced-simd                 	   39122	      2561 ns/op	       527.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=1025/null=true/forced-simd                 	   38268	      2714 ns/op	       527.0 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=65536/null=false/scalar                    	     476	    251530 ns/op	     65535 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=65536/null=false/scalar                    	     561	    232695 ns/op	     65535 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=65536/null=false/scalar                    	     562	    225597 ns/op	     65535 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=65536/null=false/auto                      	     819	    125640 ns/op	     65535 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=65536/null=false/auto                      	    1152	    148173 ns/op	     65535 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=65536/null=false/auto                      	    1204	    130338 ns/op	     65535 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=65536/null=false/forced-simd               	     805	    152634 ns/op	     65535 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=65536/null=false/forced-simd               	     609	    190279 ns/op	     65535 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=65536/null=false/forced-simd               	     621	    202345 ns/op	     65535 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=65536/null=true/scalar                     	     580	    210326 ns/op	     33791 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=65536/null=true/scalar                     	     921	    152478 ns/op	     33791 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=65536/null=true/scalar                     	     487	    225136 ns/op	     33791 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=65536/null=true/auto                       	     753	    165714 ns/op	     33791 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=65536/null=true/auto                       	     726	    143436 ns/op	     33791 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=65536/null=true/auto                       	    1100	    148843 ns/op	     33791 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=65536/null=true/forced-simd                	     859	    171929 ns/op	     33791 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=65536/null=true/forced-simd                	     654	    153806 ns/op	     33791 selected	       0 B/op	       0 allocs/op
+BenchmarkNativeNumericLiteral/uint64/rows=65536/null=true/forced-simd                	     987	    158802 ns/op	     33791 selected	       0 B/op	       0 allocs/op
+PASS
+ok  	gocolumn/kernel	87.581s

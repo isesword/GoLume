@@ -15,15 +15,30 @@ func installGeneratedPortableSIMD(set *Set, mode Mode, vectorBits int) {
 		return
 	}
 	capability := KernelCapability{HardwareSIMD: true, VectorBits: vectorBits, Backend: "portable-simd"}
+	set.d.arithmeticFloat32[ArithmeticAdd] = simdFloat32Add
+	idFloat32Add, _ := ArithmeticID(memory.TypeFloat32, ArithmeticAdd)
+	set.setCapability(idFloat32Add, capability)
+	set.d.arithmeticFloat32[ArithmeticSub] = simdFloat32Sub
+	idFloat32Sub, _ := ArithmeticID(memory.TypeFloat32, ArithmeticSub)
+	set.setCapability(idFloat32Sub, capability)
+	set.d.arithmeticFloat32[ArithmeticMul] = simdFloat32Mul
+	idFloat32Mul, _ := ArithmeticID(memory.TypeFloat32, ArithmeticMul)
+	set.setCapability(idFloat32Mul, capability)
+	set.d.arithmeticFloat32[ArithmeticDiv] = simdFloat32Div
+	idFloat32Div, _ := ArithmeticID(memory.TypeFloat32, ArithmeticDiv)
+	set.setCapability(idFloat32Div, capability)
+	set.d.arithmeticFloat64[ArithmeticAdd] = simdFloat64Add
+	idFloat64Add, _ := ArithmeticID(memory.TypeFloat64, ArithmeticAdd)
+	set.setCapability(idFloat64Add, capability)
 	set.d.arithmeticFloat64[ArithmeticSub] = simdFloat64Sub
-	idSub, _ := ArithmeticID(memory.TypeFloat64, ArithmeticSub)
-	set.setCapability(idSub, capability)
+	idFloat64Sub, _ := ArithmeticID(memory.TypeFloat64, ArithmeticSub)
+	set.setCapability(idFloat64Sub, capability)
 	set.d.arithmeticFloat64[ArithmeticMul] = simdFloat64Mul
-	idMul, _ := ArithmeticID(memory.TypeFloat64, ArithmeticMul)
-	set.setCapability(idMul, capability)
+	idFloat64Mul, _ := ArithmeticID(memory.TypeFloat64, ArithmeticMul)
+	set.setCapability(idFloat64Mul, capability)
 	set.d.arithmeticFloat64[ArithmeticDiv] = simdFloat64Div
-	idDiv, _ := ArithmeticID(memory.TypeFloat64, ArithmeticDiv)
-	set.setCapability(idDiv, capability)
+	idFloat64Div, _ := ArithmeticID(memory.TypeFloat64, ArithmeticDiv)
+	set.setCapability(idFloat64Div, capability)
 	set.d.compareFloat32[CompareGT] = simdFloat32GT
 	idFloat32GT, _ := ComparisonID(memory.TypeFloat32, CompareGT)
 	set.setCapability(idFloat32GT, capability)
@@ -39,6 +54,181 @@ func installGeneratedPortableSIMD(set *Set, mode Mode, vectorBits int) {
 	set.d.compareFloat32[CompareEQ] = simdFloat32EQ
 	idFloat32EQ, _ := ComparisonID(memory.TypeFloat32, CompareEQ)
 	set.setCapability(idFloat32EQ, capability)
+	set.d.compareInt8[CompareGT] = simdInt8GT
+	idInt8GT, _ := ComparisonID(memory.TypeInt8, CompareGT)
+	set.setCapability(idInt8GT, capability)
+	set.d.compareInt8[CompareGE] = simdInt8GE
+	idInt8GE, _ := ComparisonID(memory.TypeInt8, CompareGE)
+	set.setCapability(idInt8GE, capability)
+	set.d.compareInt8[CompareLT] = simdInt8LT
+	idInt8LT, _ := ComparisonID(memory.TypeInt8, CompareLT)
+	set.setCapability(idInt8LT, capability)
+	set.d.compareInt8[CompareLE] = simdInt8LE
+	idInt8LE, _ := ComparisonID(memory.TypeInt8, CompareLE)
+	set.setCapability(idInt8LE, capability)
+	set.d.compareInt8[CompareEQ] = simdInt8EQ
+	idInt8EQ, _ := ComparisonID(memory.TypeInt8, CompareEQ)
+	set.setCapability(idInt8EQ, capability)
+	set.d.compareInt32[CompareGT] = simdInt32GT
+	idInt32GT, _ := ComparisonID(memory.TypeInt32, CompareGT)
+	set.setCapability(idInt32GT, capability)
+	set.d.compareInt32[CompareGE] = simdInt32GE
+	idInt32GE, _ := ComparisonID(memory.TypeInt32, CompareGE)
+	set.setCapability(idInt32GE, capability)
+	set.d.compareInt32[CompareLT] = simdInt32LT
+	idInt32LT, _ := ComparisonID(memory.TypeInt32, CompareLT)
+	set.setCapability(idInt32LT, capability)
+	set.d.compareInt32[CompareLE] = simdInt32LE
+	idInt32LE, _ := ComparisonID(memory.TypeInt32, CompareLE)
+	set.setCapability(idInt32LE, capability)
+	set.d.compareInt32[CompareEQ] = simdInt32EQ
+	idInt32EQ, _ := ComparisonID(memory.TypeInt32, CompareEQ)
+	set.setCapability(idInt32EQ, capability)
+	set.d.compareInt64[CompareGT] = simdInt64GT
+	idInt64GT, _ := ComparisonID(memory.TypeInt64, CompareGT)
+	set.setCapability(idInt64GT, capability)
+	set.d.compareInt64[CompareGE] = simdInt64GE
+	idInt64GE, _ := ComparisonID(memory.TypeInt64, CompareGE)
+	set.setCapability(idInt64GE, capability)
+	set.d.compareInt64[CompareLT] = simdInt64LT
+	idInt64LT, _ := ComparisonID(memory.TypeInt64, CompareLT)
+	set.setCapability(idInt64LT, capability)
+	set.d.compareInt64[CompareLE] = simdInt64LE
+	idInt64LE, _ := ComparisonID(memory.TypeInt64, CompareLE)
+	set.setCapability(idInt64LE, capability)
+	set.d.compareInt64[CompareEQ] = simdInt64EQ
+	idInt64EQ, _ := ComparisonID(memory.TypeInt64, CompareEQ)
+	set.setCapability(idInt64EQ, capability)
+	set.d.compareUint32[CompareGT] = simdUint32GT
+	idUint32GT, _ := ComparisonID(memory.TypeUint32, CompareGT)
+	set.setCapability(idUint32GT, capability)
+	set.d.compareUint32[CompareGE] = simdUint32GE
+	idUint32GE, _ := ComparisonID(memory.TypeUint32, CompareGE)
+	set.setCapability(idUint32GE, capability)
+	set.d.compareUint32[CompareLT] = simdUint32LT
+	idUint32LT, _ := ComparisonID(memory.TypeUint32, CompareLT)
+	set.setCapability(idUint32LT, capability)
+	set.d.compareUint32[CompareLE] = simdUint32LE
+	idUint32LE, _ := ComparisonID(memory.TypeUint32, CompareLE)
+	set.setCapability(idUint32LE, capability)
+	set.d.compareUint32[CompareEQ] = simdUint32EQ
+	idUint32EQ, _ := ComparisonID(memory.TypeUint32, CompareEQ)
+	set.setCapability(idUint32EQ, capability)
+	set.d.compareUint64[CompareGT] = simdUint64GT
+	idUint64GT, _ := ComparisonID(memory.TypeUint64, CompareGT)
+	set.setCapability(idUint64GT, capability)
+	set.d.compareUint64[CompareGE] = simdUint64GE
+	idUint64GE, _ := ComparisonID(memory.TypeUint64, CompareGE)
+	set.setCapability(idUint64GE, capability)
+	set.d.compareUint64[CompareLT] = simdUint64LT
+	idUint64LT, _ := ComparisonID(memory.TypeUint64, CompareLT)
+	set.setCapability(idUint64LT, capability)
+	set.d.compareUint64[CompareLE] = simdUint64LE
+	idUint64LE, _ := ComparisonID(memory.TypeUint64, CompareLE)
+	set.setCapability(idUint64LE, capability)
+	set.d.compareUint64[CompareEQ] = simdUint64EQ
+	idUint64EQ, _ := ComparisonID(memory.TypeUint64, CompareEQ)
+	set.setCapability(idUint64EQ, capability)
+	set.d.compareFloat64[CompareGT] = simdFloat64GT
+	idFloat64GT, _ := ComparisonID(memory.TypeFloat64, CompareGT)
+	set.setCapability(idFloat64GT, capability)
+	set.d.compareFloat64[CompareGE] = simdFloat64GE
+	idFloat64GE, _ := ComparisonID(memory.TypeFloat64, CompareGE)
+	set.setCapability(idFloat64GE, capability)
+	set.d.compareFloat64[CompareLT] = simdFloat64LT
+	idFloat64LT, _ := ComparisonID(memory.TypeFloat64, CompareLT)
+	set.setCapability(idFloat64LT, capability)
+	set.d.compareFloat64[CompareLE] = simdFloat64LE
+	idFloat64LE, _ := ComparisonID(memory.TypeFloat64, CompareLE)
+	set.setCapability(idFloat64LE, capability)
+	set.d.compareFloat64[CompareEQ] = simdFloat64EQ
+	idFloat64EQ, _ := ComparisonID(memory.TypeFloat64, CompareEQ)
+	set.setCapability(idFloat64EQ, capability)
+	set.d.compareFloat64Columns[CompareGT] = simdFloat64ColumnsGT
+	set.d.caps.columns[idFloat64GT] = capability
+	set.d.compareFloat64Columns[CompareGE] = simdFloat64ColumnsGE
+	set.d.caps.columns[idFloat64GE] = capability
+	set.d.compareFloat64Columns[CompareLT] = simdFloat64ColumnsLT
+	set.d.caps.columns[idFloat64LT] = capability
+	set.d.compareFloat64Columns[CompareLE] = simdFloat64ColumnsLE
+	set.d.caps.columns[idFloat64LE] = capability
+	set.d.compareFloat64Columns[CompareEQ] = simdFloat64ColumnsEQ
+	set.d.caps.columns[idFloat64EQ] = capability
+}
+
+func simdFloat32Add(left, right, out []float32, validity memory.Bitmap) {
+	if len(left) != len(right) || len(out) < len(left) {
+		panic("kernel: float32 arithmetic length mismatch")
+	}
+	lanes := simd.Float32s{}.Len()
+	row := 0
+	for ; row+lanes <= len(left); row += lanes {
+		simd.LoadFloat32s(left[row:]).Add(simd.LoadFloat32s(right[row:])).Store(out[row:])
+	}
+	for ; row < len(left); row++ {
+		out[row] = left[row] + right[row]
+	}
+	clearInvalidFloat32(out[:len(left)], validity)
+}
+
+func simdFloat32Sub(left, right, out []float32, validity memory.Bitmap) {
+	if len(left) != len(right) || len(out) < len(left) {
+		panic("kernel: float32 arithmetic length mismatch")
+	}
+	lanes := simd.Float32s{}.Len()
+	row := 0
+	for ; row+lanes <= len(left); row += lanes {
+		simd.LoadFloat32s(left[row:]).Sub(simd.LoadFloat32s(right[row:])).Store(out[row:])
+	}
+	for ; row < len(left); row++ {
+		out[row] = left[row] - right[row]
+	}
+	clearInvalidFloat32(out[:len(left)], validity)
+}
+
+func simdFloat32Mul(left, right, out []float32, validity memory.Bitmap) {
+	if len(left) != len(right) || len(out) < len(left) {
+		panic("kernel: float32 arithmetic length mismatch")
+	}
+	lanes := simd.Float32s{}.Len()
+	row := 0
+	for ; row+lanes <= len(left); row += lanes {
+		simd.LoadFloat32s(left[row:]).Mul(simd.LoadFloat32s(right[row:])).Store(out[row:])
+	}
+	for ; row < len(left); row++ {
+		out[row] = left[row] * right[row]
+	}
+	clearInvalidFloat32(out[:len(left)], validity)
+}
+
+func simdFloat32Div(left, right, out []float32, validity memory.Bitmap) {
+	if len(left) != len(right) || len(out) < len(left) {
+		panic("kernel: float32 arithmetic length mismatch")
+	}
+	lanes := simd.Float32s{}.Len()
+	row := 0
+	for ; row+lanes <= len(left); row += lanes {
+		simd.LoadFloat32s(left[row:]).Div(simd.LoadFloat32s(right[row:])).Store(out[row:])
+	}
+	for ; row < len(left); row++ {
+		out[row] = left[row] / right[row]
+	}
+	clearInvalidFloat32(out[:len(left)], validity)
+}
+
+func simdFloat64Add(left, right, out []float64, validity memory.Bitmap) {
+	if len(left) != len(right) || len(out) < len(left) {
+		panic("kernel: float64 arithmetic length mismatch")
+	}
+	lanes := simd.Float64s{}.Len()
+	row := 0
+	for ; row+lanes <= len(left); row += lanes {
+		simd.LoadFloat64s(left[row:]).Add(simd.LoadFloat64s(right[row:])).Store(out[row:])
+	}
+	for ; row < len(left); row++ {
+		out[row] = left[row] + right[row]
+	}
+	clearInvalidFloat64(out[:len(left)], validity)
 }
 
 func simdFloat64Sub(left, right, out []float64, validity memory.Bitmap) {
@@ -87,9 +277,12 @@ func simdFloat64Div(left, right, out []float64, validity memory.Bitmap) {
 }
 
 func simdFloat32GT(values []float32, validity memory.Bitmap, out memory.Bitmap, threshold float32) int {
+	lanes := simd.Float32s{}.Len()
+	if len(values) < lanes {
+		return scalarFloat32GT(values, validity, out, threshold)
+	}
 	words := prepareComparison(len(values), out)
 	vectorThreshold := simd.BroadcastFloat32s(threshold)
-	lanes := simd.Float32s{}.Len()
 	var laneMaskStorage [64]int32
 	laneMask := laneMaskStorage[:lanes]
 	selected := 0
@@ -101,7 +294,7 @@ func simdFloat32GT(values []float32, validity memory.Bitmap, out memory.Bitmap, 
 		for ; off+lanes <= wordRows; off += lanes {
 			simd.LoadFloat32s(values[base+off:]).Greater(vectorThreshold).ToInt32s().Store(laneMask)
 			for lane := 0; lane < lanes; lane++ {
-				if uint32(laneMask[lane])>>31 != 0 {
+				if laneMask[lane] < 0 {
 					selectedWord |= uint64(1) << uint(off+lane)
 				}
 			}
@@ -111,10 +304,7 @@ func simdFloat32GT(values []float32, validity memory.Bitmap, out memory.Bitmap, 
 				selectedWord |= uint64(1) << uint(off)
 			}
 		}
-		selectedWord &= bitmapWord(validity, wi)
-		if wordRows < 64 {
-			selectedWord &= memory.TailMask(wordRows)
-		}
+		selectedWord &= bitmapWord(validity, wi) & memory.TailMask(wordRows)
 		out[wi] = selectedWord
 		selected += bits.OnesCount64(selectedWord)
 	}
@@ -122,9 +312,12 @@ func simdFloat32GT(values []float32, validity memory.Bitmap, out memory.Bitmap, 
 }
 
 func simdFloat32GE(values []float32, validity memory.Bitmap, out memory.Bitmap, threshold float32) int {
+	lanes := simd.Float32s{}.Len()
+	if len(values) < lanes {
+		return scalarFloat32GE(values, validity, out, threshold)
+	}
 	words := prepareComparison(len(values), out)
 	vectorThreshold := simd.BroadcastFloat32s(threshold)
-	lanes := simd.Float32s{}.Len()
 	var laneMaskStorage [64]int32
 	laneMask := laneMaskStorage[:lanes]
 	selected := 0
@@ -136,7 +329,7 @@ func simdFloat32GE(values []float32, validity memory.Bitmap, out memory.Bitmap, 
 		for ; off+lanes <= wordRows; off += lanes {
 			simd.LoadFloat32s(values[base+off:]).GreaterEqual(vectorThreshold).ToInt32s().Store(laneMask)
 			for lane := 0; lane < lanes; lane++ {
-				if uint32(laneMask[lane])>>31 != 0 {
+				if laneMask[lane] < 0 {
 					selectedWord |= uint64(1) << uint(off+lane)
 				}
 			}
@@ -146,10 +339,7 @@ func simdFloat32GE(values []float32, validity memory.Bitmap, out memory.Bitmap, 
 				selectedWord |= uint64(1) << uint(off)
 			}
 		}
-		selectedWord &= bitmapWord(validity, wi)
-		if wordRows < 64 {
-			selectedWord &= memory.TailMask(wordRows)
-		}
+		selectedWord &= bitmapWord(validity, wi) & memory.TailMask(wordRows)
 		out[wi] = selectedWord
 		selected += bits.OnesCount64(selectedWord)
 	}
@@ -157,9 +347,12 @@ func simdFloat32GE(values []float32, validity memory.Bitmap, out memory.Bitmap, 
 }
 
 func simdFloat32LT(values []float32, validity memory.Bitmap, out memory.Bitmap, threshold float32) int {
+	lanes := simd.Float32s{}.Len()
+	if len(values) < lanes {
+		return scalarFloat32LT(values, validity, out, threshold)
+	}
 	words := prepareComparison(len(values), out)
 	vectorThreshold := simd.BroadcastFloat32s(threshold)
-	lanes := simd.Float32s{}.Len()
 	var laneMaskStorage [64]int32
 	laneMask := laneMaskStorage[:lanes]
 	selected := 0
@@ -171,7 +364,7 @@ func simdFloat32LT(values []float32, validity memory.Bitmap, out memory.Bitmap, 
 		for ; off+lanes <= wordRows; off += lanes {
 			simd.LoadFloat32s(values[base+off:]).Less(vectorThreshold).ToInt32s().Store(laneMask)
 			for lane := 0; lane < lanes; lane++ {
-				if uint32(laneMask[lane])>>31 != 0 {
+				if laneMask[lane] < 0 {
 					selectedWord |= uint64(1) << uint(off+lane)
 				}
 			}
@@ -181,10 +374,7 @@ func simdFloat32LT(values []float32, validity memory.Bitmap, out memory.Bitmap, 
 				selectedWord |= uint64(1) << uint(off)
 			}
 		}
-		selectedWord &= bitmapWord(validity, wi)
-		if wordRows < 64 {
-			selectedWord &= memory.TailMask(wordRows)
-		}
+		selectedWord &= bitmapWord(validity, wi) & memory.TailMask(wordRows)
 		out[wi] = selectedWord
 		selected += bits.OnesCount64(selectedWord)
 	}
@@ -192,9 +382,12 @@ func simdFloat32LT(values []float32, validity memory.Bitmap, out memory.Bitmap, 
 }
 
 func simdFloat32LE(values []float32, validity memory.Bitmap, out memory.Bitmap, threshold float32) int {
+	lanes := simd.Float32s{}.Len()
+	if len(values) < lanes {
+		return scalarFloat32LE(values, validity, out, threshold)
+	}
 	words := prepareComparison(len(values), out)
 	vectorThreshold := simd.BroadcastFloat32s(threshold)
-	lanes := simd.Float32s{}.Len()
 	var laneMaskStorage [64]int32
 	laneMask := laneMaskStorage[:lanes]
 	selected := 0
@@ -206,7 +399,7 @@ func simdFloat32LE(values []float32, validity memory.Bitmap, out memory.Bitmap, 
 		for ; off+lanes <= wordRows; off += lanes {
 			simd.LoadFloat32s(values[base+off:]).LessEqual(vectorThreshold).ToInt32s().Store(laneMask)
 			for lane := 0; lane < lanes; lane++ {
-				if uint32(laneMask[lane])>>31 != 0 {
+				if laneMask[lane] < 0 {
 					selectedWord |= uint64(1) << uint(off+lane)
 				}
 			}
@@ -216,10 +409,7 @@ func simdFloat32LE(values []float32, validity memory.Bitmap, out memory.Bitmap, 
 				selectedWord |= uint64(1) << uint(off)
 			}
 		}
-		selectedWord &= bitmapWord(validity, wi)
-		if wordRows < 64 {
-			selectedWord &= memory.TailMask(wordRows)
-		}
+		selectedWord &= bitmapWord(validity, wi) & memory.TailMask(wordRows)
 		out[wi] = selectedWord
 		selected += bits.OnesCount64(selectedWord)
 	}
@@ -227,9 +417,12 @@ func simdFloat32LE(values []float32, validity memory.Bitmap, out memory.Bitmap, 
 }
 
 func simdFloat32EQ(values []float32, validity memory.Bitmap, out memory.Bitmap, threshold float32) int {
+	lanes := simd.Float32s{}.Len()
+	if len(values) < lanes {
+		return scalarFloat32EQ(values, validity, out, threshold)
+	}
 	words := prepareComparison(len(values), out)
 	vectorThreshold := simd.BroadcastFloat32s(threshold)
-	lanes := simd.Float32s{}.Len()
 	var laneMaskStorage [64]int32
 	laneMask := laneMaskStorage[:lanes]
 	selected := 0
@@ -241,7 +434,7 @@ func simdFloat32EQ(values []float32, validity memory.Bitmap, out memory.Bitmap, 
 		for ; off+lanes <= wordRows; off += lanes {
 			simd.LoadFloat32s(values[base+off:]).Equal(vectorThreshold).ToInt32s().Store(laneMask)
 			for lane := 0; lane < lanes; lane++ {
-				if uint32(laneMask[lane])>>31 != 0 {
+				if laneMask[lane] < 0 {
 					selectedWord |= uint64(1) << uint(off+lane)
 				}
 			}
@@ -251,12 +444,1244 @@ func simdFloat32EQ(values []float32, validity memory.Bitmap, out memory.Bitmap, 
 				selectedWord |= uint64(1) << uint(off)
 			}
 		}
-		selectedWord &= bitmapWord(validity, wi)
-		if wordRows < 64 {
-			selectedWord &= memory.TailMask(wordRows)
-		}
+		selectedWord &= bitmapWord(validity, wi) & memory.TailMask(wordRows)
 		out[wi] = selectedWord
 		selected += bits.OnesCount64(selectedWord)
+	}
+	return selected
+}
+
+func simdInt8GT(values []int8, validity memory.Bitmap, out memory.Bitmap, threshold int8) int {
+	lanes := simd.Int8s{}.Len()
+	if len(values) < lanes {
+		return scalarInt8GT(values, validity, out, threshold)
+	}
+	words := prepareComparison(len(values), out)
+	vectorThreshold := simd.BroadcastInt8s(threshold)
+	var laneMaskStorage [64]int8
+	laneMask := laneMaskStorage[:lanes]
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		wordRows := min(64, len(values)-base)
+		var selectedWord uint64
+		off := 0
+		for ; off+lanes <= wordRows; off += lanes {
+			simd.LoadInt8s(values[base+off:]).Greater(vectorThreshold).ToInt8s().Store(laneMask)
+			for lane := 0; lane < lanes; lane++ {
+				if laneMask[lane] < 0 {
+					selectedWord |= uint64(1) << uint(off+lane)
+				}
+			}
+		}
+		for ; off < wordRows; off++ {
+			if values[base+off] > threshold {
+				selectedWord |= uint64(1) << uint(off)
+			}
+		}
+		selectedWord &= bitmapWord(validity, wi) & memory.TailMask(wordRows)
+		out[wi] = selectedWord
+		selected += bits.OnesCount64(selectedWord)
+	}
+	return selected
+}
+
+func simdInt8GE(values []int8, validity memory.Bitmap, out memory.Bitmap, threshold int8) int {
+	lanes := simd.Int8s{}.Len()
+	if len(values) < lanes {
+		return scalarInt8GE(values, validity, out, threshold)
+	}
+	words := prepareComparison(len(values), out)
+	vectorThreshold := simd.BroadcastInt8s(threshold)
+	var laneMaskStorage [64]int8
+	laneMask := laneMaskStorage[:lanes]
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		wordRows := min(64, len(values)-base)
+		var selectedWord uint64
+		off := 0
+		for ; off+lanes <= wordRows; off += lanes {
+			simd.LoadInt8s(values[base+off:]).GreaterEqual(vectorThreshold).ToInt8s().Store(laneMask)
+			for lane := 0; lane < lanes; lane++ {
+				if laneMask[lane] < 0 {
+					selectedWord |= uint64(1) << uint(off+lane)
+				}
+			}
+		}
+		for ; off < wordRows; off++ {
+			if values[base+off] >= threshold {
+				selectedWord |= uint64(1) << uint(off)
+			}
+		}
+		selectedWord &= bitmapWord(validity, wi) & memory.TailMask(wordRows)
+		out[wi] = selectedWord
+		selected += bits.OnesCount64(selectedWord)
+	}
+	return selected
+}
+
+func simdInt8LT(values []int8, validity memory.Bitmap, out memory.Bitmap, threshold int8) int {
+	lanes := simd.Int8s{}.Len()
+	if len(values) < lanes {
+		return scalarInt8LT(values, validity, out, threshold)
+	}
+	words := prepareComparison(len(values), out)
+	vectorThreshold := simd.BroadcastInt8s(threshold)
+	var laneMaskStorage [64]int8
+	laneMask := laneMaskStorage[:lanes]
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		wordRows := min(64, len(values)-base)
+		var selectedWord uint64
+		off := 0
+		for ; off+lanes <= wordRows; off += lanes {
+			simd.LoadInt8s(values[base+off:]).Less(vectorThreshold).ToInt8s().Store(laneMask)
+			for lane := 0; lane < lanes; lane++ {
+				if laneMask[lane] < 0 {
+					selectedWord |= uint64(1) << uint(off+lane)
+				}
+			}
+		}
+		for ; off < wordRows; off++ {
+			if values[base+off] < threshold {
+				selectedWord |= uint64(1) << uint(off)
+			}
+		}
+		selectedWord &= bitmapWord(validity, wi) & memory.TailMask(wordRows)
+		out[wi] = selectedWord
+		selected += bits.OnesCount64(selectedWord)
+	}
+	return selected
+}
+
+func simdInt8LE(values []int8, validity memory.Bitmap, out memory.Bitmap, threshold int8) int {
+	lanes := simd.Int8s{}.Len()
+	if len(values) < lanes {
+		return scalarInt8LE(values, validity, out, threshold)
+	}
+	words := prepareComparison(len(values), out)
+	vectorThreshold := simd.BroadcastInt8s(threshold)
+	var laneMaskStorage [64]int8
+	laneMask := laneMaskStorage[:lanes]
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		wordRows := min(64, len(values)-base)
+		var selectedWord uint64
+		off := 0
+		for ; off+lanes <= wordRows; off += lanes {
+			simd.LoadInt8s(values[base+off:]).LessEqual(vectorThreshold).ToInt8s().Store(laneMask)
+			for lane := 0; lane < lanes; lane++ {
+				if laneMask[lane] < 0 {
+					selectedWord |= uint64(1) << uint(off+lane)
+				}
+			}
+		}
+		for ; off < wordRows; off++ {
+			if values[base+off] <= threshold {
+				selectedWord |= uint64(1) << uint(off)
+			}
+		}
+		selectedWord &= bitmapWord(validity, wi) & memory.TailMask(wordRows)
+		out[wi] = selectedWord
+		selected += bits.OnesCount64(selectedWord)
+	}
+	return selected
+}
+
+func simdInt8EQ(values []int8, validity memory.Bitmap, out memory.Bitmap, threshold int8) int {
+	lanes := simd.Int8s{}.Len()
+	if len(values) < lanes {
+		return scalarInt8EQ(values, validity, out, threshold)
+	}
+	words := prepareComparison(len(values), out)
+	vectorThreshold := simd.BroadcastInt8s(threshold)
+	var laneMaskStorage [64]int8
+	laneMask := laneMaskStorage[:lanes]
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		wordRows := min(64, len(values)-base)
+		var selectedWord uint64
+		off := 0
+		for ; off+lanes <= wordRows; off += lanes {
+			simd.LoadInt8s(values[base+off:]).Equal(vectorThreshold).ToInt8s().Store(laneMask)
+			for lane := 0; lane < lanes; lane++ {
+				if laneMask[lane] < 0 {
+					selectedWord |= uint64(1) << uint(off+lane)
+				}
+			}
+		}
+		for ; off < wordRows; off++ {
+			if values[base+off] == threshold {
+				selectedWord |= uint64(1) << uint(off)
+			}
+		}
+		selectedWord &= bitmapWord(validity, wi) & memory.TailMask(wordRows)
+		out[wi] = selectedWord
+		selected += bits.OnesCount64(selectedWord)
+	}
+	return selected
+}
+
+func simdInt32GT(values []int32, validity memory.Bitmap, out memory.Bitmap, threshold int32) int {
+	lanes := simd.Int32s{}.Len()
+	if len(values) < lanes {
+		return scalarInt32GT(values, validity, out, threshold)
+	}
+	words := prepareComparison(len(values), out)
+	vectorThreshold := simd.BroadcastInt32s(threshold)
+	var laneMaskStorage [64]int32
+	laneMask := laneMaskStorage[:lanes]
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		wordRows := min(64, len(values)-base)
+		var selectedWord uint64
+		off := 0
+		for ; off+lanes <= wordRows; off += lanes {
+			simd.LoadInt32s(values[base+off:]).Greater(vectorThreshold).ToInt32s().Store(laneMask)
+			for lane := 0; lane < lanes; lane++ {
+				if laneMask[lane] < 0 {
+					selectedWord |= uint64(1) << uint(off+lane)
+				}
+			}
+		}
+		for ; off < wordRows; off++ {
+			if values[base+off] > threshold {
+				selectedWord |= uint64(1) << uint(off)
+			}
+		}
+		selectedWord &= bitmapWord(validity, wi) & memory.TailMask(wordRows)
+		out[wi] = selectedWord
+		selected += bits.OnesCount64(selectedWord)
+	}
+	return selected
+}
+
+func simdInt32GE(values []int32, validity memory.Bitmap, out memory.Bitmap, threshold int32) int {
+	lanes := simd.Int32s{}.Len()
+	if len(values) < lanes {
+		return scalarInt32GE(values, validity, out, threshold)
+	}
+	words := prepareComparison(len(values), out)
+	vectorThreshold := simd.BroadcastInt32s(threshold)
+	var laneMaskStorage [64]int32
+	laneMask := laneMaskStorage[:lanes]
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		wordRows := min(64, len(values)-base)
+		var selectedWord uint64
+		off := 0
+		for ; off+lanes <= wordRows; off += lanes {
+			simd.LoadInt32s(values[base+off:]).GreaterEqual(vectorThreshold).ToInt32s().Store(laneMask)
+			for lane := 0; lane < lanes; lane++ {
+				if laneMask[lane] < 0 {
+					selectedWord |= uint64(1) << uint(off+lane)
+				}
+			}
+		}
+		for ; off < wordRows; off++ {
+			if values[base+off] >= threshold {
+				selectedWord |= uint64(1) << uint(off)
+			}
+		}
+		selectedWord &= bitmapWord(validity, wi) & memory.TailMask(wordRows)
+		out[wi] = selectedWord
+		selected += bits.OnesCount64(selectedWord)
+	}
+	return selected
+}
+
+func simdInt32LT(values []int32, validity memory.Bitmap, out memory.Bitmap, threshold int32) int {
+	lanes := simd.Int32s{}.Len()
+	if len(values) < lanes {
+		return scalarInt32LT(values, validity, out, threshold)
+	}
+	words := prepareComparison(len(values), out)
+	vectorThreshold := simd.BroadcastInt32s(threshold)
+	var laneMaskStorage [64]int32
+	laneMask := laneMaskStorage[:lanes]
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		wordRows := min(64, len(values)-base)
+		var selectedWord uint64
+		off := 0
+		for ; off+lanes <= wordRows; off += lanes {
+			simd.LoadInt32s(values[base+off:]).Less(vectorThreshold).ToInt32s().Store(laneMask)
+			for lane := 0; lane < lanes; lane++ {
+				if laneMask[lane] < 0 {
+					selectedWord |= uint64(1) << uint(off+lane)
+				}
+			}
+		}
+		for ; off < wordRows; off++ {
+			if values[base+off] < threshold {
+				selectedWord |= uint64(1) << uint(off)
+			}
+		}
+		selectedWord &= bitmapWord(validity, wi) & memory.TailMask(wordRows)
+		out[wi] = selectedWord
+		selected += bits.OnesCount64(selectedWord)
+	}
+	return selected
+}
+
+func simdInt32LE(values []int32, validity memory.Bitmap, out memory.Bitmap, threshold int32) int {
+	lanes := simd.Int32s{}.Len()
+	if len(values) < lanes {
+		return scalarInt32LE(values, validity, out, threshold)
+	}
+	words := prepareComparison(len(values), out)
+	vectorThreshold := simd.BroadcastInt32s(threshold)
+	var laneMaskStorage [64]int32
+	laneMask := laneMaskStorage[:lanes]
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		wordRows := min(64, len(values)-base)
+		var selectedWord uint64
+		off := 0
+		for ; off+lanes <= wordRows; off += lanes {
+			simd.LoadInt32s(values[base+off:]).LessEqual(vectorThreshold).ToInt32s().Store(laneMask)
+			for lane := 0; lane < lanes; lane++ {
+				if laneMask[lane] < 0 {
+					selectedWord |= uint64(1) << uint(off+lane)
+				}
+			}
+		}
+		for ; off < wordRows; off++ {
+			if values[base+off] <= threshold {
+				selectedWord |= uint64(1) << uint(off)
+			}
+		}
+		selectedWord &= bitmapWord(validity, wi) & memory.TailMask(wordRows)
+		out[wi] = selectedWord
+		selected += bits.OnesCount64(selectedWord)
+	}
+	return selected
+}
+
+func simdInt32EQ(values []int32, validity memory.Bitmap, out memory.Bitmap, threshold int32) int {
+	lanes := simd.Int32s{}.Len()
+	if len(values) < lanes {
+		return scalarInt32EQ(values, validity, out, threshold)
+	}
+	words := prepareComparison(len(values), out)
+	vectorThreshold := simd.BroadcastInt32s(threshold)
+	var laneMaskStorage [64]int32
+	laneMask := laneMaskStorage[:lanes]
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		wordRows := min(64, len(values)-base)
+		var selectedWord uint64
+		off := 0
+		for ; off+lanes <= wordRows; off += lanes {
+			simd.LoadInt32s(values[base+off:]).Equal(vectorThreshold).ToInt32s().Store(laneMask)
+			for lane := 0; lane < lanes; lane++ {
+				if laneMask[lane] < 0 {
+					selectedWord |= uint64(1) << uint(off+lane)
+				}
+			}
+		}
+		for ; off < wordRows; off++ {
+			if values[base+off] == threshold {
+				selectedWord |= uint64(1) << uint(off)
+			}
+		}
+		selectedWord &= bitmapWord(validity, wi) & memory.TailMask(wordRows)
+		out[wi] = selectedWord
+		selected += bits.OnesCount64(selectedWord)
+	}
+	return selected
+}
+
+func simdInt64GT(values []int64, validity memory.Bitmap, out memory.Bitmap, threshold int64) int {
+	lanes := simd.Int64s{}.Len()
+	if len(values) < lanes {
+		return scalarInt64GT(values, validity, out, threshold)
+	}
+	words := prepareComparison(len(values), out)
+	vectorThreshold := simd.BroadcastInt64s(threshold)
+	var laneMaskStorage [64]int64
+	laneMask := laneMaskStorage[:lanes]
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		wordRows := min(64, len(values)-base)
+		var selectedWord uint64
+		off := 0
+		for ; off+lanes <= wordRows; off += lanes {
+			simd.LoadInt64s(values[base+off:]).Greater(vectorThreshold).ToInt64s().Store(laneMask)
+			for lane := 0; lane < lanes; lane++ {
+				if laneMask[lane] < 0 {
+					selectedWord |= uint64(1) << uint(off+lane)
+				}
+			}
+		}
+		for ; off < wordRows; off++ {
+			if values[base+off] > threshold {
+				selectedWord |= uint64(1) << uint(off)
+			}
+		}
+		selectedWord &= bitmapWord(validity, wi) & memory.TailMask(wordRows)
+		out[wi] = selectedWord
+		selected += bits.OnesCount64(selectedWord)
+	}
+	return selected
+}
+
+func simdInt64GE(values []int64, validity memory.Bitmap, out memory.Bitmap, threshold int64) int {
+	lanes := simd.Int64s{}.Len()
+	if len(values) < lanes {
+		return scalarInt64GE(values, validity, out, threshold)
+	}
+	words := prepareComparison(len(values), out)
+	vectorThreshold := simd.BroadcastInt64s(threshold)
+	var laneMaskStorage [64]int64
+	laneMask := laneMaskStorage[:lanes]
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		wordRows := min(64, len(values)-base)
+		var selectedWord uint64
+		off := 0
+		for ; off+lanes <= wordRows; off += lanes {
+			simd.LoadInt64s(values[base+off:]).GreaterEqual(vectorThreshold).ToInt64s().Store(laneMask)
+			for lane := 0; lane < lanes; lane++ {
+				if laneMask[lane] < 0 {
+					selectedWord |= uint64(1) << uint(off+lane)
+				}
+			}
+		}
+		for ; off < wordRows; off++ {
+			if values[base+off] >= threshold {
+				selectedWord |= uint64(1) << uint(off)
+			}
+		}
+		selectedWord &= bitmapWord(validity, wi) & memory.TailMask(wordRows)
+		out[wi] = selectedWord
+		selected += bits.OnesCount64(selectedWord)
+	}
+	return selected
+}
+
+func simdInt64LT(values []int64, validity memory.Bitmap, out memory.Bitmap, threshold int64) int {
+	lanes := simd.Int64s{}.Len()
+	if len(values) < lanes {
+		return scalarInt64LT(values, validity, out, threshold)
+	}
+	words := prepareComparison(len(values), out)
+	vectorThreshold := simd.BroadcastInt64s(threshold)
+	var laneMaskStorage [64]int64
+	laneMask := laneMaskStorage[:lanes]
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		wordRows := min(64, len(values)-base)
+		var selectedWord uint64
+		off := 0
+		for ; off+lanes <= wordRows; off += lanes {
+			simd.LoadInt64s(values[base+off:]).Less(vectorThreshold).ToInt64s().Store(laneMask)
+			for lane := 0; lane < lanes; lane++ {
+				if laneMask[lane] < 0 {
+					selectedWord |= uint64(1) << uint(off+lane)
+				}
+			}
+		}
+		for ; off < wordRows; off++ {
+			if values[base+off] < threshold {
+				selectedWord |= uint64(1) << uint(off)
+			}
+		}
+		selectedWord &= bitmapWord(validity, wi) & memory.TailMask(wordRows)
+		out[wi] = selectedWord
+		selected += bits.OnesCount64(selectedWord)
+	}
+	return selected
+}
+
+func simdInt64LE(values []int64, validity memory.Bitmap, out memory.Bitmap, threshold int64) int {
+	lanes := simd.Int64s{}.Len()
+	if len(values) < lanes {
+		return scalarInt64LE(values, validity, out, threshold)
+	}
+	words := prepareComparison(len(values), out)
+	vectorThreshold := simd.BroadcastInt64s(threshold)
+	var laneMaskStorage [64]int64
+	laneMask := laneMaskStorage[:lanes]
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		wordRows := min(64, len(values)-base)
+		var selectedWord uint64
+		off := 0
+		for ; off+lanes <= wordRows; off += lanes {
+			simd.LoadInt64s(values[base+off:]).LessEqual(vectorThreshold).ToInt64s().Store(laneMask)
+			for lane := 0; lane < lanes; lane++ {
+				if laneMask[lane] < 0 {
+					selectedWord |= uint64(1) << uint(off+lane)
+				}
+			}
+		}
+		for ; off < wordRows; off++ {
+			if values[base+off] <= threshold {
+				selectedWord |= uint64(1) << uint(off)
+			}
+		}
+		selectedWord &= bitmapWord(validity, wi) & memory.TailMask(wordRows)
+		out[wi] = selectedWord
+		selected += bits.OnesCount64(selectedWord)
+	}
+	return selected
+}
+
+func simdInt64EQ(values []int64, validity memory.Bitmap, out memory.Bitmap, threshold int64) int {
+	lanes := simd.Int64s{}.Len()
+	if len(values) < lanes {
+		return scalarInt64EQ(values, validity, out, threshold)
+	}
+	words := prepareComparison(len(values), out)
+	vectorThreshold := simd.BroadcastInt64s(threshold)
+	var laneMaskStorage [64]int64
+	laneMask := laneMaskStorage[:lanes]
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		wordRows := min(64, len(values)-base)
+		var selectedWord uint64
+		off := 0
+		for ; off+lanes <= wordRows; off += lanes {
+			simd.LoadInt64s(values[base+off:]).Equal(vectorThreshold).ToInt64s().Store(laneMask)
+			for lane := 0; lane < lanes; lane++ {
+				if laneMask[lane] < 0 {
+					selectedWord |= uint64(1) << uint(off+lane)
+				}
+			}
+		}
+		for ; off < wordRows; off++ {
+			if values[base+off] == threshold {
+				selectedWord |= uint64(1) << uint(off)
+			}
+		}
+		selectedWord &= bitmapWord(validity, wi) & memory.TailMask(wordRows)
+		out[wi] = selectedWord
+		selected += bits.OnesCount64(selectedWord)
+	}
+	return selected
+}
+
+func simdUint32GT(values []uint32, validity memory.Bitmap, out memory.Bitmap, threshold uint32) int {
+	lanes := simd.Uint32s{}.Len()
+	if len(values) < lanes {
+		return scalarUint32GT(values, validity, out, threshold)
+	}
+	words := prepareComparison(len(values), out)
+	vectorThreshold := simd.BroadcastUint32s(threshold)
+	var laneMaskStorage [64]int32
+	laneMask := laneMaskStorage[:lanes]
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		wordRows := min(64, len(values)-base)
+		var selectedWord uint64
+		off := 0
+		for ; off+lanes <= wordRows; off += lanes {
+			simd.LoadUint32s(values[base+off:]).Greater(vectorThreshold).ToInt32s().Store(laneMask)
+			for lane := 0; lane < lanes; lane++ {
+				if laneMask[lane] < 0 {
+					selectedWord |= uint64(1) << uint(off+lane)
+				}
+			}
+		}
+		for ; off < wordRows; off++ {
+			if values[base+off] > threshold {
+				selectedWord |= uint64(1) << uint(off)
+			}
+		}
+		selectedWord &= bitmapWord(validity, wi) & memory.TailMask(wordRows)
+		out[wi] = selectedWord
+		selected += bits.OnesCount64(selectedWord)
+	}
+	return selected
+}
+
+func simdUint32GE(values []uint32, validity memory.Bitmap, out memory.Bitmap, threshold uint32) int {
+	lanes := simd.Uint32s{}.Len()
+	if len(values) < lanes {
+		return scalarUint32GE(values, validity, out, threshold)
+	}
+	words := prepareComparison(len(values), out)
+	vectorThreshold := simd.BroadcastUint32s(threshold)
+	var laneMaskStorage [64]int32
+	laneMask := laneMaskStorage[:lanes]
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		wordRows := min(64, len(values)-base)
+		var selectedWord uint64
+		off := 0
+		for ; off+lanes <= wordRows; off += lanes {
+			simd.LoadUint32s(values[base+off:]).GreaterEqual(vectorThreshold).ToInt32s().Store(laneMask)
+			for lane := 0; lane < lanes; lane++ {
+				if laneMask[lane] < 0 {
+					selectedWord |= uint64(1) << uint(off+lane)
+				}
+			}
+		}
+		for ; off < wordRows; off++ {
+			if values[base+off] >= threshold {
+				selectedWord |= uint64(1) << uint(off)
+			}
+		}
+		selectedWord &= bitmapWord(validity, wi) & memory.TailMask(wordRows)
+		out[wi] = selectedWord
+		selected += bits.OnesCount64(selectedWord)
+	}
+	return selected
+}
+
+func simdUint32LT(values []uint32, validity memory.Bitmap, out memory.Bitmap, threshold uint32) int {
+	lanes := simd.Uint32s{}.Len()
+	if len(values) < lanes {
+		return scalarUint32LT(values, validity, out, threshold)
+	}
+	words := prepareComparison(len(values), out)
+	vectorThreshold := simd.BroadcastUint32s(threshold)
+	var laneMaskStorage [64]int32
+	laneMask := laneMaskStorage[:lanes]
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		wordRows := min(64, len(values)-base)
+		var selectedWord uint64
+		off := 0
+		for ; off+lanes <= wordRows; off += lanes {
+			simd.LoadUint32s(values[base+off:]).Less(vectorThreshold).ToInt32s().Store(laneMask)
+			for lane := 0; lane < lanes; lane++ {
+				if laneMask[lane] < 0 {
+					selectedWord |= uint64(1) << uint(off+lane)
+				}
+			}
+		}
+		for ; off < wordRows; off++ {
+			if values[base+off] < threshold {
+				selectedWord |= uint64(1) << uint(off)
+			}
+		}
+		selectedWord &= bitmapWord(validity, wi) & memory.TailMask(wordRows)
+		out[wi] = selectedWord
+		selected += bits.OnesCount64(selectedWord)
+	}
+	return selected
+}
+
+func simdUint32LE(values []uint32, validity memory.Bitmap, out memory.Bitmap, threshold uint32) int {
+	lanes := simd.Uint32s{}.Len()
+	if len(values) < lanes {
+		return scalarUint32LE(values, validity, out, threshold)
+	}
+	words := prepareComparison(len(values), out)
+	vectorThreshold := simd.BroadcastUint32s(threshold)
+	var laneMaskStorage [64]int32
+	laneMask := laneMaskStorage[:lanes]
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		wordRows := min(64, len(values)-base)
+		var selectedWord uint64
+		off := 0
+		for ; off+lanes <= wordRows; off += lanes {
+			simd.LoadUint32s(values[base+off:]).LessEqual(vectorThreshold).ToInt32s().Store(laneMask)
+			for lane := 0; lane < lanes; lane++ {
+				if laneMask[lane] < 0 {
+					selectedWord |= uint64(1) << uint(off+lane)
+				}
+			}
+		}
+		for ; off < wordRows; off++ {
+			if values[base+off] <= threshold {
+				selectedWord |= uint64(1) << uint(off)
+			}
+		}
+		selectedWord &= bitmapWord(validity, wi) & memory.TailMask(wordRows)
+		out[wi] = selectedWord
+		selected += bits.OnesCount64(selectedWord)
+	}
+	return selected
+}
+
+func simdUint32EQ(values []uint32, validity memory.Bitmap, out memory.Bitmap, threshold uint32) int {
+	lanes := simd.Uint32s{}.Len()
+	if len(values) < lanes {
+		return scalarUint32EQ(values, validity, out, threshold)
+	}
+	words := prepareComparison(len(values), out)
+	vectorThreshold := simd.BroadcastUint32s(threshold)
+	var laneMaskStorage [64]int32
+	laneMask := laneMaskStorage[:lanes]
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		wordRows := min(64, len(values)-base)
+		var selectedWord uint64
+		off := 0
+		for ; off+lanes <= wordRows; off += lanes {
+			simd.LoadUint32s(values[base+off:]).Equal(vectorThreshold).ToInt32s().Store(laneMask)
+			for lane := 0; lane < lanes; lane++ {
+				if laneMask[lane] < 0 {
+					selectedWord |= uint64(1) << uint(off+lane)
+				}
+			}
+		}
+		for ; off < wordRows; off++ {
+			if values[base+off] == threshold {
+				selectedWord |= uint64(1) << uint(off)
+			}
+		}
+		selectedWord &= bitmapWord(validity, wi) & memory.TailMask(wordRows)
+		out[wi] = selectedWord
+		selected += bits.OnesCount64(selectedWord)
+	}
+	return selected
+}
+
+func simdUint64GT(values []uint64, validity memory.Bitmap, out memory.Bitmap, threshold uint64) int {
+	lanes := simd.Uint64s{}.Len()
+	if len(values) < lanes {
+		return scalarUint64GT(values, validity, out, threshold)
+	}
+	words := prepareComparison(len(values), out)
+	vectorThreshold := simd.BroadcastUint64s(threshold)
+	var laneMaskStorage [64]int64
+	laneMask := laneMaskStorage[:lanes]
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		wordRows := min(64, len(values)-base)
+		var selectedWord uint64
+		off := 0
+		for ; off+lanes <= wordRows; off += lanes {
+			simd.LoadUint64s(values[base+off:]).Greater(vectorThreshold).ToInt64s().Store(laneMask)
+			for lane := 0; lane < lanes; lane++ {
+				if laneMask[lane] < 0 {
+					selectedWord |= uint64(1) << uint(off+lane)
+				}
+			}
+		}
+		for ; off < wordRows; off++ {
+			if values[base+off] > threshold {
+				selectedWord |= uint64(1) << uint(off)
+			}
+		}
+		selectedWord &= bitmapWord(validity, wi) & memory.TailMask(wordRows)
+		out[wi] = selectedWord
+		selected += bits.OnesCount64(selectedWord)
+	}
+	return selected
+}
+
+func simdUint64GE(values []uint64, validity memory.Bitmap, out memory.Bitmap, threshold uint64) int {
+	lanes := simd.Uint64s{}.Len()
+	if len(values) < lanes {
+		return scalarUint64GE(values, validity, out, threshold)
+	}
+	words := prepareComparison(len(values), out)
+	vectorThreshold := simd.BroadcastUint64s(threshold)
+	var laneMaskStorage [64]int64
+	laneMask := laneMaskStorage[:lanes]
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		wordRows := min(64, len(values)-base)
+		var selectedWord uint64
+		off := 0
+		for ; off+lanes <= wordRows; off += lanes {
+			simd.LoadUint64s(values[base+off:]).GreaterEqual(vectorThreshold).ToInt64s().Store(laneMask)
+			for lane := 0; lane < lanes; lane++ {
+				if laneMask[lane] < 0 {
+					selectedWord |= uint64(1) << uint(off+lane)
+				}
+			}
+		}
+		for ; off < wordRows; off++ {
+			if values[base+off] >= threshold {
+				selectedWord |= uint64(1) << uint(off)
+			}
+		}
+		selectedWord &= bitmapWord(validity, wi) & memory.TailMask(wordRows)
+		out[wi] = selectedWord
+		selected += bits.OnesCount64(selectedWord)
+	}
+	return selected
+}
+
+func simdUint64LT(values []uint64, validity memory.Bitmap, out memory.Bitmap, threshold uint64) int {
+	lanes := simd.Uint64s{}.Len()
+	if len(values) < lanes {
+		return scalarUint64LT(values, validity, out, threshold)
+	}
+	words := prepareComparison(len(values), out)
+	vectorThreshold := simd.BroadcastUint64s(threshold)
+	var laneMaskStorage [64]int64
+	laneMask := laneMaskStorage[:lanes]
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		wordRows := min(64, len(values)-base)
+		var selectedWord uint64
+		off := 0
+		for ; off+lanes <= wordRows; off += lanes {
+			simd.LoadUint64s(values[base+off:]).Less(vectorThreshold).ToInt64s().Store(laneMask)
+			for lane := 0; lane < lanes; lane++ {
+				if laneMask[lane] < 0 {
+					selectedWord |= uint64(1) << uint(off+lane)
+				}
+			}
+		}
+		for ; off < wordRows; off++ {
+			if values[base+off] < threshold {
+				selectedWord |= uint64(1) << uint(off)
+			}
+		}
+		selectedWord &= bitmapWord(validity, wi) & memory.TailMask(wordRows)
+		out[wi] = selectedWord
+		selected += bits.OnesCount64(selectedWord)
+	}
+	return selected
+}
+
+func simdUint64LE(values []uint64, validity memory.Bitmap, out memory.Bitmap, threshold uint64) int {
+	lanes := simd.Uint64s{}.Len()
+	if len(values) < lanes {
+		return scalarUint64LE(values, validity, out, threshold)
+	}
+	words := prepareComparison(len(values), out)
+	vectorThreshold := simd.BroadcastUint64s(threshold)
+	var laneMaskStorage [64]int64
+	laneMask := laneMaskStorage[:lanes]
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		wordRows := min(64, len(values)-base)
+		var selectedWord uint64
+		off := 0
+		for ; off+lanes <= wordRows; off += lanes {
+			simd.LoadUint64s(values[base+off:]).LessEqual(vectorThreshold).ToInt64s().Store(laneMask)
+			for lane := 0; lane < lanes; lane++ {
+				if laneMask[lane] < 0 {
+					selectedWord |= uint64(1) << uint(off+lane)
+				}
+			}
+		}
+		for ; off < wordRows; off++ {
+			if values[base+off] <= threshold {
+				selectedWord |= uint64(1) << uint(off)
+			}
+		}
+		selectedWord &= bitmapWord(validity, wi) & memory.TailMask(wordRows)
+		out[wi] = selectedWord
+		selected += bits.OnesCount64(selectedWord)
+	}
+	return selected
+}
+
+func simdUint64EQ(values []uint64, validity memory.Bitmap, out memory.Bitmap, threshold uint64) int {
+	lanes := simd.Uint64s{}.Len()
+	if len(values) < lanes {
+		return scalarUint64EQ(values, validity, out, threshold)
+	}
+	words := prepareComparison(len(values), out)
+	vectorThreshold := simd.BroadcastUint64s(threshold)
+	var laneMaskStorage [64]int64
+	laneMask := laneMaskStorage[:lanes]
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		wordRows := min(64, len(values)-base)
+		var selectedWord uint64
+		off := 0
+		for ; off+lanes <= wordRows; off += lanes {
+			simd.LoadUint64s(values[base+off:]).Equal(vectorThreshold).ToInt64s().Store(laneMask)
+			for lane := 0; lane < lanes; lane++ {
+				if laneMask[lane] < 0 {
+					selectedWord |= uint64(1) << uint(off+lane)
+				}
+			}
+		}
+		for ; off < wordRows; off++ {
+			if values[base+off] == threshold {
+				selectedWord |= uint64(1) << uint(off)
+			}
+		}
+		selectedWord &= bitmapWord(validity, wi) & memory.TailMask(wordRows)
+		out[wi] = selectedWord
+		selected += bits.OnesCount64(selectedWord)
+	}
+	return selected
+}
+
+func simdFloat64GT(values []float64, validity memory.Bitmap, out memory.Bitmap, threshold float64) int {
+	lanes := simd.Float64s{}.Len()
+	if len(values) < lanes {
+		return scalarFloat64GT(values, validity, out, threshold)
+	}
+	words := prepareComparison(len(values), out)
+	vectorThreshold := simd.BroadcastFloat64s(threshold)
+	var laneMaskStorage [64]int64
+	laneMask := laneMaskStorage[:lanes]
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		wordRows := min(64, len(values)-base)
+		var selectedWord uint64
+		off := 0
+		for ; off+lanes <= wordRows; off += lanes {
+			simd.LoadFloat64s(values[base+off:]).Greater(vectorThreshold).ToInt64s().Store(laneMask)
+			for lane := 0; lane < lanes; lane++ {
+				if laneMask[lane] < 0 {
+					selectedWord |= uint64(1) << uint(off+lane)
+				}
+			}
+		}
+		for ; off < wordRows; off++ {
+			if values[base+off] > threshold {
+				selectedWord |= uint64(1) << uint(off)
+			}
+		}
+		selectedWord &= bitmapWord(validity, wi) & memory.TailMask(wordRows)
+		out[wi] = selectedWord
+		selected += bits.OnesCount64(selectedWord)
+	}
+	return selected
+}
+
+func simdFloat64GE(values []float64, validity memory.Bitmap, out memory.Bitmap, threshold float64) int {
+	lanes := simd.Float64s{}.Len()
+	if len(values) < lanes {
+		return scalarFloat64GE(values, validity, out, threshold)
+	}
+	words := prepareComparison(len(values), out)
+	vectorThreshold := simd.BroadcastFloat64s(threshold)
+	var laneMaskStorage [64]int64
+	laneMask := laneMaskStorage[:lanes]
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		wordRows := min(64, len(values)-base)
+		var selectedWord uint64
+		off := 0
+		for ; off+lanes <= wordRows; off += lanes {
+			simd.LoadFloat64s(values[base+off:]).GreaterEqual(vectorThreshold).ToInt64s().Store(laneMask)
+			for lane := 0; lane < lanes; lane++ {
+				if laneMask[lane] < 0 {
+					selectedWord |= uint64(1) << uint(off+lane)
+				}
+			}
+		}
+		for ; off < wordRows; off++ {
+			if values[base+off] >= threshold {
+				selectedWord |= uint64(1) << uint(off)
+			}
+		}
+		selectedWord &= bitmapWord(validity, wi) & memory.TailMask(wordRows)
+		out[wi] = selectedWord
+		selected += bits.OnesCount64(selectedWord)
+	}
+	return selected
+}
+
+func simdFloat64LT(values []float64, validity memory.Bitmap, out memory.Bitmap, threshold float64) int {
+	lanes := simd.Float64s{}.Len()
+	if len(values) < lanes {
+		return scalarFloat64LT(values, validity, out, threshold)
+	}
+	words := prepareComparison(len(values), out)
+	vectorThreshold := simd.BroadcastFloat64s(threshold)
+	var laneMaskStorage [64]int64
+	laneMask := laneMaskStorage[:lanes]
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		wordRows := min(64, len(values)-base)
+		var selectedWord uint64
+		off := 0
+		for ; off+lanes <= wordRows; off += lanes {
+			simd.LoadFloat64s(values[base+off:]).Less(vectorThreshold).ToInt64s().Store(laneMask)
+			for lane := 0; lane < lanes; lane++ {
+				if laneMask[lane] < 0 {
+					selectedWord |= uint64(1) << uint(off+lane)
+				}
+			}
+		}
+		for ; off < wordRows; off++ {
+			if values[base+off] < threshold {
+				selectedWord |= uint64(1) << uint(off)
+			}
+		}
+		selectedWord &= bitmapWord(validity, wi) & memory.TailMask(wordRows)
+		out[wi] = selectedWord
+		selected += bits.OnesCount64(selectedWord)
+	}
+	return selected
+}
+
+func simdFloat64LE(values []float64, validity memory.Bitmap, out memory.Bitmap, threshold float64) int {
+	lanes := simd.Float64s{}.Len()
+	if len(values) < lanes {
+		return scalarFloat64LE(values, validity, out, threshold)
+	}
+	words := prepareComparison(len(values), out)
+	vectorThreshold := simd.BroadcastFloat64s(threshold)
+	var laneMaskStorage [64]int64
+	laneMask := laneMaskStorage[:lanes]
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		wordRows := min(64, len(values)-base)
+		var selectedWord uint64
+		off := 0
+		for ; off+lanes <= wordRows; off += lanes {
+			simd.LoadFloat64s(values[base+off:]).LessEqual(vectorThreshold).ToInt64s().Store(laneMask)
+			for lane := 0; lane < lanes; lane++ {
+				if laneMask[lane] < 0 {
+					selectedWord |= uint64(1) << uint(off+lane)
+				}
+			}
+		}
+		for ; off < wordRows; off++ {
+			if values[base+off] <= threshold {
+				selectedWord |= uint64(1) << uint(off)
+			}
+		}
+		selectedWord &= bitmapWord(validity, wi) & memory.TailMask(wordRows)
+		out[wi] = selectedWord
+		selected += bits.OnesCount64(selectedWord)
+	}
+	return selected
+}
+
+func simdFloat64EQ(values []float64, validity memory.Bitmap, out memory.Bitmap, threshold float64) int {
+	lanes := simd.Float64s{}.Len()
+	if len(values) < lanes {
+		return scalarFloat64EQ(values, validity, out, threshold)
+	}
+	words := prepareComparison(len(values), out)
+	vectorThreshold := simd.BroadcastFloat64s(threshold)
+	var laneMaskStorage [64]int64
+	laneMask := laneMaskStorage[:lanes]
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		wordRows := min(64, len(values)-base)
+		var selectedWord uint64
+		off := 0
+		for ; off+lanes <= wordRows; off += lanes {
+			simd.LoadFloat64s(values[base+off:]).Equal(vectorThreshold).ToInt64s().Store(laneMask)
+			for lane := 0; lane < lanes; lane++ {
+				if laneMask[lane] < 0 {
+					selectedWord |= uint64(1) << uint(off+lane)
+				}
+			}
+		}
+		for ; off < wordRows; off++ {
+			if values[base+off] == threshold {
+				selectedWord |= uint64(1) << uint(off)
+			}
+		}
+		selectedWord &= bitmapWord(validity, wi) & memory.TailMask(wordRows)
+		out[wi] = selectedWord
+		selected += bits.OnesCount64(selectedWord)
+	}
+	return selected
+}
+
+func simdFloat64ColumnsGT(left, right []float64, leftValid, rightValid, out memory.Bitmap) int {
+	if len(left) != len(right) {
+		panic("kernel: float64 column comparison length mismatch")
+	}
+	lanes := simd.Float64s{}.Len()
+	if len(left) < lanes {
+		return scalarFloat64ColumnsGT(left, right, leftValid, rightValid, out)
+	}
+	words := prepareComparison(len(left), out)
+	var laneMaskStorage [64]int64
+	laneMask := laneMaskStorage[:lanes]
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		rows := min(64, len(left)-base)
+		var word uint64
+		off := 0
+		for ; off+lanes <= rows; off += lanes {
+			simd.LoadFloat64s(left[base+off:]).Greater(simd.LoadFloat64s(right[base+off:])).ToInt64s().Store(laneMask)
+			for lane := 0; lane < lanes; lane++ {
+				if laneMask[lane] < 0 {
+					word |= uint64(1) << uint(off+lane)
+				}
+			}
+		}
+		for ; off < rows; off++ {
+			if left[base+off] > right[base+off] {
+				word |= uint64(1) << uint(off)
+			}
+		}
+		word &= bitmapWord(leftValid, wi) & bitmapWord(rightValid, wi) & memory.TailMask(rows)
+		out[wi] = word
+		selected += bits.OnesCount64(word)
+	}
+	return selected
+}
+
+func simdFloat64ColumnsGE(left, right []float64, leftValid, rightValid, out memory.Bitmap) int {
+	if len(left) != len(right) {
+		panic("kernel: float64 column comparison length mismatch")
+	}
+	lanes := simd.Float64s{}.Len()
+	if len(left) < lanes {
+		return scalarFloat64ColumnsGE(left, right, leftValid, rightValid, out)
+	}
+	words := prepareComparison(len(left), out)
+	var laneMaskStorage [64]int64
+	laneMask := laneMaskStorage[:lanes]
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		rows := min(64, len(left)-base)
+		var word uint64
+		off := 0
+		for ; off+lanes <= rows; off += lanes {
+			simd.LoadFloat64s(left[base+off:]).GreaterEqual(simd.LoadFloat64s(right[base+off:])).ToInt64s().Store(laneMask)
+			for lane := 0; lane < lanes; lane++ {
+				if laneMask[lane] < 0 {
+					word |= uint64(1) << uint(off+lane)
+				}
+			}
+		}
+		for ; off < rows; off++ {
+			if left[base+off] >= right[base+off] {
+				word |= uint64(1) << uint(off)
+			}
+		}
+		word &= bitmapWord(leftValid, wi) & bitmapWord(rightValid, wi) & memory.TailMask(rows)
+		out[wi] = word
+		selected += bits.OnesCount64(word)
+	}
+	return selected
+}
+
+func simdFloat64ColumnsLT(left, right []float64, leftValid, rightValid, out memory.Bitmap) int {
+	if len(left) != len(right) {
+		panic("kernel: float64 column comparison length mismatch")
+	}
+	lanes := simd.Float64s{}.Len()
+	if len(left) < lanes {
+		return scalarFloat64ColumnsLT(left, right, leftValid, rightValid, out)
+	}
+	words := prepareComparison(len(left), out)
+	var laneMaskStorage [64]int64
+	laneMask := laneMaskStorage[:lanes]
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		rows := min(64, len(left)-base)
+		var word uint64
+		off := 0
+		for ; off+lanes <= rows; off += lanes {
+			simd.LoadFloat64s(left[base+off:]).Less(simd.LoadFloat64s(right[base+off:])).ToInt64s().Store(laneMask)
+			for lane := 0; lane < lanes; lane++ {
+				if laneMask[lane] < 0 {
+					word |= uint64(1) << uint(off+lane)
+				}
+			}
+		}
+		for ; off < rows; off++ {
+			if left[base+off] < right[base+off] {
+				word |= uint64(1) << uint(off)
+			}
+		}
+		word &= bitmapWord(leftValid, wi) & bitmapWord(rightValid, wi) & memory.TailMask(rows)
+		out[wi] = word
+		selected += bits.OnesCount64(word)
+	}
+	return selected
+}
+
+func simdFloat64ColumnsLE(left, right []float64, leftValid, rightValid, out memory.Bitmap) int {
+	if len(left) != len(right) {
+		panic("kernel: float64 column comparison length mismatch")
+	}
+	lanes := simd.Float64s{}.Len()
+	if len(left) < lanes {
+		return scalarFloat64ColumnsLE(left, right, leftValid, rightValid, out)
+	}
+	words := prepareComparison(len(left), out)
+	var laneMaskStorage [64]int64
+	laneMask := laneMaskStorage[:lanes]
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		rows := min(64, len(left)-base)
+		var word uint64
+		off := 0
+		for ; off+lanes <= rows; off += lanes {
+			simd.LoadFloat64s(left[base+off:]).LessEqual(simd.LoadFloat64s(right[base+off:])).ToInt64s().Store(laneMask)
+			for lane := 0; lane < lanes; lane++ {
+				if laneMask[lane] < 0 {
+					word |= uint64(1) << uint(off+lane)
+				}
+			}
+		}
+		for ; off < rows; off++ {
+			if left[base+off] <= right[base+off] {
+				word |= uint64(1) << uint(off)
+			}
+		}
+		word &= bitmapWord(leftValid, wi) & bitmapWord(rightValid, wi) & memory.TailMask(rows)
+		out[wi] = word
+		selected += bits.OnesCount64(word)
+	}
+	return selected
+}
+
+func simdFloat64ColumnsEQ(left, right []float64, leftValid, rightValid, out memory.Bitmap) int {
+	if len(left) != len(right) {
+		panic("kernel: float64 column comparison length mismatch")
+	}
+	lanes := simd.Float64s{}.Len()
+	if len(left) < lanes {
+		return scalarFloat64ColumnsEQ(left, right, leftValid, rightValid, out)
+	}
+	words := prepareComparison(len(left), out)
+	var laneMaskStorage [64]int64
+	laneMask := laneMaskStorage[:lanes]
+	selected := 0
+	for wi := 0; wi < words; wi++ {
+		base := wi * 64
+		rows := min(64, len(left)-base)
+		var word uint64
+		off := 0
+		for ; off+lanes <= rows; off += lanes {
+			simd.LoadFloat64s(left[base+off:]).Equal(simd.LoadFloat64s(right[base+off:])).ToInt64s().Store(laneMask)
+			for lane := 0; lane < lanes; lane++ {
+				if laneMask[lane] < 0 {
+					word |= uint64(1) << uint(off+lane)
+				}
+			}
+		}
+		for ; off < rows; off++ {
+			if left[base+off] == right[base+off] {
+				word |= uint64(1) << uint(off)
+			}
+		}
+		word &= bitmapWord(leftValid, wi) & bitmapWord(rightValid, wi) & memory.TailMask(rows)
+		out[wi] = word
+		selected += bits.OnesCount64(word)
 	}
 	return selected
 }

@@ -14,7 +14,7 @@ func TestColumnComparisonCapabilitiesAreSeparateAndExact(t *testing.T) {
 				if !ok {
 					t.Fatalf("mode=%s type=%s op=%s missing capability", mode, typ, op)
 				}
-				if mode == ModeScalar || (typ != memory.TypeInt32 && typ != memory.TypeUint32 && typ != memory.TypeFloat32) {
+				if mode == ModeScalar || (typ != memory.TypeInt32 && typ != memory.TypeUint32 && typ != memory.TypeFloat32 && typ != memory.TypeFloat64) {
 					if capability != (KernelCapability{Backend: "scalar"}) {
 						t.Fatalf("mode=%s type=%s op=%s false native claim: %+v", mode, typ, op, capability)
 					}

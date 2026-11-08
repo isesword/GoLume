@@ -1,0 +1,522 @@
+goos: linux
+goarch: amd64
+pkg: gocolumn/physical
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkNumericSIMDWholeQuery/type=float64/op=add/column=true/nullable=false/mode=scalar         	    1711	     73636 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=add/column=true/nullable=true/mode=scalar          	    1375	     78453 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=gt/column=false/nullable=false/mode=scalar         	    1502	     76602 ns/op	     72592 peak_bytes	      2981 projected_rows/op	      8199 source_rows/op	   85496 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=gt/column=false/nullable=true/mode=scalar          	    1712	     69806 ns/op	     72592 peak_bytes	      2981 projected_rows/op	      8199 source_rows/op	   85496 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=le/column=true/nullable=false/mode=scalar          	    1393	     91753 ns/op	     72752 peak_bytes	      3727 projected_rows/op	      8199 source_rows/op	   89648 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=le/column=true/nullable=true/mode=scalar           	    1354	     85988 ns/op	     67944 peak_bytes	      2752 projected_rows/op	      8199 source_rows/op	   85448 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=add/column=true/nullable=false/mode=scalar         	     621	    166597 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=add/column=true/nullable=true/mode=scalar          	     852	    140894 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=sub/column=true/nullable=false/mode=scalar         	     766	    160414 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=sub/column=true/nullable=true/mode=scalar          	     795	    160927 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=mul/column=true/nullable=false/mode=scalar         	     769	    156226 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=mul/column=true/nullable=true/mode=scalar          	     793	    154135 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=div/column=true/nullable=false/mode=scalar         	     727	    170493 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=div/column=true/nullable=true/mode=scalar          	     774	    178831 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int8/op=gt/column=false/nullable=false/mode=scalar            	    1627	     62013 ns/op	     62176 peak_bytes	      3075 projected_rows/op	      8199 source_rows/op	   73120 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int8/op=gt/column=false/nullable=true/mode=scalar             	    1848	     75461 ns/op	     68824 peak_bytes	      2795 projected_rows/op	      8199 source_rows/op	   85448 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int32/op=gt/column=false/nullable=false/mode=scalar           	    1497	     69122 ns/op	     67552 peak_bytes	      2732 projected_rows/op	      8199 source_rows/op	   85448 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int32/op=gt/column=false/nullable=true/mode=scalar            	    1452	     73683 ns/op	     62544 peak_bytes	      2483 projected_rows/op	      8199 source_rows/op	   75160 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int64/op=gt/column=false/nullable=false/mode=scalar           	    1638	     61931 ns/op	     67552 peak_bytes	      2732 projected_rows/op	      8199 source_rows/op	   84616 B/op	     165 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int64/op=gt/column=false/nullable=true/mode=scalar            	    1621	     84568 ns/op	     62544 peak_bytes	      2483 projected_rows/op	      8199 source_rows/op	   74328 B/op	     165 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=uint32/op=gt/column=false/nullable=false/mode=scalar          	    1333	     82797 ns/op	    100840 peak_bytes	      5465 projected_rows/op	      8199 source_rows/op	  122752 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=uint32/op=gt/column=false/nullable=true/mode=scalar           	    1275	     88499 ns/op	     92808 peak_bytes	      4968 projected_rows/op	      8199 source_rows/op	  106272 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=uint64/op=gt/column=false/nullable=false/mode=scalar          	    1129	     89643 ns/op	    100840 peak_bytes	      5465 projected_rows/op	      8199 source_rows/op	  122752 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=uint64/op=gt/column=false/nullable=true/mode=scalar           	    1474	     82688 ns/op	     92808 peak_bytes	      4968 projected_rows/op	      8199 source_rows/op	  106272 B/op	     166 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/physical
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkNumericSIMDWholeQuery/type=float64/op=add/column=true/nullable=false/mode=auto         	    1594	     86435 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=add/column=true/nullable=true/mode=auto          	    1525	     84770 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=gt/column=false/nullable=false/mode=auto         	    1299	    105858 ns/op	     72592 peak_bytes	      2981 projected_rows/op	      8199 source_rows/op	   85496 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=gt/column=false/nullable=true/mode=auto          	    1419	     90002 ns/op	     72592 peak_bytes	      2981 projected_rows/op	      8199 source_rows/op	   85496 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=le/column=true/nullable=false/mode=auto          	    1366	     86923 ns/op	     72752 peak_bytes	      3727 projected_rows/op	      8199 source_rows/op	   89648 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=le/column=true/nullable=true/mode=auto           	    1588	     92479 ns/op	     67944 peak_bytes	      2752 projected_rows/op	      8199 source_rows/op	   85448 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=add/column=true/nullable=false/mode=auto         	     608	    173833 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=add/column=true/nullable=true/mode=auto          	     746	    168217 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=sub/column=true/nullable=false/mode=auto         	     654	    183921 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=sub/column=true/nullable=true/mode=auto          	     657	    182444 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=mul/column=true/nullable=false/mode=auto         	     670	    177168 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=mul/column=true/nullable=true/mode=auto          	     526	    193173 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=div/column=true/nullable=false/mode=auto         	     646	    200753 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=div/column=true/nullable=true/mode=auto          	     590	    171961 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int8/op=gt/column=false/nullable=false/mode=auto            	    1400	     82211 ns/op	     62176 peak_bytes	      3075 projected_rows/op	      8199 source_rows/op	   73120 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int8/op=gt/column=false/nullable=true/mode=auto             	    1245	    114463 ns/op	     68824 peak_bytes	      2795 projected_rows/op	      8199 source_rows/op	   85448 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int32/op=gt/column=false/nullable=false/mode=auto           	    1498	     85182 ns/op	     67552 peak_bytes	      2732 projected_rows/op	      8199 source_rows/op	   85448 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int32/op=gt/column=false/nullable=true/mode=auto            	    1581	     98725 ns/op	     62544 peak_bytes	      2483 projected_rows/op	      8199 source_rows/op	   75160 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int64/op=gt/column=false/nullable=false/mode=auto           	    1425	     79169 ns/op	     67552 peak_bytes	      2732 projected_rows/op	      8199 source_rows/op	   84616 B/op	     165 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int64/op=gt/column=false/nullable=true/mode=auto            	    1546	     86457 ns/op	     62544 peak_bytes	      2483 projected_rows/op	      8199 source_rows/op	   74328 B/op	     165 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=uint32/op=gt/column=false/nullable=false/mode=auto          	     980	    109946 ns/op	    100840 peak_bytes	      5465 projected_rows/op	      8199 source_rows/op	  122752 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=uint32/op=gt/column=false/nullable=true/mode=auto           	    1304	     99785 ns/op	     92808 peak_bytes	      4968 projected_rows/op	      8199 source_rows/op	  106272 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=uint64/op=gt/column=false/nullable=false/mode=auto          	    1044	    105942 ns/op	    100840 peak_bytes	      5465 projected_rows/op	      8199 source_rows/op	  122752 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=uint64/op=gt/column=false/nullable=true/mode=auto           	     993	    100837 ns/op	     92808 peak_bytes	      4968 projected_rows/op	      8199 source_rows/op	  106272 B/op	     166 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/physical
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkNumericSIMDWholeQuery/type=float64/op=add/column=true/nullable=false/mode=forced-simd         	    1354	     76823 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=add/column=true/nullable=true/mode=forced-simd          	    1582	     82146 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=gt/column=false/nullable=false/mode=forced-simd         	    1316	     78913 ns/op	     72592 peak_bytes	      2981 projected_rows/op	      8199 source_rows/op	   85496 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=gt/column=false/nullable=true/mode=forced-simd          	    1594	     94884 ns/op	     72592 peak_bytes	      2981 projected_rows/op	      8199 source_rows/op	   85496 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=le/column=true/nullable=false/mode=forced-simd          	    1035	     99228 ns/op	     72752 peak_bytes	      3727 projected_rows/op	      8199 source_rows/op	   89648 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=le/column=true/nullable=true/mode=forced-simd           	    1312	     90641 ns/op	     67944 peak_bytes	      2752 projected_rows/op	      8199 source_rows/op	   85448 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=add/column=true/nullable=false/mode=forced-simd         	     654	    176954 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=add/column=true/nullable=true/mode=forced-simd          	     418	    260852 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=sub/column=true/nullable=false/mode=forced-simd         	     385	    355003 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=sub/column=true/nullable=true/mode=forced-simd          	     334	    339628 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=mul/column=true/nullable=false/mode=forced-simd         	     307	    384951 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=mul/column=true/nullable=true/mode=forced-simd          	     368	    377965 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=div/column=true/nullable=false/mode=forced-simd         	     283	    369169 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=div/column=true/nullable=true/mode=forced-simd          	     392	    385384 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int8/op=gt/column=false/nullable=false/mode=forced-simd            	    1296	    126283 ns/op	     62176 peak_bytes	      3075 projected_rows/op	      8199 source_rows/op	   73120 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int8/op=gt/column=false/nullable=true/mode=forced-simd             	     798	    156007 ns/op	     68824 peak_bytes	      2795 projected_rows/op	      8199 source_rows/op	   85448 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int32/op=gt/column=false/nullable=false/mode=forced-simd           	     931	    164493 ns/op	     67552 peak_bytes	      2732 projected_rows/op	      8199 source_rows/op	   85448 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int32/op=gt/column=false/nullable=true/mode=forced-simd            	     691	    153159 ns/op	     62544 peak_bytes	      2483 projected_rows/op	      8199 source_rows/op	   75160 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int64/op=gt/column=false/nullable=false/mode=forced-simd           	     913	    167537 ns/op	     67552 peak_bytes	      2732 projected_rows/op	      8199 source_rows/op	   84616 B/op	     165 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int64/op=gt/column=false/nullable=true/mode=forced-simd            	     820	    147109 ns/op	     62544 peak_bytes	      2483 projected_rows/op	      8199 source_rows/op	   74328 B/op	     165 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=uint32/op=gt/column=false/nullable=false/mode=forced-simd          	     439	    239678 ns/op	    100840 peak_bytes	      5465 projected_rows/op	      8199 source_rows/op	  122752 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=uint32/op=gt/column=false/nullable=true/mode=forced-simd           	     691	    198497 ns/op	     92808 peak_bytes	      4968 projected_rows/op	      8199 source_rows/op	  106272 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=uint64/op=gt/column=false/nullable=false/mode=forced-simd          	     510	    200637 ns/op	    100840 peak_bytes	      5465 projected_rows/op	      8199 source_rows/op	  122752 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=uint64/op=gt/column=false/nullable=true/mode=forced-simd           	     651	    191246 ns/op	     92808 peak_bytes	      4968 projected_rows/op	      8199 source_rows/op	  106272 B/op	     166 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/physical
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkNumericSIMDWholeQuery/type=float64/op=add/column=true/nullable=false/mode=auto         	    1692	    147526 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=add/column=true/nullable=true/mode=auto          	    1352	     89113 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=gt/column=false/nullable=false/mode=auto         	    1482	     85325 ns/op	     72592 peak_bytes	      2981 projected_rows/op	      8199 source_rows/op	   85496 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=gt/column=false/nullable=true/mode=auto          	    1363	     85683 ns/op	     72592 peak_bytes	      2981 projected_rows/op	      8199 source_rows/op	   85496 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=le/column=true/nullable=false/mode=auto          	    1532	    268540 ns/op	     72752 peak_bytes	      3727 projected_rows/op	      8199 source_rows/op	   89648 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=le/column=true/nullable=true/mode=auto           	    1164	    192997 ns/op	     67944 peak_bytes	      2752 projected_rows/op	      8199 source_rows/op	   85448 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=add/column=true/nullable=false/mode=auto         	     735	    207201 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=add/column=true/nullable=true/mode=auto          	     757	    173047 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=sub/column=true/nullable=false/mode=auto         	     720	    174408 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=sub/column=true/nullable=true/mode=auto          	     764	    182263 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=mul/column=true/nullable=false/mode=auto         	     602	    199096 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=mul/column=true/nullable=true/mode=auto          	     772	    169165 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=div/column=true/nullable=false/mode=auto         	     649	    198729 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=div/column=true/nullable=true/mode=auto          	     680	    185641 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int8/op=gt/column=false/nullable=false/mode=auto            	    1862	     69471 ns/op	     62176 peak_bytes	      3075 projected_rows/op	      8199 source_rows/op	   73120 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int8/op=gt/column=false/nullable=true/mode=auto             	    1644	     78620 ns/op	     68824 peak_bytes	      2795 projected_rows/op	      8199 source_rows/op	   85448 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int32/op=gt/column=false/nullable=false/mode=auto           	    1630	     78043 ns/op	     67552 peak_bytes	      2732 projected_rows/op	      8199 source_rows/op	   85448 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int32/op=gt/column=false/nullable=true/mode=auto            	    1609	     79234 ns/op	     62544 peak_bytes	      2483 projected_rows/op	      8199 source_rows/op	   75160 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int64/op=gt/column=false/nullable=false/mode=auto           	    1534	     81893 ns/op	     67552 peak_bytes	      2732 projected_rows/op	      8199 source_rows/op	   84616 B/op	     165 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int64/op=gt/column=false/nullable=true/mode=auto            	    1558	     76242 ns/op	     62544 peak_bytes	      2483 projected_rows/op	      8199 source_rows/op	   74328 B/op	     165 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=uint32/op=gt/column=false/nullable=false/mode=auto          	    1192	     96857 ns/op	    100840 peak_bytes	      5465 projected_rows/op	      8199 source_rows/op	  122752 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=uint32/op=gt/column=false/nullable=true/mode=auto           	    1424	     84893 ns/op	     92808 peak_bytes	      4968 projected_rows/op	      8199 source_rows/op	  106272 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=uint64/op=gt/column=false/nullable=false/mode=auto          	    1006	    136441 ns/op	    100840 peak_bytes	      5465 projected_rows/op	      8199 source_rows/op	  122752 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=uint64/op=gt/column=false/nullable=true/mode=auto           	    1024	    131205 ns/op	     92808 peak_bytes	      4968 projected_rows/op	      8199 source_rows/op	  106272 B/op	     166 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/physical
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkNumericSIMDWholeQuery/type=float64/op=add/column=true/nullable=false/mode=forced-simd         	    1480	     78078 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=add/column=true/nullable=true/mode=forced-simd          	    1365	    102011 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=gt/column=false/nullable=false/mode=forced-simd         	    1267	     86218 ns/op	     72592 peak_bytes	      2981 projected_rows/op	      8199 source_rows/op	   85496 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=gt/column=false/nullable=true/mode=forced-simd          	    1623	     84960 ns/op	     72592 peak_bytes	      2981 projected_rows/op	      8199 source_rows/op	   85496 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=le/column=true/nullable=false/mode=forced-simd          	    1731	     83028 ns/op	     72752 peak_bytes	      3727 projected_rows/op	      8199 source_rows/op	   89648 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=le/column=true/nullable=true/mode=forced-simd           	    1244	     85395 ns/op	     67944 peak_bytes	      2752 projected_rows/op	      8199 source_rows/op	   85448 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=add/column=true/nullable=false/mode=forced-simd         	     756	    184197 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=add/column=true/nullable=true/mode=forced-simd          	     676	    162941 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=sub/column=true/nullable=false/mode=forced-simd         	     637	    183433 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=sub/column=true/nullable=true/mode=forced-simd          	     499	    209614 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=mul/column=true/nullable=false/mode=forced-simd         	     698	    184925 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=mul/column=true/nullable=true/mode=forced-simd          	     714	    213616 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=div/column=true/nullable=false/mode=forced-simd         	     534	    187663 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=div/column=true/nullable=true/mode=forced-simd          	     640	    179023 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int8/op=gt/column=false/nullable=false/mode=forced-simd            	    1638	     79977 ns/op	     62176 peak_bytes	      3075 projected_rows/op	      8199 source_rows/op	   73120 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int8/op=gt/column=false/nullable=true/mode=forced-simd             	    1334	     91879 ns/op	     68824 peak_bytes	      2795 projected_rows/op	      8199 source_rows/op	   85448 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int32/op=gt/column=false/nullable=false/mode=forced-simd           	    1557	     86336 ns/op	     67552 peak_bytes	      2732 projected_rows/op	      8199 source_rows/op	   85448 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int32/op=gt/column=false/nullable=true/mode=forced-simd            	    1677	     91879 ns/op	     62544 peak_bytes	      2483 projected_rows/op	      8199 source_rows/op	   75160 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int64/op=gt/column=false/nullable=false/mode=forced-simd           	    1396	     78135 ns/op	     67552 peak_bytes	      2732 projected_rows/op	      8199 source_rows/op	   84616 B/op	     165 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int64/op=gt/column=false/nullable=true/mode=forced-simd            	    1366	     74109 ns/op	     62544 peak_bytes	      2483 projected_rows/op	      8199 source_rows/op	   74328 B/op	     165 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=uint32/op=gt/column=false/nullable=false/mode=forced-simd          	     914	    115964 ns/op	    100840 peak_bytes	      5465 projected_rows/op	      8199 source_rows/op	  122752 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=uint32/op=gt/column=false/nullable=true/mode=forced-simd           	    1430	     99062 ns/op	     92808 peak_bytes	      4968 projected_rows/op	      8199 source_rows/op	  106272 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=uint64/op=gt/column=false/nullable=false/mode=forced-simd          	    1267	     93239 ns/op	    100840 peak_bytes	      5465 projected_rows/op	      8199 source_rows/op	  122752 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=uint64/op=gt/column=false/nullable=true/mode=forced-simd           	    1471	    101321 ns/op	     92808 peak_bytes	      4968 projected_rows/op	      8199 source_rows/op	  106272 B/op	     166 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/physical
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkNumericSIMDWholeQuery/type=float64/op=add/column=true/nullable=false/mode=scalar         	     910	    116162 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=add/column=true/nullable=true/mode=scalar          	    1780	     77015 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=gt/column=false/nullable=false/mode=scalar         	    1236	    192231 ns/op	     72592 peak_bytes	      2981 projected_rows/op	      8199 source_rows/op	   85496 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=gt/column=false/nullable=true/mode=scalar          	    1546	     76152 ns/op	     72592 peak_bytes	      2981 projected_rows/op	      8199 source_rows/op	   85496 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=le/column=true/nullable=false/mode=scalar          	    1125	     94261 ns/op	     72752 peak_bytes	      3727 projected_rows/op	      8199 source_rows/op	   89648 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=le/column=true/nullable=true/mode=scalar           	    1269	     97961 ns/op	     67944 peak_bytes	      2752 projected_rows/op	      8199 source_rows/op	   85448 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=add/column=true/nullable=false/mode=scalar         	     687	    162641 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=add/column=true/nullable=true/mode=scalar          	     806	    161491 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=sub/column=true/nullable=false/mode=scalar         	     756	    164373 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=sub/column=true/nullable=true/mode=scalar          	     709	    180613 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=mul/column=true/nullable=false/mode=scalar         	     618	    177790 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=mul/column=true/nullable=true/mode=scalar          	     715	    160962 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=div/column=true/nullable=false/mode=scalar         	     627	    194095 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=div/column=true/nullable=true/mode=scalar          	     732	    152606 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int8/op=gt/column=false/nullable=false/mode=scalar            	    1701	     75036 ns/op	     62176 peak_bytes	      3075 projected_rows/op	      8199 source_rows/op	   73120 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int8/op=gt/column=false/nullable=true/mode=scalar             	    1707	     85209 ns/op	     68824 peak_bytes	      2795 projected_rows/op	      8199 source_rows/op	   85448 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int32/op=gt/column=false/nullable=false/mode=scalar           	    1605	     78854 ns/op	     67552 peak_bytes	      2732 projected_rows/op	      8199 source_rows/op	   85448 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int32/op=gt/column=false/nullable=true/mode=scalar            	    1858	     70841 ns/op	     62544 peak_bytes	      2483 projected_rows/op	      8199 source_rows/op	   75160 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int64/op=gt/column=false/nullable=false/mode=scalar           	    1545	     90489 ns/op	     67552 peak_bytes	      2732 projected_rows/op	      8199 source_rows/op	   84616 B/op	     165 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int64/op=gt/column=false/nullable=true/mode=scalar            	    1802	     68563 ns/op	     62544 peak_bytes	      2483 projected_rows/op	      8199 source_rows/op	   74328 B/op	     165 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=uint32/op=gt/column=false/nullable=false/mode=scalar          	    1364	     86561 ns/op	    100840 peak_bytes	      5465 projected_rows/op	      8199 source_rows/op	  122752 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=uint32/op=gt/column=false/nullable=true/mode=scalar           	    1651	     86835 ns/op	     92808 peak_bytes	      4968 projected_rows/op	      8199 source_rows/op	  106272 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=uint64/op=gt/column=false/nullable=false/mode=scalar          	    1338	     90259 ns/op	    100840 peak_bytes	      5465 projected_rows/op	      8199 source_rows/op	  122752 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=uint64/op=gt/column=false/nullable=true/mode=scalar           	    1418	     80455 ns/op	     92808 peak_bytes	      4968 projected_rows/op	      8199 source_rows/op	  106272 B/op	     166 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/physical
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkNumericSIMDWholeQuery/type=float64/op=add/column=true/nullable=false/mode=forced-simd         	    1436	     74099 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=add/column=true/nullable=true/mode=forced-simd          	    1468	     68873 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=gt/column=false/nullable=false/mode=forced-simd         	    1425	    105503 ns/op	     72592 peak_bytes	      2981 projected_rows/op	      8199 source_rows/op	   85496 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=gt/column=false/nullable=true/mode=forced-simd          	    1164	    106742 ns/op	     72592 peak_bytes	      2981 projected_rows/op	      8199 source_rows/op	   85496 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=le/column=true/nullable=false/mode=forced-simd          	    1273	     98771 ns/op	     72752 peak_bytes	      3727 projected_rows/op	      8199 source_rows/op	   89648 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=le/column=true/nullable=true/mode=forced-simd           	    1315	     91458 ns/op	     67944 peak_bytes	      2752 projected_rows/op	      8199 source_rows/op	   85448 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=add/column=true/nullable=false/mode=forced-simd         	     759	    170913 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=add/column=true/nullable=true/mode=forced-simd          	     886	    188691 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=sub/column=true/nullable=false/mode=forced-simd         	     728	    183133 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=sub/column=true/nullable=true/mode=forced-simd          	     644	    164640 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=mul/column=true/nullable=false/mode=forced-simd         	     652	    200184 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=mul/column=true/nullable=true/mode=forced-simd          	     639	    187835 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=div/column=true/nullable=false/mode=forced-simd         	     698	    191955 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=div/column=true/nullable=true/mode=forced-simd          	     658	    159644 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int8/op=gt/column=false/nullable=false/mode=forced-simd            	    1750	     79843 ns/op	     62176 peak_bytes	      3075 projected_rows/op	      8199 source_rows/op	   73120 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int8/op=gt/column=false/nullable=true/mode=forced-simd             	    1416	     74803 ns/op	     68824 peak_bytes	      2795 projected_rows/op	      8199 source_rows/op	   85448 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int32/op=gt/column=false/nullable=false/mode=forced-simd           	    1515	     74699 ns/op	     67552 peak_bytes	      2732 projected_rows/op	      8199 source_rows/op	   85448 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int32/op=gt/column=false/nullable=true/mode=forced-simd            	    1777	     79279 ns/op	     62544 peak_bytes	      2483 projected_rows/op	      8199 source_rows/op	   75160 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int64/op=gt/column=false/nullable=false/mode=forced-simd           	    1569	     84254 ns/op	     67552 peak_bytes	      2732 projected_rows/op	      8199 source_rows/op	   84616 B/op	     165 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int64/op=gt/column=false/nullable=true/mode=forced-simd            	    1582	     81227 ns/op	     62544 peak_bytes	      2483 projected_rows/op	      8199 source_rows/op	   74328 B/op	     165 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=uint32/op=gt/column=false/nullable=false/mode=forced-simd          	    1314	    100386 ns/op	    100840 peak_bytes	      5465 projected_rows/op	      8199 source_rows/op	  122752 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=uint32/op=gt/column=false/nullable=true/mode=forced-simd           	    1399	    113898 ns/op	     92808 peak_bytes	      4968 projected_rows/op	      8199 source_rows/op	  106272 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=uint64/op=gt/column=false/nullable=false/mode=forced-simd          	     964	    111021 ns/op	    100840 peak_bytes	      5465 projected_rows/op	      8199 source_rows/op	  122752 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=uint64/op=gt/column=false/nullable=true/mode=forced-simd           	    1486	    103641 ns/op	     92808 peak_bytes	      4968 projected_rows/op	      8199 source_rows/op	  106272 B/op	     166 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/physical
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkNumericSIMDWholeQuery/type=float64/op=add/column=true/nullable=false/mode=scalar         	    1047	    105696 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=add/column=true/nullable=true/mode=scalar          	    1075	    178822 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=gt/column=false/nullable=false/mode=scalar         	    1099	    121310 ns/op	     72592 peak_bytes	      2981 projected_rows/op	      8199 source_rows/op	   85496 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=gt/column=false/nullable=true/mode=scalar          	    1202	    123171 ns/op	     72592 peak_bytes	      2981 projected_rows/op	      8199 source_rows/op	   85496 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=le/column=true/nullable=false/mode=scalar          	     684	    146754 ns/op	     72752 peak_bytes	      3727 projected_rows/op	      8199 source_rows/op	   89648 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=le/column=true/nullable=true/mode=scalar           	     879	    140704 ns/op	     67944 peak_bytes	      2752 projected_rows/op	      8199 source_rows/op	   85448 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=add/column=true/nullable=false/mode=scalar         	     588	    303536 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=add/column=true/nullable=true/mode=scalar          	     576	    262637 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=sub/column=true/nullable=false/mode=scalar         	     418	    262233 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=sub/column=true/nullable=true/mode=scalar          	     643	    188970 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=mul/column=true/nullable=false/mode=scalar         	     572	    226451 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=mul/column=true/nullable=true/mode=scalar          	     513	    198107 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=div/column=true/nullable=false/mode=scalar         	     588	    182101 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=div/column=true/nullable=true/mode=scalar          	     540	    217127 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int8/op=gt/column=false/nullable=false/mode=scalar            	    1164	    107486 ns/op	     62176 peak_bytes	      3075 projected_rows/op	      8199 source_rows/op	   73120 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int8/op=gt/column=false/nullable=true/mode=scalar             	     956	    118422 ns/op	     68824 peak_bytes	      2795 projected_rows/op	      8199 source_rows/op	   85448 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int32/op=gt/column=false/nullable=false/mode=scalar           	     974	    108523 ns/op	     67552 peak_bytes	      2732 projected_rows/op	      8199 source_rows/op	   85448 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int32/op=gt/column=false/nullable=true/mode=scalar            	    1255	    124680 ns/op	     62544 peak_bytes	      2483 projected_rows/op	      8199 source_rows/op	   75160 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int64/op=gt/column=false/nullable=false/mode=scalar           	    1405	    101275 ns/op	     67552 peak_bytes	      2732 projected_rows/op	      8199 source_rows/op	   84616 B/op	     165 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int64/op=gt/column=false/nullable=true/mode=scalar            	    1386	     90226 ns/op	     62544 peak_bytes	      2483 projected_rows/op	      8199 source_rows/op	   74328 B/op	     165 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=uint32/op=gt/column=false/nullable=false/mode=scalar          	    1057	    127514 ns/op	    100840 peak_bytes	      5465 projected_rows/op	      8199 source_rows/op	  122752 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=uint32/op=gt/column=false/nullable=true/mode=scalar           	    1099	    139815 ns/op	     92808 peak_bytes	      4968 projected_rows/op	      8199 source_rows/op	  106272 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=uint64/op=gt/column=false/nullable=false/mode=scalar          	    1022	    128895 ns/op	    100840 peak_bytes	      5465 projected_rows/op	      8199 source_rows/op	  122752 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=uint64/op=gt/column=false/nullable=true/mode=scalar           	     942	    133606 ns/op	     92808 peak_bytes	      4968 projected_rows/op	      8199 source_rows/op	  106272 B/op	     166 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/physical
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkNumericSIMDWholeQuery/type=float64/op=add/column=true/nullable=false/mode=auto         	    1656	     70098 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=add/column=true/nullable=true/mode=auto          	    1651	     73522 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=gt/column=false/nullable=false/mode=auto         	    1497	     80064 ns/op	     72592 peak_bytes	      2981 projected_rows/op	      8199 source_rows/op	   85496 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=gt/column=false/nullable=true/mode=auto          	    1705	     77679 ns/op	     72592 peak_bytes	      2981 projected_rows/op	      8199 source_rows/op	   85496 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=le/column=true/nullable=false/mode=auto          	    1354	     85795 ns/op	     72752 peak_bytes	      3727 projected_rows/op	      8199 source_rows/op	   89648 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=le/column=true/nullable=true/mode=auto           	    1718	     81344 ns/op	     67944 peak_bytes	      2752 projected_rows/op	      8199 source_rows/op	   85448 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=add/column=true/nullable=false/mode=auto         	     712	    167473 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=add/column=true/nullable=true/mode=auto          	     854	    154007 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=sub/column=true/nullable=false/mode=auto         	     769	    176991 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=sub/column=true/nullable=true/mode=auto          	     768	    157298 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=mul/column=true/nullable=false/mode=auto         	     728	    159412 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=mul/column=true/nullable=true/mode=auto          	     777	    155590 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=div/column=true/nullable=false/mode=auto         	     648	    177633 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=div/column=true/nullable=true/mode=auto          	     692	    165744 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int8/op=gt/column=false/nullable=false/mode=auto            	    2000	     68229 ns/op	     62176 peak_bytes	      3075 projected_rows/op	      8199 source_rows/op	   73120 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int8/op=gt/column=false/nullable=true/mode=auto             	    1849	     73806 ns/op	     68824 peak_bytes	      2795 projected_rows/op	      8199 source_rows/op	   85448 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int32/op=gt/column=false/nullable=false/mode=auto           	    1646	     68012 ns/op	     67552 peak_bytes	      2732 projected_rows/op	      8199 source_rows/op	   85448 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int32/op=gt/column=false/nullable=true/mode=auto            	    1712	     69202 ns/op	     62544 peak_bytes	      2483 projected_rows/op	      8199 source_rows/op	   75160 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int64/op=gt/column=false/nullable=false/mode=auto           	    1920	     80523 ns/op	     67552 peak_bytes	      2732 projected_rows/op	      8199 source_rows/op	   84616 B/op	     165 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int64/op=gt/column=false/nullable=true/mode=auto            	    1848	     74345 ns/op	     62544 peak_bytes	      2483 projected_rows/op	      8199 source_rows/op	   74328 B/op	     165 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=uint32/op=gt/column=false/nullable=false/mode=auto          	    1054	     96698 ns/op	    100840 peak_bytes	      5465 projected_rows/op	      8199 source_rows/op	  122752 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=uint32/op=gt/column=false/nullable=true/mode=auto           	    1432	     80318 ns/op	     92808 peak_bytes	      4968 projected_rows/op	      8199 source_rows/op	  106272 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=uint64/op=gt/column=false/nullable=false/mode=auto          	    1296	     91810 ns/op	    100840 peak_bytes	      5465 projected_rows/op	      8199 source_rows/op	  122752 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=uint64/op=gt/column=false/nullable=true/mode=auto           	    1568	     93137 ns/op	     92808 peak_bytes	      4968 projected_rows/op	      8199 source_rows/op	  106272 B/op	     166 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/physical
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkNumericSIMDWholeQuery/type=float64/op=add/column=true/nullable=false/mode=forced-simd         	    1444	     76299 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=add/column=true/nullable=true/mode=forced-simd          	    1454	     76050 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=gt/column=false/nullable=false/mode=forced-simd         	    1345	     84012 ns/op	     72592 peak_bytes	      2981 projected_rows/op	      8199 source_rows/op	   85496 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=gt/column=false/nullable=true/mode=forced-simd          	    1579	     91207 ns/op	     72592 peak_bytes	      2981 projected_rows/op	      8199 source_rows/op	   85496 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=le/column=true/nullable=false/mode=forced-simd          	    1534	     80166 ns/op	     72752 peak_bytes	      3727 projected_rows/op	      8199 source_rows/op	   89648 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=le/column=true/nullable=true/mode=forced-simd           	    1614	     83647 ns/op	     67944 peak_bytes	      2752 projected_rows/op	      8199 source_rows/op	   85448 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=add/column=true/nullable=false/mode=forced-simd         	     805	    190234 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=add/column=true/nullable=true/mode=forced-simd          	     853	    157689 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=sub/column=true/nullable=false/mode=forced-simd         	     559	    190613 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=sub/column=true/nullable=true/mode=forced-simd          	     724	    155932 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=mul/column=true/nullable=false/mode=forced-simd         	     705	    204387 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=mul/column=true/nullable=true/mode=forced-simd          	     693	    179563 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=div/column=true/nullable=false/mode=forced-simd         	     812	    195278 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=div/column=true/nullable=true/mode=forced-simd          	     585	    192470 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int8/op=gt/column=false/nullable=false/mode=forced-simd            	    1765	     80905 ns/op	     62176 peak_bytes	      3075 projected_rows/op	      8199 source_rows/op	   73120 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int8/op=gt/column=false/nullable=true/mode=forced-simd             	    1370	     75636 ns/op	     68824 peak_bytes	      2795 projected_rows/op	      8199 source_rows/op	   85448 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int32/op=gt/column=false/nullable=false/mode=forced-simd           	    1396	     97497 ns/op	     67552 peak_bytes	      2732 projected_rows/op	      8199 source_rows/op	   85448 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int32/op=gt/column=false/nullable=true/mode=forced-simd            	    1504	     77624 ns/op	     62544 peak_bytes	      2483 projected_rows/op	      8199 source_rows/op	   75160 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int64/op=gt/column=false/nullable=false/mode=forced-simd           	    1483	     84746 ns/op	     67552 peak_bytes	      2732 projected_rows/op	      8199 source_rows/op	   84616 B/op	     165 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int64/op=gt/column=false/nullable=true/mode=forced-simd            	    1742	     79185 ns/op	     62544 peak_bytes	      2483 projected_rows/op	      8199 source_rows/op	   74328 B/op	     165 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=uint32/op=gt/column=false/nullable=false/mode=forced-simd          	     985	    132334 ns/op	    100840 peak_bytes	      5465 projected_rows/op	      8199 source_rows/op	  122752 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=uint32/op=gt/column=false/nullable=true/mode=forced-simd           	    1435	     97410 ns/op	     92808 peak_bytes	      4968 projected_rows/op	      8199 source_rows/op	  106272 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=uint64/op=gt/column=false/nullable=false/mode=forced-simd          	    1246	    109811 ns/op	    100840 peak_bytes	      5465 projected_rows/op	      8199 source_rows/op	  122752 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=uint64/op=gt/column=false/nullable=true/mode=forced-simd           	     980	    169513 ns/op	     92808 peak_bytes	      4968 projected_rows/op	      8199 source_rows/op	  106272 B/op	     166 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/physical
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkNumericSIMDWholeQuery/type=float64/op=add/column=true/nullable=false/mode=auto         	    1717	     75386 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=add/column=true/nullable=true/mode=auto          	    1798	     75303 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=gt/column=false/nullable=false/mode=auto         	    1498	     87216 ns/op	     72592 peak_bytes	      2981 projected_rows/op	      8199 source_rows/op	   85496 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=gt/column=false/nullable=true/mode=auto          	    1470	     89842 ns/op	     72592 peak_bytes	      2981 projected_rows/op	      8199 source_rows/op	   85496 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=le/column=true/nullable=false/mode=auto          	    1412	     79799 ns/op	     72752 peak_bytes	      3727 projected_rows/op	      8199 source_rows/op	   89648 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=le/column=true/nullable=true/mode=auto           	    1545	     77743 ns/op	     67944 peak_bytes	      2752 projected_rows/op	      8199 source_rows/op	   85448 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=add/column=true/nullable=false/mode=auto         	     648	    158750 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=add/column=true/nullable=true/mode=auto          	     786	    147992 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=sub/column=true/nullable=false/mode=auto         	     636	    174377 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=sub/column=true/nullable=true/mode=auto          	     668	    160635 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=mul/column=true/nullable=false/mode=auto         	     598	    185809 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=mul/column=true/nullable=true/mode=auto          	     614	    169936 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=div/column=true/nullable=false/mode=auto         	     720	    172068 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=div/column=true/nullable=true/mode=auto          	     648	    168322 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int8/op=gt/column=false/nullable=false/mode=auto            	    1640	     66288 ns/op	     62176 peak_bytes	      3075 projected_rows/op	      8199 source_rows/op	   73120 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int8/op=gt/column=false/nullable=true/mode=auto             	    1636	     71979 ns/op	     68824 peak_bytes	      2795 projected_rows/op	      8199 source_rows/op	   85448 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int32/op=gt/column=false/nullable=false/mode=auto           	    1494	     81610 ns/op	     67552 peak_bytes	      2732 projected_rows/op	      8199 source_rows/op	   85448 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int32/op=gt/column=false/nullable=true/mode=auto            	    1680	     71819 ns/op	     62544 peak_bytes	      2483 projected_rows/op	      8199 source_rows/op	   75160 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int64/op=gt/column=false/nullable=false/mode=auto           	    1711	     73892 ns/op	     67552 peak_bytes	      2732 projected_rows/op	      8199 source_rows/op	   84616 B/op	     165 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int64/op=gt/column=false/nullable=true/mode=auto            	    1725	     65576 ns/op	     62544 peak_bytes	      2483 projected_rows/op	      8199 source_rows/op	   74328 B/op	     165 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=uint32/op=gt/column=false/nullable=false/mode=auto          	    1317	     94563 ns/op	    100840 peak_bytes	      5465 projected_rows/op	      8199 source_rows/op	  122752 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=uint32/op=gt/column=false/nullable=true/mode=auto           	    1382	     84380 ns/op	     92808 peak_bytes	      4968 projected_rows/op	      8199 source_rows/op	  106272 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=uint64/op=gt/column=false/nullable=false/mode=auto          	    1263	     93418 ns/op	    100840 peak_bytes	      5465 projected_rows/op	      8199 source_rows/op	  122752 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=uint64/op=gt/column=false/nullable=true/mode=auto           	    1268	     87505 ns/op	     92808 peak_bytes	      4968 projected_rows/op	      8199 source_rows/op	  106272 B/op	     166 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/physical
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkNumericSIMDWholeQuery/type=float64/op=add/column=true/nullable=false/mode=scalar         	    1436	     75151 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=add/column=true/nullable=true/mode=scalar          	    1663	     68868 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=gt/column=false/nullable=false/mode=scalar         	    1468	     71103 ns/op	     72592 peak_bytes	      2981 projected_rows/op	      8199 source_rows/op	   85496 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=gt/column=false/nullable=true/mode=scalar          	    1442	     74079 ns/op	     72592 peak_bytes	      2981 projected_rows/op	      8199 source_rows/op	   85496 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=le/column=true/nullable=false/mode=scalar          	    1342	     94869 ns/op	     72752 peak_bytes	      3727 projected_rows/op	      8199 source_rows/op	   89648 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=le/column=true/nullable=true/mode=scalar           	    1383	    101260 ns/op	     67944 peak_bytes	      2752 projected_rows/op	      8199 source_rows/op	   85448 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=add/column=true/nullable=false/mode=scalar         	     723	    156026 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=add/column=true/nullable=true/mode=scalar          	     808	    145650 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=sub/column=true/nullable=false/mode=scalar         	     766	    152210 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=sub/column=true/nullable=true/mode=scalar          	     764	    154481 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=mul/column=true/nullable=false/mode=scalar         	     751	    163383 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=mul/column=true/nullable=true/mode=scalar          	     810	    150845 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=div/column=true/nullable=false/mode=scalar         	     786	    162511 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=div/column=true/nullable=true/mode=scalar          	     898	    154912 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int8/op=gt/column=false/nullable=false/mode=scalar            	    1988	     65023 ns/op	     62176 peak_bytes	      3075 projected_rows/op	      8199 source_rows/op	   73120 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int8/op=gt/column=false/nullable=true/mode=scalar             	    1394	     72047 ns/op	     68824 peak_bytes	      2795 projected_rows/op	      8199 source_rows/op	   85448 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int32/op=gt/column=false/nullable=false/mode=scalar           	    1748	     80521 ns/op	     67552 peak_bytes	      2732 projected_rows/op	      8199 source_rows/op	   85448 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int32/op=gt/column=false/nullable=true/mode=scalar            	    1868	     62842 ns/op	     62544 peak_bytes	      2483 projected_rows/op	      8199 source_rows/op	   75160 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int64/op=gt/column=false/nullable=false/mode=scalar           	    1590	     65559 ns/op	     67552 peak_bytes	      2732 projected_rows/op	      8199 source_rows/op	   84616 B/op	     165 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int64/op=gt/column=false/nullable=true/mode=scalar            	    1581	     63901 ns/op	     62544 peak_bytes	      2483 projected_rows/op	      8199 source_rows/op	   74328 B/op	     165 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=uint32/op=gt/column=false/nullable=false/mode=scalar          	    1244	     86358 ns/op	    100840 peak_bytes	      5465 projected_rows/op	      8199 source_rows/op	  122752 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=uint32/op=gt/column=false/nullable=true/mode=scalar           	    1464	     86952 ns/op	     92808 peak_bytes	      4968 projected_rows/op	      8199 source_rows/op	  106272 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=uint64/op=gt/column=false/nullable=false/mode=scalar          	    1444	     83773 ns/op	    100840 peak_bytes	      5465 projected_rows/op	      8199 source_rows/op	  122752 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=uint64/op=gt/column=false/nullable=true/mode=scalar           	    1476	     82045 ns/op	     92808 peak_bytes	      4968 projected_rows/op	      8199 source_rows/op	  106272 B/op	     166 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/physical
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkNumericSIMDWholeQuery/type=float64/op=add/column=true/nullable=false/mode=auto         	    1639	     67329 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=add/column=true/nullable=true/mode=auto          	    1760	     64397 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=gt/column=false/nullable=false/mode=auto         	    1544	     82220 ns/op	     72592 peak_bytes	      2981 projected_rows/op	      8199 source_rows/op	   85496 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=gt/column=false/nullable=true/mode=auto          	    1550	     70859 ns/op	     72592 peak_bytes	      2981 projected_rows/op	      8199 source_rows/op	   85496 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=le/column=true/nullable=false/mode=auto          	    1686	     76738 ns/op	     72752 peak_bytes	      3727 projected_rows/op	      8199 source_rows/op	   89648 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=le/column=true/nullable=true/mode=auto           	    1509	     69863 ns/op	     67944 peak_bytes	      2752 projected_rows/op	      8199 source_rows/op	   85448 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=add/column=true/nullable=false/mode=auto         	     862	    149738 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=add/column=true/nullable=true/mode=auto          	     813	    148764 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=sub/column=true/nullable=false/mode=auto         	     814	    157976 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=sub/column=true/nullable=true/mode=auto          	     801	    155257 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=mul/column=true/nullable=false/mode=auto         	     813	    161314 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=mul/column=true/nullable=true/mode=auto          	     693	    152120 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=div/column=true/nullable=false/mode=auto         	     688	    161363 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=div/column=true/nullable=true/mode=auto          	     656	    155466 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int8/op=gt/column=false/nullable=false/mode=auto            	    1988	     62992 ns/op	     62176 peak_bytes	      3075 projected_rows/op	      8199 source_rows/op	   73120 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int8/op=gt/column=false/nullable=true/mode=auto             	    1623	     72758 ns/op	     68824 peak_bytes	      2795 projected_rows/op	      8199 source_rows/op	   85448 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int32/op=gt/column=false/nullable=false/mode=auto           	    1761	     67059 ns/op	     67552 peak_bytes	      2732 projected_rows/op	      8199 source_rows/op	   85448 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int32/op=gt/column=false/nullable=true/mode=auto            	    1560	     66650 ns/op	     62544 peak_bytes	      2483 projected_rows/op	      8199 source_rows/op	   75160 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int64/op=gt/column=false/nullable=false/mode=auto           	    1514	     67366 ns/op	     67552 peak_bytes	      2732 projected_rows/op	      8199 source_rows/op	   84616 B/op	     165 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int64/op=gt/column=false/nullable=true/mode=auto            	    1869	     59449 ns/op	     62544 peak_bytes	      2483 projected_rows/op	      8199 source_rows/op	   74328 B/op	     165 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=uint32/op=gt/column=false/nullable=false/mode=auto          	    1318	     92168 ns/op	    100840 peak_bytes	      5465 projected_rows/op	      8199 source_rows/op	  122752 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=uint32/op=gt/column=false/nullable=true/mode=auto           	    1208	     85155 ns/op	     92808 peak_bytes	      4968 projected_rows/op	      8199 source_rows/op	  106272 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=uint64/op=gt/column=false/nullable=false/mode=auto          	    1164	     95177 ns/op	    100840 peak_bytes	      5465 projected_rows/op	      8199 source_rows/op	  122752 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=uint64/op=gt/column=false/nullable=true/mode=auto           	    1345	    120413 ns/op	     92808 peak_bytes	      4968 projected_rows/op	      8199 source_rows/op	  106272 B/op	     166 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/physical
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkNumericSIMDWholeQuery/type=float64/op=add/column=true/nullable=false/mode=scalar         	    1482	     78008 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=add/column=true/nullable=true/mode=scalar          	    1254	     91388 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=gt/column=false/nullable=false/mode=scalar         	    1495	     76745 ns/op	     72592 peak_bytes	      2981 projected_rows/op	      8199 source_rows/op	   85496 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=gt/column=false/nullable=true/mode=scalar          	    1110	    103472 ns/op	     72592 peak_bytes	      2981 projected_rows/op	      8199 source_rows/op	   85496 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=le/column=true/nullable=false/mode=scalar          	    1227	    110990 ns/op	     72752 peak_bytes	      3727 projected_rows/op	      8199 source_rows/op	   89648 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=le/column=true/nullable=true/mode=scalar           	    1237	     98559 ns/op	     67944 peak_bytes	      2752 projected_rows/op	      8199 source_rows/op	   85448 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=add/column=true/nullable=false/mode=scalar         	     644	    186185 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=add/column=true/nullable=true/mode=scalar          	     717	    158681 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=sub/column=true/nullable=false/mode=scalar         	     754	    189381 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=sub/column=true/nullable=true/mode=scalar          	     638	    178030 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=mul/column=true/nullable=false/mode=scalar         	     766	    188905 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=mul/column=true/nullable=true/mode=scalar          	     585	    194510 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=div/column=true/nullable=false/mode=scalar         	     691	    277723 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=div/column=true/nullable=true/mode=scalar          	     817	    210517 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int8/op=gt/column=false/nullable=false/mode=scalar            	    1285	     81316 ns/op	     62176 peak_bytes	      3075 projected_rows/op	      8199 source_rows/op	   73120 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int8/op=gt/column=false/nullable=true/mode=scalar             	    1398	    103782 ns/op	     68824 peak_bytes	      2795 projected_rows/op	      8199 source_rows/op	   85448 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int32/op=gt/column=false/nullable=false/mode=scalar           	    1573	     91943 ns/op	     67552 peak_bytes	      2732 projected_rows/op	      8199 source_rows/op	   85448 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int32/op=gt/column=false/nullable=true/mode=scalar            	    1425	    117380 ns/op	     62544 peak_bytes	      2483 projected_rows/op	      8199 source_rows/op	   75160 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int64/op=gt/column=false/nullable=false/mode=scalar           	    1636	     92742 ns/op	     67552 peak_bytes	      2732 projected_rows/op	      8199 source_rows/op	   84616 B/op	     165 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int64/op=gt/column=false/nullable=true/mode=scalar            	    1653	     68969 ns/op	     62544 peak_bytes	      2483 projected_rows/op	      8199 source_rows/op	   74328 B/op	     165 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=uint32/op=gt/column=false/nullable=false/mode=scalar          	    1070	    132304 ns/op	    100840 peak_bytes	      5465 projected_rows/op	      8199 source_rows/op	  122752 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=uint32/op=gt/column=false/nullable=true/mode=scalar           	    1197	    102434 ns/op	     92808 peak_bytes	      4968 projected_rows/op	      8199 source_rows/op	  106272 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=uint64/op=gt/column=false/nullable=false/mode=scalar          	     944	    107017 ns/op	    100840 peak_bytes	      5465 projected_rows/op	      8199 source_rows/op	  122752 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=uint64/op=gt/column=false/nullable=true/mode=scalar           	    1318	    118776 ns/op	     92808 peak_bytes	      4968 projected_rows/op	      8199 source_rows/op	  106272 B/op	     166 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/physical
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkNumericSIMDWholeQuery/type=float64/op=add/column=true/nullable=false/mode=forced-simd         	    1639	     72919 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=add/column=true/nullable=true/mode=forced-simd          	    1905	     71361 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=gt/column=false/nullable=false/mode=forced-simd         	    1617	     99664 ns/op	     72592 peak_bytes	      2981 projected_rows/op	      8199 source_rows/op	   85496 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=gt/column=false/nullable=true/mode=forced-simd          	    1551	     83095 ns/op	     72592 peak_bytes	      2981 projected_rows/op	      8199 source_rows/op	   85496 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=le/column=true/nullable=false/mode=forced-simd          	    1612	     84011 ns/op	     72752 peak_bytes	      3727 projected_rows/op	      8199 source_rows/op	   89648 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=le/column=true/nullable=true/mode=forced-simd           	    1518	     75204 ns/op	     67944 peak_bytes	      2752 projected_rows/op	      8199 source_rows/op	   85448 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=add/column=true/nullable=false/mode=forced-simd         	     632	    160028 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=add/column=true/nullable=true/mode=forced-simd          	     866	    157421 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=sub/column=true/nullable=false/mode=forced-simd         	     699	    177668 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=sub/column=true/nullable=true/mode=forced-simd          	     655	    165785 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=mul/column=true/nullable=false/mode=forced-simd         	     722	    176686 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=mul/column=true/nullable=true/mode=forced-simd          	     708	    155779 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=div/column=true/nullable=false/mode=forced-simd         	     661	    178792 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=div/column=true/nullable=true/mode=forced-simd          	     796	    162343 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int8/op=gt/column=false/nullable=false/mode=forced-simd            	    1788	     65388 ns/op	     62176 peak_bytes	      3075 projected_rows/op	      8199 source_rows/op	   73120 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int8/op=gt/column=false/nullable=true/mode=forced-simd             	    1557	     72621 ns/op	     68824 peak_bytes	      2795 projected_rows/op	      8199 source_rows/op	   85448 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int32/op=gt/column=false/nullable=false/mode=forced-simd           	    1603	     75460 ns/op	     67552 peak_bytes	      2732 projected_rows/op	      8199 source_rows/op	   85448 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int32/op=gt/column=false/nullable=true/mode=forced-simd            	    2080	     65463 ns/op	     62544 peak_bytes	      2483 projected_rows/op	      8199 source_rows/op	   75160 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int64/op=gt/column=false/nullable=false/mode=forced-simd           	    1698	     73630 ns/op	     67552 peak_bytes	      2732 projected_rows/op	      8199 source_rows/op	   84616 B/op	     165 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int64/op=gt/column=false/nullable=true/mode=forced-simd            	    1885	     70924 ns/op	     62544 peak_bytes	      2483 projected_rows/op	      8199 source_rows/op	   74328 B/op	     165 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=uint32/op=gt/column=false/nullable=false/mode=forced-simd          	    1317	     98164 ns/op	    100840 peak_bytes	      5465 projected_rows/op	      8199 source_rows/op	  122752 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=uint32/op=gt/column=false/nullable=true/mode=forced-simd           	    1159	     95310 ns/op	     92808 peak_bytes	      4968 projected_rows/op	      8199 source_rows/op	  106272 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=uint64/op=gt/column=false/nullable=false/mode=forced-simd          	    1206	     99988 ns/op	    100840 peak_bytes	      5465 projected_rows/op	      8199 source_rows/op	  122752 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=uint64/op=gt/column=false/nullable=true/mode=forced-simd           	    1384	     89911 ns/op	     92808 peak_bytes	      4968 projected_rows/op	      8199 source_rows/op	  106272 B/op	     166 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/physical
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkNumericSIMDWholeQuery/type=float64/op=add/column=true/nullable=false/mode=scalar         	    1323	     87631 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=add/column=true/nullable=true/mode=scalar          	    1594	     82617 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=gt/column=false/nullable=false/mode=scalar         	    1176	     89676 ns/op	     72592 peak_bytes	      2981 projected_rows/op	      8199 source_rows/op	   85496 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=gt/column=false/nullable=true/mode=scalar          	    1444	     89788 ns/op	     72592 peak_bytes	      2981 projected_rows/op	      8199 source_rows/op	   85496 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=le/column=true/nullable=false/mode=scalar          	    1208	    111183 ns/op	     72752 peak_bytes	      3727 projected_rows/op	      8199 source_rows/op	   89648 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=le/column=true/nullable=true/mode=scalar           	    1261	    115854 ns/op	     67944 peak_bytes	      2752 projected_rows/op	      8199 source_rows/op	   85448 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=add/column=true/nullable=false/mode=scalar         	     698	    180404 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=add/column=true/nullable=true/mode=scalar          	     810	    171304 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=sub/column=true/nullable=false/mode=scalar         	     648	    184531 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=sub/column=true/nullable=true/mode=scalar          	     626	    165552 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=mul/column=true/nullable=false/mode=scalar         	     657	    189844 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=mul/column=true/nullable=true/mode=scalar          	     722	    175245 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=div/column=true/nullable=false/mode=scalar         	     728	    192574 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=div/column=true/nullable=true/mode=scalar          	     732	    170083 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int8/op=gt/column=false/nullable=false/mode=scalar            	    1308	     79574 ns/op	     62176 peak_bytes	      3075 projected_rows/op	      8199 source_rows/op	   73120 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int8/op=gt/column=false/nullable=true/mode=scalar             	    1620	     78822 ns/op	     68824 peak_bytes	      2795 projected_rows/op	      8199 source_rows/op	   85448 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int32/op=gt/column=false/nullable=false/mode=scalar           	    1334	     91009 ns/op	     67552 peak_bytes	      2732 projected_rows/op	      8199 source_rows/op	   85448 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int32/op=gt/column=false/nullable=true/mode=scalar            	    1704	     79105 ns/op	     62544 peak_bytes	      2483 projected_rows/op	      8199 source_rows/op	   75160 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int64/op=gt/column=false/nullable=false/mode=scalar           	    1586	     83834 ns/op	     67552 peak_bytes	      2732 projected_rows/op	      8199 source_rows/op	   84616 B/op	     165 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int64/op=gt/column=false/nullable=true/mode=scalar            	    1477	     92079 ns/op	     62544 peak_bytes	      2483 projected_rows/op	      8199 source_rows/op	   74328 B/op	     165 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=uint32/op=gt/column=false/nullable=false/mode=scalar          	    1117	    147750 ns/op	    100840 peak_bytes	      5465 projected_rows/op	      8199 source_rows/op	  122752 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=uint32/op=gt/column=false/nullable=true/mode=scalar           	     812	    150296 ns/op	     92808 peak_bytes	      4968 projected_rows/op	      8199 source_rows/op	  106272 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=uint64/op=gt/column=false/nullable=false/mode=scalar          	     829	    138494 ns/op	    100840 peak_bytes	      5465 projected_rows/op	      8199 source_rows/op	  122752 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=uint64/op=gt/column=false/nullable=true/mode=scalar           	     556	    206443 ns/op	     92808 peak_bytes	      4968 projected_rows/op	      8199 source_rows/op	  106272 B/op	     166 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/physical
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkNumericSIMDWholeQuery/type=float64/op=add/column=true/nullable=false/mode=forced-simd         	    1448	     69927 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=add/column=true/nullable=true/mode=forced-simd          	    1603	     68730 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=gt/column=false/nullable=false/mode=forced-simd         	    1228	     85934 ns/op	     72592 peak_bytes	      2981 projected_rows/op	      8199 source_rows/op	   85496 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=gt/column=false/nullable=true/mode=forced-simd          	    1526	     77624 ns/op	     72592 peak_bytes	      2981 projected_rows/op	      8199 source_rows/op	   85496 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=le/column=true/nullable=false/mode=forced-simd          	    1484	     83899 ns/op	     72752 peak_bytes	      3727 projected_rows/op	      8199 source_rows/op	   89648 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=le/column=true/nullable=true/mode=forced-simd           	    1417	    186079 ns/op	     67944 peak_bytes	      2752 projected_rows/op	      8199 source_rows/op	   85448 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=add/column=true/nullable=false/mode=forced-simd         	     616	    401638 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=add/column=true/nullable=true/mode=forced-simd          	     758	    149846 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=sub/column=true/nullable=false/mode=forced-simd         	     775	    184792 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=sub/column=true/nullable=true/mode=forced-simd          	     712	    158956 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=mul/column=true/nullable=false/mode=forced-simd         	     805	    161246 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=mul/column=true/nullable=true/mode=forced-simd          	     843	    177456 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=div/column=true/nullable=false/mode=forced-simd         	     768	    151978 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=div/column=true/nullable=true/mode=forced-simd          	     771	    158460 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int8/op=gt/column=false/nullable=false/mode=forced-simd            	    1766	     70877 ns/op	     62176 peak_bytes	      3075 projected_rows/op	      8199 source_rows/op	   73120 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int8/op=gt/column=false/nullable=true/mode=forced-simd             	    1699	     71477 ns/op	     68824 peak_bytes	      2795 projected_rows/op	      8199 source_rows/op	   85448 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int32/op=gt/column=false/nullable=false/mode=forced-simd           	    1526	     77285 ns/op	     67552 peak_bytes	      2732 projected_rows/op	      8199 source_rows/op	   85448 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int32/op=gt/column=false/nullable=true/mode=forced-simd            	    1684	     73864 ns/op	     62544 peak_bytes	      2483 projected_rows/op	      8199 source_rows/op	   75160 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int64/op=gt/column=false/nullable=false/mode=forced-simd           	    1656	     64083 ns/op	     67552 peak_bytes	      2732 projected_rows/op	      8199 source_rows/op	   84616 B/op	     165 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int64/op=gt/column=false/nullable=true/mode=forced-simd            	    1488	     68272 ns/op	     62544 peak_bytes	      2483 projected_rows/op	      8199 source_rows/op	   74328 B/op	     165 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=uint32/op=gt/column=false/nullable=false/mode=forced-simd          	    1387	     91541 ns/op	    100840 peak_bytes	      5465 projected_rows/op	      8199 source_rows/op	  122752 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=uint32/op=gt/column=false/nullable=true/mode=forced-simd           	    1501	     90301 ns/op	     92808 peak_bytes	      4968 projected_rows/op	      8199 source_rows/op	  106272 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=uint64/op=gt/column=false/nullable=false/mode=forced-simd          	    1368	    101768 ns/op	    100840 peak_bytes	      5465 projected_rows/op	      8199 source_rows/op	  122752 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=uint64/op=gt/column=false/nullable=true/mode=forced-simd           	    1406	     89112 ns/op	     92808 peak_bytes	      4968 projected_rows/op	      8199 source_rows/op	  106272 B/op	     166 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: gocolumn/physical
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkNumericSIMDWholeQuery/type=float64/op=add/column=true/nullable=false/mode=auto         	    1482	     98908 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=add/column=true/nullable=true/mode=auto          	    1567	     76861 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=gt/column=false/nullable=false/mode=auto         	    1206	    198194 ns/op	     72592 peak_bytes	      2981 projected_rows/op	      8199 source_rows/op	   85496 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=gt/column=false/nullable=true/mode=auto          	    1489	     92987 ns/op	     72592 peak_bytes	      2981 projected_rows/op	      8199 source_rows/op	   85496 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=le/column=true/nullable=false/mode=auto          	    1636	     90736 ns/op	     72752 peak_bytes	      3727 projected_rows/op	      8199 source_rows/op	   89648 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float64/op=le/column=true/nullable=true/mode=auto           	    1654	     83429 ns/op	     67944 peak_bytes	      2752 projected_rows/op	      8199 source_rows/op	   85448 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=add/column=true/nullable=false/mode=auto         	     668	    190410 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=add/column=true/nullable=true/mode=auto          	     722	    168464 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=sub/column=true/nullable=false/mode=auto         	     609	    192681 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=sub/column=true/nullable=true/mode=auto          	     783	    188670 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=mul/column=true/nullable=false/mode=auto         	     796	    172224 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=mul/column=true/nullable=true/mode=auto          	     651	    159467 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=div/column=true/nullable=false/mode=auto         	     640	    167455 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=float32/op=div/column=true/nullable=true/mode=auto          	     799	    195538 ns/op	    115840 peak_bytes	      8199 projected_rows/op	      8199 source_rows/op	  126736 B/op	     175 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int8/op=gt/column=false/nullable=false/mode=auto            	    1917	     71527 ns/op	     62176 peak_bytes	      3075 projected_rows/op	      8199 source_rows/op	   73120 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int8/op=gt/column=false/nullable=true/mode=auto             	    1448	     81662 ns/op	     68824 peak_bytes	      2795 projected_rows/op	      8199 source_rows/op	   85448 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int32/op=gt/column=false/nullable=false/mode=auto           	    1395	     73610 ns/op	     67552 peak_bytes	      2732 projected_rows/op	      8199 source_rows/op	   85448 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int32/op=gt/column=false/nullable=true/mode=auto            	    1707	     81443 ns/op	     62544 peak_bytes	      2483 projected_rows/op	      8199 source_rows/op	   75160 B/op	     169 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int64/op=gt/column=false/nullable=false/mode=auto           	    1639	     84758 ns/op	     67552 peak_bytes	      2732 projected_rows/op	      8199 source_rows/op	   84616 B/op	     165 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=int64/op=gt/column=false/nullable=true/mode=auto            	    1746	     71720 ns/op	     62544 peak_bytes	      2483 projected_rows/op	      8199 source_rows/op	   74328 B/op	     165 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=uint32/op=gt/column=false/nullable=false/mode=auto          	    1280	     93728 ns/op	    100840 peak_bytes	      5465 projected_rows/op	      8199 source_rows/op	  122752 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=uint32/op=gt/column=false/nullable=true/mode=auto           	    1486	     89884 ns/op	     92808 peak_bytes	      4968 projected_rows/op	      8199 source_rows/op	  106272 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=uint64/op=gt/column=false/nullable=false/mode=auto          	    1155	     88141 ns/op	    100840 peak_bytes	      5465 projected_rows/op	      8199 source_rows/op	  122752 B/op	     166 allocs/op
+BenchmarkNumericSIMDWholeQuery/type=uint64/op=gt/column=false/nullable=true/mode=auto           	    1218	     84773 ns/op	     92808 peak_bytes	      4968 projected_rows/op	      8199 source_rows/op	  106272 B/op	     166 allocs/op
+PASS

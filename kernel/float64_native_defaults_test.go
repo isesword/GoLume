@@ -20,7 +20,7 @@ func TestFloat64NativeArithmeticModesTailsAndNulls(t *testing.T) {
 		for _, mode := range []Mode{ModeScalar, ModeAuto, ModeSIMD} {
 			set := New(mode)
 			for _, valid := range []memory.Bitmap{nil, mixed, nulls} {
-				for _, op := range []ArithmeticOp{ArithmeticSub, ArithmeticMul, ArithmeticDiv} {
+				for _, op := range []ArithmeticOp{ArithmeticAdd, ArithmeticSub, ArithmeticMul, ArithmeticDiv} {
 					got, want := make([]float64, rows+1), make([]float64, rows+1)
 					got[rows], want[rows] = 12345, 12345
 					New(ModeScalar).Float64Arithmetic(left, right, want, valid, op)

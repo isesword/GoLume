@@ -44,13 +44,13 @@ scalar reference evaluation even when the reported backend offers dense SIMD.
 
 | Family | Physical operations | Auto native backend / guard | Remaining scalar boundary |
 |---|---|---|---|
-| Literal comparison | Float32 GT/GE/LT/LE/EQ | portable SIMD | unavailable native runtime, tails |
-| Literal comparison | Int32 GT/GE/LT/LE | arm64 mask, 128-bit | other architectures; Int32 EQ |
-| Literal comparison | Uint32 GT/GE/LT/LE/EQ | arm64 mask, 128-bit | other architectures |
-| Column comparison | Int32/Uint32/Float32 GT/GE/LT/LE/EQ | portable SIMD | unavailable native runtime, tails |
-| Both comparison shapes | Int8/Int16/Int64/Uint8/Uint16/Uint64/Float64 | none | typed scalar entries |
-| Arithmetic | Float64 Sub/Mul/Div | portable SIMD | unavailable native runtime, tails |
-| Arithmetic | Float64 Add, Float32 arithmetic, checked integers | none | scalar with existing numerical/overflow semantics |
+| Literal comparison | Int8/Int32/Int64/Uint32/Uint64/Float32/Float64 GT/GE/LT/LE/EQ | portable SIMD; arm64 retains Int32 GT/GE/LT/LE and Uint32 overrides | unavailable native runtime, tails |
+| Literal comparison | Int16/Uint8/Uint16 | none | typed scalar entries |
+| Column comparison | Int32/Uint32/Float32/Float64 GT/GE/LT/LE/EQ | portable SIMD | unavailable native runtime, tails |
+| Column comparison | Int8/Int16/Int64/Uint8/Uint16/Uint64 | none | typed scalar entries |
+| Arithmetic kernels | Float32/Float64 Add/Sub/Mul/Div | portable SIMD | unavailable native runtime, tails |
+| Expression arithmetic | Float32 operands | promotes to Float64, existing scalar conversion path | native Float32 arithmetic API is not reached |
+| Arithmetic | checked integers | none | scalar with existing numerical/overflow semantics |
 | Unary math | Float32/Float64 Abs/Sqrt | portable SIMD, dense inputs | nullable/selected inputs, tails |
 | Other math | integer math, Round/Floor/Ceil/Log/Mod/FloorDiv/Pow | none | typed scalar; no approximate replacements |
 | Boolean | bitmap AND/OR/NOT | none | word scalar |

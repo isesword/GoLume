@@ -1,0 +1,39 @@
+ok  	gocolumn/aggregate	(cached)
+?   	gocolumn/cmd/demo	[no test files]
+ok  	gocolumn/cmd/kernel-info	0.020s
+?   	gocolumn/cmd/lazy-demo	[no test files]
+?   	gocolumn/costmodel	[no test files]
+ok  	gocolumn/engine	6.641s
+ok  	gocolumn/expr	14.639s
+ok  	gocolumn/hashagg	(cached)
+ok  	gocolumn/internal/benchtrack	(cached)
+?   	gocolumn/internal/cmd/gensimd	[no test files]
+ok  	gocolumn/internal/fixturegen	0.520s
+?   	gocolumn/internal/hashmix	[no test files]
+ok  	gocolumn/internal/kernelgate	(cached)
+ok  	gocolumn/internal/oracle	31.105s
+?   	gocolumn/internal/platformcal	[no test files]
+ok  	gocolumn/internal/proptest	0.158s
+ok  	gocolumn/join	(cached)
+ok  	gocolumn/kernel	15.401s
+ok  	gocolumn/lazy	9.328s
+ok  	gocolumn/logical	(cached)
+ok  	gocolumn/memory	(cached)
+?   	gocolumn/observer	[no test files]
+ok  	gocolumn/optimizer	(cached)
+ok  	gocolumn/physical	3.250s
+ok  	gocolumn/pipeline	0.174s
+ok  	gocolumn/planner	0.006s
+ok  	gocolumn/radix	0.009s
+ok  	gocolumn/scheduler	(cached)
+ok  	gocolumn/source	0.008s
+ok  	gocolumn/source/arrowrecord	0.008s
+ok  	gocolumn/source/inmemory	0.006s
+?   	gocolumn/source/internal/batchview	[no test files]
+ok  	gocolumn/source/parquet	2.720s
+ok  	gocolumn/tools/benchtrack	(cached)
+?   	gocolumn/tools/checkgodoc	[no test files]
+ok  	gocolumn/tools/genfallbackfixture	(cached)
+ok  	gocolumn/tools/genfixture	(cached)
+ok  	gocolumn/tools/kernelgate	(cached)
+ok  	gocolumn/tuplesort	(cached)

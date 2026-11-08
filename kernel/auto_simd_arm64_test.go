@@ -18,8 +18,8 @@ func TestArm64AutoSelectsNativeComparisonBackends(t *testing.T) {
 			id, _ := ComparisonID(typ, op)
 			capability, _ := set.Capability(id)
 			if typ == memory.TypeInt32 && op == CompareEQ {
-				if capability.Backend != "scalar" {
-					t.Fatalf("unimplemented %s=%+v", id, capability)
+				if capability.Backend != "portable-simd" || !capability.HardwareSIMD {
+					t.Fatalf("portable %s=%+v", id, capability)
 				}
 				continue
 			}
