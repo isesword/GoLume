@@ -173,7 +173,7 @@ func (c *typedResultCollector) append(ctx context.Context, record aggregateRecor
 			c.account.rowsLease.Release()
 		}
 		c.account.rowsLease = lease
-		rows = grown
+		rows, c.result.Rows = grown, grown
 	}
 	bytes := int64(len(c.query.cq.GroupBy))*int64(unsafe.Sizeof(TypedGroupKey{})) + int64(len(c.query.cq.Aggregates))*int64(unsafe.Sizeof(TypedAggregateValue{}))
 	if c.query.cq.GroupShape == GroupShapeGeneric {

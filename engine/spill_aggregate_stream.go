@@ -214,7 +214,10 @@ func (s *spillableAggregateStream) mergePartition(ctx context.Context, refs []ag
 		owner.close()
 		return err
 	}
-	if err := s.writeOutputRuns(ctx, owner.table); err != nil {
+	s.mu.Lock()
+	err = s.writeOutputRunsLocked(ctx, owner.table, 0, 0)
+	s.mu.Unlock()
+	if err != nil {
 		owner.close()
 		return err
 	}
@@ -228,18 +231,26 @@ func (s *spillableAggregateStream) mergePartition(ctx context.Context, refs []ag
 	return nil
 }
 
-func (s *spillableAggregateStream) writeOutputRuns(ctx context.Context, table *aggregateStateTable) error {
+// writeOutputRunsLocked persists only the unconsumed suffix. Every encoder
+// pass resets to the same slot cursor, never rescanning earlier output chunks.
+// Publication is atomic: on failure the original table and cursor stay valid.
+func (s *spillableAggregateStream) writeOutputRunsLocked(ctx context.Context, table *aggregateStateTable, cursor, emitted int) error {
 	groups := table.len()
 	var created spillmeta.Slice[aggregateRunRef]
 	defer created.Release()
-	for start := 0; start < groups; start += s.outputRows {
-		end := start + s.outputRows
-		if end > groups {
-			end = groups
+	for start := emitted; start < groups; start += s.outputRows {
+		if err := ctx.Err(); err != nil {
+			s.deleteRunRefs(context.Background(), created.Values)
+			return err
 		}
-		encoded, err := s.query.encodeAggregateRun(ctx, table.visit, func(index int, _ aggregateRecord) bool {
-			return index >= start && index < end
-		}, s.encoder)
+		chunkStart := cursor
+		visit := func(fn func(aggregateRecord) error) error {
+			next := chunkStart
+			_, err := table.visitChunk(&next, s.outputRows, fn)
+			cursor = next
+			return err
+		}
+		encoded, err := s.query.encodeAggregateRun(ctx, visit, nil, spillmeta.GrowthManager(s.encoder))
 		if err != nil {
 			s.deleteRunRefs(context.Background(), created.Values)
 			return err
@@ -269,10 +280,8 @@ func (s *spillableAggregateStream) writeOutputRuns(ctx context.Context, table *a
 			s.deleteRunRefs(context.Background(), created.Values)
 			return err
 		}
-		s.mu.Lock()
 		s.spillRuns++
 		s.spillBytes += handle.Bytes()
-		s.mu.Unlock()
 	}
 	// Drop the borrowed view before replacement releases the old array.
 	s.outputRuns = nil
@@ -624,10 +633,27 @@ func (s *spillableAggregateStream) materializeOutputRun(ctx context.Context, ref
 	if preflight.groups != ref.groups || preflight.groups > s.outputRows {
 		return nil, fmt.Errorf("%w: aggregate output groups=%d want=%d max=%d", memory.ErrSpillCorrupt, preflight.groups, ref.groups, s.outputRows)
 	}
+	visit := func(fn func(aggregateRecord) error) error {
+		reader, err := s.query.newAggregateRunReader(restored.Object.Payload)
+		if err != nil {
+			return err
+		}
+		return reader.visit(fn)
+	}
+	return s.materializeOutputRecords(ctx, visit, ref.groups, dst)
+}
+
+// materializeOutputRecords requires a replayable visitor over stable records.
+// All payload and descriptor storage is admitted before allocation. No record
+// slice is retained, so output scratch remains bounded by the emitted columns.
+func (s *spillableAggregateStream) materializeOutputRecords(ctx context.Context, visit aggregateRecordVisitor, groups int, dst *memory.Batch) (memory.Reservation, error) {
 	plainStringBytes := int64(0)
 	endpointBytes := int64(0)
 	if s.query.hasByteStatistics() || s.query.cq.GroupShape == GroupShapeStringView || s.query.cq.GroupShape == GroupShapeGeneric {
-		err = preflight.visit(func(record aggregateRecord) error {
+		err := visit(func(record aggregateRecord) error {
+			if err := ctx.Err(); err != nil {
+				return err
+			}
 			n, e := s.query.byteStatisticsPayloadSize(record)
 			if e != nil {
 				return e
@@ -664,7 +690,7 @@ func (s *spillableAggregateStream) materializeOutputRun(ctx context.Context, ref
 	if s.query.cq.GroupShape == GroupShapeGeneric {
 		stringCapacity = endpointBytes
 	}
-	bytes, err := aggregateOutputBytes(s.schema, ref.groups, stringCapacity)
+	bytes, err := aggregateOutputBytes(s.schema, groups, stringCapacity)
 	if err == nil && s.query.cq.GroupShape == GroupShapeGeneric {
 		if plainStringBytes > math.MaxInt64-bytes {
 			return nil, fmt.Errorf("generic output size overflow")
@@ -682,7 +708,7 @@ func (s *spillableAggregateStream) materializeOutputRun(ctx context.Context, ref
 		lease.Release()
 		return nil, fmt.Errorf("aggregate output strings exceed addressable memory")
 	}
-	if err := s.allocateOutputBatch(dst, ref.groups, int(stringCapacity)); err != nil {
+	if err := s.allocateOutputBatch(dst, groups, int(stringCapacity)); err != nil {
 		dst.ClearColumns()
 		lease.Release()
 		return nil, err
@@ -693,21 +719,21 @@ func (s *spillableAggregateStream) materializeOutputRun(ctx context.Context, ref
 			if field.Type != memory.TypeString && field.Type != memory.TypeBinary {
 				continue
 			}
-			counter, countErr := s.query.newAggregateRunReader(restored.Object.Payload)
 			size := 0
-			if countErr == nil {
-				countErr = counter.visit(func(record aggregateRecord) error {
-					return visitCanonicalGroupKey(record.stringKey, s.query.cq.GenericFields, func(i int, _ memory.DataType, valid bool, _ uint64, data []byte) error {
-						if i == index && valid {
-							if len(data) > math.MaxInt-size {
-								return fmt.Errorf("generic payload size overflow")
-							}
-							size += len(data)
+			countErr := visit(func(record aggregateRecord) error {
+				if err := ctx.Err(); err != nil {
+					return err
+				}
+				return visitCanonicalGroupKey(record.stringKey, s.query.cq.GenericFields, func(i int, _ memory.DataType, valid bool, _ uint64, data []byte) error {
+					if i == index && valid {
+						if len(data) > math.MaxInt-size {
+							return fmt.Errorf("generic payload size overflow")
 						}
-						return nil
-					})
+						size += len(data)
+					}
+					return nil
 				})
-			}
+			})
 			if countErr != nil {
 				dst.ClearColumns()
 				lease.Release()
@@ -716,27 +742,27 @@ func (s *spillableAggregateStream) materializeOutputRun(ctx context.Context, ref
 			dst.Strings[field.Name].Data = make([]byte, 0, size)
 		}
 	}
-	reader, err := s.query.newAggregateRunReader(restored.Object.Payload)
-	if err != nil {
-		dst.ClearColumns()
-		lease.Release()
-		return nil, err
-	}
 	row := 0
-	err = reader.visit(func(record aggregateRecord) error {
+	err = visit(func(record aggregateRecord) error {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		if row >= groups {
+			return fmt.Errorf("aggregate output exceeded %d groups", groups)
+		}
 		if err := s.setOutputRecord(dst, row, record); err != nil {
 			return err
 		}
 		row++
 		return nil
 	})
-	if err != nil || row != ref.groups {
+	if err != nil || row != groups {
 		dst.ClearColumns()
 		lease.Release()
 		if err != nil {
 			return nil, err
 		}
-		return nil, fmt.Errorf("%w: aggregate output decoded %d groups, want %d", memory.ErrSpillCorrupt, row, ref.groups)
+		return nil, fmt.Errorf("%w: aggregate output decoded %d groups, want %d", memory.ErrSpillCorrupt, row, groups)
 	}
 	return lease, nil
 }
@@ -807,6 +833,10 @@ func (s *spillableAggregateStream) recordStats() {
 
 func (s *spillableAggregateStream) finishActive() {
 	s.mu.Lock()
+	if s.table != nil {
+		s.table.close()
+		s.table = nil
+	}
 	s.outputRuns = nil
 	s.outputRefs.Release()
 	for i := range s.partitions {
@@ -871,7 +901,7 @@ func (s *spillableAggregateStream) abort(err error) error {
 }
 
 // Next emits one bounded aggregate output batch. It consumes and partitions
-// the input only on the first demand, then restores one final run per call.
+// the input only on first demand, then visits resident state or restores one run.
 func (s *spillableAggregateStream) Next(ctx context.Context, dst *memory.Batch) (bool, error) {
 	if dst == nil {
 		return false, fmt.Errorf("aggregate stream destination is nil")
@@ -919,9 +949,47 @@ func (s *spillableAggregateStream) Next(ctx context.Context, dst *memory.Batch) 
 	}
 
 	s.mu.Lock()
+	if s.residentOutput && s.table != nil && s.outputEmitted < s.groupCount {
+		start := s.outputCursor
+		end := start
+		rows := min(s.outputRows, s.groupCount-s.outputEmitted)
+		visit := func(fn func(aggregateRecord) error) error {
+			cursor := start
+			_, err := s.table.table.visitChunk(&cursor, rows, fn)
+			end = cursor
+			return err
+		}
+		lease, err := s.materializeOutputRecords(ctx, visit, rows, dst)
+		if err == nil {
+			s.outputCursor, s.outputEmitted = end, s.outputEmitted+rows
+			s.outputLease, s.outputDst = lease, dst
+			if s.outputEmitted == s.groupCount {
+				s.table.close()
+				s.table = nil
+			}
+			s.mu.Unlock()
+			return true, nil
+		}
+		retained := s.table.retainedBytes()
+		s.mu.Unlock()
+		if !errors.Is(err, memory.ErrBudgetExceeded) {
+			return false, s.abort(err)
+		}
+		// Failed output admission leaves the cursor untouched. Reclaim state
+		// by writing the remaining output once, then retry through restore.
+		if _, spillErr := s.state.RequestHardSpill(ctx, retained); spillErr != nil {
+			return false, s.abort(errors.Join(err, spillErr))
+		}
+		s.mu.Lock()
+		if s.table != nil {
+			s.mu.Unlock()
+			return false, s.abort(err)
+		}
+	}
 	if len(s.outputRuns) == 0 {
 		s.exhausted = true
 		s.mu.Unlock()
+		s.recordStats()
 		s.finishActive()
 		return false, nil
 	}

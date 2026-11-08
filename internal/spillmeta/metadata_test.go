@@ -401,3 +401,60 @@ func TestStoreCloseFailureDoesNotBuildRunSizedErrorList(t *testing.T) {
 		t.Fatal(manager.Used())
 	}
 }
+
+func TestLazyStoreDoesNotOpenUntilSpill(t *testing.T) {
+	manager := memory.NewBudgetManager(1 << 20)
+	calls := 0
+	s := NewLazyStore(func() (memory.SpillManager, error) { calls++; return nil, errors.New("unexpected open") }, manager)
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if _, err := s.Spill(ctx, testObject()); !errors.Is(err, context.Canceled) {
+		t.Fatal(err)
+	}
+	if err := s.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Spill(context.Background(), testObject()); !errors.Is(err, memory.ErrSpillClosed) {
+		t.Fatal(err)
+	}
+	if calls != 0 || manager.Used() != 0 {
+		t.Fatal("unneeded store was opened")
+	}
+}
+
+func TestLazyStoreRetriesOpenAndSharesOneStore(t *testing.T) {
+	base := testBase(t)
+	manager := memory.NewBudgetManager(1 << 20)
+	calls := 0
+	sentinel := errors.New("open failed")
+	s := NewLazyStore(func() (memory.SpillManager, error) {
+		calls++
+		if calls == 1 {
+			return nil, sentinel
+		}
+		return base, nil
+	}, manager)
+	if _, err := s.Spill(context.Background(), testObject()); !errors.Is(err, sentinel) {
+		t.Fatal(err)
+	}
+	var wg sync.WaitGroup
+	for i := 0; i < 8; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if _, err := s.Spill(context.Background(), testObject()); err != nil {
+				t.Error(err)
+			}
+		}()
+	}
+	wg.Wait()
+	if calls != 2 {
+		t.Fatalf("opened %d times", calls)
+	}
+	if err := s.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if manager.Used() != 0 || base.Used() != 0 {
+		t.Fatal("lazy store leak")
+	}
+}

@@ -110,6 +110,7 @@ func (s *Slice[T]) Release() {
 // Callers must release their Slice owners before Close.
 type Store struct {
 	base      memory.SpillManager
+	open      func() (memory.SpillManager, error)
 	manager   memory.Manager
 	mu        sync.Mutex
 	first     *handle
@@ -145,9 +146,15 @@ func NewStore(base memory.SpillManager, manager memory.Manager) *Store {
 	return &Store{base: base, manager: manager, closeDone: make(chan struct{})}
 }
 
+// NewLazyStore defers opening the shared store until the first actual spill.
+// The caller's fixed metadata admission covers the Store descriptor itself.
+func NewLazyStore(open func() (memory.SpillManager, error), manager memory.Manager) *Store {
+	return &Store{open: open, manager: manager, closeDone: make(chan struct{})}
+}
+
 // Spill admits operator references and all store metadata before writing.
 func (s *Store) Spill(ctx context.Context, object memory.SpillObject) (memory.SpillHandle, error) {
-	if s == nil || s.base == nil {
+	if s == nil {
 		return nil, memory.ErrSpillUnsupported
 	}
 	if ctx == nil {
@@ -160,6 +167,22 @@ func (s *Store) Spill(ctx context.Context, object memory.SpillObject) (memory.Sp
 	if s.closed {
 		s.mu.Unlock()
 		return nil, memory.ErrSpillClosed
+	}
+	if s.base == nil {
+		if s.open == nil {
+			s.mu.Unlock()
+			return nil, memory.ErrSpillUnsupported
+		}
+		base, err := s.open()
+		if err != nil {
+			s.mu.Unlock()
+			return nil, err
+		}
+		if base == nil {
+			s.mu.Unlock()
+			return nil, memory.ErrSpillUnsupported
+		}
+		s.base, s.open = base, nil
 	}
 	s.inflight.Add(1)
 	s.mu.Unlock()

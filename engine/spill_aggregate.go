@@ -831,10 +831,6 @@ func (p *PreparedQuery) newSpillableAggregateStream(ctx context.Context, schema 
 			p.end()
 		}
 	}()
-	store, err := query.SpillManager()
-	if err != nil {
-		return nil, err
-	}
 	if outputRows < 1 {
 		outputRows = p.e.opts.Pipeline.MaxMorselRows
 	}
@@ -864,7 +860,7 @@ func (p *PreparedQuery) newSpillableAggregateStream(ctx context.Context, schema 
 		readOpts:    readOpts,
 		schema:      schema,
 		budget:      query,
-		store:       spillmeta.NewStore(store, metadata),
+		store:       spillmeta.NewLazyStore(query.SpillManager, metadata),
 		fingerprint: memory.SchemaFingerprint(schema),
 		state:       query.Operator("HashAggregate", memory.MemoryRetainedState),
 		encoder:     query.Operator("HashAggregateEncode", memory.MemorySpillBuffer),
@@ -901,16 +897,19 @@ type spillableAggregateStream struct {
 	maxState    int64
 	outputRows  int
 
-	mu            sync.Mutex
-	table         *aggregateTableOwner
-	partitions    []spillmeta.Slice[aggregateRunRef]
-	metadata      memory.Manager
-	metadataLease memory.Reservation
-	outputRefs    spillmeta.Slice[aggregateRunRef]
-	outputRuns    []aggregateRunRef
-	unregister    func()
-	outputDst     *memory.Batch
-	outputLease   memory.Reservation
+	mu             sync.Mutex
+	table          *aggregateTableOwner
+	partitions     []spillmeta.Slice[aggregateRunRef]
+	metadata       memory.Manager
+	metadataLease  memory.Reservation
+	outputRefs     spillmeta.Slice[aggregateRunRef]
+	outputRuns     []aggregateRunRef
+	unregister     func()
+	outputDst      *memory.Batch
+	outputLease    memory.Reservation
+	residentOutput bool
+	outputCursor   int
+	outputEmitted  int
 
 	selectedRows       int
 	checksum           int64
@@ -944,6 +943,18 @@ func (s *spillableAggregateStream) SpillableBytes() int64 {
 func (s *spillableAggregateStream) Spill(ctx context.Context, _ memory.SpillRequest) (int64, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if s.residentOutput {
+		if s.table == nil {
+			return 0, nil
+		}
+		if err := s.writeOutputRunsLocked(ctx, s.table.table, s.outputCursor, s.outputEmitted); err != nil {
+			return 0, err
+		}
+		released := s.table.close()
+		s.table = nil
+		s.residentOutput = false
+		return released, nil
+	}
 	return s.spillTableLocked(ctx, 0, s.partitions)
 }
 
@@ -1286,21 +1297,6 @@ func (s *spillableAggregateStream) consumeInput(ctx context.Context) error {
 		}
 		if err := s.aggregateBatch(ctx, batch, &workspace); err != nil {
 			return errors.Join(err, stream.Close())
-		}
-	}
-	s.mu.Lock()
-	retained := int64(0)
-	if s.table != nil {
-		retained = s.table.retainedBytes()
-	}
-	s.mu.Unlock()
-	if retained > 0 {
-		released, err := s.state.RequestHardSpill(ctx, retained)
-		if err != nil {
-			return err
-		}
-		if released == 0 {
-			return fmt.Errorf("aggregate final state could not be spilled")
 		}
 	}
 	return nil

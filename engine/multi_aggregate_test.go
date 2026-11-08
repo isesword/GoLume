@@ -200,6 +200,9 @@ func TestMultiColumnSpillStreamingBounded(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer stream.Close()
+	// Exercise real retained-state pressure, not an unconditional EOF flush.
+	stream.(*spillableAggregateStream).maxState = 96 << 10
+
 	out := memory.NewBatch()
 	seen := map[int64]bool{}
 	for {

@@ -103,6 +103,10 @@ func TestAggregateMetadataRecursiveCancellationCleanup(t *testing.T) {
 	if err := s.consumeInput(ctx); err != nil {
 		t.Fatal(err)
 	}
+	// Repartitioning requires persisted input; EOF now leaves fitting state resident.
+	if _, err := s.state.RequestHardSpill(ctx, s.SpillableBytes()); err != nil {
+		t.Fatal(err)
+	}
 	// Children are intentionally not attached to the stream's top-level table:
 	// the private registry must still find them when a deeper operation fails.
 	var index int

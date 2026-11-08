@@ -354,6 +354,9 @@ func TestNativeSpillStreamPrecision(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer stream.Close()
+	// Exercise real retained-state pressure, not an unconditional EOF flush.
+	stream.(*spillableAggregateStream).maxState = 96 << 10
+
 	out := memory.NewBatch()
 	seen := make([]bool, 1024)
 	count := 0
