@@ -365,7 +365,7 @@ func buildKernelIDs() []KernelID {
 			ids = append(ids, id)
 		}
 	}
-	for _, typ := range []memory.DataType{memory.TypeInt32, memory.TypeUint32, memory.TypeInt64, memory.TypeUint64} {
+	for _, typ := range []memory.DataType{memory.TypeInt8, memory.TypeInt16, memory.TypeUint8, memory.TypeUint16, memory.TypeInt32, memory.TypeUint32, memory.TypeInt64, memory.TypeUint64} {
 		id, _ := SumID(typ)
 		ids = append(ids, id)
 	}
@@ -482,6 +482,10 @@ type uint16CompactFunc func(values []uint16, selection memory.Bitmap, out []uint
 type float32CompactFunc func(values []float32, selection memory.Bitmap, out []float32) int
 
 type dispatch struct {
+	sumInt8Masked         func([]int8, uint64) int64
+	sumInt16Masked        func([]int16, uint64) int64
+	sumUint8Masked        func([]uint8, uint64) int64
+	sumUint16Masked       func([]uint16, uint64) int64
 	sumInt32Masked        func([]int32, uint64) int32
 	sumUint32Masked       func([]uint32, uint64) uint32
 	sumInt64Masked        func([]int64, uint64) int64

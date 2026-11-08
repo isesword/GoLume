@@ -6,14 +6,14 @@ import (
 )
 
 // SumID returns the bounded masked integer SUM identifier. Temporal aliases
-// use their physical integer width. Narrow integers and floats are unsupported.
+// use their physical integer width. Narrow integers widen to int64; floats are unsupported.
 func SumID(typ memory.DataType) (KernelID, bool) {
 	switch typ {
 	case memory.TypeInt32, memory.TypeDate32, memory.TypeTime32:
 		typ = memory.TypeInt32
 	case memory.TypeInt64, memory.TypeDate64, memory.TypeTimestamp, memory.TypeTime64, memory.TypeDuration:
 		typ = memory.TypeInt64
-	case memory.TypeUint32, memory.TypeUint64:
+	case memory.TypeInt8, memory.TypeInt16, memory.TypeUint8, memory.TypeUint16, memory.TypeUint32, memory.TypeUint64:
 	default:
 		return KernelID{}, false
 	}
@@ -42,6 +42,11 @@ func scalarSumMasked[T sumInteger](v []T, mask uint64) (sum T) {
 }
 
 func installSumScalar(d *dispatch) {
+	d.sumInt8Masked = scalarNarrowSumMasked[int8]
+	d.sumInt16Masked = scalarNarrowSumMasked[int16]
+	d.sumUint8Masked = scalarNarrowSumMasked[uint8]
+	d.sumUint16Masked = scalarNarrowSumMasked[uint16]
+
 	d.sumInt32Masked = scalarSumMasked[int32]
 	d.sumUint32Masked = scalarSumMasked[uint32]
 	d.sumInt64Masked = scalarSumMasked[int64]

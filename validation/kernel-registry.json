@@ -1575,6 +1575,82 @@
           "updated": "2026-11-08"
         }
       }
+    },
+    {
+      "id": "sum-int8-masked",
+      "family": "reduction",
+      "type": "int8",
+      "operation": "sum-masked",
+      "source": "handwritten",
+      "arches": {
+        "linux/amd64": {
+          "state": "candidate",
+          "reason": "Native signed/unsigned widening before native SIMD accumulation. Correctness and zero-allocation checked at 128/256/512 bits; benchmark smoke only, no archived statistical approval evidence.",
+          "updated": "2026-11-08"
+        },
+        "linux/arm64": {
+          "state": "candidate",
+          "reason": "Native widening and horizontal reduction cross-compiled only; no ARM64 execution or benchmark approval evidence.",
+          "updated": "2026-11-08"
+        }
+      }
+    },
+    {
+      "id": "sum-int16-masked",
+      "family": "reduction",
+      "type": "int16",
+      "operation": "sum-masked",
+      "source": "handwritten",
+      "arches": {
+        "linux/amd64": {
+          "state": "candidate",
+          "reason": "Native signed/unsigned widening before native SIMD accumulation. Correctness and zero-allocation checked at 128/256/512 bits; benchmark smoke only, no archived statistical approval evidence.",
+          "updated": "2026-11-08"
+        },
+        "linux/arm64": {
+          "state": "candidate",
+          "reason": "Native widening and horizontal reduction cross-compiled only; no ARM64 execution or benchmark approval evidence.",
+          "updated": "2026-11-08"
+        }
+      }
+    },
+    {
+      "id": "sum-uint8-masked",
+      "family": "reduction",
+      "type": "uint8",
+      "operation": "sum-masked",
+      "source": "handwritten",
+      "arches": {
+        "linux/amd64": {
+          "state": "candidate",
+          "reason": "Native signed/unsigned widening before native SIMD accumulation. Correctness and zero-allocation checked at 128/256/512 bits; benchmark smoke only, no archived statistical approval evidence.",
+          "updated": "2026-11-08"
+        },
+        "linux/arm64": {
+          "state": "candidate",
+          "reason": "Native widening and horizontal reduction cross-compiled only; no ARM64 execution or benchmark approval evidence.",
+          "updated": "2026-11-08"
+        }
+      }
+    },
+    {
+      "id": "sum-uint16-masked",
+      "family": "reduction",
+      "type": "uint16",
+      "operation": "sum-masked",
+      "source": "handwritten",
+      "arches": {
+        "linux/amd64": {
+          "state": "candidate",
+          "reason": "Native signed/unsigned widening before native SIMD accumulation. Correctness and zero-allocation checked at 128/256/512 bits; benchmark smoke only, no archived statistical approval evidence.",
+          "updated": "2026-11-08"
+        },
+        "linux/arm64": {
+          "state": "candidate",
+          "reason": "Native widening and horizontal reduction cross-compiled only; no ARM64 execution or benchmark approval evidence.",
+          "updated": "2026-11-08"
+        }
+      }
     }
   ]
 }

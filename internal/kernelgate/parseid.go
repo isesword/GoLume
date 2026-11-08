@@ -50,7 +50,7 @@ func ParseKernelID(id string) (family, typ, op string, err error) {
 			return "", "", "", fmt.Errorf("kernelgate: malformed masked sum id %q", id)
 		}
 		switch typ {
-		case "int32", "uint32", "int64", "uint64":
+		case "int8", "int16", "uint8", "uint16", "int32", "uint32", "int64", "uint64":
 			return "reduction", typ, "sum-masked", nil
 		default:
 			return "", "", "", fmt.Errorf("kernelgate: unsupported masked sum type in %q", id)

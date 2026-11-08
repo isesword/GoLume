@@ -15,6 +15,7 @@ func installSumSIMD(set *Set, mode Mode, vectorBits int) {
 	if vectorBits != 128 && vectorBits != 256 && vectorBits != 512 {
 		return
 	}
+	installNarrowSumSIMD(set, vectorBits)
 	set.d.sumInt32Masked = simdSumInt32Masked
 	set.d.sumUint32Masked = simdSumUint32Masked
 	set.d.sumInt64Masked = simdSumInt64Masked

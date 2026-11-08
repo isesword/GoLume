@@ -89,7 +89,7 @@ func TestSumIDs(t *testing.T) {
 			t.Fatalf("%v capability=%+v", id, cap)
 		}
 	}
-	for _, typ := range []memory.DataType{memory.TypeInt8, memory.TypeUint16, memory.TypeFloat32, memory.TypeFloat64, memory.TypeString} {
+	for _, typ := range []memory.DataType{memory.TypeFloat32, memory.TypeFloat64, memory.TypeString} {
 		if _, ok := SumID(typ); ok {
 			t.Fatalf("unexpected sum for %v", typ)
 		}

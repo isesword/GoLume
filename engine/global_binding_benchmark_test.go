@@ -199,6 +199,12 @@ func globalBindingOracle(c globalBindingCase, f globalBindingFixture) map[int][]
 		values := make([]TypedValue, len(f.query.Aggregates))
 		for i, a := range f.query.Aggregates {
 			values[i].Type = columnByName[a.Column].typ
+			if a.Kind == expr.AggSum {
+				switch values[i].Type {
+				case memory.TypeInt8, memory.TypeInt16, memory.TypeUint8, memory.TypeUint16:
+					values[i].Type = memory.TypeInt64
+				}
+			}
 			if a.Kind == expr.AggCountRows || a.Kind == expr.AggCountValues {
 				values[i] = TypedValue{Type: memory.TypeUint64, Valid: true}
 			}
@@ -248,6 +254,14 @@ func globalBindingOracle(c globalBindingCase, f globalBindingFixture) map[int][]
 				value.Bits++
 			case expr.AggSum:
 				switch col.typ {
+				case memory.TypeInt8:
+					value.Bits += uint64(int64(int8(bits)))
+				case memory.TypeInt16:
+					value.Bits += uint64(int64(int16(bits)))
+				case memory.TypeUint8:
+					value.Bits += uint64(uint8(bits))
+				case memory.TypeUint16:
+					value.Bits += uint64(uint16(bits))
 				case memory.TypeUint64:
 					value.Bits += bits
 				case memory.TypeInt32:

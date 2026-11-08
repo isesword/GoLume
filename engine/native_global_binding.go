@@ -191,17 +191,17 @@ func (s *sortedAggregateStream) consumeGlobalAggregateBatch(ctx context.Context)
 func (b *globalAggregateLaneBinding) sumWord(kernels kernel.Set, base, end int, selected, sum uint64) uint64 {
 	switch b.typ {
 	case memory.TypeInt8:
-		return sumSelectedNarrow(b.int8s.Values[base:end], selected, sum)
+		return sum + uint64(kernels.SumInt8Masked(b.int8s.Values[base:end], selected))
 	case memory.TypeInt16:
-		return sumSelectedNarrow(b.int16s.Values[base:end], selected, sum)
+		return sum + uint64(kernels.SumInt16Masked(b.int16s.Values[base:end], selected))
 	case memory.TypeInt32:
 		return uint64(int64(int32(sum) + kernels.SumInt32Masked(b.int32s.Values[base:end], selected)))
 	case memory.TypeInt64:
 		return sum + uint64(kernels.SumInt64Masked(b.int64s.Values[base:end], selected))
 	case memory.TypeUint8:
-		return sumSelectedNarrow(b.uint8s.Values[base:end], selected, sum)
+		return sum + uint64(kernels.SumUint8Masked(b.uint8s.Values[base:end], selected))
 	case memory.TypeUint16:
-		return sumSelectedNarrow(b.uint16s.Values[base:end], selected, sum)
+		return sum + uint64(kernels.SumUint16Masked(b.uint16s.Values[base:end], selected))
 	case memory.TypeUint32:
 		return uint64(uint32(sum) + kernels.SumUint32Masked(b.uint32s.Values[base:end], selected))
 	case memory.TypeUint64:
@@ -214,20 +214,6 @@ func (b *globalAggregateLaneBinding) sumWord(kernels kernel.Set, base, end int, 
 		// Count-only lanes bind validity without accessing a numeric payload.
 		return sum
 	}
-}
-
-func sumSelectedNarrow[T int8 | int16 | uint8 | uint16](values []T, selected, sum uint64) uint64 {
-	if selected == memory.TailMask(len(values)) {
-		for _, value := range values {
-			sum += uint64(value)
-		}
-		return sum
-	}
-	for selected != 0 {
-		sum += uint64(values[bits.TrailingZeros64(selected)])
-		selected &= selected - 1
-	}
-	return sum
 }
 
 func sumSelectedFloat[T float32 | float64](values []T, selected uint64, sum T) T {
