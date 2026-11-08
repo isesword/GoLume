@@ -63,6 +63,7 @@ func main() {
 		panic(err)
 	}
 	outputs := map[string][]byte{
+		"kernel/zz_generated_minmax_simd.go":     generateMinMaxSIMD(),
 		"memory/zz_generated_numeric.go":         generateNumericVectors(),
 		"kernel/zz_generated_scalar.go":          generateScalar(),
 		"kernel/zz_generated_simd.go":            generatePortableSIMD(),

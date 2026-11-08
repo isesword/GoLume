@@ -169,6 +169,19 @@ func (b *NumericBundle) AddBits(group, column int, bits uint64, valid bool) {
 // must be live, and group/column must be addressable.
 func (b *NumericBundle) Result(group, column int) NumericResult { return b.lanes[column].Result(group) }
 
+// InitResult replaces one live, addressable lane with a compatible complete
+// state. It does not merge partial sums. Invalid bounds, closed bundles and
+// type/layout mismatches return an error without changing the lane.
+func (b *NumericBundle) InitResult(group, column int, state NumericResult) error {
+	if b == nil || b.closed {
+		return fmt.Errorf("aggregate: numeric bundle is closed")
+	}
+	if group < 0 || group >= b.capacity || column < 0 || column >= len(b.lanes) {
+		return fmt.Errorf("aggregate: numeric bundle slot out of range")
+	}
+	return b.lanes[column].InitResult(group, state)
+}
+
 // Merge combines one compatible raw partial state into an addressable lane.
 // Type/layout mismatches leave the lane unchanged and return an error.
 func (b *NumericBundle) Merge(group, column int, state NumericResult) error {

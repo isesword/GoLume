@@ -41,8 +41,15 @@ func (p *PreparedQuery) globalAggregateBindingsEligible() bool {
 		return false
 	}
 	for lane, layout := range m.Layouts {
-		if layout.Min || layout.Max || layout.Avg {
+		if layout.Avg {
 			return false
+		}
+		if layout.Min || layout.Max {
+			switch m.Types[lane] {
+			case memory.TypeInt32, memory.TypeInt64, memory.TypeUint32, memory.TypeUint64, memory.TypeFloat32, memory.TypeFloat64:
+			default:
+				return false
+			}
 		}
 		if layout.Sum {
 			switch m.Types[lane] {
@@ -87,8 +94,8 @@ func (s *sortedAggregateStream) bindGlobalAggregateInputs() {
 			bound.rowsOnly = true
 			continue
 		}
-		_, bound.validity, _ = aggregateColumnInfo(s.inputBatch, name, m.Types[lane], m.Layouts[lane].Sum)
-		if !m.Layouts[lane].Sum {
+		_, bound.validity, _ = aggregateColumnInfo(s.inputBatch, name, m.Types[lane], m.Layouts[lane].Sum || m.Layouts[lane].Min || m.Layouts[lane].Max)
+		if !(m.Layouts[lane].Sum || m.Layouts[lane].Min || m.Layouts[lane].Max) {
 			continue
 		}
 		bound.typ = m.Types[lane]
@@ -118,7 +125,7 @@ func (s *sortedAggregateStream) bindGlobalAggregateInputs() {
 }
 
 // consumeGlobalAggregateInput bypasses the adjacent-key state machine only for
-// the already-bound global SUM/COUNT lanes. Predicate evaluation still uses the
+// the already-bound global SUM/COUNT and wide numeric MIN/MAX lanes. Predicate evaluation still uses the
 // selected kernel set. Each SUM retains its original encounter order:
 // horizontal floating-point reductions would change rounding and NaN results.
 // No row-sized scratch or additional retained state is required.
@@ -168,6 +175,16 @@ func (s *sortedAggregateStream) consumeGlobalAggregateBatch(ctx context.Context)
 		for lane := range s.globalBindings {
 			if err := ctx.Err(); err != nil {
 				return err
+			}
+			if layout := s.query.cq.MultiAggregate.Layouts[lane]; layout.Min || layout.Max {
+				state := s.numeric.Result(0, lane)
+				if err := s.globalBindings[lane].consumeExtremaBatch(ctx, kernels, s.selection, rows, selectedRows, &state); err != nil {
+					return err
+				}
+				if err := s.numeric.InitResult(0, lane, state); err != nil {
+					return err
+				}
+				continue
 			}
 			// This view lives only for this lane's batch loop. The bundle cannot
 			// grow or close here; no borrowed state survives a source boundary.

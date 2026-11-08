@@ -44,6 +44,18 @@ func ParseKernelID(id string) (family, typ, op string, err error) {
 		}
 		return "arithmetic", typ, op, nil
 	}
+	if rest, ok := strings.CutPrefix(id, "minmax-"); ok {
+		typ, op, ok = cutLast(rest)
+		if !ok || op != "masked" {
+			return "", "", "", fmt.Errorf("kernelgate: malformed masked min/max id %q", id)
+		}
+		switch typ {
+		case "int32", "int64", "uint32", "uint64", "float32", "float64":
+			return "reduction", typ, "minmax-masked", nil
+		default:
+			return "", "", "", fmt.Errorf("kernelgate: unsupported masked min/max type in %q", id)
+		}
+	}
 	if rest, ok := strings.CutPrefix(id, "sum-"); ok {
 		typ, op, ok = cutLast(rest)
 		if !ok || op != "masked" {

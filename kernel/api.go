@@ -198,6 +198,9 @@ func (id KernelID) Kind() KernelKind { return id.kind }
 func (id KernelID) String() string {
 	switch id.kind {
 	case KernelReduction:
+		if id.op == 2 {
+			return fmt.Sprintf("minmax-%s-masked", id.typ)
+		}
 		return fmt.Sprintf("sum-%s-masked", id.typ)
 	case KernelMathUnary:
 		return fmt.Sprintf("math-%s-%s", id.typ, MathUnaryOp(id.op))
@@ -369,6 +372,10 @@ func buildKernelIDs() []KernelID {
 		id, _ := SumID(typ)
 		ids = append(ids, id)
 	}
+	for _, typ := range []memory.DataType{memory.TypeInt32, memory.TypeInt64, memory.TypeUint32, memory.TypeUint64, memory.TypeFloat32, memory.TypeFloat64} {
+		id, _ := MinMaxID(typ)
+		ids = append(ids, id)
+	}
 	return append(ids,
 		KernelBoolAnd, KernelBoolOr, KernelBoolNot,
 		KernelHash64Batch, KernelHash128Batch, KernelInt64Scale,
@@ -482,6 +489,12 @@ type uint16CompactFunc func(values []uint16, selection memory.Bitmap, out []uint
 type float32CompactFunc func(values []float32, selection memory.Bitmap, out []float32) int
 
 type dispatch struct {
+	minMaxInt32Masked     func([]int32, uint64) (int32, int32)
+	minMaxInt64Masked     func([]int64, uint64) (int64, int64)
+	minMaxUint32Masked    func([]uint32, uint64) (uint32, uint32)
+	minMaxUint64Masked    func([]uint64, uint64) (uint64, uint64)
+	minMaxFloat32Masked   func([]float32, uint64) (float32, float32)
+	minMaxFloat64Masked   func([]float64, uint64) (float64, float64)
 	sumInt8Masked         func([]int8, uint64) int64
 	sumInt16Masked        func([]int16, uint64) int64
 	sumUint8Masked        func([]uint8, uint64) int64
@@ -759,6 +772,7 @@ func (s Set) setCapability(id KernelID, capability KernelCapability) { s.d.caps.
 func newScalarSet(mode Mode) Set {
 	d := &dispatch{caps: &capabilityState{mode: mode, arch: runtimeArch(), byID: make(map[KernelID]KernelCapability, len(allKernelIDs)), columns: make(map[KernelID]KernelCapability, 50)}}
 	installSumScalar(d)
+	installMinMaxScalar(d)
 	installMathScalar(d)
 	installGeneratedScalar(d)
 	installFloat32Scalar(d)

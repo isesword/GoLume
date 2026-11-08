@@ -1444,6 +1444,120 @@
       "arches": {}
     },
     {
+      "id": "minmax-float32-masked",
+      "family": "reduction",
+      "type": "float32",
+      "operation": "minmax-masked",
+      "source": "handwritten",
+      "arches": {
+        "linux/amd64": {
+          "state": "candidate",
+          "reason": "Native 128/256/512-bit masked extrema passed bit-exact, bounds, zero-allocation and dispatch tests. No archived statistical approval-gate evidence.",
+          "updated": "2026-11-08"
+        },
+        "linux/arm64": {
+          "state": "candidate",
+          "reason": "Portable SIMD order-key accumulation and native horizontal extrema cross-compiled only. No ARM64 execution or benchmark approval evidence.",
+          "updated": "2026-11-08"
+        }
+      }
+    },
+    {
+      "id": "minmax-float64-masked",
+      "family": "reduction",
+      "type": "float64",
+      "operation": "minmax-masked",
+      "source": "handwritten",
+      "arches": {
+        "linux/amd64": {
+          "state": "candidate",
+          "reason": "Native 128/256/512-bit masked extrema passed bit-exact, bounds, zero-allocation and dispatch tests. No archived statistical approval-gate evidence.",
+          "updated": "2026-11-08"
+        },
+        "linux/arm64": {
+          "state": "candidate",
+          "reason": "Portable SIMD order-key accumulation and native horizontal extrema cross-compiled only. No ARM64 execution or benchmark approval evidence.",
+          "updated": "2026-11-08"
+        }
+      }
+    },
+    {
+      "id": "minmax-int32-masked",
+      "family": "reduction",
+      "type": "int32",
+      "operation": "minmax-masked",
+      "source": "handwritten",
+      "arches": {
+        "linux/amd64": {
+          "state": "candidate",
+          "reason": "Native 128/256/512-bit masked extrema passed bit-exact, bounds, zero-allocation and dispatch tests. No archived statistical approval-gate evidence.",
+          "updated": "2026-11-08"
+        },
+        "linux/arm64": {
+          "state": "candidate",
+          "reason": "Portable SIMD order-key accumulation and native horizontal extrema cross-compiled only. No ARM64 execution or benchmark approval evidence.",
+          "updated": "2026-11-08"
+        }
+      }
+    },
+    {
+      "id": "minmax-int64-masked",
+      "family": "reduction",
+      "type": "int64",
+      "operation": "minmax-masked",
+      "source": "handwritten",
+      "arches": {
+        "linux/amd64": {
+          "state": "candidate",
+          "reason": "Native 128/256/512-bit masked extrema passed bit-exact, bounds, zero-allocation and dispatch tests. No archived statistical approval-gate evidence.",
+          "updated": "2026-11-08"
+        },
+        "linux/arm64": {
+          "state": "candidate",
+          "reason": "Portable SIMD order-key accumulation and native horizontal extrema cross-compiled only. No ARM64 execution or benchmark approval evidence.",
+          "updated": "2026-11-08"
+        }
+      }
+    },
+    {
+      "id": "minmax-uint32-masked",
+      "family": "reduction",
+      "type": "uint32",
+      "operation": "minmax-masked",
+      "source": "handwritten",
+      "arches": {
+        "linux/amd64": {
+          "state": "candidate",
+          "reason": "Native 128/256/512-bit masked extrema passed bit-exact, bounds, zero-allocation and dispatch tests. No archived statistical approval-gate evidence.",
+          "updated": "2026-11-08"
+        },
+        "linux/arm64": {
+          "state": "candidate",
+          "reason": "Portable SIMD order-key accumulation and native horizontal extrema cross-compiled only. No ARM64 execution or benchmark approval evidence.",
+          "updated": "2026-11-08"
+        }
+      }
+    },
+    {
+      "id": "minmax-uint64-masked",
+      "family": "reduction",
+      "type": "uint64",
+      "operation": "minmax-masked",
+      "source": "handwritten",
+      "arches": {
+        "linux/amd64": {
+          "state": "candidate",
+          "reason": "Native 128/256/512-bit masked extrema passed bit-exact, bounds, zero-allocation and dispatch tests. No archived statistical approval-gate evidence.",
+          "updated": "2026-11-08"
+        },
+        "linux/arm64": {
+          "state": "candidate",
+          "reason": "Portable SIMD order-key accumulation and native horizontal extrema cross-compiled only. No ARM64 execution or benchmark approval evidence.",
+          "updated": "2026-11-08"
+        }
+      }
+    },
+    {
       "id": "string-byte-length",
       "family": "string-length",
       "type": "string",
@@ -1501,6 +1615,25 @@
       }
     },
     {
+      "id": "sum-int16-masked",
+      "family": "reduction",
+      "type": "int16",
+      "operation": "sum-masked",
+      "source": "handwritten",
+      "arches": {
+        "linux/amd64": {
+          "state": "candidate",
+          "reason": "Native signed/unsigned widening before native SIMD accumulation. Correctness and zero-allocation checked at 128/256/512 bits; benchmark smoke only, no archived statistical approval evidence.",
+          "updated": "2026-11-08"
+        },
+        "linux/arm64": {
+          "state": "candidate",
+          "reason": "Native widening and horizontal reduction cross-compiled only; no ARM64 execution or benchmark approval evidence.",
+          "updated": "2026-11-08"
+        }
+      }
+    },
+    {
       "id": "sum-int32-masked",
       "family": "reduction",
       "type": "int32",
@@ -1534,6 +1667,44 @@
         "linux/arm64": {
           "state": "candidate",
           "reason": "Portable SIMD accumulation and native horizontal reduction cross-compiled only. No ARM64 execution or benchmark approval evidence.",
+          "updated": "2026-11-08"
+        }
+      }
+    },
+    {
+      "id": "sum-int8-masked",
+      "family": "reduction",
+      "type": "int8",
+      "operation": "sum-masked",
+      "source": "handwritten",
+      "arches": {
+        "linux/amd64": {
+          "state": "candidate",
+          "reason": "Native signed/unsigned widening before native SIMD accumulation. Correctness and zero-allocation checked at 128/256/512 bits; benchmark smoke only, no archived statistical approval evidence.",
+          "updated": "2026-11-08"
+        },
+        "linux/arm64": {
+          "state": "candidate",
+          "reason": "Native widening and horizontal reduction cross-compiled only; no ARM64 execution or benchmark approval evidence.",
+          "updated": "2026-11-08"
+        }
+      }
+    },
+    {
+      "id": "sum-uint16-masked",
+      "family": "reduction",
+      "type": "uint16",
+      "operation": "sum-masked",
+      "source": "handwritten",
+      "arches": {
+        "linux/amd64": {
+          "state": "candidate",
+          "reason": "Native signed/unsigned widening before native SIMD accumulation. Correctness and zero-allocation checked at 128/256/512 bits; benchmark smoke only, no archived statistical approval evidence.",
+          "updated": "2026-11-08"
+        },
+        "linux/arm64": {
+          "state": "candidate",
+          "reason": "Native widening and horizontal reduction cross-compiled only; no ARM64 execution or benchmark approval evidence.",
           "updated": "2026-11-08"
         }
       }
@@ -1577,66 +1748,9 @@
       }
     },
     {
-      "id": "sum-int8-masked",
-      "family": "reduction",
-      "type": "int8",
-      "operation": "sum-masked",
-      "source": "handwritten",
-      "arches": {
-        "linux/amd64": {
-          "state": "candidate",
-          "reason": "Native signed/unsigned widening before native SIMD accumulation. Correctness and zero-allocation checked at 128/256/512 bits; benchmark smoke only, no archived statistical approval evidence.",
-          "updated": "2026-11-08"
-        },
-        "linux/arm64": {
-          "state": "candidate",
-          "reason": "Native widening and horizontal reduction cross-compiled only; no ARM64 execution or benchmark approval evidence.",
-          "updated": "2026-11-08"
-        }
-      }
-    },
-    {
-      "id": "sum-int16-masked",
-      "family": "reduction",
-      "type": "int16",
-      "operation": "sum-masked",
-      "source": "handwritten",
-      "arches": {
-        "linux/amd64": {
-          "state": "candidate",
-          "reason": "Native signed/unsigned widening before native SIMD accumulation. Correctness and zero-allocation checked at 128/256/512 bits; benchmark smoke only, no archived statistical approval evidence.",
-          "updated": "2026-11-08"
-        },
-        "linux/arm64": {
-          "state": "candidate",
-          "reason": "Native widening and horizontal reduction cross-compiled only; no ARM64 execution or benchmark approval evidence.",
-          "updated": "2026-11-08"
-        }
-      }
-    },
-    {
       "id": "sum-uint8-masked",
       "family": "reduction",
       "type": "uint8",
-      "operation": "sum-masked",
-      "source": "handwritten",
-      "arches": {
-        "linux/amd64": {
-          "state": "candidate",
-          "reason": "Native signed/unsigned widening before native SIMD accumulation. Correctness and zero-allocation checked at 128/256/512 bits; benchmark smoke only, no archived statistical approval evidence.",
-          "updated": "2026-11-08"
-        },
-        "linux/arm64": {
-          "state": "candidate",
-          "reason": "Native widening and horizontal reduction cross-compiled only; no ARM64 execution or benchmark approval evidence.",
-          "updated": "2026-11-08"
-        }
-      }
-    },
-    {
-      "id": "sum-uint16-masked",
-      "family": "reduction",
-      "type": "uint16",
       "operation": "sum-masked",
       "source": "handwritten",
       "arches": {

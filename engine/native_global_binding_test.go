@@ -87,8 +87,16 @@ func TestGlobalAggregateBindingsEligibility(t *testing.T) {
 		}, true},
 		{"grouped", func(_ *CompiledMultiAggregate, p *PreparedQuery) { p.cq.GroupShape = GroupShapeI32 }, false},
 		{"non-native", func(m *CompiledMultiAggregate, _ *PreparedQuery) { m.Native = false }, false},
-		{"min", func(m *CompiledMultiAggregate, _ *PreparedQuery) { m.Layouts[0].Min = true }, false},
-		{"max", func(m *CompiledMultiAggregate, _ *PreparedQuery) { m.Layouts[0].Max = true }, false},
+		{"min", func(m *CompiledMultiAggregate, _ *PreparedQuery) { m.Layouts[0].Min = true }, true},
+		{"max", func(m *CompiledMultiAggregate, _ *PreparedQuery) { m.Layouts[0].Max = true }, true},
+		{"narrow-min", func(m *CompiledMultiAggregate, _ *PreparedQuery) {
+			m.Types[0] = memory.TypeInt16
+			m.Layouts[0].Min = true
+		}, false},
+		{"narrow-max", func(m *CompiledMultiAggregate, _ *PreparedQuery) {
+			m.Types[0] = memory.TypeUint8
+			m.Layouts[0].Max = true
+		}, false},
 		{"avg", func(m *CompiledMultiAggregate, _ *PreparedQuery) { m.Layouts[0].Avg = true }, false},
 		{"statistics", func(m *CompiledMultiAggregate, _ *PreparedQuery) { m.Statistics = &CompiledStatistics{} }, false},
 		{"distinct", func(m *CompiledMultiAggregate, _ *PreparedQuery) { m.Distinct = &CompiledDistinct{} }, false},
