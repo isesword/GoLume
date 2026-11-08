@@ -1,0 +1,11 @@
+goos: linux
+goarch: amd64
+pkg: gocolumn/physical
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkSelectionProject/width32/pct50/inputfalse/auto         	    5740	    218268 ns/op	    295552 peak_bytes	      4096 projected_rows/op	      8192 source_rows/op	  321880 B/op	     276 allocs/op
+BenchmarkSelectionProject/width32/pct50/inputfalse/auto         	    5139	    232320 ns/op	    295552 peak_bytes	      4096 projected_rows/op	      8192 source_rows/op	  321880 B/op	     276 allocs/op
+BenchmarkSelectionProject/width32/pct50/inputfalse/auto         	    6334	    213824 ns/op	    295552 peak_bytes	      4096 projected_rows/op	      8192 source_rows/op	  321880 B/op	     276 allocs/op
+BenchmarkSelectionProject/width32/pct50/inputfalse/auto         	    4765	    216055 ns/op	    295552 peak_bytes	      4096 projected_rows/op	      8192 source_rows/op	  321880 B/op	     276 allocs/op
+BenchmarkSelectionProject/width32/pct50/inputfalse/auto         	    5136	    218536 ns/op	    295552 peak_bytes	      4096 projected_rows/op	      8192 source_rows/op	  321880 B/op	     276 allocs/op
+PASS
+ok  	gocolumn/physical	7.815s

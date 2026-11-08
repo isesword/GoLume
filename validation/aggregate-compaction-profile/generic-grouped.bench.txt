@@ -1,0 +1,11 @@
+goos: linux
+goarch: amd64
+pkg: gocolumn/engine
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkGenericGroup/groups=4096/keys=3         	     100	  10901257 ns/op	 1211887 B/op	     322 allocs/op
+BenchmarkGenericGroup/groups=4096/keys=3         	     100	  10484355 ns/op	 1211886 B/op	     322 allocs/op
+BenchmarkGenericGroup/groups=4096/keys=3         	     100	  10765855 ns/op	 1211886 B/op	     322 allocs/op
+BenchmarkGenericGroup/groups=4096/keys=3         	     100	  10398243 ns/op	 1211883 B/op	     321 allocs/op
+BenchmarkGenericGroup/groups=4096/keys=3         	     100	  11428087 ns/op	 1211893 B/op	     322 allocs/op
+PASS
+ok  	gocolumn/engine	5.496s

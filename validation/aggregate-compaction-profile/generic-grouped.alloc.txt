@@ -1,0 +1,33 @@
+File: engine.test
+Build ID: 69f1c842896a8a75e0cf84d6aa7c99625febff1e
+Type: alloc_space
+Time: 2026-11-07 23:48:14 CST
+Showing nodes accounting for 521MB, 97.48% of 534.48MB total
+Dropped 59 nodes (cum <= 2.67MB)
+Showing top 25 nodes out of 30
+      flat  flat%   sum%        cum   cum%
+  234.60MB 43.89% 43.89%   237.10MB 44.36%  gocolumn/hashagg.(*GroupIndex).appendKey
+  217.22MB 40.64% 84.53%   217.22MB 40.64%  gocolumn/hashagg.(*GroupIndex).grow
+   64.67MB 12.10% 96.63%    64.67MB 12.10%  gocolumn/aggregate.NewInt64Vector
+    3.01MB  0.56% 97.20%     3.01MB  0.56%  gocolumn/expr.scalarResize[go.shape.[]uint64,go.shape.uint64]
+       1MB  0.19% 97.38%    66.17MB 12.38%  gocolumn/aggregate.(*Int64Bundle).EnsureGroups
+    0.50MB 0.094% 97.48%     3.50MB  0.65%  gocolumn/engine.(*aggregateStateTable).reserveGrowth
+         0     0% 97.48%   530.01MB 99.16%  gocolumn/engine.(*PreparedQuery).ExecuteTyped
+         0     0% 97.48%   525.51MB 98.32%  gocolumn/engine.(*PreparedQuery).aggregateMultiResidentBatch
+         0     0% 97.48%   520.49MB 97.38%  gocolumn/engine.(*PreparedQuery).aggregateMultiResidentBatch.func1
+         0     0% 97.48%   525.51MB 98.32%  gocolumn/engine.(*PreparedQuery).aggregateResidentBatch
+         0     0% 97.48%   530.01MB 99.16%  gocolumn/engine.(*PreparedQuery).executeTyped
+         0     0% 97.48%        3MB  0.56%  gocolumn/engine.(*PreparedQuery).newResidentAggregateStream
+         0     0% 97.48%     5.01MB  0.94%  gocolumn/engine.(*aggregatePredicateWorkspace).evaluate
+         0     0% 97.48%   520.49MB 97.38%  gocolumn/engine.(*multiAggregateState).add
+         0     0% 97.48%   520.49MB 97.38%  gocolumn/engine.(*multiAggregateState).group
+         0     0% 97.48%   525.51MB 98.32%  gocolumn/engine.(*residentAggregateStream).consume
+         0     0% 97.48%   527.01MB 98.60%  gocolumn/engine.(*residentAggregateStream).consumeRecords
+         0     0% 97.48%   530.51MB 99.26%  gocolumn/engine.BenchmarkGenericGroup.func1
+         0     0% 97.48%   520.49MB 97.38%  gocolumn/engine.forSelectedFrom
+         0     0% 97.48%        3MB  0.56%  gocolumn/engine.newResidentTableOwner.func1
+         0     0% 97.48%     5.01MB  0.94%  gocolumn/expr.(*Workspace).EvaluateBool
+         0     0% 97.48%     5.01MB  0.94%  gocolumn/expr.(*Workspace).execute
+         0     0% 97.48%     5.01MB  0.94%  gocolumn/expr.(*evaluationState).prepareProgram
+         0     0% 97.48%     5.01MB  0.94%  gocolumn/expr.evaluateInstructions (inline)
+         0     0% 97.48%     5.01MB  0.94%  gocolumn/expr.evaluateInstructionsActive

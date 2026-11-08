@@ -1,0 +1,32 @@
+File: engine.test
+Build ID: 69f1c842896a8a75e0cf84d6aa7c99625febff1e
+Type: alloc_space
+Time: 2026-11-07 23:47:37 CST
+Showing nodes accounting for 24603.44kB, 100% of 24603.44kB total
+Showing top 25 nodes out of 56
+      flat  flat%   sum%        cum   cum%
+ 5654.03kB 22.98% 22.98%  5654.03kB 22.98%  gocolumn/expr.scalarResize[go.shape.[]uint64,go.shape.uint64]
+ 5126.88kB 20.84% 43.82%  5126.88kB 20.84%  gocolumn/expr.scalarResize[go.shape.[]gocolumn/expr.scalarRegister,go.shape.f9b525da518b9dd2efb8d8aecdc6afb65bcab428d20c3f4b523e8efd1600de00]
+ 3588.81kB 14.59% 58.41%  4613.71kB 18.75%  gocolumn/engine.(*PreparedQuery).newSortedAggregateStream
+ 1807.95kB  7.35% 65.75% 22323.60kB 90.73%  gocolumn/engine.BenchmarkNativeAggregate.func1
+ 1536.41kB  6.24% 72.00%  1536.41kB  6.24%  gocolumn/memory.NewSchema
+ 1536.30kB  6.24% 78.24%  1536.30kB  6.24%  gocolumn/source/internal/batchview.(*View).bind
+ 1184.27kB  4.81% 83.06%  1184.27kB  4.81%  runtime/pprof.StartCPUProfile
+  583.01kB  2.37% 85.43%   583.01kB  2.37%  compress/flate.newFastEnc (inline)
+  512.88kB  2.08% 87.51%   512.88kB  2.08%  gocolumn/aggregate.(*NumericBundle).EnsureGroups
+  512.56kB  2.08% 89.59%   512.56kB  2.08%  github.com/apache/arrow-go/v18/arrow/compute.(*ScalarFunction).AddKernel
+  512.14kB  2.08% 91.68% 11805.07kB 47.98%  gocolumn/expr.(*evaluationState).prepareProgram
+  512.10kB  2.08% 93.76%   512.10kB  2.08%  gocolumn/source/inmemory.(*batchStream).bindProjection
+  512.05kB  2.08% 95.84% 20515.65kB 83.39%  gocolumn/engine.(*PreparedQuery).executeTyped
+  512.02kB  2.08% 97.92%   512.02kB  2.08%  context.WithValue
+  512.02kB  2.08%   100%   512.02kB  2.08%  gocolumn/memory.(*QueryBudget).reserve
+         0     0%   100%   583.01kB  2.37%  compress/flate.(*compressor).init
+         0     0%   100%   583.01kB  2.37%  compress/flate.NewWriter (inline)
+         0     0%   100%   583.01kB  2.37%  compress/gzip.(*Writer).Write
+         0     0%   100%   512.56kB  2.08%  github.com/apache/arrow-go/v18/arrow/compute.GetFunctionRegistry
+         0     0%   100%   512.56kB  2.08%  github.com/apache/arrow-go/v18/arrow/compute.GetFunctionRegistry.func1
+         0     0%   100%   512.56kB  2.08%  github.com/apache/arrow-go/v18/arrow/compute.RegisterScalarArithmetic
+         0     0%   100%   512.56kB  2.08%  github.com/apache/arrow-go/v18/arrow/compute.init.0
+         0     0%   100% 20515.65kB 83.39%  gocolumn/engine.(*PreparedQuery).ExecuteTyped
+         0     0%   100%  1536.41kB  6.24%  gocolumn/engine.(*PreparedQuery).resultSchema
+         0     0%   100% 11805.07kB 47.98%  gocolumn/engine.(*aggregatePredicateWorkspace).evaluate

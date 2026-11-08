@@ -1,0 +1,7 @@
+goos: linux
+goarch: amd64
+pkg: gocolumn/engine
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkNativeAggregate/groups=0/lanes=4         	     765	   4622250 ns/op	   24281 B/op	     136 allocs/op
+PASS
+ok  	gocolumn/engine	4.033s

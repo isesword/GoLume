@@ -1,0 +1,71 @@
+package engine
+
+import (
+	"context"
+	"fmt"
+	"gocolumn/expr"
+	"gocolumn/memory"
+	"gocolumn/source/inmemory"
+	"testing"
+)
+
+func BenchmarkGenericGroup(b *testing.B) {
+	const rows = 32768
+	for _, groups := range []int{64, 4096} {
+		for _, width := range []int{1, 3} {
+			b.Run(fmt.Sprintf("groups=%d/keys=%d", groups, width), func(b *testing.B) {
+				batch := memory.NewBatch()
+				batch.Rows = rows
+				keys, values := make([]uint64, rows), make([]int64, rows)
+				offsets := make([]uint32, rows+1)
+				var data []byte
+				for row := range keys {
+					keys[row] = 1<<63 + uint64(row%groups)
+					values[row] = int64(row % 97)
+					data = append(data, fmt.Sprint(row%groups)...)
+					offsets[row+1] = uint32(len(data))
+				}
+				batch.Uint64s["k"] = &memory.Uint64Vector{Values: keys}
+				batch.Int64s["v"] = &memory.Int64Vector{Values: values}
+				fields := []memory.Field{{Name: "k", Type: memory.TypeUint64}, {Name: "v", Type: memory.TypeInt64}}
+				q := expr.Query{GroupBy: []string{"k"}, Aggregates: []expr.Aggregate{expr.Sum("v", "sum"), expr.Count("n")}, Hints: expr.Hints{Cardinality: groups, ForceStrategy: "bitmap-direct"}}
+				if width == 3 {
+					batch.Strings["s"] = &memory.StringViewVector{Offsets: offsets, Data: data}
+					batch.Uint64s["u"] = &memory.Uint64Vector{Values: keys}
+					fields = append(fields, memory.Field{Name: "s", Type: memory.TypeString}, memory.Field{Name: "u", Type: memory.TypeUint64})
+					q.GroupBy = append(q.GroupBy, "s", "u")
+				}
+				src, err := inmemory.New(memory.NewSchema(fields...), batch)
+				if err != nil {
+					b.Fatal(err)
+				}
+				opts := DefaultOptions()
+				opts.Workers = 1
+				opts.PreparedCacheBytes = 0
+				e := New(opts)
+				defer e.Close()
+				p, err := e.Prepare(context.Background(), src, q, PrepareOptions{})
+				if err != nil {
+					b.Fatal(err)
+				}
+				defer p.Close()
+				b.ReportAllocs()
+				budget, err := e.BeginQueryMemory()
+                if err != nil { b.Fatal(err) }
+                ctx := memory.WithQueryBudget(context.Background(), budget)
+                defer budget.Close()
+                b.ResetTimer()
+				for i := 0; i < b.N; i++ {
+					if _, err := p.ExecuteTyped(ctx, ExecuteOptions{}); err != nil {
+						b.Fatal(err)
+					}
+				}
+                b.StopTimer()
+                b.Logf("budget snapshot: %+v", budget.Snapshot())
+                b.ReportMetric(float64(budget.Snapshot().PeakBytes), "managed_peak_bytes")
+                b.ReportMetric(float64(budget.Used()), "retained_bytes")
+                if budget.Used() != 0 { b.Fatalf("retained %d", budget.Used()) }
+			})
+		}
+	}
+}

@@ -1,0 +1,39 @@
+File: engine.test
+Build ID: 69f1c842896a8a75e0cf84d6aa7c99625febff1e
+Type: cpu
+Time: 2026-11-07 23:47:33 CST
+Duration: 4.02s, Total samples = 3.91s (97.33%)
+Showing nodes accounting for 3.80s, 97.19% of 3.91s total
+Dropped 50 nodes (cum <= 0.02s)
+      flat  flat%   sum%        cum   cum%
+     0.87s 22.25% 22.25%      0.97s 24.81%  gocolumn/engine.(*sortedAggregateStream).nextSelected
+     0.51s 13.04% 35.29%      2.65s 67.77%  gocolumn/engine.(*sortedAggregateStream).addBundleRow
+     0.49s 12.53% 47.83%      0.63s 16.11%  gocolumn/aggregate.(*NumericVector).AddBits
+     0.37s  9.46% 57.29%      0.74s 18.93%  internal/runtime/maps.(*Map).getWithoutKeySmallFastStr
+     0.32s  8.18% 65.47%      1.32s 33.76%  gocolumn/engine.nativeAggregateBits
+     0.32s  8.18% 73.66%      0.32s  8.18%  internal/runtime/maps.memHashAES
+     0.20s  5.12% 78.77%      3.87s 98.98%  gocolumn/engine.(*sortedAggregateStream).next
+     0.17s  4.35% 83.12%      0.91s 23.27%  runtime.mapaccess2_faststr
+     0.15s  3.84% 86.96%      0.78s 19.95%  gocolumn/aggregate.(*NumericBundle).AddBits (inline)
+     0.07s  1.79% 88.75%      0.12s  3.07%  gocolumn/aggregate.numericSum (inline)
+     0.06s  1.53% 90.28%      0.06s  1.53%  runtime.asyncPreempt
+     0.05s  1.28% 91.56%      0.05s  1.28%  math.Float64bits (inline)
+     0.04s  1.02% 92.58%      0.04s  1.02%  gocolumn/engine.aggregateBatchBinding.value (inline)
+     0.03s  0.77% 93.35%      0.94s 24.04%  runtime.mapaccess1_faststr
+     0.03s  0.77% 94.12%      0.03s  0.77%  runtime.memequal
+     0.02s  0.51% 94.63%      0.02s  0.51%  gocolumn/aggregate.normalizeNumericBits (inline)
+     0.02s  0.51% 95.14%      0.02s  0.51%  gocolumn/engine.aggregateBatchBinding.key
+     0.02s  0.51% 95.65%      0.02s  0.51%  gocolumn/engine.aggregateKeyMatches (inline)
+     0.02s  0.51% 96.16%      0.02s  0.51%  gocolumn/engine.aggregateNeedsValue (inline)
+     0.02s  0.51% 96.68%      0.02s  0.51%  math.Float32bits (inline)
+     0.02s  0.51% 97.19%      0.02s  0.51%  runtime.nextFreeFast (inline)
+         0     0% 97.19%      3.90s 99.74%  gocolumn/engine.(*PreparedQuery).ExecuteTyped
+         0     0% 97.19%      3.90s 99.74%  gocolumn/engine.(*PreparedQuery).executeTyped
+         0     0% 97.19%      0.02s  0.51%  gocolumn/engine.(*sortedAggregateStream).cleanup
+         0     0% 97.19%      3.87s 98.98%  gocolumn/engine.(*sortedAggregateStream).consumeRecords
+         0     0% 97.19%      0.02s  0.51%  gocolumn/engine.(*sortedAggregateStream).finishActive
+         0     0% 97.19%      3.90s 99.74%  gocolumn/engine.BenchmarkNativeAggregate.func1
+         0     0% 97.19%      0.03s  0.77%  runtime.mallocgc
+         0     0% 97.19%      0.02s  0.51%  runtime.mallocgcSmallScanNoHeader
+         0     0% 97.19%      3.89s 99.49%  testing.(*B).launch
+         0     0% 97.19%      3.90s 99.74%  testing.(*B).runN

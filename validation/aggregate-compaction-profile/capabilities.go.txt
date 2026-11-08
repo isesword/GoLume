@@ -1,0 +1,3 @@
+package main
+import("fmt";"gocolumn/kernel")
+func main(){s:=kernel.New(kernel.ModeAuto);fmt.Printf("%+v\n",s.Capabilities());for _,id:=range []kernel.KernelID{kernel.KernelCompactInt64,kernel.KernelCompactFloat32,kernel.KernelCompactInt16}{c,ok:=s.Capability(id);fmt.Printf("%v %+v %v\n",id,c,ok)}}

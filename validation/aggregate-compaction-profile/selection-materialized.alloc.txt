@@ -1,0 +1,33 @@
+File: physical.test
+Build ID: 3d58ec531e9b1ae1c33b072f294e023a422f1d7f
+Type: alloc_space
+Time: 2026-11-07 23:48:40 CST
+Showing nodes accounting for 6216.65MB, 97.16% of 6398.30MB total
+Dropped 41 nodes (cum <= 31.99MB)
+Showing top 25 nodes out of 28
+      flat  flat%   sum%        cum   cum%
+ 4993.55MB 78.05% 78.05%  4993.55MB 78.05%  gocolumn/physical.compactLayoutParents
+  802.57MB 12.54% 90.59%   802.57MB 12.54%  gocolumn/expr.scalarResize[go.shape.[]int64,go.shape.int64]
+  160.93MB  2.52% 93.10%   162.93MB  2.55%  gocolumn/expr.scalarResize[go.shape.[]int,go.shape.int]
+  156.13MB  2.44% 95.54%   156.13MB  2.44%  gocolumn/physical.(*filterBatchStream).selectRows
+   95.98MB  1.50% 97.04%    97.48MB  1.52%  gocolumn/expr.scalarResize[go.shape.[]gocolumn/expr.scalarRegister,go.shape.f9b525da518b9dd2efb8d8aecdc6afb65bcab428d20c3f4b523e8efd1600de00]
+       5MB 0.078% 97.12%      613MB  9.58%  gocolumn/expr.(*evaluationState).prepareProgram
+    2.50MB 0.039% 97.16%   522.11MB  8.16%  gocolumn/expr.(*evaluationState).evaluateConditional
+         0     0% 97.16%  1086.47MB 16.98%  gocolumn/expr.(*Workspace).Evaluate
+         0     0% 97.16%  1086.47MB 16.98%  gocolumn/expr.(*Workspace).EvaluateSelected
+         0     0% 97.16%  1101.99MB 17.22%  gocolumn/expr.(*Workspace).execute
+         0     0% 97.16%    97.48MB  1.52%  gocolumn/expr.(*evaluationState).ensureRegisterCounts
+         0     0% 97.16%   353.18MB  5.52%  gocolumn/expr.(*evaluationState).evalRegion
+         0     0% 97.16%   353.18MB  5.52%  gocolumn/expr.(*evaluationState).evaluateConditional.func2 (inline)
+         0     0% 97.16%    33.12MB  0.52%  gocolumn/expr.(*evaluationState).prepareRegionScratch
+         0     0% 97.16%  1101.99MB 17.22%  gocolumn/expr.evaluateInstructions (inline)
+         0     0% 97.16%  1101.99MB 17.22%  gocolumn/expr.evaluateInstructionsActive
+         0     0% 97.16%   827.58MB 12.93%  gocolumn/expr.prepareScalarBuffers
+         0     0% 97.16%  4999.05MB 78.13%  gocolumn/physical.(*compactWorkspace).compact
+         0     0% 97.16%  5252.29MB 82.09%  gocolumn/physical.(*filterBatchStream).Next
+         0     0% 97.16%  5252.29MB 82.09%  gocolumn/physical.(*filterBatchStream).next
+         0     0% 97.16%  6365.78MB 99.49%  gocolumn/physical.(*projectBatchStream).Next
+         0     0% 97.16%  6396.60MB   100%  gocolumn/physical.BenchmarkSelectionProject.func1
+         0     0% 97.16%  1086.47MB 16.98%  gocolumn/physical.applyProjectBatch (inline)
+         0     0% 97.16%  1086.47MB 16.98%  gocolumn/physical.applySelectedProjectBatch
+         0     0% 97.16%  4993.55MB 78.05%  gocolumn/physical.compactLayout (inline)

@@ -1,0 +1,33 @@
+File: physical.test
+Build ID: 3d58ec531e9b1ae1c33b072f294e023a422f1d7f
+Type: alloc_space
+Time: 2026-11-07 23:48:27 CST
+Showing nodes accounting for 8253.68MB, 98.55% of 8374.89MB total
+Dropped 51 nodes (cum <= 41.87MB)
+Showing top 25 nodes out of 41
+      flat  flat%   sum%        cum   cum%
+ 4268.14MB 50.96% 50.96%  4272.64MB 51.02%  gocolumn/expr.scalarResize[go.shape.[]int64,go.shape.int64]
+  876.45MB 10.47% 61.43%   877.95MB 10.48%  gocolumn/physical.(*filterBatchStream).selectRows
+  866.74MB 10.35% 71.78%   866.74MB 10.35%  gocolumn/expr.allocateSelectedColumn
+  852.60MB 10.18% 81.96%   855.10MB 10.21%  gocolumn/expr.scalarResize[go.shape.[]int,go.shape.int]
+  628.19MB  7.50% 89.46%   632.69MB  7.55%  gocolumn/expr.scalarResize[go.shape.[]gocolumn/expr.scalarRegister,go.shape.f9b525da518b9dd2efb8d8aecdc6afb65bcab428d20c3f4b523e8efd1600de00]
+  168.11MB  2.01% 91.47%   178.61MB  2.13%  gocolumn/expr.scalarResize[go.shape.[]uint64,go.shape.uint64]
+  147.61MB  1.76% 93.23%   147.61MB  1.76%  gocolumn/source/internal/batchview.(*View).bind
+   99.01MB  1.18% 94.41%    99.01MB  1.18%  gocolumn/memory.NewBatch (inline)
+   94.11MB  1.12% 95.54%    94.11MB  1.12%  gocolumn/physical.bindNamed
+   89.61MB  1.07% 96.61%    89.61MB  1.07%  gocolumn/source/inmemory.(*batchStream).bindProjection
+   86.10MB  1.03% 97.63%    86.10MB  1.03%  gocolumn/physical.bindAll
+      34MB  0.41% 98.04%  3382.37MB 40.39%  gocolumn/expr.(*evaluationState).prepareProgram
+   12.50MB  0.15% 98.19%   139.53MB  1.67%  gocolumn/physical.(*ProjectSource).newBatchStream
+   10.50MB  0.13% 98.31%  2808.94MB 33.54%  gocolumn/expr.(*evaluationState).evaluateConditional
+    9.50MB  0.11% 98.43%    98.52MB  1.18%  gocolumn/physical.(*FilterSource).newBatchStream
+       9MB  0.11% 98.53%   894.75MB 10.68%  gocolumn/expr.(*selectedWorkspace).gather
+    1.50MB 0.018% 98.55%   204.27MB  2.44%  gocolumn/expr.(*evaluationState).prepareRegionScratch
+         0     0% 98.55%  5868.40MB 70.07%  gocolumn/expr.(*Workspace).Evaluate
+         0     0% 98.55%   128.64MB  1.54%  gocolumn/expr.(*Workspace).EvaluateBool
+         0     0% 98.55%  6796.18MB 81.15%  gocolumn/expr.(*Workspace).EvaluateSelected
+         0     0% 98.55%  5987.04MB 71.49%  gocolumn/expr.(*Workspace).execute
+         0     0% 98.55%   632.69MB  7.55%  gocolumn/expr.(*evaluationState).ensureRegisterCounts
+         0     0% 98.55%  1923.83MB 22.97%  gocolumn/expr.(*evaluationState).evalRegion
+         0     0% 98.55%  1923.83MB 22.97%  gocolumn/expr.(*evaluationState).evaluateConditional.func2 (inline)
+         0     0% 98.55%  5987.04MB 71.49%  gocolumn/expr.evaluateInstructions (inline)

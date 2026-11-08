@@ -1,0 +1,44 @@
+File: engine.test
+Build ID: 69f1c842896a8a75e0cf84d6aa7c99625febff1e
+Type: cpu
+Time: 2026-11-07 23:47:54 CST
+Duration: 4.39s, Total samples = 4.39s (  100%)
+Showing nodes accounting for 4.08s, 92.94% of 4.39s total
+Dropped 101 nodes (cum <= 0.02s)
+Showing top 35 nodes out of 62
+      flat  flat%   sum%        cum   cum%
+     0.48s 10.93% 10.93%      4.24s 96.58%  gocolumn/engine.(*PreparedQuery).aggregateMultiResidentBatch.func1
+     0.46s 10.48% 21.41%      0.53s 12.07%  gocolumn/hashagg.(*GroupIndex).find
+     0.38s  8.66% 30.07%      0.46s 10.48%  gocolumn/engine.aggregateBatchBinding.record
+     0.34s  7.74% 37.81%      0.48s 10.93%  gocolumn/aggregate.(*NumericVector).AddBits
+     0.31s  7.06% 44.87%      0.31s  7.06%  gocolumn/hashagg.HashBytes
+     0.30s  6.83% 51.71%      3.29s 74.94%  gocolumn/engine.(*multiAggregateState).add
+     0.23s  5.24% 56.95%      1.68s 38.27%  gocolumn/engine.(*multiAggregateState).group
+     0.23s  5.24% 62.19%      0.23s  5.24%  internal/runtime/maps.memHashAES
+     0.17s  3.87% 66.06%      0.55s 12.53%  runtime.mapaccess2_faststr
+     0.16s  3.64% 69.70%      0.75s 17.08%  gocolumn/engine.nativeAggregateBits
+     0.13s  2.96% 72.67%      0.13s  2.96%  gocolumn/aggregate.(*NumericVector).Result
+     0.09s  2.05% 74.72%      0.38s  8.66%  internal/runtime/maps.(*Map).getWithoutKeySmallFastStr
+     0.08s  1.82% 76.54%      0.08s  1.82%  gocolumn/engine.aggregateBatchBinding.key
+     0.07s  1.59% 78.13%      0.55s 12.53%  gocolumn/aggregate.(*NumericBundle).AddBits (inline)
+     0.07s  1.59% 79.73%      0.11s  2.51%  gocolumn/aggregate.numericSum (inline)
+     0.06s  1.37% 81.09%      0.08s  1.82%  gocolumn/aggregate.(*NumericVector).InitResult
+     0.06s  1.37% 82.46%      0.06s  1.37%  memeqbody
+     0.06s  1.37% 83.83%      0.06s  1.37%  runtime.memclrNoHeapPointers
+     0.04s  0.91% 84.74%      0.25s  5.69%  gocolumn/aggregate.(*NumericVector).Copy
+     0.04s  0.91% 85.65%      0.85s 19.36%  gocolumn/hashagg.(*GroupIndex).Lookup
+     0.04s  0.91% 86.56%      0.59s 13.44%  runtime.mapaccess1_faststr
+     0.04s  0.91% 87.47%      0.05s  1.14%  runtime.scanblock
+     0.03s  0.68% 88.15%      0.03s  0.68%  gocolumn/aggregate.normalizeNumericBits (inline)
+     0.03s  0.68% 88.84%      0.03s  0.68%  gocolumn/engine.(*multiAggregateState).key
+     0.03s  0.68% 89.52%      4.27s 97.27%  gocolumn/engine.forSelectedFrom
+     0.03s  0.68% 90.21%      0.03s  0.68%  runtime.memequal
+     0.02s  0.46% 90.66%      0.22s  5.01%  gocolumn/hashagg.(*GroupIndex).LookupOrInsert
+     0.02s  0.46% 91.12%      0.13s  2.96%  gocolumn/hashagg.(*GroupIndex).grow
+     0.02s  0.46% 91.57%      0.03s  0.68%  runtime.scanObject
+     0.01s  0.23% 91.80%      0.07s  1.59%  bytes.Equal (inline)
+     0.01s  0.23% 92.03%      0.35s  7.97%  gocolumn/aggregate.(*NumericBundle).EnsureGroups
+     0.01s  0.23% 92.26%      0.08s  1.82%  gocolumn/aggregate.NewNumericVector
+     0.01s  0.23% 92.48%      0.03s  0.68%  gocolumn/engine.(*aggregateStateTable).reserveGrowth
+     0.01s  0.23% 92.71%      4.31s 98.18%  gocolumn/engine.(*residentAggregateStream).consume
+     0.01s  0.23% 92.94%      0.04s  0.91%  gocolumn/hashagg.(*GroupIndex).appendKey

@@ -1,0 +1,44 @@
+File: physical.test
+Build ID: 3d58ec531e9b1ae1c33b072f294e023a422f1d7f
+Type: cpu
+Time: 2026-11-07 23:48:36 CST
+Duration: 3.51s, Total samples = 3.50s (99.67%)
+Showing nodes accounting for 1.13s, 32.29% of 3.50s total
+Dropped 94 nodes (cum <= 0.02s)
+Showing top 35 nodes out of 190
+      flat  flat%   sum%        cum   cum%
+         0     0%     0%      3.42s 97.71%  gocolumn/physical.BenchmarkSelectionProject.func1
+         0     0%     0%      3.42s 97.71%  testing.(*B).launch
+         0     0%     0%      3.42s 97.71%  testing.(*B).runN
+     0.02s  0.57%  0.57%      3.39s 96.86%  gocolumn/physical.(*projectBatchStream).Next
+         0     0%  0.57%      2.49s 71.14%  gocolumn/physical.(*filterBatchStream).Next
+         0     0%  0.57%      2.49s 71.14%  gocolumn/physical.(*filterBatchStream).next
+         0     0%  0.57%      2.15s 61.43%  gocolumn/physical.(*compactWorkspace).compact
+         0     0%  0.57%      1.18s 33.71%  gocolumn/physical.compactSelected (inline)
+     0.02s  0.57%  1.14%      1.18s 33.71%  gocolumn/physical.compactSelectedParents
+         0     0%  1.14%      1.14s 32.57%  runtime.mallocgc
+     0.01s  0.29%  1.43%      1.08s 30.86%  gocolumn/kernel.Set.CompactInt64 (inline)
+     0.71s 20.29% 21.71%      1.07s 30.57%  gocolumn/kernel.compactInt64X8
+         0     0% 21.71%      1.05s 30.00%  runtime.makeslice
+         0     0% 21.71%      0.94s 26.86%  gocolumn/physical.compactLayout (inline)
+     0.04s  1.14% 22.86%      0.94s 26.86%  gocolumn/physical.compactLayoutParents
+     0.04s  1.14% 24.00%      0.88s 25.14%  runtime.systemstack
+         0     0% 24.00%      0.87s 24.86%  gocolumn/expr.(*Workspace).execute
+         0     0% 24.00%      0.87s 24.86%  gocolumn/expr.evaluateInstructions (inline)
+     0.06s  1.71% 25.71%      0.87s 24.86%  gocolumn/expr.evaluateInstructionsActive
+         0     0% 25.71%      0.83s 23.71%  gocolumn/physical.applyProjectBatch (inline)
+         0     0% 25.71%      0.83s 23.71%  gocolumn/physical.applySelectedProjectBatch
+         0     0% 25.71%      0.82s 23.43%  gocolumn/expr.(*Workspace).Evaluate
+         0     0% 25.71%      0.82s 23.43%  gocolumn/expr.(*Workspace).EvaluateSelected
+         0     0% 25.71%      0.71s 20.29%  runtime.mallocgcLarge
+     0.09s  2.57% 28.29%      0.60s 17.14%  gocolumn/expr.(*evaluationState).evaluateConditional
+         0     0% 28.29%      0.41s 11.71%  gocolumn/expr.(*evaluationState).evaluateConditional.func2 (inline)
+         0     0% 28.29%      0.32s  9.14%  runtime.gcAssistAlloc
+         0     0% 28.29%      0.32s  9.14%  runtime.gcAssistAlloc.func2
+         0     0% 28.29%      0.32s  9.14%  runtime.gcAssistAlloc1
+         0     0% 28.29%      0.32s  9.14%  runtime.gcDrainN
+         0     0% 28.29%      0.31s  8.86%  runtime.(*mcache).allocLarge
+     0.01s  0.29% 28.57%      0.30s  8.57%  runtime.deductAssistCredit
+         0     0% 28.57%      0.26s  7.43%  gocolumn/expr.(*evaluationState).evalRegion
+     0.03s  0.86% 29.43%      0.25s  7.14%  runtime.mapassign_faststr
+     0.10s  2.86% 32.29%      0.25s  7.14%  runtime.scanObject

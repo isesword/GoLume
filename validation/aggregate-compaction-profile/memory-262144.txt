@@ -1,0 +1,15 @@
+goos: linux
+goarch: amd64
+pkg: gocolumn/engine
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkGenericGroup/groups=4096/keys=3         	       1	  81339440 ns/op	    875346 managed_peak_bytes	         0 retained_bytes	 2032088 B/op	     348 allocs/op
+--- BENCH: BenchmarkGenericGroup/groups=4096/keys=3
+    generic_group_benchmark_test.go:64: budget snapshot: {UsedBytes:0 PeakBytes:875346 SoftLimitBytes:0 HardLimitBytes:0 ByClass:map[retained-state:0 in-flight-batch:0 workspace:0 output:0 spill-buffer:0] Operators:map[CollectResult:0 CollectTypedResult:0 ResidentAggregateExchange:0 ResidentAggregateOutput:0 ResidentAggregatePredicate:0 ResidentHashAggregate:0 SourceScan:0] SpillRequests:0 SpilledBytes:0 Closed:false}
+BenchmarkNativeAggregate/groups=0/lanes=4        	       1	  37513533 ns/op	     21244 managed_peak_bytes	         0 retained_bytes	   33392 B/op	     151 allocs/op
+--- BENCH: BenchmarkNativeAggregate/groups=0/lanes=4
+    native_aggregate_benchmark_test.go:74: budget snapshot: {UsedBytes:0 PeakBytes:21244 SoftLimitBytes:0 HardLimitBytes:0 ByClass:map[retained-state:0 in-flight-batch:0 workspace:0 output:0 spill-buffer:0] Operators:map[CollectResult:0 CollectTypedResult:0 SortedAggregateExchange:0 SortedAggregateOutput:0 SortedAggregatePredicate:0 SortedAggregateState:0 SourceScan:0] SpillRequests:0 SpilledBytes:0 Closed:false}
+BenchmarkNativeAggregate/groups=4096/lanes=4     	       1	  65209391 ns/op	    627036 managed_peak_bytes	         0 retained_bytes	 1064840 B/op	     390 allocs/op
+--- BENCH: BenchmarkNativeAggregate/groups=4096/lanes=4
+    native_aggregate_benchmark_test.go:74: budget snapshot: {UsedBytes:0 PeakBytes:627036 SoftLimitBytes:0 HardLimitBytes:0 ByClass:map[retained-state:0 in-flight-batch:0 workspace:0 output:0 spill-buffer:0] Operators:map[CollectResult:0 CollectTypedResult:0 ResidentAggregateExchange:0 ResidentAggregateOutput:0 ResidentAggregatePredicate:0 ResidentHashAggregate:0 SourceScan:0] SpillRequests:0 SpilledBytes:0 Closed:false}
+PASS
+ok  	gocolumn/engine	0.234s

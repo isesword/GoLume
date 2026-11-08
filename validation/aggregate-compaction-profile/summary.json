@@ -1,0 +1,32 @@
+{
+  "generic-grouped.bench": {
+    "median_ns": 10765855.0,
+    "min_ns": 10398243.0,
+    "max_ns": 11428087.0,
+    "samples": 5
+  },
+  "native-global.bench": {
+    "median_ns": 4272423.0,
+    "min_ns": 3962323.0,
+    "max_ns": 6298487.0,
+    "samples": 5
+  },
+  "native-grouped.bench": {
+    "median_ns": 8288775.0,
+    "min_ns": 7293459.0,
+    "max_ns": 10213352.0,
+    "samples": 5
+  },
+  "selection-auto.bench": {
+    "median_ns": 218268.0,
+    "min_ns": 213824.0,
+    "max_ns": 232320.0,
+    "samples": 5
+  },
+  "selection-materialized.bench": {
+    "median_ns": 693002.0,
+    "min_ns": 676559.0,
+    "max_ns": 875170.0,
+    "samples": 5
+  }
+}

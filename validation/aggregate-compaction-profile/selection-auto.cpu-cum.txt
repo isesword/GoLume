@@ -1,0 +1,44 @@
+File: physical.test
+Build ID: 3d58ec531e9b1ae1c33b072f294e023a422f1d7f
+Type: cpu
+Time: 2026-11-07 23:48:22 CST
+Duration: 5.36s, Total samples = 5.36s (99.91%)
+Showing nodes accounting for 1.76s, 32.84% of 5.36s total
+Dropped 125 nodes (cum <= 0.03s)
+Showing top 35 nodes out of 185
+      flat  flat%   sum%        cum   cum%
+         0     0%     0%      5.31s 99.07%  gocolumn/physical.BenchmarkSelectionProject.func1
+         0     0%     0%      5.31s 99.07%  testing.(*B).launch
+         0     0%     0%      5.31s 99.07%  testing.(*B).runN
+     0.01s  0.19%  0.19%      5.17s 96.46%  gocolumn/physical.(*projectBatchStream).Next
+         0     0%  0.19%      3.92s 73.13%  gocolumn/physical.applySelectedProjectBatch
+     0.03s  0.56%  0.75%      3.90s 72.76%  gocolumn/expr.(*Workspace).EvaluateSelected
+         0     0%  0.75%      3.69s 68.84%  gocolumn/expr.(*Workspace).execute
+         0     0%  0.75%      3.69s 68.84%  gocolumn/expr.evaluateInstructions (inline)
+     0.19s  3.54%  4.29%      3.69s 68.84%  gocolumn/expr.evaluateInstructionsActive
+         0     0%  4.29%      3.55s 66.23%  gocolumn/expr.(*Workspace).Evaluate
+     0.28s  5.22%  9.51%      2.84s 52.99%  gocolumn/expr.(*evaluationState).evaluateConditional
+         0     0%  9.51%      2.13s 39.74%  gocolumn/expr.(*evaluationState).evaluateConditional.func2 (inline)
+     0.01s  0.19%  9.70%      1.22s 22.76%  gocolumn/physical.(*filterBatchStream).next
+         0     0%  9.70%      1.22s 22.76%  gocolumn/physical.(*filterBatchStream).nextSelection (inline)
+         0     0%  9.70%      1.19s 22.20%  gocolumn/expr.(*evaluationState).evalRegion
+         0     0%  9.70%      1.16s 21.64%  runtime.mallocgc
+         0     0%  9.70%      0.98s 18.28%  runtime.makeslice
+     0.02s  0.37% 10.07%      0.96s 17.91%  runtime.systemstack
+     0.12s  2.24% 12.31%      0.94s 17.54%  gocolumn/expr.(*evaluationState).evaluateConditional.func1 (inline)
+         0     0% 12.31%      0.75s 13.99%  gocolumn/expr.evalBinary
+         0     0% 12.31%      0.73s 13.62%  gocolumn/kernel.Set.Int64Arithmetic (inline)
+         0     0% 12.31%      0.64s 11.94%  gocolumn/expr.prepareScalarBuffers
+     0.04s  0.75% 13.06%      0.60s 11.19%  gocolumn/expr.(*evaluationState).prepareProgram
+         0     0% 13.06%      0.58s 10.82%  runtime.mallocgcLarge
+         0     0% 13.06%      0.56s 10.45%  gocolumn/expr.scalarResize[go.shape.[]int64,go.shape.int64]
+     0.23s  4.29% 17.35%      0.52s  9.70%  gocolumn/expr.copyConditionalRow
+     0.01s  0.19% 17.54%      0.46s  8.58%  gocolumn/source/inmemory.(*batchStream).Next
+         0     0% 17.54%      0.46s  8.58%  runtime.gcAssistAlloc
+         0     0% 17.54%      0.45s  8.40%  runtime.gcAssistAlloc.func2
+         0     0% 17.54%      0.45s  8.40%  runtime.gcAssistAlloc1
+         0     0% 17.54%      0.44s  8.21%  runtime.gcDrainN
+     0.41s  7.65% 25.19%      0.42s  7.84%  gocolumn/kernel.scalarInt64Mul
+     0.03s  0.56% 25.75%      0.41s  7.65%  runtime.mapassign_faststr
+     0.38s  7.09% 32.84%      0.38s  7.09%  gocolumn/memory.Set (inline)
+         0     0% 32.84%      0.34s  6.34%  runtime.deductAssistCredit

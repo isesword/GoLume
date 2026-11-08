@@ -1,0 +1,44 @@
+File: engine.test
+Build ID: 69f1c842896a8a75e0cf84d6aa7c99625febff1e
+Type: cpu
+Time: 2026-11-07 23:48:10 CST
+Duration: 4.60s, Total samples = 4.46s (96.97%)
+Showing nodes accounting for 3.68s, 82.51% of 4.46s total
+Dropped 64 nodes (cum <= 0.02s)
+Showing top 35 nodes out of 66
+      flat  flat%   sum%        cum   cum%
+         0     0%     0%      4.45s 99.78%  gocolumn/engine.BenchmarkGenericGroup.func1
+         0     0%     0%      4.45s 99.78%  testing.(*B).runN
+         0     0%     0%      4.44s 99.55%  gocolumn/engine.(*PreparedQuery).ExecuteTyped
+         0     0%     0%      4.44s 99.55%  gocolumn/engine.(*PreparedQuery).executeTyped
+         0     0%     0%      4.43s 99.33%  testing.(*B).launch
+         0     0%     0%      4.42s 99.10%  gocolumn/engine.(*residentAggregateStream).consumeRecords
+         0     0%     0%      4.41s 98.88%  gocolumn/engine.(*PreparedQuery).aggregateMultiResidentBatch
+         0     0%     0%      4.41s 98.88%  gocolumn/engine.(*PreparedQuery).aggregateResidentBatch
+         0     0%     0%      4.41s 98.88%  gocolumn/engine.(*residentAggregateStream).consume
+     0.05s  1.12%  1.12%      4.40s 98.65%  gocolumn/engine.forSelectedFrom
+     0.40s  8.97% 10.09%      4.34s 97.31%  gocolumn/engine.(*PreparedQuery).aggregateMultiResidentBatch.func1
+     0.23s  5.16% 15.25%      3.88s 87.00%  gocolumn/engine.(*multiAggregateState).add
+     0.15s  3.36% 18.61%      3.46s 77.58%  gocolumn/engine.(*multiAggregateState).group
+     0.07s  1.57% 20.18%      2.24s 50.22%  gocolumn/engine.(*multiAggregateState).key
+     0.04s   0.9% 21.08%      2.17s 48.65%  gocolumn/engine.(*multiAggregateState).canonicalKey
+     0.35s  7.85% 28.92%      1.64s 36.77%  gocolumn/engine.canonicalGroupBinding.AppendKey
+     0.35s  7.85% 36.77%      1.45s 32.51%  gocolumn/engine.canonicalGroupBinding.component
+     0.28s  6.28% 43.05%      1.16s 26.01%  gocolumn/engine.canonicalGroupBinding.KeySize
+     0.01s  0.22% 43.27%      1.15s 25.78%  runtime.mapaccess1_faststr
+     0.32s  7.17% 50.45%      1.14s 25.56%  runtime.mapaccess2_faststr
+     0.32s  7.17% 57.62%      0.82s 18.39%  internal/runtime/maps.(*Map).getWithoutKeySmallFastStr
+     0.05s  1.12% 58.74%      0.77s 17.26%  gocolumn/hashagg.(*GroupIndex).Lookup
+     0.36s  8.07% 66.82%      0.44s  9.87%  gocolumn/hashagg.(*GroupIndex).find
+     0.37s  8.30% 75.11%      0.37s  8.30%  internal/runtime/maps.memHashAES
+     0.31s  6.95% 82.06%      0.33s  7.40%  gocolumn/hashagg.HashBytes
+         0     0% 82.06%      0.28s  6.28%  gocolumn/hashagg.(*GroupIndex).LookupOrInsert
+         0     0% 82.06%      0.19s  4.26%  gocolumn/hashagg.(*GroupIndex).appendKey
+         0     0% 82.06%      0.18s  4.04%  runtime.mallocgc
+         0     0% 82.06%      0.14s  3.14%  runtime.makeslice
+         0     0% 82.06%      0.14s  3.14%  runtime.systemstack
+         0     0% 82.06%      0.13s  2.91%  runtime.gcAssistAlloc
+         0     0% 82.06%      0.12s  2.69%  runtime.gcAssistAlloc.func2
+         0     0% 82.06%      0.12s  2.69%  runtime.gcAssistAlloc1
+         0     0% 82.06%      0.12s  2.69%  runtime.gcDrainN
+     0.02s  0.45% 82.51%      0.10s  2.24%  runtime.mallocgcSmallScanNoHeaderSC5

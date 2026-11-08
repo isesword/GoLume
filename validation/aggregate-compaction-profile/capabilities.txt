@@ -1,0 +1,4 @@
+{state:0x23a1128ea20}
+compact-int64 {HardwareSIMD:true Emulated:false VectorBits:512 Backend:archsimd-avx512-compress} true
+compact-float32 {HardwareSIMD:false Emulated:false VectorBits:0 Backend:scalar} true
+compact-int16 {HardwareSIMD:false Emulated:false VectorBits:0 Backend:scalar} true

@@ -1,0 +1,31 @@
+File: engine.test
+Build ID: 69f1c842896a8a75e0cf84d6aa7c99625febff1e
+Type: alloc_space
+Time: 2026-11-07 23:47:58 CST
+Showing nodes accounting for 552.69MB, 98.22% of 562.71MB total
+Dropped 52 nodes (cum <= 2.81MB)
+      flat  flat%   sum%        cum   cum%
+  289.47MB 51.44% 51.44%   289.97MB 51.53%  gocolumn/hashagg.(*GroupIndex).grow
+  181.33MB 32.22% 83.67%   181.33MB 32.22%  gocolumn/aggregate.NewNumericVector
+   70.83MB 12.59% 96.25%    71.33MB 12.68%  gocolumn/hashagg.(*GroupIndex).appendKey
+    8.01MB  1.42% 97.68%   189.34MB 33.65%  gocolumn/aggregate.(*NumericBundle).EnsureGroups
+    3.04MB  0.54% 98.22%   561.20MB 99.73%  gocolumn/engine.BenchmarkNativeAggregate.func1
+         0     0% 98.22%   558.17MB 99.19%  gocolumn/engine.(*PreparedQuery).ExecuteTyped
+         0     0% 98.22%   555.16MB 98.66%  gocolumn/engine.(*PreparedQuery).aggregateMultiResidentBatch
+         0     0% 98.22%   550.65MB 97.86%  gocolumn/engine.(*PreparedQuery).aggregateMultiResidentBatch.func1
+         0     0% 98.22%   555.16MB 98.66%  gocolumn/engine.(*PreparedQuery).aggregateResidentBatch
+         0     0% 98.22%   558.17MB 99.19%  gocolumn/engine.(*PreparedQuery).executeTyped
+         0     0% 98.22%     4.51MB   0.8%  gocolumn/engine.(*aggregatePredicateWorkspace).evaluate
+         0     0% 98.22%   550.65MB 97.86%  gocolumn/engine.(*multiAggregateState).add
+         0     0% 98.22%   550.65MB 97.86%  gocolumn/engine.(*multiAggregateState).group
+         0     0% 98.22%   555.66MB 98.75%  gocolumn/engine.(*residentAggregateStream).consume
+         0     0% 98.22%   555.66MB 98.75%  gocolumn/engine.(*residentAggregateStream).consumeRecords
+         0     0% 98.22%   550.65MB 97.86%  gocolumn/engine.forSelectedFrom
+         0     0% 98.22%     4.01MB  0.71%  gocolumn/expr.(*Workspace).EvaluateBool
+         0     0% 98.22%     4.01MB  0.71%  gocolumn/expr.(*Workspace).execute
+         0     0% 98.22%     4.01MB  0.71%  gocolumn/expr.(*evaluationState).prepareProgram
+         0     0% 98.22%     4.01MB  0.71%  gocolumn/expr.evaluateInstructions (inline)
+         0     0% 98.22%     4.01MB  0.71%  gocolumn/expr.evaluateInstructionsActive
+         0     0% 98.22%   361.31MB 64.21%  gocolumn/hashagg.(*GroupIndex).LookupOrInsert
+         0     0% 98.22%   559.93MB 99.51%  testing.(*B).launch
+         0     0% 98.22%   561.70MB 99.82%  testing.(*B).runN

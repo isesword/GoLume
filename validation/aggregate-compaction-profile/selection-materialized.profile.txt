@@ -1,0 +1,7 @@
+goos: linux
+goarch: amd64
+pkg: gocolumn/physical
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkSelectionProject/width32/pct50/inputfalse/materialized         	    4798	    714395 ns/op	   1309792 peak_bytes	      4096 projected_rows/op	      8192 source_rows/op	 1347480 B/op	     397 allocs/op
+PASS
+ok  	gocolumn/physical	3.519s

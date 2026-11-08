@@ -1,0 +1,6 @@
+{
+  "Replace": {
+    "/workspace/scratch/ac8e1e118737/GoLume-next/engine/native_aggregate_benchmark_test.go": "/workspace/scratch/ac8e1e118737/GoLume-next/validation/aggregate-compaction-profile/32768-native_aggregate_benchmark_test.go.txt",
+    "/workspace/scratch/ac8e1e118737/GoLume-next/engine/generic_group_benchmark_test.go": "/workspace/scratch/ac8e1e118737/GoLume-next/validation/aggregate-compaction-profile/32768-generic_group_benchmark_test.go.txt"
+  }
+}

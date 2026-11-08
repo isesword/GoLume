@@ -1,0 +1,44 @@
+File: physical.test
+Build ID: 3d58ec531e9b1ae1c33b072f294e023a422f1d7f
+Type: cpu
+Time: 2026-11-07 23:48:22 CST
+Duration: 5.36s, Total samples = 5.36s (99.91%)
+Showing nodes accounting for 4.06s, 75.75% of 5.36s total
+Dropped 125 nodes (cum <= 0.03s)
+Showing top 35 nodes out of 185
+      flat  flat%   sum%        cum   cum%
+     0.41s  7.65%  7.65%      0.42s  7.84%  gocolumn/kernel.scalarInt64Mul
+     0.38s  7.09% 14.74%      0.38s  7.09%  gocolumn/memory.Set (inline)
+     0.28s  5.22% 19.96%      2.84s 52.99%  gocolumn/expr.(*evaluationState).evaluateConditional
+     0.28s  5.22% 25.19%      0.28s  5.22%  runtime.memclrNoHeapPointers
+     0.23s  4.29% 29.48%      0.52s  9.70%  gocolumn/expr.copyConditionalRow
+     0.21s  3.92% 33.40%      0.21s  3.92%  gocolumn/memory.IsSet (inline)
+     0.19s  3.54% 36.94%      3.69s 68.84%  gocolumn/expr.evaluateInstructionsActive
+     0.19s  3.54% 40.49%      0.25s  4.66%  gocolumn/expr.registerInt64
+     0.17s  3.17% 43.66%      0.17s  3.17%  gocolumn/kernel.scalarInt64Sub
+     0.15s  2.80% 46.46%      0.28s  5.22%  gocolumn/physical.(*filterBatchStream).selectRows
+     0.14s  2.61% 49.07%      0.14s  2.61%  runtime.tryDeferToSpanScan
+     0.13s  2.43% 51.49%      0.13s  2.43%  gocolumn/expr.gatherSelectedValues[go.shape.int64]
+     0.13s  2.43% 53.92%      0.14s  2.61%  gocolumn/kernel.scalarInt64Add
+     0.12s  2.24% 56.16%      0.94s 17.54%  gocolumn/expr.(*evaluationState).evaluateConditional.func1 (inline)
+     0.10s  1.87% 58.02%      0.10s  1.87%  gocolumn/expr.familyOf (inline)
+     0.10s  1.87% 59.89%      0.14s  2.61%  runtime.scanblock
+     0.08s  1.49% 61.38%      0.08s  1.49%  gocolumn/kernel.simdAMD512Int64LT
+     0.06s  1.12% 62.50%      0.08s  1.49%  internal/runtime/maps.(*Iter).Next
+     0.06s  1.12% 63.62%      0.06s  1.12%  internal/runtime/maps.memHashAES
+     0.06s  1.12% 64.74%      0.08s  1.49%  runtime.typePointers.next
+     0.05s  0.93% 65.67%      0.16s  2.99%  gocolumn/expr.isValidRegister (inline)
+     0.05s  0.93% 66.60%      0.08s  1.49%  runtime.mapaccess2_faststr
+     0.05s  0.93% 67.54%      0.10s  1.87%  runtime.pcvalue
+     0.05s  0.93% 68.47%      0.15s  2.80%  runtime.wbBufFlush1
+     0.04s  0.75% 69.22%      0.60s 11.19%  gocolumn/expr.(*evaluationState).prepareProgram
+     0.04s  0.75% 69.96%      0.11s  2.05%  internal/runtime/maps.(*Map).Clear
+     0.04s  0.75% 70.71%      0.11s  2.05%  runtime.(*unwinder).resolveInternal
+     0.04s  0.75% 71.46%      0.06s  1.12%  runtime.findObject
+     0.04s  0.75% 72.20%      0.16s  2.99%  runtime.scanObject
+     0.04s  0.75% 72.95%      0.05s  0.93%  runtime.step
+     0.03s  0.56% 73.51%      3.90s 72.76%  gocolumn/expr.(*Workspace).EvaluateSelected
+     0.03s  0.56% 74.07%      0.03s  0.56%  internal/runtime/atomic.(*Uint32).Add (inline)
+     0.03s  0.56% 74.63%      0.03s  0.56%  internal/runtime/maps.(*groupsReference).group
+     0.03s  0.56% 75.19%      0.03s  0.56%  internal/runtime/maps.ctrlGroup.matchH2
+     0.03s  0.56% 75.75%      0.03s  0.56%  runtime.(*stkframe).getStackMap
