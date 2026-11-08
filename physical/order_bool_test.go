@@ -254,7 +254,8 @@ func TestExternalSortGathersBoolPayload(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	const hard = int64(64 << 10)
+	// Include spill paths, handles, and retained run-reference capacity.
+	const hard = int64(512 << 10)
 	engineBudget := memory.NewEngineBudget(hard)
 	query, err := engineBudget.BeginQuery(memory.BudgetOptions{
 		SoftLimitBytes: 48 << 10, HardLimitBytes: hard,

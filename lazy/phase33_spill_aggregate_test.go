@@ -15,7 +15,7 @@ import (
 	"testing"
 )
 
-func spillAggregateInput(t testing.TB, batches, rows, groups int) *inmemory.Source {
+func spillAggregateInput(t testing.TB, batches, rows, groups int, repeats ...int) *inmemory.Source {
 	t.Helper()
 	schema := memory.NewSchema(
 		memory.Field{Name: "key", Type: memory.TypeInt32, Nullable: true},
@@ -23,12 +23,18 @@ func spillAggregateInput(t testing.TB, batches, rows, groups int) *inmemory.Sour
 	)
 	input := make([]*memory.Batch, 0, batches)
 	ordinal := 0
+	// Adjacent repeats let large-input fixtures avoid manufacturing a new
+	// manifest entry for every repeated visit to the same group.
+	repeat := 1
+	if len(repeats) > 0 {
+		repeat = repeats[0]
+	}
 	for batchIndex := 0; batchIndex < batches; batchIndex++ {
 		batch := memory.NewBatch()
 		keys := &memory.Int32Vector{Values: make([]int32, rows), Validity: memory.EnsureBitmap(nil, rows)}
 		values := &memory.Int64Vector{Values: make([]int64, rows), Validity: memory.EnsureBitmap(nil, rows)}
 		for row := 0; row < rows; row++ {
-			key := ordinal % groups
+			key := (ordinal / repeat) % groups
 			keys.Values[row] = int32(key)
 			values.Values[row] = int64(key%17 - 8)
 			if key != 0 {
@@ -70,7 +76,7 @@ func TestBoundedAggregateSpillsAndMatchesResidentResults(t *testing.T) {
 
 	spillDir := t.TempDir()
 	opts := engine.DefaultOptions()
-	opts.MemoryLimitBytes = 192 << 10
+	opts.MemoryLimitBytes = 256 << 10
 	opts.QueryMemorySoftLimitBytes = 96 << 10
 	opts.Spill = engine.SpillOptions{Directory: spillDir, MaxBytes: 32 << 20}
 	opts.ExecutionPolicy = engine.ExecutionBounded
@@ -105,7 +111,7 @@ func TestBoundedAggregateSpillsAndMatchesResidentResults(t *testing.T) {
 func TestBoundedAggregateExplainAnalyzeReportsSpillAndSkew(t *testing.T) {
 	src := spillAggregateInput(t, 8, 512, 1024)
 	opts := engine.DefaultOptions()
-	opts.MemoryLimitBytes = 192 << 10
+	opts.MemoryLimitBytes = 256 << 10
 	opts.QueryMemorySoftLimitBytes = 96 << 10
 	opts.Spill = engine.SpillOptions{Directory: t.TempDir(), MaxBytes: 32 << 20}
 	opts.ExecutionPolicy = engine.ExecutionBounded
@@ -143,13 +149,18 @@ func TestBoundedAggregateRequiresFiniteMemoryAndSpillQuota(t *testing.T) {
 }
 
 func TestBoundedAggregateDrainHandlesInputMuchLargerThanBudget(t *testing.T) {
-	src := spillAggregateInput(t, 64, 1024, 8192)
+	// Keep 8,192 groups and 6 MiB of fixed payload, but cluster repeated
+	// keys so run metadata fits alongside the aggregate state.
+	src := spillAggregateInput(t, 512, 1024, 8192, 64)
 	spillDir := t.TempDir()
 	opts := engine.DefaultOptions()
-	opts.MemoryLimitBytes = 256 << 10
-	opts.QueryMemorySoftLimitBytes = 128 << 10
+	opts.MemoryLimitBytes = 512 << 10
+	opts.QueryMemorySoftLimitBytes = 256 << 10
 	opts.Spill = engine.SpillOptions{Directory: spillDir, MaxBytes: 128 << 20}
 	opts.ExecutionPolicy = engine.ExecutionBounded
+	if inputBytes := int64(512 * 1024 * 12); inputBytes <= 10*opts.MemoryLimitBytes {
+		t.Fatalf("input bytes=%d must exceed ten times budget=%d", inputBytes, opts.MemoryLimitBytes)
+	}
 	session := NewSession(opts)
 	defer session.Close()
 	prepared, err := session.FromSource(src).GroupBy("key").Agg(Sum("value", "sum"), Count("n")).Prepare(context.Background())
@@ -452,10 +463,10 @@ func TestBoundedSpillAggregatePreparedRepeatsAndCancellationCleansUp(t *testing.
 }
 
 func BenchmarkPhase33SpillableAggregateDrain(b *testing.B) {
-	src := spillAggregateInput(b, 64, 1024, 8192)
+	src := spillAggregateInput(b, 512, 1024, 8192, 64)
 	opts := engine.DefaultOptions()
-	opts.MemoryLimitBytes = 256 << 10
-	opts.QueryMemorySoftLimitBytes = 128 << 10
+	opts.MemoryLimitBytes = 512 << 10
+	opts.QueryMemorySoftLimitBytes = 256 << 10
 	opts.Spill = engine.SpillOptions{Directory: b.TempDir(), MaxBytes: 128 << 20}
 	opts.ExecutionPolicy = engine.ExecutionBounded
 	session := NewSession(opts)
@@ -495,7 +506,7 @@ func BenchmarkPhase33SpillableAggregateDrain(b *testing.B) {
 		}
 	}
 	b.StopTimer()
-	b.ReportMetric(float64(64*1024*b.N)/b.Elapsed().Seconds(), "rows/s")
+	b.ReportMetric(float64(512*1024*b.N)/b.Elapsed().Seconds(), "rows/s")
 	b.ReportMetric(float64(totalSpill)/float64(b.N), "spill-B/op")
 	b.ReportMetric(float64(maxPeak), "peak-B")
 }
@@ -517,7 +528,9 @@ func TestBoundedAggregateRecursivelyRepartitionsOversizedRadixBucket(t *testing.
 		t.Fatal(err)
 	}
 	opts := engine.DefaultOptions()
-	opts.MemoryLimitBytes = 32 << 10
+	// Admit parent and child run metadata while the low soft limit still
+	// forces recursive repartitioning of the colliding keys.
+	opts.MemoryLimitBytes = 96 << 10
 	opts.QueryMemorySoftLimitBytes = 16 << 10
 	opts.Spill = engine.SpillOptions{Directory: t.TempDir(), MaxBytes: 64 << 20}
 	opts.ExecutionPolicy = engine.ExecutionBounded

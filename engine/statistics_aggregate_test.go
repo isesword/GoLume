@@ -148,7 +148,8 @@ func TestStatisticsSpillStreamPrecision(t *testing.T) {
 		t.Fatal(err)
 	}
 	opts := streamTestOptions()
-	opts.MemoryLimitBytes = 128 << 10
+	// Include spill paths, handles, and retained run-reference capacity.
+	opts.MemoryLimitBytes = 512 << 10
 	opts.ExecutionPolicy = ExecutionBounded
 	opts.Spill = SpillOptions{Directory: t.TempDir(), MaxBytes: 16 << 20}
 	e := New(opts)

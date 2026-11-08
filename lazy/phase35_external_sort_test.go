@@ -111,7 +111,7 @@ func TestAutoSortKeepsSmallInputResident(t *testing.T) {
 }
 
 func TestBoundedExternalSortInputOverTenTimesBudgetDrains(t *testing.T) {
-	const rows = 196608 // 3 MiB of fixed payload, twelve times 256 KiB.
+	const rows = 835584 // 12.75 MiB of fixed payload, 10.2 times the 1.25 MiB budget.
 	batches := make([]*memory.Batch, 0, rows/4096)
 	for offset := 0; offset < rows; offset += 4096 {
 		batch := memory.NewBatch()
@@ -132,10 +132,15 @@ func TestBoundedExternalSortInputOverTenTimesBudgetDrains(t *testing.T) {
 		t.Fatal(err)
 	}
 	opts := engine.DefaultOptions()
-	opts.MemoryLimitBytes = 256 << 10
-	opts.QueryMemorySoftLimitBytes = 192 << 10
+	// Run handles, paths, segment arrays and merge output references share
+	// the same hard limit as sort buffers.
+	opts.MemoryLimitBytes = 1280 << 10
+	opts.QueryMemorySoftLimitBytes = 960 << 10
 	opts.Spill = engine.SpillOptions{Directory: t.TempDir(), MaxBytes: 256 << 20}
 	opts.ExecutionPolicy = engine.ExecutionBounded
+	if inputBytes := int64(rows) * 16; inputBytes <= 10*opts.MemoryLimitBytes {
+		t.Fatalf("input bytes=%d must exceed ten times budget=%d", inputBytes, opts.MemoryLimitBytes)
+	}
 	session := NewSession(opts)
 	defer session.Close()
 	prepared, err := session.FromSource(src).Sort(Asc("key"), Asc("id")).Prepare(context.Background())

@@ -179,8 +179,9 @@ func TestMultiColumnSpillStreamingBounded(t *testing.T) {
 	src, want := multiAggregateFixture(t, 8192)
 	opts := streamTestOptions()
 	opts.ExecutionPolicy = ExecutionBounded
-	opts.MemoryLimitBytes = 128 << 10
-	opts.QueryMemorySoftLimitBytes = 64 << 10
+	// Include spill paths, handles, and retained run-reference capacity.
+	opts.MemoryLimitBytes = 512 << 10
+	opts.QueryMemorySoftLimitBytes = 256 << 10
 	opts.Spill = SpillOptions{Directory: t.TempDir(), MaxBytes: 32 << 20}
 	e := New(opts)
 	defer e.Close()

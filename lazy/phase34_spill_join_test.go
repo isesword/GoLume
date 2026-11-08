@@ -12,6 +12,7 @@ import (
 	"gocolumn/source/inmemory"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 )
@@ -80,6 +81,11 @@ func lowRadixCollisionKeys(count int) []int32 {
 			keys = append(keys, candidate)
 		}
 	}
+	// Preserve the first-radix collision, but cluster the next digit so
+	// repartitioning exercises recursion rather than thousands of tiny files.
+	sort.Slice(keys, func(i, j int) bool {
+		return hashagg.Hash128(hashagg.Key128{A: uint64(uint32(keys[i]))})>>4&15 < hashagg.Hash128(hashagg.Key128{A: uint64(uint32(keys[j]))})>>4&15
+	})
 	return keys
 }
 
@@ -96,6 +102,10 @@ func radixGroupedJoinKeys(rowsPerPartition int) []int32 {
 	}
 	keys := make([]int32, 0, rowsPerPartition*len(buckets))
 	for _, bucket := range buckets {
+		// Keep recursive child runs large enough to admit their metadata.
+		sort.Slice(bucket, func(i, j int) bool {
+			return hashagg.Hash128(hashagg.Key128{A: uint64(uint32(bucket[i]))})>>4&15 < hashagg.Hash128(hashagg.Key128{A: uint64(uint32(bucket[j]))})>>4&15
+		})
 		keys = append(keys, bucket...)
 	}
 	return keys
@@ -193,18 +203,18 @@ func TestBoundedJoinRequiresSpillQuota(t *testing.T) {
 }
 
 func TestBoundedSpillJoinAmplifiedOutputDrainsInChunks(t *testing.T) {
-	left := nullableJoinSource(t, "key", []int32{7}, []int{0}, []int64{1})
-	rightBatches := make([]*memory.Batch, 20)
+	left := nullableJoinSource(t, "key", []int32{7, 7}, []int{0, 1}, []int64{1, 2})
+	rightBatches := make([]*memory.Batch, 5)
 	for batchIndex := range rightBatches {
 		batch := memory.NewBatch()
-		keys := make([]int32, 500)
-		values := make([]int64, 500)
+		keys := make([]int32, 2000)
+		values := make([]int64, 2000)
 		for row := range keys {
-			keys[row], values[row] = 7, int64(batchIndex*500+row)
+			keys[row], values[row] = 7, int64(batchIndex*2000+row)
 		}
 		batch.Int32s["key"] = &memory.Int32Vector{Values: keys}
 		batch.Int64s["value"] = &memory.Int64Vector{Values: values}
-		batch.Reset(500)
+		batch.Reset(2000)
 		rightBatches[batchIndex] = batch
 	}
 	right, err := inmemory.New(memory.NewSchema(
@@ -213,9 +223,9 @@ func TestBoundedSpillJoinAmplifiedOutputDrainsInChunks(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// The 10,000-row result is materially larger than the 128 KiB execution
+	// The 20,000-row result is materially larger than the 320 KiB execution
 	// budget, so only a draining batch sink can complete this skewed join.
-	session := boundedJoinSession(t, 128<<10)
+	session := boundedJoinSession(t, 320<<10)
 	defer session.Close()
 	prepared, err := session.FromSource(left).Join(session.FromSource(right), JoinOptions{Type: InnerJoin, LeftOn: []string{"key"}, RightOn: []string{"key"}}).Prepare(context.Background())
 	if err != nil {
@@ -234,7 +244,10 @@ func TestBoundedSpillJoinAmplifiedOutputDrainsInChunks(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if stats.Rows != 10000 || stats.Batches < 3 {
+	if stats.Bytes <= queryBudget.Limit() {
+		t.Fatalf("output bytes=%d must exceed budget=%d", stats.Bytes, queryBudget.Limit())
+	}
+	if stats.Rows != 20000 || stats.Batches < 3 {
 		t.Fatalf("amplified drain=%+v", stats)
 	}
 	if snapshot := queryBudget.Snapshot(); snapshot.PeakBytes > queryBudget.Limit() || snapshot.SpilledBytes == 0 {
@@ -252,18 +265,21 @@ func TestBoundedSpillJoinAmplifiedOutputDrainsInChunks(t *testing.T) {
 }
 
 func TestBoundedSpillJoinInputOverTenTimesBudgetDrains(t *testing.T) {
-	// Each right row contains a 4-byte key and 8-byte payload. The 262,144-row
-	// input alone is 3 MiB: twelve times the 256 KiB query hard limit.
+	// Each right row contains a 4-byte key and 8-byte payload. The 786,432-row
+	// input alone is 9 MiB: twelve times the 768 KiB query hard limit.
 	// Radix-grouped morsels also make this a deterministic manifest/cleanup
 	// regression instead of relying on a lucky source batch distribution.
-	rightKeys := radixGroupedJoinKeys(16384)
+	rightKeys := radixGroupedJoinKeys(49152)
 	left := multiBatchJoinSource(t, rightKeys[:16], 16)
 	right := multiBatchJoinSource(t, rightKeys, 4096)
 	opts := engine.DefaultOptions()
-	opts.MemoryLimitBytes = 256 << 10
-	opts.QueryMemorySoftLimitBytes = 192 << 10
+	opts.MemoryLimitBytes = 768 << 10
+	opts.QueryMemorySoftLimitBytes = 576 << 10
 	opts.Spill = engine.SpillOptions{Directory: t.TempDir(), MaxBytes: 128 << 20}
 	opts.ExecutionPolicy = engine.ExecutionBounded
+	if inputBytes := int64(len(rightKeys)) * 12; inputBytes <= 10*opts.MemoryLimitBytes {
+		t.Fatalf("input bytes=%d must exceed ten times budget=%d", inputBytes, opts.MemoryLimitBytes)
+	}
 	session := NewSession(opts)
 	defer session.Close()
 	prepared, err := session.FromSource(left).Join(session.FromSource(right), JoinOptions{Type: InnerJoin, LeftOn: []string{"key"}, RightOn: []string{"key"}}).Prepare(context.Background())
@@ -433,7 +449,7 @@ func TestBoundedSpillJoinFixedCompositeKeyAndNullComponent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	session := boundedJoinSession(t, 128<<10)
+	session := boundedJoinSession(t, 384<<10)
 	defer session.Close()
 	query := session.FromSource(left).Join(session.FromSource(right), JoinOptions{
 		Type: InnerJoin, LeftOn: []string{"a", "b"}, RightOn: []string{"a", "b"},
@@ -469,7 +485,7 @@ func TestSpillJoinKernelModesAreSemanticallyIdentical(t *testing.T) {
 		t.Run(mode.name, func(t *testing.T) {
 			opts := engine.DefaultOptions()
 			opts.KernelMode = mode.mode
-			opts.MemoryLimitBytes = 64 << 10
+			opts.MemoryLimitBytes = 160 << 10
 			opts.Spill = engine.SpillOptions{Directory: t.TempDir(), MaxBytes: 32 << 20}
 			opts.ExecutionPolicy = engine.ExecutionBounded
 			session := NewSession(opts)
@@ -629,7 +645,7 @@ func TestSpillJoinRecursivelyRepartitionsLowBitCollisions(t *testing.T) {
 	left := multiBatchJoinSource(t, keys[:16], 8)
 	right := multiBatchJoinSource(t, keys, 512)
 	opts := engine.DefaultOptions()
-	opts.MemoryLimitBytes = 128 << 10
+	opts.MemoryLimitBytes = 192 << 10
 	opts.QueryMemorySoftLimitBytes = 96 << 10
 	opts.Spill = engine.SpillOptions{Directory: t.TempDir(), MaxBytes: 128 << 20}
 	opts.ExecutionPolicy = engine.ExecutionBounded
@@ -652,7 +668,7 @@ func TestSpillJoinPreparedRepeatAndEarlyCancellationCleanup(t *testing.T) {
 	right := multiBatchJoinSource(t, keys, 512)
 	spillRoot := t.TempDir()
 	opts := engine.DefaultOptions()
-	opts.MemoryLimitBytes = 128 << 10
+	opts.MemoryLimitBytes = 192 << 10
 	opts.QueryMemorySoftLimitBytes = 96 << 10
 	opts.Spill = engine.SpillOptions{Directory: spillRoot, MaxBytes: 128 << 20}
 	opts.ExecutionPolicy = engine.ExecutionBounded
@@ -738,7 +754,7 @@ func TestSpillJoinCorruptOutputRunFailsAndCleansUp(t *testing.T) {
 	right := multiBatchJoinSource(t, keys, 512)
 	spillRoot := t.TempDir()
 	opts := engine.DefaultOptions()
-	opts.MemoryLimitBytes = 128 << 10
+	opts.MemoryLimitBytes = 192 << 10
 	opts.QueryMemorySoftLimitBytes = 96 << 10
 	opts.Spill = engine.SpillOptions{Directory: spillRoot, MaxBytes: 128 << 20}
 	opts.ExecutionPolicy = engine.ExecutionBounded

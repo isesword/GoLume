@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"gocolumn/internal/spillmeta"
 	"gocolumn/memory"
 	"gocolumn/pipeline"
 	"gocolumn/source"
@@ -14,7 +15,7 @@ import (
 
 const (
 	externalSortFanIn        = 4
-	externalSortMetadataByte = int64(256)
+	externalSortMetadataByte = int64(4096)
 )
 
 type sortSegmentRef struct {
@@ -26,14 +27,14 @@ type sortSegmentRef struct {
 // bounded physical segments, allowing hierarchical merge to reduce open run
 // fan-in without creating a single input-sized file or decode buffer.
 type externalSortRun struct {
-	segments []sortSegmentRef
+	segments spillmeta.Slice[sortSegmentRef]
 	rows     int64
 }
 
 type externalSortStream struct {
 	owner       *SortSource
 	query       *memory.QueryBudget
-	store       memory.SpillManager
+	store       *spillmeta.Store
 	opts        source.ReadOptions
 	internal    memory.Schema
 	fingerprint [32]byte
@@ -45,14 +46,14 @@ type externalSortStream struct {
 	encode     *memory.OperatorBudget
 	restore    *memory.OperatorBudget
 	output     *memory.OperatorBudget
-	metadata   *memory.OperatorBudget
+	metadata   memory.Manager
 
-	owned           map[string]sortSegmentRef
-	refReservations map[string]memory.Reservation
-	finalDecoded    []*externalSortCursor
-	finalHeap       externalSortHeap
-	outputBatch     *memory.Batch
-	outputMem       memory.Reservation
+	baseMetadata memory.Reservation
+	finalRuns    spillmeta.Slice[externalSortRun]
+	finalDecoded []*externalSortCursor
+	finalHeap    externalSortHeap
+	outputBatch  *memory.Batch
+	outputMem    memory.Reservation
 
 	prepared    bool
 	closed      bool
@@ -132,6 +133,18 @@ func newExternalSortStream(ctx context.Context, owner *SortSource, opts source.R
 	if err != nil {
 		return nil, err
 	}
+	metadata := spillmeta.GrowthManager(query.Operator("ExternalSortMetadata", memory.MemoryRetainedState))
+	// Schema construction clones nested child descriptors too. Account the
+	// temporary field array, cloned tree, and name-index capacity, not just the
+	// top-level columns, before creating the execution schema.
+	metadataBytes, err := externalSortSchemaMetadataBytes(owner.input.Schema().Fields)
+	if err != nil {
+		return nil, err
+	}
+	baseMetadata, err := metadata.Reserve(ctx, metadataBytes)
+	if err != nil {
+		return nil, err
+	}
 	ordinal := "__golume_sort_ordinal"
 	for suffix := 0; ; suffix++ {
 		if _, exists := owner.input.Schema().Field(ordinal); !exists {
@@ -158,15 +171,36 @@ func newExternalSortStream(ctx context.Context, owner *SortSource, opts source.R
 		chunkRows = 4096
 	}
 	return &externalSortStream{
-		owner: owner, query: query, store: store, opts: opts, internal: internal,
+		owner: owner, query: query, store: spillmeta.NewStore(store, metadata), opts: opts, internal: internal,
 		fingerprint: memory.SchemaFingerprint(internal), ordinal: ordinal, runBytes: runBytes, chunkRows: chunkRows,
 		sortBudget: query.Operator("ExternalSortRun", memory.MemoryWorkspace),
 		encode:     query.Operator("ExternalSortEncode", memory.MemorySpillBuffer),
 		restore:    query.Operator("ExternalSortRestore", memory.MemorySpillBuffer),
 		output:     query.Operator("ExternalSortOutput", memory.MemoryWorkspace),
-		metadata:   query.Operator("ExternalSortMetadata", memory.MemoryRetainedState),
-		owned:      make(map[string]sortSegmentRef), refReservations: make(map[string]memory.Reservation),
+		metadata:   metadata, baseMetadata: baseMetadata,
 	}, nil
+}
+
+func externalSortSchemaMetadataBytes(fields []memory.Field) (int64, error) {
+	// The added stable ordinal is another top-level field.
+	total := externalSortMetadataByte + 512
+	var visit func([]memory.Field) error
+	visit = func(fields []memory.Field) error {
+		for _, field := range fields {
+			if total > math.MaxInt64-512 {
+				return memory.ErrBudgetExceeded
+			}
+			total += 512
+			if err := visit(field.Children); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	if err := visit(fields); err != nil {
+		return 0, err
+	}
+	return total, nil
 }
 
 func (s *externalSortStream) spillBatch(ctx context.Context, batch *memory.Batch) (sortSegmentRef, error) {
@@ -175,21 +209,14 @@ func (s *externalSortStream) spillBatch(ctx context.Context, batch *memory.Batch
 		return sortSegmentRef{}, err
 	}
 	defer encoded.Close()
-	metadata, err := s.metadata.Reserve(ctx, externalSortMetadataByte)
-	if err != nil {
-		return sortSegmentRef{}, err
-	}
 	handle, err := s.store.Spill(ctx, memory.SpillObject{
 		Kind: memory.SpillColumnarRun, Codec: memory.ColumnarRunCodec,
 		SchemaFingerprint: s.fingerprint, Payload: encoded.Payload,
 	})
 	if err != nil {
-		metadata.Release()
 		return sortSegmentRef{}, err
 	}
 	ref := sortSegmentRef{handle: handle, rows: batch.Rows}
-	s.owned[handle.ID()] = ref
-	s.refReservations[handle.ID()] = metadata
 	s.spillRuns++
 	s.spillBytes += handle.Bytes()
 	s.query.RecordSpilledBytes(handle.Bytes())
@@ -200,25 +227,15 @@ func (s *externalSortStream) deleteSegment(ctx context.Context, ref sortSegmentR
 	if ref.handle == nil {
 		return nil
 	}
-	id := ref.handle.ID()
-	if _, ok := s.owned[id]; !ok {
-		return nil
-	}
-	if err := s.store.Delete(ctx, ref.handle); err != nil {
-		return err
-	}
-	if reservation := s.refReservations[id]; reservation != nil {
-		reservation.Release()
-	}
-	delete(s.refReservations, id)
-	delete(s.owned, id)
-	return nil
+	return s.store.Delete(ctx, ref.handle)
 }
 
 func (s *externalSortStream) deleteRun(ctx context.Context, run externalSortRun) error {
 	var out error
-	for _, segment := range run.segments {
-		out = errors.Join(out, s.deleteSegment(ctx, segment))
+	for _, segment := range run.segments.Values {
+		if err := s.deleteSegment(ctx, segment); err != nil && out == nil {
+			out = err
+		}
 	}
 	return out
 }
@@ -284,32 +301,42 @@ func (s *externalSortStream) makeInitialRun(ctx context.Context, batch *memory.B
 	if err != nil {
 		return externalSortRun{}, err
 	}
-	return externalSortRun{segments: []sortSegmentRef{ref}, rows: int64(rows)}, nil
+	var run externalSortRun
+	if err := run.segments.Append(ctx, s.metadata, ref); err != nil {
+		return externalSortRun{}, err
+	}
+	run.rows = int64(rows)
+	return run, nil
 }
 
-func (s *externalSortStream) generateRuns(ctx context.Context) ([]externalSortRun, error) {
+func (s *externalSortStream) generateRuns(ctx context.Context) (result spillmeta.Slice[externalSortRun], resultErr error) {
 	stream, err := source.OpenBatchStream(ctx, s.owner.input, s.opts)
 	if err != nil {
-		return nil, err
+		return result, err
 	}
 	batch := memory.NewBatch()
 	defer batch.ReleaseOwned()
-	var runs []externalSortRun
+	var runs spillmeta.Slice[externalSortRun]
+	defer func() {
+		if resultErr != nil {
+			releaseSortRuns(&runs)
+		}
+	}()
 	var ordinalBase uint64
 	for {
 		ok, nextErr := stream.Next(ctx, batch)
 		if nextErr != nil {
-			return nil, errors.Join(nextErr, stream.Close())
+			return result, errors.Join(nextErr, stream.Close())
 		}
 		if !ok {
 			if closeErr := stream.Close(); closeErr != nil {
-				return nil, closeErr
+				return result, closeErr
 			}
 			break
 		}
 		if uint64(batch.Rows) > math.MaxUint64-ordinalBase {
 			_ = stream.Close()
-			return nil, fmt.Errorf("external sort input row ordinal overflows uint64")
+			return result, fmt.Errorf("external sort input row ordinal overflows uint64")
 		}
 		for start := 0; start < batch.Rows; {
 			end := start + s.chunkRows
@@ -322,7 +349,7 @@ func (s *externalSortStream) generateRuns(ctx context.Context) ([]externalSortRu
 				estimate, estimateErr := memory.EstimateBatchRangeBytes(batch, start, end-start)
 				if estimateErr != nil {
 					_ = stream.Close()
-					return nil, estimateErr
+					return result, estimateErr
 				}
 				if estimate <= s.runBytes {
 					break
@@ -332,9 +359,13 @@ func (s *externalSortStream) generateRuns(ctx context.Context) ([]externalSortRu
 			run, runErr := s.makeInitialRun(ctx, batch, start, end, ordinalBase)
 			if runErr != nil {
 				_ = stream.Close()
-				return nil, runErr
+				return result, runErr
 			}
-			runs = append(runs, run)
+			if err := runs.Append(ctx, s.metadata, run); err != nil {
+				run.segments.Release()
+				_ = stream.Close()
+				return result, err
+			}
 			start = end
 		}
 		ordinalBase += uint64(batch.Rows)
@@ -345,7 +376,7 @@ func (s *externalSortStream) generateRuns(ctx context.Context) ([]externalSortRu
 
 type externalSortCursor struct {
 	owner        *externalSortStream
-	run          externalSortRun
+	segments     []sortSegmentRef
 	segment      int
 	row          int
 	decoded      *memory.DecodedColumnarRun
@@ -353,8 +384,8 @@ type externalSortCursor struct {
 }
 
 func (c *externalSortCursor) load(ctx context.Context) error {
-	for c.decoded == nil && c.segment < len(c.run.segments) {
-		ref := c.run.segments[c.segment]
+	for c.decoded == nil && c.segment < len(c.segments) {
+		ref := c.segments[c.segment]
 		decoded, err := c.owner.restoreSegment(ctx, ref)
 		if err != nil {
 			return err
@@ -390,6 +421,7 @@ func (c *externalSortCursor) advance(ctx context.Context) error {
 }
 
 func (c *externalSortCursor) close() {
+	c.segments = nil
 	if c.decoded != nil {
 		_ = c.decoded.Close()
 		c.decoded = nil
@@ -434,15 +466,19 @@ func (h *externalSortHeap) Push(value any) { h.items = append(h.items, value.(*e
 func (h *externalSortHeap) Pop() any {
 	last := len(h.items) - 1
 	value := h.items[last]
+	h.items[last] = nil
 	h.items = h.items[:last]
 	return value
 }
 
 func (s *externalSortStream) openCursors(ctx context.Context, runs []externalSortRun, deleteOnLoad bool) ([]*externalSortCursor, externalSortHeap, error) {
+	if len(runs) > externalSortFanIn {
+		return nil, externalSortHeap{}, fmt.Errorf("external sort fan-in exceeded")
+	}
 	cursors := make([]*externalSortCursor, 0, len(runs))
-	h := externalSortHeap{keys: s.owner.keys, ord: s.ordinal}
+	h := externalSortHeap{keys: s.owner.keys, ord: s.ordinal, items: make([]*externalSortCursor, 0, len(runs))}
 	for _, run := range runs {
-		cursor := &externalSortCursor{owner: s, run: run, deleteOnLoad: deleteOnLoad}
+		cursor := &externalSortCursor{owner: s, segments: run.segments.Values, deleteOnLoad: deleteOnLoad}
 		if err := cursor.load(ctx); err != nil {
 			for _, opened := range cursors {
 				opened.close()
@@ -525,7 +561,7 @@ func (s *externalSortStream) buildMergedBatch(ctx context.Context, h *externalSo
 	return batch, reservation, nil
 }
 
-func (s *externalSortStream) mergeRunGroup(ctx context.Context, inputs []externalSortRun) (externalSortRun, error) {
+func (s *externalSortStream) mergeRunGroup(ctx context.Context, inputs []externalSortRun) (result externalSortRun, resultErr error) {
 	cursors, h, err := s.openCursors(ctx, inputs, false)
 	if err != nil {
 		return externalSortRun{}, err
@@ -536,6 +572,11 @@ func (s *externalSortStream) mergeRunGroup(ctx context.Context, inputs []externa
 		}
 	}()
 	var output externalSortRun
+	defer func() {
+		if resultErr != nil {
+			output.segments.Release()
+		}
+	}()
 	for h.Len() > 0 {
 		batch, reservation, err := s.buildMergedBatch(ctx, &h)
 		if err != nil {
@@ -549,7 +590,9 @@ func (s *externalSortStream) mergeRunGroup(ctx context.Context, inputs []externa
 			_ = s.deleteRun(context.Background(), output)
 			return externalSortRun{}, err
 		}
-		output.segments = append(output.segments, ref)
+		if err := output.segments.Append(ctx, s.metadata, ref); err != nil {
+			return externalSortRun{}, err
+		}
 		output.rows += int64(ref.rows)
 	}
 	for _, input := range inputs {
@@ -561,20 +604,40 @@ func (s *externalSortStream) mergeRunGroup(ctx context.Context, inputs []externa
 	return output, nil
 }
 
-func (s *externalSortStream) mergeHierarchy(ctx context.Context, runs []externalSortRun) ([]externalSortRun, error) {
-	for len(runs) > externalSortFanIn {
-		next := make([]externalSortRun, 0, (len(runs)+externalSortFanIn-1)/externalSortFanIn)
-		for start := 0; start < len(runs); start += externalSortFanIn {
-			end := start + externalSortFanIn
-			if end > len(runs) {
-				end = len(runs)
-			}
-			merged, err := s.mergeRunGroup(ctx, runs[start:end])
-			if err != nil {
-				return nil, err
-			}
-			next = append(next, merged)
+// releaseSortRuns drops all segment backing arrays before releasing the run list.
+func releaseSortRuns(runs *spillmeta.Slice[externalSortRun]) {
+	for i := range runs.Values {
+		runs.Values[i].segments.Release()
+	}
+	runs.Release()
+}
+
+// Ownership of runs is transferred in and either returned or released on error.
+func (s *externalSortStream) mergeHierarchy(ctx context.Context, runs spillmeta.Slice[externalSortRun]) (result spillmeta.Slice[externalSortRun], resultErr error) {
+	defer func() {
+		if resultErr != nil {
+			releaseSortRuns(&runs)
 		}
+	}()
+	for len(runs.Values) > externalSortFanIn {
+		var next spillmeta.Slice[externalSortRun]
+		for start := 0; start < len(runs.Values); start += externalSortFanIn {
+			end := minInt(start+externalSortFanIn, len(runs.Values))
+			merged, err := s.mergeRunGroup(ctx, runs.Values[start:end])
+			if err != nil {
+				releaseSortRuns(&next)
+				return result, err
+			}
+			if err := next.Append(ctx, s.metadata, merged); err != nil {
+				merged.segments.Release()
+				releaseSortRuns(&next)
+				return result, err
+			}
+			for i := start; i < end; i++ {
+				runs.Values[i].segments.Release()
+			}
+		}
+		runs.Release()
 		runs = next
 		s.mergeLevels++
 	}
@@ -590,7 +653,8 @@ func (s *externalSortStream) prepare(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	s.finalDecoded, s.finalHeap, err = s.openCursors(ctx, runs, true)
+	s.finalRuns = runs
+	s.finalDecoded, s.finalHeap, err = s.openCursors(ctx, s.finalRuns.Values, true)
 	if err != nil {
 		return err
 	}
@@ -635,11 +699,7 @@ func (s *externalSortStream) Next(ctx context.Context, dst *memory.Batch) (bool,
 	}
 	if s.finalHeap.Len() == 0 {
 		s.exhausted = true
-		for _, cursor := range s.finalDecoded {
-			cursor.close()
-		}
-		s.finalDecoded = nil
-		return false, nil
+		return false, s.cleanup()
 	}
 	batch, reservation, err := s.buildMergedBatch(ctx, &s.finalHeap)
 	if err != nil {
@@ -658,20 +718,17 @@ func (s *externalSortStream) cleanup() error {
 		cursor.close()
 	}
 	s.finalDecoded = nil
-	var out error
-	refs := make([]sortSegmentRef, 0, len(s.owned))
-	for _, ref := range s.owned {
-		refs = append(refs, ref)
+	s.finalHeap.items = nil
+	releaseSortRuns(&s.finalRuns)
+	err := s.store.Close()
+	s.store = nil
+	s.internal = memory.Schema{}
+	s.ordinal = ""
+	if s.baseMetadata != nil {
+		s.baseMetadata.Release()
+		s.baseMetadata = nil
 	}
-	for _, ref := range refs {
-		out = errors.Join(out, s.deleteSegment(context.Background(), ref))
-	}
-	for id, reservation := range s.refReservations {
-		reservation.Release()
-		delete(s.refReservations, id)
-	}
-	clear(s.owned)
-	return out
+	return err
 }
 
 func (s *externalSortStream) abort(err error) error {

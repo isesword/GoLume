@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"gocolumn/expr"
+	"gocolumn/internal/spillmeta"
 	"gocolumn/memory"
 	"gocolumn/observer"
 	"gocolumn/planner"
@@ -40,32 +41,58 @@ func (s *spillableAggregateStream) restoreRun(ctx context.Context, ref aggregate
 func (s *spillableAggregateStream) deleteRunRefsStrict(ctx context.Context, refs []aggregateRunRef) error {
 	var out error
 	for _, ref := range refs {
-		if err := s.store.Delete(ctx, ref.handle); err != nil {
-			out = errors.Join(out, err)
+		if err := s.store.Delete(ctx, ref.handle); err != nil && out == nil {
+			out = err
 		}
 	}
 	return out
 }
 
-func (s *spillableAggregateStream) repartitionRuns(ctx context.Context, refs []aggregateRunRef, depth int) ([][]aggregateRunRef, error) {
+type aggregateRunPartitions struct {
+	runs  [1 << aggregateRadixBits]spillmeta.Slice[aggregateRunRef]
+	lease memory.Reservation
+}
+
+func (p *aggregateRunPartitions) release() {
+	for i := range p.runs {
+		p.runs[i].Release()
+	}
+	if p.lease != nil {
+		p.lease.Release()
+		p.lease = nil
+	}
+}
+
+func (s *spillableAggregateStream) repartitionRuns(ctx context.Context, refs []aggregateRunRef, depth int) (*aggregateRunPartitions, error) {
 	if depth >= maxAggregateDepth {
 		return nil, fmt.Errorf("aggregate radix repartition exhausted %d hash bits; a colliding partition still exceeds the memory budget", maxAggregateDepth*int(aggregateRadixBits))
 	}
-	children := make([][]aggregateRunRef, 1<<aggregateRadixBits)
-	created := make([]aggregateRunRef, 0, len(refs)*2)
+	lease, err := s.metadata.Reserve(ctx, 128+2*int64(unsafe.Sizeof(aggregateRunPartitions{})))
+	if err != nil {
+		return nil, err
+	}
+	children := &aggregateRunPartitions{lease: lease}
+	success := false
+	defer func() {
+		if !success {
+			children.release()
+		}
+	}()
+	var created spillmeta.Slice[aggregateRunRef]
+	defer created.Release()
 	bitOffset := uint(depth) * aggregateRadixBits
 	for _, parent := range refs {
 		restored, err := s.store.Restore(ctx, parent.handle, s.fingerprint, s.restorer)
 		if err != nil {
-			s.deleteRunRefs(context.Background(), created)
+			s.deleteRunRefs(context.Background(), created.Values)
 			return nil, err
 		}
 		if restored.Object.Kind != memory.SpillAggregateState || restored.Object.Codec != s.query.aggregateRunCodec() {
 			_ = restored.Close()
-			s.deleteRunRefs(context.Background(), created)
+			s.deleteRunRefs(context.Background(), created.Values)
 			return nil, fmt.Errorf("%w: aggregate spill kind or codec mismatch", memory.ErrSpillCorrupt)
 		}
-		for child := range children {
+		for child := range children.runs {
 			visit := func(fn func(aggregateRecord) error) error {
 				reader, readerErr := s.query.newAggregateRunReader(restored.Object.Payload)
 				if readerErr != nil {
@@ -81,7 +108,7 @@ func (s *spillableAggregateStream) repartitionRuns(ctx context.Context, refs []a
 			}, s.encoder)
 			if encodeErr != nil {
 				_ = restored.Close()
-				s.deleteRunRefs(context.Background(), created)
+				s.deleteRunRefs(context.Background(), created.Values)
 				return nil, encodeErr
 			}
 			if encoded.groups == 0 {
@@ -96,33 +123,42 @@ func (s *spillableAggregateStream) repartitionRuns(ctx context.Context, refs []a
 			encoded.close()
 			if spillErr != nil {
 				_ = restored.Close()
-				s.deleteRunRefs(context.Background(), created)
+				s.deleteRunRefs(context.Background(), created.Values)
 				return nil, spillErr
 			}
 			ref := aggregateRunRef{handle: handle, groups: groups, partition: child}
-			children[child] = append(children[child], ref)
-			created = append(created, ref)
+			if err := created.Append(ctx, s.metadata, ref); err != nil {
+				_ = restored.Close()
+				_ = s.store.Delete(context.Background(), handle)
+				s.deleteRunRefs(context.Background(), created.Values)
+				return nil, err
+			}
+			if err := children.runs[child].Append(ctx, s.metadata, ref); err != nil {
+				_ = restored.Close()
+				s.deleteRunRefs(context.Background(), created.Values)
+				return nil, err
+			}
 			s.mu.Lock()
 			s.spillRuns++
 			s.spillBytes += handle.Bytes()
 			s.mu.Unlock()
 		}
 		if err := restored.Close(); err != nil {
-			s.deleteRunRefs(context.Background(), created)
+			s.deleteRunRefs(context.Background(), created.Values)
 			return nil, err
 		}
 	}
 	if err := s.deleteRunRefsStrict(ctx, refs); err != nil {
-		s.deleteRunRefs(context.Background(), created)
+		s.deleteRunRefs(context.Background(), created.Values)
 		return nil, err
 	}
 	s.mu.Lock()
 	if depth+1 > s.maxDepth {
 		s.maxDepth = depth + 1
 	}
-	for _, child := range children {
+	for _, child := range children.runs {
 		groups := 0
-		for _, ref := range child {
+		for _, ref := range child.Values {
 			groups += ref.groups
 		}
 		if groups > s.maxPartitionGroups {
@@ -130,6 +166,7 @@ func (s *spillableAggregateStream) repartitionRuns(ctx context.Context, refs []a
 		}
 	}
 	s.mu.Unlock()
+	success = true
 	return children, nil
 }
 
@@ -160,8 +197,9 @@ func (s *spillableAggregateStream) mergePartition(ctx context.Context, refs []ag
 		if repartitionErr != nil {
 			return errors.Join(mergeErr, repartitionErr)
 		}
-		for _, child := range children {
-			if err := s.mergePartition(ctx, child, depth+1); err != nil {
+		defer children.release()
+		for _, child := range children.runs {
+			if err := s.mergePartition(ctx, child.Values, depth+1); err != nil {
 				return err
 			}
 		}
@@ -192,7 +230,8 @@ func (s *spillableAggregateStream) mergePartition(ctx context.Context, refs []ag
 
 func (s *spillableAggregateStream) writeOutputRuns(ctx context.Context, table *aggregateStateTable) error {
 	groups := table.len()
-	created := make([]aggregateRunRef, 0, (groups+s.outputRows-1)/s.outputRows)
+	var created spillmeta.Slice[aggregateRunRef]
+	defer created.Release()
 	for start := 0; start < groups; start += s.outputRows {
 		end := start + s.outputRows
 		if end > groups {
@@ -202,17 +241,17 @@ func (s *spillableAggregateStream) writeOutputRuns(ctx context.Context, table *a
 			return index >= start && index < end
 		}, s.encoder)
 		if err != nil {
-			s.deleteRunRefs(context.Background(), created)
+			s.deleteRunRefs(context.Background(), created.Values)
 			return err
 		}
 		if encoded.groups == 0 {
 			encoded.close()
 			continue
 		}
-		partition := len(s.outputRuns) + len(created)
+		partition := len(s.outputRuns) + len(created.Values)
 		if partition > math.MaxInt32 {
 			encoded.close()
-			s.deleteRunRefs(context.Background(), created)
+			s.deleteRunRefs(context.Background(), created.Values)
 			return fmt.Errorf("aggregate output run count exceeds int32")
 		}
 		handle, err := s.store.Spill(ctx, memory.SpillObject{
@@ -222,29 +261,40 @@ func (s *spillableAggregateStream) writeOutputRuns(ctx context.Context, table *a
 		count := encoded.groups
 		encoded.close()
 		if err != nil {
-			s.deleteRunRefs(context.Background(), created)
+			s.deleteRunRefs(context.Background(), created.Values)
 			return err
 		}
-		created = append(created, aggregateRunRef{handle: handle, groups: count, partition: partition})
+		if err := created.Append(ctx, s.metadata, aggregateRunRef{handle: handle, groups: count, partition: partition}); err != nil {
+			_ = s.store.Delete(context.Background(), handle)
+			s.deleteRunRefs(context.Background(), created.Values)
+			return err
+		}
 		s.mu.Lock()
 		s.spillRuns++
 		s.spillBytes += handle.Bytes()
 		s.mu.Unlock()
 	}
-	s.outputRuns = append(s.outputRuns, created...)
+	// Drop the borrowed view before replacement releases the old array.
+	s.outputRuns = nil
+	if err := s.outputRefs.Append(ctx, s.metadata, created.Values...); err != nil {
+		s.outputRuns = s.outputRefs.Values
+		s.deleteRunRefs(context.Background(), created.Values)
+		return err
+	}
+	s.outputRuns = s.outputRefs.Values
 	return nil
 }
 
 func (s *spillableAggregateStream) finishPartitions(ctx context.Context) error {
 	for partition := range s.partitions {
-		refs := s.partitions[partition]
+		refs := s.partitions[partition].Values
 		if len(refs) == 0 {
 			continue
 		}
 		if err := s.mergePartition(ctx, refs, 1); err != nil {
 			return fmt.Errorf("merge aggregate partition %d: %w", partition, err)
 		}
-		s.partitions[partition] = nil
+		s.partitions[partition].Release()
 	}
 	return nil
 }
@@ -757,6 +807,21 @@ func (s *spillableAggregateStream) recordStats() {
 
 func (s *spillableAggregateStream) finishActive() {
 	s.mu.Lock()
+	s.outputRuns = nil
+	s.outputRefs.Release()
+	for i := range s.partitions {
+		s.partitions[i].Release()
+	}
+	s.partitions = nil
+	// Owned references must be dropped before the registry releases handle metadata.
+	cleanupErr := s.store.Close()
+	if s.closeErr == nil {
+		s.closeErr = cleanupErr
+	}
+	if s.metadataLease != nil {
+		s.metadataLease.Release()
+		s.metadataLease = nil
+	}
 	active := s.active
 	s.active = false
 	unregister := s.unregister
@@ -794,10 +859,13 @@ func (s *spillableAggregateStream) abort(err error) error {
 		lease.Release()
 	}
 	cleanupCtx := context.Background()
-	for _, refs := range partitions {
-		s.deleteRunRefs(cleanupCtx, refs)
+	for i := range partitions {
+		s.deleteRunRefs(cleanupCtx, partitions[i].Values)
+		partitions[i].Release()
 	}
 	s.deleteRunRefs(cleanupCtx, outputs)
+	outputs = nil
+	partitions = nil
 	s.finishActive()
 	return err
 }
@@ -869,6 +937,7 @@ func (s *spillableAggregateStream) Next(ctx context.Context, dst *memory.Batch) 
 		return false, s.abort(err)
 	}
 	s.mu.Lock()
+	s.outputRuns[0] = aggregateRunRef{}
 	s.outputRuns = s.outputRuns[1:]
 	s.outputLease, s.outputDst = lease, dst
 	s.mu.Unlock()
@@ -908,13 +977,28 @@ func (s *spillableAggregateStream) Close() error {
 	}
 	cleanupCtx := context.Background()
 	var cleanupErr error
-	for _, refs := range partitions {
-		cleanupErr = errors.Join(cleanupErr, s.deleteRunRefsStrict(cleanupCtx, refs))
+	for i := range partitions {
+		if err := s.deleteRunRefsStrict(cleanupCtx, partitions[i].Values); err != nil && cleanupErr == nil {
+			cleanupErr = err
+		}
+		partitions[i].Release()
 	}
-	cleanupErr = errors.Join(cleanupErr, s.deleteRunRefsStrict(cleanupCtx, outputs))
+	if err := s.deleteRunRefsStrict(cleanupCtx, outputs); err != nil && cleanupErr == nil {
+		cleanupErr = err
+	}
+	outputs = nil
+	partitions = nil
+	// Preserve the earliest error before the private store retries failed files.
+	// Joining each run's result would retain an input-sized error tree even
+	// when all later deletes succeed.
+	s.mu.Lock()
+	if s.closeErr == nil {
+		s.closeErr = cleanupErr
+	}
+	s.mu.Unlock()
 	s.finishActive()
 	s.mu.Lock()
-	s.closeErr = cleanupErr
+	out := s.closeErr
 	s.mu.Unlock()
-	return cleanupErr
+	return out
 }

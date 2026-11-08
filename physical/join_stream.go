@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"gocolumn/hashagg"
+	"gocolumn/internal/spillmeta"
 	"gocolumn/join"
 	"gocolumn/memory"
 	"gocolumn/observer"
@@ -13,13 +14,13 @@ import (
 	"math"
 	"sync"
 	"time"
+	"unsafe"
 )
 
 const (
-	joinRadixBits        = uint(4)
-	joinRadixPartitions  = 1 << joinRadixBits
-	maxJoinRadixDepth    = int(64 / joinRadixBits)
-	joinRunMetadataBytes = int64(256)
+	joinRadixBits       = uint(4)
+	joinRadixPartitions = 1 << joinRadixBits
+	maxJoinRadixDepth   = int(64 / joinRadixBits)
 )
 
 // ErrJoinSkewExhausted reports a build partition that cannot fit after all
@@ -289,7 +290,7 @@ type spillableJoinStream struct {
 	owner                 *JoinSource
 	readOpts              source.ReadOptions
 	query                 *memory.QueryBudget
-	store                 memory.SpillManager
+	store                 *spillmeta.Store
 	leftSchema            memory.Schema
 	rightSchema           memory.Schema
 	leftFP                [32]byte
@@ -300,7 +301,8 @@ type spillableJoinStream struct {
 	restorer              *memory.OperatorBudget
 	state                 *memory.OperatorBudget
 	output                *memory.OperatorBudget
-	metadata              *memory.OperatorBudget
+	metadata              memory.Manager
+	baseReservation       memory.Reservation
 	outputRows            int
 	chunkRows             int
 	leftCanonical         []uint64
@@ -308,19 +310,17 @@ type spillableJoinStream struct {
 	dictionaryReservation memory.Reservation
 	pairReservation       memory.Reservation
 
-	mu              sync.Mutex
-	leftRuns        [][]joinRunRef
-	rightRuns       [][]joinRunRef
-	outputRuns      []joinRunRef
-	nextPart        int
-	decoded         *memory.DecodedColumnarRun
-	started         time.Time
-	prepared        bool
-	closed          bool
-	exhausted       bool
-	terminalErr     error
-	owned           map[string]joinRunRef
-	refReservations map[string]memory.Reservation
+	mu          sync.Mutex
+	leftRuns    [joinRadixPartitions]spillmeta.Slice[joinRunRef]
+	rightRuns   [joinRadixPartitions]spillmeta.Slice[joinRunRef]
+	outputRuns  spillmeta.Slice[joinRunRef]
+	nextPart    int
+	decoded     *memory.DecodedColumnarRun
+	started     time.Time
+	prepared    bool
+	closed      bool
+	exhausted   bool
+	terminalErr error
 
 	buildRows       int64
 	buildBytes      int64
@@ -370,23 +370,29 @@ func newSpillableJoinStream(ctx context.Context, owner *JoinSource, opts source.
 	if chunkRows > 4096 {
 		chunkRows = 4096
 	}
+	metadata := spillmeta.GrowthManager(query.Operator("JoinRunMetadata", memory.MemoryRetainedState))
+	base, err := metadata.Reserve(ctx, 128+2*int64(unsafe.Sizeof(spillableJoinStream{}))+int64(unsafe.Sizeof(spillmeta.Store{})))
+	if err != nil {
+		return nil, err
+	}
 	stream := &spillableJoinStream{
-		owner: owner, readOpts: opts, query: query, store: store, leftSchema: owner.left.Schema(), rightSchema: owner.right.Schema(),
+		owner: owner, readOpts: opts, query: query, store: spillmeta.NewStore(store, metadata), baseReservation: base, leftSchema: owner.left.Schema(), rightSchema: owner.right.Schema(),
 		leftFP: memory.SchemaFingerprint(owner.left.Schema()), rightFP: memory.SchemaFingerprint(owner.right.Schema()), outputFP: memory.SchemaFingerprint(owner.schema),
 		gather: query.Operator("JoinPartitionGather", memory.MemoryWorkspace), encoder: query.Operator("JoinEncode", memory.MemorySpillBuffer),
 		restorer: query.Operator("JoinRestore", memory.MemorySpillBuffer), state: query.Operator("JoinBuild", memory.MemoryRetainedState),
-		output: query.Operator("JoinOutput", memory.MemoryWorkspace), metadata: query.Operator("JoinRunMetadata", memory.MemoryRetainedState),
+		output: query.Operator("JoinOutput", memory.MemoryWorkspace), metadata: metadata,
 		outputRows: outputRows, chunkRows: chunkRows,
-		leftRuns: make([][]joinRunRef, joinRadixPartitions), rightRuns: make([][]joinRunRef, joinRadixPartitions),
-		owned: make(map[string]joinRunRef), refReservations: make(map[string]memory.Reservation), started: time.Now(),
+		started: time.Now(),
 	}
 	stream.pairReservation, err = stream.output.Reserve(ctx, int64(outputRows)*16)
 	if err != nil {
+		base.Release()
 		return nil, err
 	}
 	if owner.shape == joinDictionary {
 		if err := stream.initDictionaryCanonical(ctx); err != nil {
 			stream.pairReservation.Release()
+			base.Release()
 			return nil, err
 		}
 	}
@@ -462,13 +468,8 @@ func (s *spillableJoinStream) encodedKey(batch *memory.Batch, left bool, row int
 }
 
 func (s *spillableJoinStream) spillTracked(ctx context.Context, object memory.SpillObject, rows int, partition int) (joinRunRef, error) {
-	reservation, err := s.metadata.Reserve(ctx, joinRunMetadataBytes)
-	if err != nil {
-		return joinRunRef{}, err
-	}
 	handle, err := s.store.Spill(ctx, object)
 	if err != nil {
-		reservation.Release()
 		return joinRunRef{}, err
 	}
 	s.mu.Lock()
@@ -477,8 +478,6 @@ func (s *spillableJoinStream) spillTracked(ctx context.Context, object memory.Sp
 	s.mu.Unlock()
 	s.query.RecordSpilledBytes(handle.Bytes())
 	ref := joinRunRef{handle: handle, rows: rows, partition: partition}
-	s.owned[handle.ID()] = ref
-	s.refReservations[handle.ID()] = reservation
 	return ref, nil
 }
 
@@ -517,7 +516,7 @@ func (s *spillableJoinStream) spillRows(ctx context.Context, schema memory.Schem
 	return ref, nil
 }
 
-func (s *spillableJoinStream) partitionBatch(ctx context.Context, schema memory.Schema, fingerprint [32]byte, batch *memory.Batch, left bool, bitOffset uint, destinations [][]joinRunRef) error {
+func (s *spillableJoinStream) partitionBatch(ctx context.Context, schema memory.Schema, fingerprint [32]byte, batch *memory.Batch, left bool, bitOffset uint, destinations []spillmeta.Slice[joinRunRef]) error {
 	rowsReservation, err := s.gather.Reserve(ctx, int64(batch.Rows)*16+joinRadixPartitions*24)
 	if err != nil {
 		return err
@@ -549,7 +548,6 @@ func (s *spillableJoinStream) partitionBatch(ctx context.Context, schema memory.
 		partition := int(hash >> bitOffset & (joinRadixPartitions - 1))
 		rowsByPartition[partition] = append(rowsByPartition[partition], row)
 	}
-	created := make([]joinRunRef, 0, joinRadixPartitions)
 	for partition, rows := range rowsByPartition {
 		for offset := 0; offset < len(rows); offset += s.chunkRows {
 			end := offset + s.chunkRows
@@ -558,17 +556,17 @@ func (s *spillableJoinStream) partitionBatch(ctx context.Context, schema memory.
 			}
 			ref, err := s.spillRows(ctx, schema, fingerprint, batch, rows[offset:end], partition)
 			if err != nil {
-				s.deleteRefs(context.Background(), created)
 				return err
 			}
-			destinations[partition] = append(destinations[partition], ref)
-			created = append(created, ref)
+			if err := destinations[partition].Append(ctx, s.metadata, ref); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
 }
 
-func (s *spillableJoinStream) partitionSource(ctx context.Context, input source.Source, schema memory.Schema, fingerprint [32]byte, left bool, destinations [][]joinRunRef) error {
+func (s *spillableJoinStream) partitionSource(ctx context.Context, input source.Source, schema memory.Schema, fingerprint [32]byte, left bool, destinations []spillmeta.Slice[joinRunRef]) error {
 	stream, err := source.OpenBatchStream(ctx, input, s.readOpts)
 	if err != nil {
 		return err
@@ -632,8 +630,10 @@ func (b *loadedJoinBuild) close() {
 	for _, decoded := range b.decoded {
 		_ = decoded.Close()
 	}
+	b.decoded, b.batches, b.locations, b.table = nil, nil, nil, nil
 	if b.reservation != nil {
 		b.reservation.Release()
+		b.reservation = nil
 	}
 }
 
@@ -645,12 +645,12 @@ func (s *spillableJoinStream) loadBuild(ctx context.Context, refs []joinRunRef) 
 		}
 		total += ref.rows
 	}
-	retained := int64(total)*(16+1+16) + join.EstimatePairTableBytes(maxInt(8, total), total)
+	retained := int64(len(refs))*16 + int64(total)*(16+1+16) + join.EstimatePairTableBytes(maxInt(8, total), total)
 	reservation, err := s.state.Reserve(ctx, retained)
 	if err != nil {
 		return nil, err
 	}
-	build := &loadedJoinBuild{reservation: reservation, table: join.NewPairTable(maxInt(8, total)), locations: make([]rowLocation, 0, total)}
+	build := &loadedJoinBuild{decoded: make([]*memory.DecodedColumnarRun, 0, len(refs)), batches: make([]*memory.Batch, 0, len(refs)), reservation: reservation, table: join.NewPairTable(maxInt(8, total)), locations: make([]rowLocation, 0, total)}
 	keys := make([]hashagg.Key128, 0, total)
 	masks := make([]uint8, 0, total)
 	for _, ref := range refs {
@@ -758,33 +758,38 @@ func newJoinProbeKeys(ctx context.Context, manager memory.Manager, rows int) ([]
 	return make([]hashagg.Key128, rows), make([]uint8, rows), reservation, nil
 }
 
-func (s *spillableJoinStream) probePartition(ctx context.Context, build *loadedJoinBuild, leftRefs []joinRunRef, partition int) ([]joinRunRef, error) {
-	created := make([]joinRunRef, 0)
+func (s *spillableJoinStream) probePartition(ctx context.Context, build *loadedJoinBuild, leftRefs []joinRunRef, partition int) (result spillmeta.Slice[joinRunRef], resultErr error) {
+	var created spillmeta.Slice[joinRunRef]
+	defer func() {
+		if resultErr != nil {
+			created.Release()
+		}
+	}()
 	matched, matchedReservation, err := newJoinMatchedRows(ctx, s.state, len(build.locations))
 	if err != nil {
-		return nil, err
+		return result, err
 	}
 	defer matchedReservation.Release()
 	for _, ref := range leftRefs {
 		decoded, err := s.restoreRun(ctx, s.leftSchema, s.leftFP, ref)
 		if err != nil {
-			s.deleteRefs(context.Background(), created)
-			return nil, err
+			s.deleteRefs(context.Background(), created.Values)
+			return result, err
 		}
 		batch := decoded.Batch
 		keys, masks, scratch, err := newJoinProbeKeys(ctx, s.state, batch.Rows)
 		if err != nil {
 			_ = decoded.Close()
-			s.deleteRefs(context.Background(), created)
-			return nil, err
+			s.deleteRefs(context.Background(), created.Values)
+			return result, err
 		}
 		for row := 0; row < batch.Rows; row++ {
 			keys[row], masks[row], err = s.encodedKey(batch, true, row)
 			if err != nil {
 				scratch.Release()
 				_ = decoded.Close()
-				s.deleteRefs(context.Background(), created)
-				return nil, err
+				s.deleteRefs(context.Background(), created.Values)
+				return result, err
 			}
 		}
 		pairs := make([]join.Pair, 0, s.outputRows)
@@ -796,7 +801,9 @@ func (s *spillableJoinStream) probePartition(ctx context.Context, build *loadedJ
 			if err != nil {
 				return err
 			}
-			created = append(created, out)
+			if err := created.Append(ctx, s.metadata, out); err != nil {
+				return err
+			}
 			pairs = pairs[:0]
 			return nil
 		}
@@ -817,8 +824,8 @@ func (s *spillableJoinStream) probePartition(ctx context.Context, build *loadedJ
 		scratch.Release()
 		_ = decoded.Close()
 		if err != nil {
-			s.deleteRefs(context.Background(), created)
-			return nil, err
+			s.deleteRefs(context.Background(), created.Values)
+			return result, err
 		}
 	}
 	if s.owner.typ == join.Right || s.owner.typ == join.Full {
@@ -831,57 +838,48 @@ func (s *spillableJoinStream) probePartition(ctx context.Context, build *loadedJ
 			if len(pairs) == s.outputRows {
 				out, err := s.flushPairs(ctx, build, nil, pairs, partition)
 				if err != nil {
-					s.deleteRefs(context.Background(), created)
-					return nil, err
+					s.deleteRefs(context.Background(), created.Values)
+					return result, err
 				}
-				created = append(created, out)
+				if err := created.Append(ctx, s.metadata, out); err != nil {
+					return result, err
+				}
 				pairs = pairs[:0]
 			}
 		}
 		if len(pairs) != 0 {
 			out, err := s.flushPairs(ctx, build, nil, pairs, partition)
 			if err != nil {
-				s.deleteRefs(context.Background(), created)
-				return nil, err
+				s.deleteRefs(context.Background(), created.Values)
+				return result, err
 			}
-			created = append(created, out)
+			if err := created.Append(ctx, s.metadata, out); err != nil {
+				return result, err
+			}
 		}
 	}
 	return created, nil
 }
 
-func (s *spillableJoinStream) repartitionRefs(ctx context.Context, refs []joinRunRef, schema memory.Schema, fingerprint [32]byte, left bool, depth int) ([][]joinRunRef, error) {
-	children := make([][]joinRunRef, joinRadixPartitions)
-	created := make([]joinRunRef, 0)
-	bitOffset := uint(depth) * joinRadixBits
+func (s *spillableJoinStream) repartitionRefs(ctx context.Context, refs []joinRunRef, schema memory.Schema, fingerprint [32]byte, left bool, depth int, children []spillmeta.Slice[joinRunRef]) error {
 	for _, ref := range refs {
 		decoded, err := s.restoreRun(ctx, schema, fingerprint, ref)
 		if err != nil {
-			s.deleteRefs(context.Background(), created)
-			return nil, err
+			return err
 		}
-		before := make([]int, len(children))
-		for i := range children {
-			before[i] = len(children[i])
-		}
-		err = s.partitionBatch(ctx, schema, fingerprint, decoded.Batch, left, bitOffset, children)
+		err = s.partitionBatch(ctx, schema, fingerprint, decoded.Batch, left, uint(depth)*joinRadixBits, children)
 		_ = decoded.Close()
 		if err != nil {
-			s.deleteRefs(context.Background(), created)
-			return nil, err
-		}
-		for i := range children {
-			created = append(created, children[i][before[i]:]...)
+			return err
 		}
 	}
 	if err := s.deleteRefsStrict(ctx, refs); err != nil {
-		s.deleteRefs(context.Background(), created)
-		return nil, err
+		return err
 	}
 	if depth+1 > s.maxDepth {
 		s.maxDepth = depth + 1
 	}
-	return children, nil
+	return nil
 }
 
 func isJoinPressure(err error) bool { return errors.Is(err, memory.ErrBudgetExceeded) }
@@ -923,7 +921,7 @@ func (s *spillableJoinStream) skewBuildKey(ctx context.Context, refs []joinRunRe
 	return key, found, nil
 }
 
-func (s *spillableJoinStream) appendLeftOnly(ctx context.Context, left *memory.Batch, rows []int, partition int, created *[]joinRunRef) error {
+func (s *spillableJoinStream) appendLeftOnly(ctx context.Context, left *memory.Batch, rows []int, partition int, created *spillmeta.Slice[joinRunRef]) error {
 	empty := &loadedJoinBuild{}
 	pairs := make([]join.Pair, 0, s.outputRows)
 	for _, row := range rows {
@@ -933,7 +931,9 @@ func (s *spillableJoinStream) appendLeftOnly(ctx context.Context, left *memory.B
 			if err != nil {
 				return err
 			}
-			*created = append(*created, ref)
+			if err := created.Append(ctx, s.metadata, ref); err != nil {
+				return err
+			}
 			pairs = pairs[:0]
 		}
 	}
@@ -942,18 +942,20 @@ func (s *spillableJoinStream) appendLeftOnly(ctx context.Context, left *memory.B
 		if err != nil {
 			return err
 		}
-		*created = append(*created, ref)
+		if err := created.Append(ctx, s.metadata, ref); err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
-func (s *spillableJoinStream) appendSkewMatches(ctx context.Context, left *memory.Batch, leftRows []int, right *memory.Batch, key hashagg.Key128, partition int, created *[]joinRunRef) (int, error) {
+func (s *spillableJoinStream) appendSkewMatches(ctx context.Context, left *memory.Batch, leftRows []int, right *memory.Batch, key hashagg.Key128, partition int, created *spillmeta.Slice[joinRunRef]) (int, error) {
 	locationReservation, err := s.state.Reserve(ctx, int64(right.Rows)*16)
 	if err != nil {
 		return 0, err
 	}
 	defer locationReservation.Release()
-	build := &loadedJoinBuild{batches: []*memory.Batch{right}}
+	build := &loadedJoinBuild{batches: []*memory.Batch{right}, locations: make([]rowLocation, 0, right.Rows)}
 	for row := 0; row < right.Rows; row++ {
 		candidate, mask, err := s.encodedKey(right, false, row)
 		if err != nil {
@@ -977,7 +979,9 @@ func (s *spillableJoinStream) appendSkewMatches(ctx context.Context, left *memor
 				if err != nil {
 					return outputs, err
 				}
-				*created = append(*created, ref)
+				if err := created.Append(ctx, s.metadata, ref); err != nil {
+					return outputs, err
+				}
 				pairs = pairs[:0]
 			}
 		}
@@ -987,18 +991,20 @@ func (s *spillableJoinStream) appendSkewMatches(ctx context.Context, left *memor
 		if err != nil {
 			return outputs, err
 		}
-		*created = append(*created, ref)
+		if err := created.Append(ctx, s.metadata, ref); err != nil {
+			return outputs, err
+		}
 	}
 	return outputs, nil
 }
 
-func (s *spillableJoinStream) appendSkewUnmatchedRight(ctx context.Context, right *memory.Batch, key hashagg.Key128, validKeyMatched bool, partition int, created *[]joinRunRef) error {
+func (s *spillableJoinStream) appendSkewUnmatchedRight(ctx context.Context, right *memory.Batch, key hashagg.Key128, validKeyMatched bool, partition int, created *spillmeta.Slice[joinRunRef]) error {
 	locationReservation, err := s.state.Reserve(ctx, int64(right.Rows)*16)
 	if err != nil {
 		return err
 	}
 	defer locationReservation.Release()
-	build := &loadedJoinBuild{batches: []*memory.Batch{right}}
+	build := &loadedJoinBuild{batches: []*memory.Batch{right}, locations: make([]rowLocation, 0, right.Rows)}
 	for row := 0; row < right.Rows; row++ {
 		candidate, mask, err := s.encodedKey(right, false, row)
 		if err != nil {
@@ -1016,7 +1022,9 @@ func (s *spillableJoinStream) appendSkewUnmatchedRight(ctx context.Context, righ
 			if err != nil {
 				return err
 			}
-			*created = append(*created, ref)
+			if err := created.Append(ctx, s.metadata, ref); err != nil {
+				return err
+			}
 			pairs = pairs[:0]
 		}
 	}
@@ -1025,7 +1033,9 @@ func (s *spillableJoinStream) appendSkewUnmatchedRight(ctx context.Context, righ
 		if err != nil {
 			return err
 		}
-		*created = append(*created, ref)
+		if err := created.Append(ctx, s.metadata, ref); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -1035,28 +1045,29 @@ func (s *spillableJoinStream) processSingleKeySkew(ctx context.Context, leftRefs
 	if err != nil {
 		return err
 	}
-	created := make([]joinRunRef, 0)
+	var created spillmeta.Slice[joinRunRef]
+	defer created.Release()
 	validKeyMatched := false
 	for _, leftRef := range leftRefs {
 		left, err := s.restoreRun(ctx, s.leftSchema, s.leftFP, leftRef)
 		if err != nil {
-			s.deleteRefs(context.Background(), created)
+			s.deleteRefs(context.Background(), created.Values)
 			return err
 		}
 		classification, reserveErr := s.state.Reserve(ctx, int64(left.Batch.Rows)*16)
 		if reserveErr != nil {
 			_ = left.Close()
-			s.deleteRefs(context.Background(), created)
+			s.deleteRefs(context.Background(), created.Values)
 			return reserveErr
 		}
 		matching := make([]int, 0, left.Batch.Rows)
-		missing := make([]int, 0)
+		missing := make([]int, 0, left.Batch.Rows)
 		for row := 0; row < left.Batch.Rows; row++ {
 			candidate, mask, err := s.encodedKey(left.Batch, true, row)
 			if err != nil {
 				classification.Release()
 				_ = left.Close()
-				s.deleteRefs(context.Background(), created)
+				s.deleteRefs(context.Background(), created.Values)
 				return err
 			}
 			if hasBuildKey && equalJoinKey(candidate, mask, key, 3) {
@@ -1094,7 +1105,7 @@ func (s *spillableJoinStream) processSingleKeySkew(ctx context.Context, leftRefs
 		classification.Release()
 		_ = left.Close()
 		if err != nil {
-			s.deleteRefs(context.Background(), created)
+			s.deleteRefs(context.Background(), created.Values)
 			return err
 		}
 	}
@@ -1102,39 +1113,45 @@ func (s *spillableJoinStream) processSingleKeySkew(ctx context.Context, leftRefs
 		for _, rightRef := range rightRefs {
 			right, err := s.restoreRun(ctx, s.rightSchema, s.rightFP, rightRef)
 			if err != nil {
-				s.deleteRefs(context.Background(), created)
+				s.deleteRefs(context.Background(), created.Values)
 				return err
 			}
 			err = s.appendSkewUnmatchedRight(ctx, right.Batch, key, validKeyMatched, partition, &created)
 			_ = right.Close()
 			if err != nil {
-				s.deleteRefs(context.Background(), created)
+				s.deleteRefs(context.Background(), created.Values)
 				return err
 			}
 		}
 	}
-	if err := s.deleteRefsStrict(ctx, append(append([]joinRunRef(nil), leftRefs...), rightRefs...)); err != nil {
-		s.deleteRefs(context.Background(), created)
+	if err := errors.Join(s.deleteRefsStrict(ctx, leftRefs), s.deleteRefsStrict(ctx, rightRefs)); err != nil {
+		s.deleteRefs(context.Background(), created.Values)
 		return err
 	}
-	s.outputRuns = append(s.outputRuns, created...)
+	if err := s.outputRuns.Append(ctx, s.metadata, created.Values...); err != nil {
+		return err
+	}
 	return nil
 }
 
 func (s *spillableJoinStream) processRefs(ctx context.Context, leftRefs, rightRefs []joinRunRef, depth, partition int) error {
 	build, err := s.loadBuild(ctx, rightRefs)
 	if err == nil {
-		var output []joinRunRef
+		var output spillmeta.Slice[joinRunRef]
 		output, err = s.probePartition(ctx, build, leftRefs, partition)
 		build.close()
+		defer output.Release()
 		if err == nil {
-			s.outputRuns = append(s.outputRuns, output...)
-			if deleteErr := s.deleteRefsStrict(ctx, append(append([]joinRunRef(nil), leftRefs...), rightRefs...)); deleteErr != nil {
+			if appendErr := s.outputRuns.Append(ctx, s.metadata, output.Values...); appendErr != nil {
+				return appendErr
+			}
+			if deleteErr := errors.Join(s.deleteRefsStrict(ctx, leftRefs), s.deleteRefsStrict(ctx, rightRefs)); deleteErr != nil {
 				return deleteErr
 			}
 			return nil
 		}
-		s.deleteRefs(context.Background(), output)
+		s.deleteRefs(context.Background(), output.Values)
+		return err // Repartitioning cannot relieve output or metadata admission failures.
 	}
 	if !isJoinPressure(err) {
 		return err
@@ -1147,33 +1164,42 @@ func (s *spillableJoinStream) processRefs(ctx context.Context, leftRefs, rightRe
 		}
 		return fmt.Errorf("%w at partition=%d depth=%d: %v", ErrJoinSkewExhausted, partition, depth, err)
 	}
-	leftChildren, leftErr := s.repartitionRefs(ctx, leftRefs, s.leftSchema, s.leftFP, true, depth)
-	if leftErr != nil {
-		return errors.Join(err, leftErr)
+	reservation, reserveErr := s.metadata.Reserve(ctx, 128+int64(4*joinRadixPartitions)*int64(unsafe.Sizeof(spillmeta.Slice[joinRunRef]{})))
+	if reserveErr != nil {
+		return reserveErr
 	}
-	rightChildren, rightErr := s.repartitionRefs(ctx, rightRefs, s.rightSchema, s.rightFP, false, depth)
-	if rightErr != nil {
-		for _, refs := range leftChildren {
-			s.deleteRefs(context.Background(), refs)
+	var leftChildren, rightChildren [joinRadixPartitions]spillmeta.Slice[joinRunRef]
+	defer func() {
+		for i := range leftChildren {
+			leftChildren[i].Release()
+			rightChildren[i].Release()
 		}
-		return errors.Join(err, rightErr)
+		reservation.Release()
+	}()
+	if childErr := s.repartitionRefs(ctx, leftRefs, s.leftSchema, s.leftFP, true, depth, leftChildren[:]); childErr != nil {
+		return errors.Join(err, childErr)
+	}
+	if childErr := s.repartitionRefs(ctx, rightRefs, s.rightSchema, s.rightFP, false, depth, rightChildren[:]); childErr != nil {
+		return errors.Join(err, childErr)
 	}
 	for child := 0; child < joinRadixPartitions; child++ {
-		if len(leftChildren[child]) == 0 && len(rightChildren[child]) == 0 {
+		if len(leftChildren[child].Values) == 0 && len(rightChildren[child].Values) == 0 {
 			continue
 		}
-		if err := s.processRefs(ctx, leftChildren[child], rightChildren[child], depth+1, child); err != nil {
+		if err := s.processRefs(ctx, leftChildren[child].Values, rightChildren[child].Values, depth+1, child); err != nil {
 			return err
 		}
+		leftChildren[child].Release()
+		rightChildren[child].Release()
 	}
 	return nil
 }
 
 func (s *spillableJoinStream) prepare(ctx context.Context) error {
-	if err := s.partitionSource(ctx, s.owner.right, s.rightSchema, s.rightFP, false, s.rightRuns); err != nil {
+	if err := s.partitionSource(ctx, s.owner.right, s.rightSchema, s.rightFP, false, s.rightRuns[:]); err != nil {
 		return err
 	}
-	if err := s.partitionSource(ctx, s.owner.left, s.leftSchema, s.leftFP, true, s.leftRuns); err != nil {
+	if err := s.partitionSource(ctx, s.owner.left, s.leftSchema, s.leftFP, true, s.leftRuns[:]); err != nil {
 		return err
 	}
 	s.maxDepth = 1
@@ -1227,23 +1253,30 @@ func (s *spillableJoinStream) Next(ctx context.Context, dst *memory.Batch) (bool
 			return false, s.abort(err)
 		}
 	}
-	for len(s.outputRuns) == 0 && s.nextPart < joinRadixPartitions {
+	for len(s.outputRuns.Values) == 0 && s.nextPart < joinRadixPartitions {
 		partition := s.nextPart
 		s.nextPart++
 		leftRefs, rightRefs := s.leftRuns[partition], s.rightRuns[partition]
-		s.leftRuns[partition], s.rightRuns[partition] = nil, nil
-		if err := s.processRefs(ctx, leftRefs, rightRefs, 1, partition); err != nil {
+		s.leftRuns[partition], s.rightRuns[partition] = spillmeta.Slice[joinRunRef]{}, spillmeta.Slice[joinRunRef]{}
+		err := s.processRefs(ctx, leftRefs.Values, rightRefs.Values, 1, partition)
+		leftRefs.Release()
+		rightRefs.Release()
+		if err != nil {
 			return false, s.abort(err)
 		}
 	}
-	if len(s.outputRuns) == 0 {
+	if len(s.outputRuns.Values) == 0 {
 		s.exhausted = true
 		s.recordStats()
 		dst.ClearColumns()
-		return false, nil
+		return false, s.cleanup()
 	}
-	ref := s.outputRuns[0]
-	s.outputRuns = s.outputRuns[1:]
+	ref := s.outputRuns.Values[0]
+	s.outputRuns.Values[0] = joinRunRef{}
+	s.outputRuns.Values = s.outputRuns.Values[1:]
+	if len(s.outputRuns.Values) == 0 {
+		s.outputRuns.Release()
+	}
 	decoded, err := s.restoreRun(ctx, s.owner.schema, s.outputFP, ref)
 	if err != nil {
 		return false, s.abort(err)
@@ -1267,35 +1300,27 @@ func (s *spillableJoinStream) deleteRef(ctx context.Context, ref joinRunRef) err
 	if ref.handle == nil {
 		return nil
 	}
-	if _, owned := s.owned[ref.handle.ID()]; !owned {
-		return nil
-	}
-	err := s.store.Delete(ctx, ref.handle)
-	if err == nil {
-		if reservation := s.refReservations[ref.handle.ID()]; reservation != nil {
-			reservation.Release()
-			delete(s.refReservations, ref.handle.ID())
-		}
-		delete(s.owned, ref.handle.ID())
-	}
-	return err
+	return s.store.Delete(ctx, ref.handle)
 }
 
 func (s *spillableJoinStream) deleteRefsStrict(ctx context.Context, refs []joinRunRef) error {
 	var out error
 	for _, ref := range refs {
-		out = errors.Join(out, s.deleteRef(ctx, ref))
+		if err := s.deleteRef(ctx, ref); err != nil && out == nil {
+			out = err
+		}
 	}
 	return out
 }
 
 func (s *spillableJoinStream) cleanup() error {
 	s.closeDecoded()
-	refs := make([]joinRunRef, 0, len(s.owned))
-	for _, ref := range s.owned {
-		refs = append(refs, ref)
+	for i := range s.leftRuns {
+		s.leftRuns[i].Release()
+		s.rightRuns[i].Release()
 	}
-	s.leftRuns, s.rightRuns, s.outputRuns = nil, nil, nil
+	s.outputRuns.Release()
+	s.leftCanonical, s.rightCanonical = nil, nil
 	if s.dictionaryReservation != nil {
 		s.dictionaryReservation.Release()
 		s.dictionaryReservation = nil
@@ -1304,14 +1329,11 @@ func (s *spillableJoinStream) cleanup() error {
 		s.pairReservation.Release()
 		s.pairReservation = nil
 	}
-	err := s.deleteRefsStrict(context.Background(), refs)
-	// QuerySpillStore.Close remains responsible for files whose deletion
-	// failed, but Go metadata is no longer live after stream cleanup.
-	for id, reservation := range s.refReservations {
-		reservation.Release()
-		delete(s.refReservations, id)
+	err := s.store.Close()
+	if s.baseReservation != nil {
+		s.baseReservation.Release()
+		s.baseReservation = nil
 	}
-	clear(s.owned)
 	return err
 }
 

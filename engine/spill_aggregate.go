@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"gocolumn/aggregate"
 	"gocolumn/hashagg"
+	"gocolumn/internal/spillmeta"
 	"gocolumn/memory"
 	"gocolumn/pipeline"
 	"gocolumn/source"
@@ -14,6 +15,7 @@ import (
 	"math/bits"
 	"sync"
 	"time"
+	"unsafe"
 )
 
 const (
@@ -851,12 +853,18 @@ func (p *PreparedQuery) newSpillableAggregateStream(ctx context.Context, schema 
 	if maxState < 1 {
 		maxState = 1
 	}
+	metadata := spillmeta.GrowthManager(query.Operator("HashAggregateMetadata", memory.MemoryRetainedState))
+	baseLease, err := metadata.Reserve(ctx, 128+2*(int64(unsafe.Sizeof(spillableAggregateStream{}))+int64(unsafe.Sizeof(spillmeta.Store{}))+int64(unsafe.Sizeof(spillmeta.Slice[aggregateRunRef]{}))*(1<<aggregateRadixBits)))
+	if err != nil {
+		return nil, fmt.Errorf("reserve aggregate metadata: %w", err)
+	}
 	s := &spillableAggregateStream{
+		metadata: metadata, metadataLease: baseLease,
 		query:       p,
 		readOpts:    readOpts,
 		schema:      schema,
 		budget:      query,
-		store:       store,
+		store:       spillmeta.NewStore(store, metadata),
 		fingerprint: memory.SchemaFingerprint(schema),
 		state:       query.Operator("HashAggregate", memory.MemoryRetainedState),
 		encoder:     query.Operator("HashAggregateEncode", memory.MemorySpillBuffer),
@@ -864,11 +872,13 @@ func (p *PreparedQuery) newSpillableAggregateStream(ctx context.Context, schema 
 		output:      query.Operator("HashAggregateOutput", memory.MemoryWorkspace),
 		maxState:    maxState,
 		outputRows:  outputRows,
-		partitions:  make([][]aggregateRunRef, 1<<aggregateRadixBits),
+		partitions:  make([]spillmeta.Slice[aggregateRunRef], 1<<aggregateRadixBits),
 		started:     time.Now(),
 	}
 	unregister, err := s.state.RegisterSpiller(s)
 	if err != nil {
+		baseLease.Release()
+		_ = s.store.Close()
 		return nil, err
 	}
 	s.unregister = unregister
@@ -891,13 +901,16 @@ type spillableAggregateStream struct {
 	maxState    int64
 	outputRows  int
 
-	mu          sync.Mutex
-	table       *aggregateTableOwner
-	partitions  [][]aggregateRunRef
-	outputRuns  []aggregateRunRef
-	unregister  func()
-	outputDst   *memory.Batch
-	outputLease memory.Reservation
+	mu            sync.Mutex
+	table         *aggregateTableOwner
+	partitions    []spillmeta.Slice[aggregateRunRef]
+	metadata      memory.Manager
+	metadataLease memory.Reservation
+	outputRefs    spillmeta.Slice[aggregateRunRef]
+	outputRuns    []aggregateRunRef
+	unregister    func()
+	outputDst     *memory.Batch
+	outputLease   memory.Reservation
 
 	selectedRows       int
 	checksum           int64
@@ -984,7 +997,7 @@ func (s *spillableAggregateStream) partitionHashes(ctx context.Context, table *a
 	return hashes, lease, nil
 }
 
-func (s *spillableAggregateStream) spillTableLocked(ctx context.Context, bitOffset uint, destinations [][]aggregateRunRef) (int64, error) {
+func (s *spillableAggregateStream) spillTableLocked(ctx context.Context, bitOffset uint, destinations []spillmeta.Slice[aggregateRunRef]) (int64, error) {
 	if s.table == nil || s.table.table == nil || s.table.table.len() == 0 {
 		return 0, nil
 	}
@@ -996,7 +1009,8 @@ func (s *spillableAggregateStream) spillTableLocked(ctx context.Context, bitOffs
 	if hashLease != nil {
 		defer hashLease.Release()
 	}
-	created := make([]aggregateRunRef, 0, len(destinations))
+	var created spillmeta.Slice[aggregateRunRef]
+	defer created.Release()
 	for partition := range destinations {
 		part := uint64(partition)
 		mask := uint64(len(destinations) - 1)
@@ -1004,7 +1018,7 @@ func (s *spillableAggregateStream) spillTableLocked(ctx context.Context, bitOffs
 			return hashes[index]>>bitOffset&mask == part
 		}, s.encoder)
 		if err != nil {
-			s.deleteRunRefs(ctx, created)
+			s.deleteRunRefs(context.Background(), created.Values)
 			return 0, err
 		}
 		if encoded.groups == 0 {
@@ -1019,17 +1033,33 @@ func (s *spillableAggregateStream) spillTableLocked(ctx context.Context, bitOffs
 		groups := encoded.groups
 		encoded.close()
 		if err != nil {
-			s.deleteRunRefs(ctx, created)
+			s.deleteRunRefs(context.Background(), created.Values)
 			return 0, err
 		}
-		created = append(created, aggregateRunRef{handle: handle, groups: groups, partition: partition})
+		if err := created.Append(ctx, s.metadata, aggregateRunRef{handle: handle, groups: groups, partition: partition}); err != nil {
+			_ = s.store.Delete(context.Background(), handle)
+			s.deleteRunRefs(context.Background(), created.Values)
+			return 0, err
+		}
 		s.spillRuns++
 		s.spillBytes += bytes
 	}
-	for _, run := range created {
-		destinations[run.partition] = append(destinations[run.partition], run)
+	for index, run := range created.Values {
+		if err := destinations[run.partition].Append(ctx, s.metadata, run); err != nil {
+			// A soft-spill callback may fail without ending query execution. Keep
+			// the original table authoritative until every run is published;
+			// otherwise retrying would merge already-published groups twice.
+			for _, published := range created.Values[:index] {
+				refs := &destinations[published.partition]
+				last := len(refs.Values) - 1
+				refs.Values[last] = aggregateRunRef{}
+				refs.Values = refs.Values[:last]
+			}
+			s.deleteRunRefs(context.Background(), created.Values)
+			return 0, err
+		}
 		partitionGroups := 0
-		for _, existing := range destinations[run.partition] {
+		for _, existing := range destinations[run.partition].Values {
 			partitionGroups += existing.groups
 		}
 		if partitionGroups > s.maxPartitionGroups {

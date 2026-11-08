@@ -42,7 +42,8 @@ func externalSortTestSource(t testing.TB, rows, batchRows int) *inmemory.Source 
 
 func openExternalSortTestStream(t testing.TB, rows int, spillBytes int64) (*externalSortStream, *memory.QueryBudget) {
 	t.Helper()
-	const hard = int64(64 << 10)
+	// Include spill paths, handles, and retained run-reference capacity.
+	const hard = int64(512 << 10)
 	engineBudget := memory.NewEngineBudget(hard)
 	query, err := engineBudget.BeginQuery(memory.BudgetOptions{
 		SoftLimitBytes: 48 << 10, HardLimitBytes: hard,
@@ -63,7 +64,10 @@ func openExternalSortTestStream(t testing.TB, rows int, spillBytes int64) (*exte
 	if err != nil {
 		t.Fatal(err)
 	}
-	return stream.(*externalSortStream), query
+	external := stream.(*externalSortStream)
+	// Keep multiple hierarchy levels independent of the metadata allowance.
+	external.chunkRows, external.runBytes = 128, 4096
+	return external, query
 }
 
 func TestExternalSortHierarchicalMergeHasBoundedFanIn(t *testing.T) {

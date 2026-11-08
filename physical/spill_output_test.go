@@ -139,7 +139,8 @@ func checkSpillNarrowRow(t *testing.T, b *memory.Batch, row, id int, suffix stri
 
 func spillOutputQuery(t *testing.T) (context.Context, *memory.EngineBudget, *memory.QueryBudget) {
 	t.Helper()
-	const hard = 64 << 10
+	// Include spill paths, handles, and retained run-reference capacity.
+	const hard = 512 << 10
 	engineBudget := memory.NewEngineBudget(hard)
 	query, err := engineBudget.BeginQuery(memory.BudgetOptions{
 		SoftLimitBytes: 48 << 10, HardLimitBytes: hard,
