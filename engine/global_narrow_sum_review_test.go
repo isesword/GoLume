@@ -1,9 +1,12 @@
 package engine
 
 import (
+	"context"
 	"fmt"
+	"gocolumn/aggregate"
 	"gocolumn/kernel"
 	"gocolumn/memory"
+	"math/bits"
 	"testing"
 )
 
@@ -21,7 +24,7 @@ func TestGlobalNarrowSumReviewPriorStateAndBounds(t *testing.T) {
 					c[i] = uint8(i*83 + 255)
 					d[i] = uint16(i*19001 + 65535)
 				}
-				bound := globalAggregateLaneBinding{typ: typ, int8s: &memory.Int8Vector{Values: a}, int16s: &memory.Int16Vector{Values: b}, uint8s: &memory.Uint8Vector{Values: c}, uint16s: &memory.Uint16Vector{Values: d}}
+				bound := globalAggregateLaneBinding{typ: typ, int8s: &memory.Int8Vector{Values: a[1:]}, int16s: &memory.Int16Vector{Values: b[1:]}, uint8s: &memory.Uint8Vector{Values: c[1:]}, uint16s: &memory.Uint16Vector{Values: d[1:]}}
 				for n := 0; n <= 64; n++ {
 					for _, mask := range []uint64{0, 1, 1 << 63, 0xaaaaaaaaaaaaaaaa, 0x5555555555555555, ^uint64(0)} {
 						for _, prior := range []uint64{0, 1 << 32, 1<<63 - 1, 1 << 63, ^uint64(0)} {
@@ -44,7 +47,19 @@ func TestGlobalNarrowSumReviewPriorStateAndBounds(t *testing.T) {
 								}
 								want += uint64(value)
 							}
-							if got := bound.sumWord(set, 1, 1+n, mask, prior); got != want {
+							owner, err := aggregate.NewNumericVector(1, typ, aggregate.Layout{Sum: true})
+							if err != nil {
+								t.Fatal(err)
+							}
+							var state aggregate.NumericSumCountState
+							if !owner.BorrowSumCountState(0, &state) {
+								t.Fatal("cannot borrow state")
+							}
+							state.Update(prior, 0, 1)
+							if err := bound.consumeBatch(context.Background(), set, memory.Bitmap{mask}, n, uint64(bits.OnesCount64(selected)), state); err != nil {
+								t.Fatal(err)
+							}
+							if got := state.SumBits(); got != want {
 								t.Fatalf("n=%d mask=%x prior=%x got=%x want=%x", n, mask, prior, got, want)
 							}
 						}

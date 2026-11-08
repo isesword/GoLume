@@ -1,10 +1,12 @@
 package engine
 
 import (
+	"context"
 	"gocolumn/aggregate"
 	"gocolumn/kernel"
 	"gocolumn/memory"
 	"math"
+	"math/bits"
 	"math/rand"
 	"testing"
 )
@@ -43,7 +45,19 @@ func TestGlobalReductionReviewFloatBits(t *testing.T) {
 					}
 				}
 				b := globalAggregateLaneBinding{typ: typ, float32s: &memory.Float32Vector{Values: f32}, float64s: &memory.Float64Vector{Values: f64}}
-				running = b.sumWord(kernel.New(kernel.ModeScalar), 0, n, mask, running)
+				owner, err := aggregate.NewNumericVector(1, typ, aggregate.Layout{Sum: true})
+				if err != nil {
+					t.Fatal(err)
+				}
+				var state aggregate.NumericSumCountState
+				if !owner.BorrowSumCountState(0, &state) {
+					t.Fatal("cannot borrow state")
+				}
+				state.Update(running, 0, 1)
+				if err := b.consumeBatch(context.Background(), kernel.New(kernel.ModeScalar), memory.Bitmap{mask}, n, uint64(bits.OnesCount64(mask)), state); err != nil {
+					t.Fatal(err)
+				}
+				running = state.SumBits()
 				if want := ref.Result(0).SumBits; running != want {
 					t.Fatalf("type=%s trial=%d word=%d mask=%x got=%x want=%x", typ, trial, word, mask, running, want)
 				}

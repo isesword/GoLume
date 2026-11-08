@@ -140,80 +140,141 @@ func (s *sortedAggregateStream) consumeGlobalAggregateInput(ctx context.Context)
 func (s *sortedAggregateStream) consumeGlobalAggregateBatch(ctx context.Context) error {
 	rows := s.inputBatch.Rows
 	kernels := s.query.e.kernels
+	var selectedRows uint64
+	// Count selected rows and maintain the legacy diagnostic checksum once,
+	// independently of the number and types of aggregate lanes. Check empty
+	// words too so sparse inputs remain promptly cancellable. On failure these
+	// diagnostics describe scanned input; no partially aggregated row is emitted.
 	for base := 0; base < rows; base += 64 {
-		// Check even empty selection words so sparse inputs cannot delay
-		// cancellation until a selected row or the next source batch.
 		if err := ctx.Err(); err != nil {
 			return err
 		}
 		end := min(base+64, rows)
 		word := s.selection[base>>6] & memory.TailMask(end-base)
-		if word == 0 {
-			continue
-		}
 		selected := uint64(bits.OnesCount64(word))
-		for lane := range s.globalBindings {
-			bound := &s.globalBindings[lane]
-			validWord := word
-			if bound.rowsOnly {
-				validWord = 0
-			} else if bound.validity != nil {
-				validWord &= bound.validity[base>>6]
+		selectedRows += selected
+		s.selectedRows += int(selected)
+		if word != 0 {
+			if values := s.binding.values; values != nil {
+				validWord := word
+				if values.Validity != nil {
+					validWord &= values.Validity[base>>6]
+				}
+				s.checksum += kernels.SumInt64Masked(values.Values[base:end], validWord)
 			}
+		}
+	}
+	if selectedRows != 0 {
+		for lane := range s.globalBindings {
+			if err := ctx.Err(); err != nil {
+				return err
+			}
+			// This view lives only for this lane's batch loop. The bundle cannot
+			// grow or close here; no borrowed state survives a source boundary.
 			var state aggregate.NumericSumCountState
 			if !s.numeric.BorrowSumCountState(0, lane, &state) {
 				return fmt.Errorf("global aggregate lane %d is not SUM/COUNT state", lane)
 			}
-			sum := state.SumBits()
-			if validWord != 0 {
-				sum = bound.sumWord(kernels, base, end, validWord, sum)
+			if err := s.globalBindings[lane].consumeBatch(ctx, kernels, s.selection, rows, selectedRows, state); err != nil {
+				return err
 			}
-			state.Update(sum, selected, uint64(bits.OnesCount64(validWord)))
-		}
-		s.selectedRows += int(selected)
-		// Preserve the legacy Int64 diagnostic checksum independently of which
-		// SUM/COUNT lanes the query requests. Its integer sum is associative.
-		if values := s.binding.values; values != nil {
-			validWord := word
-			if values.Validity != nil {
-				validWord &= values.Validity[base>>6]
-			}
-			s.checksum += kernels.SumInt64Masked(values.Values[base:end], validWord)
 		}
 	}
 	s.nextRow = rows
 	return nil
 }
 
-// sumWord dispatches once per column and selection word. Integer reductions
-// may reassociate under native SIMD because their wrapping arithmetic is exact.
-// Floating reductions continue from the previous state, never a word subtotal.
-func (b *globalAggregateLaneBinding) sumWord(kernels kernel.Set, base, end int, selected, sum uint64) uint64 {
+// consumeBatch dispatches once per column and batch. Integer reductions may
+// reassociate under native SIMD because their wrapping arithmetic is exact.
+// Floats continue from the complete running state in encounter order, including
+// Float32 step rounding. A failed lane is discarded by stream error cleanup.
+func (b *globalAggregateLaneBinding) consumeBatch(ctx context.Context, kernels kernel.Set, selection memory.Bitmap, rows int, selectedRows uint64, state aggregate.NumericSumCountState) error {
 	switch b.typ {
 	case memory.TypeInt8:
-		return sum + uint64(kernels.SumInt8Masked(b.int8s.Values[base:end], selected))
+		return consumeGlobalIntegerBatch(ctx, b.int8s.Values[:rows], b.validity, selection, selectedRows, state, kernels.SumInt8Masked)
 	case memory.TypeInt16:
-		return sum + uint64(kernels.SumInt16Masked(b.int16s.Values[base:end], selected))
+		return consumeGlobalIntegerBatch(ctx, b.int16s.Values[:rows], b.validity, selection, selectedRows, state, kernels.SumInt16Masked)
 	case memory.TypeInt32:
-		return uint64(int64(int32(sum) + kernels.SumInt32Masked(b.int32s.Values[base:end], selected)))
+		return consumeGlobalIntegerBatch(ctx, b.int32s.Values[:rows], b.validity, selection, selectedRows, state, kernels.SumInt32Masked)
 	case memory.TypeInt64:
-		return sum + uint64(kernels.SumInt64Masked(b.int64s.Values[base:end], selected))
+		return consumeGlobalIntegerBatch(ctx, b.int64s.Values[:rows], b.validity, selection, selectedRows, state, kernels.SumInt64Masked)
 	case memory.TypeUint8:
-		return sum + uint64(kernels.SumUint8Masked(b.uint8s.Values[base:end], selected))
+		return consumeGlobalIntegerBatch(ctx, b.uint8s.Values[:rows], b.validity, selection, selectedRows, state, kernels.SumUint8Masked)
 	case memory.TypeUint16:
-		return sum + uint64(kernels.SumUint16Masked(b.uint16s.Values[base:end], selected))
+		return consumeGlobalIntegerBatch(ctx, b.uint16s.Values[:rows], b.validity, selection, selectedRows, state, kernels.SumUint16Masked)
 	case memory.TypeUint32:
-		return uint64(uint32(sum) + kernels.SumUint32Masked(b.uint32s.Values[base:end], selected))
+		return consumeGlobalIntegerBatch(ctx, b.uint32s.Values[:rows], b.validity, selection, selectedRows, state, kernels.SumUint32Masked)
 	case memory.TypeUint64:
-		return sum + kernels.SumUint64Masked(b.uint64s.Values[base:end], selected)
+		return consumeGlobalIntegerBatch(ctx, b.uint64s.Values[:rows], b.validity, selection, selectedRows, state, kernels.SumUint64Masked)
 	case memory.TypeFloat32:
-		return uint64(math.Float32bits(sumSelectedFloat(b.float32s.Values[base:end], selected, math.Float32frombits(uint32(sum)))))
+		return consumeGlobalFloatBatch(ctx, b.float32s.Values[:rows], b.validity, selection, selectedRows, state, math.Float32frombits(uint32(state.SumBits())))
 	case memory.TypeFloat64:
-		return math.Float64bits(sumSelectedFloat(b.float64s.Values[base:end], selected, math.Float64frombits(sum)))
+		return consumeGlobalFloatBatch(ctx, b.float64s.Values[:rows], b.validity, selection, selectedRows, state, math.Float64frombits(state.SumBits()))
 	default:
-		// Count-only lanes bind validity without accessing a numeric payload.
-		return sum
+		validValues := selectedRows
+		if b.rowsOnly {
+			validValues = 0
+		} else if b.validity != nil {
+			validValues = 0
+			for base := 0; base < rows; base += 64 {
+				if err := ctx.Err(); err != nil {
+					return err
+				}
+				word := selection[base>>6] & b.validity[base>>6] & memory.TailMask(min(64, rows-base))
+				validValues += uint64(bits.OnesCount64(word))
+			}
+		}
+		state.Update(0, selectedRows, validValues)
+		return nil
 	}
+}
+
+func consumeGlobalIntegerBatch[T int8 | int16 | int32 | int64 | uint8 | uint16 | uint32 | uint64, R int32 | int64 | uint32 | uint64](ctx context.Context, values []T, validity, selection memory.Bitmap, selectedRows uint64, state aggregate.NumericSumCountState, reduce func([]T, uint64) R) error {
+	sum := R(state.SumBits())
+	var validValues uint64
+	for base := 0; base < len(values); base += 64 {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		end := min(base+64, len(values))
+		word := selection[base>>6] & memory.TailMask(end-base)
+		if validity != nil {
+			word &= validity[base>>6]
+		}
+		if word != 0 {
+			validValues += uint64(bits.OnesCount64(word))
+			sum += reduce(values[base:end], word)
+		}
+	}
+	state.Update(uint64(sum), selectedRows, validValues)
+	return nil
+}
+
+func consumeGlobalFloatBatch[T float32 | float64](ctx context.Context, values []T, validity, selection memory.Bitmap, selectedRows uint64, state aggregate.NumericSumCountState, sum T) error {
+	var validValues uint64
+	for base := 0; base < len(values); base += 64 {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		end := min(base+64, len(values))
+		word := selection[base>>6] & memory.TailMask(end-base)
+		if validity != nil {
+			word &= validity[base>>6]
+		}
+		if word != 0 {
+			validValues += uint64(bits.OnesCount64(word))
+			sum = sumSelectedFloat(values[base:end], word, sum)
+		}
+	}
+	var sumBits uint64
+	switch v := any(sum).(type) {
+	case float32:
+		sumBits = uint64(math.Float32bits(v))
+	case float64:
+		sumBits = math.Float64bits(v)
+	}
+	state.Update(sumBits, selectedRows, validValues)
+	return nil
 }
 
 func sumSelectedFloat[T float32 | float64](values []T, selected uint64, sum T) T {
