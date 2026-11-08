@@ -8,43 +8,28 @@ import (
 	"testing"
 )
 
-func TestArm64AutoAllowlistSelectsMeasuredBackends(t *testing.T) {
+func TestArm64AutoSelectsNativeComparisonBackends(t *testing.T) {
 	set := New(ModeAuto)
 	if simd.Emulated() {
-		for _, id := range KernelIDs() {
-			capability, _ := set.Capability(id)
-			if capability.Backend != "scalar" {
-				t.Fatalf("emulated mode selected %s=%+v", id, capability)
-			}
-		}
 		return
+	} // The shared native-dispatch test checks fallback.
+	for _, typ := range []memory.DataType{memory.TypeInt32, memory.TypeUint32} {
+		for op := CompareGT; op <= CompareEQ; op++ {
+			id, _ := ComparisonID(typ, op)
+			capability, _ := set.Capability(id)
+			if typ == memory.TypeInt32 && op == CompareEQ {
+				if capability.Backend != "scalar" {
+					t.Fatalf("unimplemented %s=%+v", id, capability)
+				}
+				continue
+			}
+			if capability.Backend != "archsimd-arm64-mask" || !capability.HardwareSIMD || capability.VectorBits != 128 {
+				t.Fatalf("comparison %s=%+v", id, capability)
+			}
+		}
 	}
-	for _, id := range KernelIDs() {
-		capability, ok := set.Capability(id)
-		if !ok {
-			t.Fatalf("missing capability for %s", id)
-		}
-		if !approvedArm64AutoID(id) {
-			if capability.Backend != "scalar" {
-				t.Fatalf("unapproved auto backend %s=%+v", id, capability)
-			}
-			continue
-		}
-		switch id {
-		case KernelHash64Batch:
-			if capability.Backend != "arm64-unrolled" || capability.HardwareSIMD || capability.VectorBits != 0 {
-				t.Fatalf("hash capability=%+v", capability)
-			}
-		default:
-			if id.kind == KernelComparison {
-				if capability.Backend != "archsimd-arm64-mask" || !capability.HardwareSIMD || capability.VectorBits != 128 {
-					t.Fatalf("comparison %s=%+v", id, capability)
-				}
-			} else if id.typ == memory.TypeFloat64 {
-				if capability.Backend != "portable-simd" || !capability.HardwareSIMD || capability.VectorBits < 128 {
-					t.Fatalf("float arithmetic %s=%+v", id, capability)
-				}
-			}
-		}
+	capability, _ := set.Capability(KernelHash64Batch)
+	if capability.Backend != "arm64-unrolled" || capability.HardwareSIMD || capability.VectorBits != 0 {
+		t.Fatalf("hash capability=%+v", capability)
 	}
 }

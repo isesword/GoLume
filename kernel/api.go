@@ -9,11 +9,13 @@ import (
 type Mode uint8
 
 const (
-	// ModeAuto enables only operation-level backends approved by performance gates.
+	// ModeAuto prefers available native SIMD, with scalar fallback when a
+	// backend or hardware support is unavailable.
 	ModeAuto Mode = iota
 	// ModeScalar forces every operation to use its scalar backend.
 	ModeScalar
-	// ModeSIMD forces available SIMD candidates for correctness and diagnostics.
+	// ModeSIMD explicitly selects available native SIMD for diagnostics.
+	// It preserves the same hardware guards and scalar fallbacks as ModeAuto.
 	ModeSIMD
 )
 
@@ -129,7 +131,7 @@ func (op ArithmeticOp) String() string {
 type KernelKind uint8
 
 const (
-	// KernelComparison identifies typed comparison operations.
+	// KernelComparison identifies typed column-to-literal comparisons.
 	KernelComparison KernelKind = iota + 1
 	// KernelArithmetic identifies typed arithmetic operations.
 	KernelArithmetic
@@ -226,7 +228,8 @@ func (id KernelID) String() string {
 	return "invalid-kernel"
 }
 
-// ComparisonID returns the exact comparison kernel identifier for typ and op.
+// ComparisonID returns the exact column-to-literal comparison identifier.
+// Use Capabilities.ForColumns for column-to-column comparison backends.
 func ComparisonID(typ memory.DataType, op CompareOp) (KernelID, bool) {
 	if op < CompareGT || op > CompareEQ {
 		return KernelID{}, false
@@ -367,10 +370,13 @@ func buildKernelIDs() []KernelID {
 	)
 }
 
-// KernelIDs returns every supported operation in stable report order.
+// KernelIDs returns all operation IDs in stable report order.
+// Column-to-column comparison capabilities are available through ForColumns.
 func KernelIDs() []KernelID { return append([]KernelID(nil), allKernelIDs...) }
 
 // KernelCapability describes the selected backend for one exact operation.
+// HardwareSIMD describes the available vector path, not every invocation:
+// short inputs, tails, and nullable math may still use scalar execution.
 type KernelCapability struct {
 	HardwareSIMD bool
 	Emulated     bool
@@ -379,9 +385,10 @@ type KernelCapability struct {
 }
 
 type capabilityState struct {
-	mode Mode
-	arch string
-	byID map[KernelID]KernelCapability
+	mode    Mode
+	arch    string
+	byID    map[KernelID]KernelCapability
+	columns map[KernelID]KernelCapability
 }
 
 // Capabilities is an immutable view of one Set's selected backends.
@@ -402,6 +409,21 @@ func (c Capabilities) For(id KernelID) (KernelCapability, bool) {
 		return KernelCapability{}, false
 	}
 	capability, ok := c.state.byID[id]
+	return capability, ok
+}
+
+// ForColumns reports the selected column-to-column comparison backend.
+// It is distinct from For(ComparisonID(...)), which describes comparison to
+// a literal. Physical aliases follow ComparisonID; unsupported pairs return false.
+func (c Capabilities) ForColumns(typ memory.DataType, op CompareOp) (KernelCapability, bool) {
+	if c.state == nil {
+		return KernelCapability{}, false
+	}
+	id, ok := ComparisonID(typ, op)
+	if !ok {
+		return KernelCapability{}, false
+	}
+	capability, ok := c.state.columns[id]
 	return capability, ok
 }
 
@@ -520,6 +542,11 @@ func (s Set) Capabilities() Capabilities { return Capabilities{state: s.d.caps} 
 // Capability reports the selected backend for one exact operation.
 func (s Set) Capability(id KernelID) (KernelCapability, bool) { return s.Capabilities().For(id) }
 
+// ColumnComparisonCapability reports the selected column-to-column backend.
+func (s Set) ColumnComparisonCapability(typ memory.DataType, op CompareOp) (KernelCapability, bool) {
+	return s.Capabilities().ForColumns(typ, op)
+}
+
 // CompareInt32 compares nullable int32 values and writes a packed selection bitmap.
 func (s Set) CompareInt32(v []int32, valid, out memory.Bitmap, lit int32, op CompareOp) int {
 	return s.d.compareInt32[op](v, valid, out, lit)
@@ -527,7 +554,7 @@ func (s Set) CompareInt32(v []int32, valid, out memory.Bitmap, lit int32, op Com
 
 // CompareInt8 compares nullable native int8 values and writes a packed
 // selection bitmap. The scalar implementation is the reference backend;
-// no SIMD backend is selected until architecture-specific evidence exists.
+// no native SIMD implementation is currently available.
 func (s Set) CompareInt8(v []int8, valid, out memory.Bitmap, lit int8, op CompareOp) int {
 	return s.d.compareInt8[op](v, valid, out, lit)
 }
@@ -707,7 +734,7 @@ func (s Set) CompactFloat64(v []float64, selection memory.Bitmap, out []float64)
 func (s Set) setCapability(id KernelID, capability KernelCapability) { s.d.caps.byID[id] = capability }
 
 func newScalarSet(mode Mode) Set {
-	d := &dispatch{caps: &capabilityState{mode: mode, arch: runtimeArch(), byID: make(map[KernelID]KernelCapability, len(allKernelIDs))}}
+	d := &dispatch{caps: &capabilityState{mode: mode, arch: runtimeArch(), byID: make(map[KernelID]KernelCapability, len(allKernelIDs)), columns: make(map[KernelID]KernelCapability, 50)}}
 	installMathScalar(d)
 	installGeneratedScalar(d)
 	installFloat32Scalar(d)
@@ -730,6 +757,9 @@ func newScalarSet(mode Mode) Set {
 	d.compactFloat32, d.compactFloat64 = scalarFloat32Compact, scalarFloat64Compact
 	for _, id := range allKernelIDs {
 		d.caps.byID[id] = KernelCapability{Backend: "scalar"}
+		if id.kind == KernelComparison {
+			d.caps.columns[id] = KernelCapability{Backend: "scalar"}
+		}
 	}
 	return Set{d: d}
 }

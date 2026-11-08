@@ -9,7 +9,7 @@ import (
 )
 
 func installFloat32ColumnSIMD(set *Set, mode Mode, vectorBits int) {
-	if mode != ModeSIMD || simd.Emulated() {
+	if mode == ModeScalar || simd.Emulated() {
 		return
 	}
 	set.d.compareFloat32Columns[CompareGT] = simdFloat32ColumnsGT
@@ -17,7 +17,10 @@ func installFloat32ColumnSIMD(set *Set, mode Mode, vectorBits int) {
 	set.d.compareFloat32Columns[CompareLT] = simdFloat32ColumnsLT
 	set.d.compareFloat32Columns[CompareLE] = simdFloat32ColumnsLE
 	set.d.compareFloat32Columns[CompareEQ] = simdFloat32ColumnsEQ
-	_ = vectorBits
+	for op := CompareGT; op <= CompareEQ; op++ {
+		id, _ := ComparisonID(memory.TypeFloat32, op)
+		set.d.caps.columns[id] = KernelCapability{HardwareSIMD: true, VectorBits: vectorBits, Backend: "portable-simd"}
+	}
 }
 
 func simdFloat32Columns(left, right []float32, leftValid, rightValid, out memory.Bitmap, op CompareOp) int {

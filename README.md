@@ -28,7 +28,9 @@ SIMD / hash / radix / scheduler
 文件 Sink 与 terminal Aggregate 共用原生执行图。旧 `source.Reader` 与整分区 fallback
 已经删除。Filter、Projection 与 Aggregate predicate 现在共用 `expr.Bind`、
 不可变 `expr.Program` 和执行独享 `expr.Workspace`，不再保留独立 scalar/predicate
-执行器。第二阶段实现、定向/独立检查及本地完整验收已通过，待发布。
+执行器。第二阶段实现、定向/独立检查及本地完整验收的历史记录已通过；这些结果不覆盖
+本轮 SIMD 默认策略变更。当前默认策略、检查结果及性能限制另见
+[原生 SIMD 优先验证](validation/simd-preferred/README.md)；不代表全平台性能验收或可合并。
 
 已有能力包括 **Limit / Sort / Top-K**、**opaque Arrow Take/materialization**、
 以及 **runtime feedback → aggregate CostModel**。下文介绍当前用法；Phase 2/3
@@ -332,7 +334,32 @@ checksum = 236716301
 
 ## Build and validate
 
-需要 Go 1.27：
+需要 Go 1.27。推荐构建入口默认启用 SIMD，不修改全局 Go 设置：
+
+```bash
+./scripts/build.sh                              # 默认构建 ./...
+./scripts/build.sh -o ./kernel-info ./cmd/kernel-info
+GOEXPERIMENT= ./scripts/build.sh                 # 显式普通构建，用于对照
+```
+
+脚本只在 `GOEXPERIMENT` 未设置时使用 `simd`，完整保留调用者的显式值
+（包括空字符串）和 build 参数。直接运行 `go build` / `go test` 仍须显式加上
+`GOEXPERIMENT=simd` 才包含 SIMD 后端。
+
+默认 `ModeAuto` 在构建、CPU 和运行时向量宽度允许时优先选择已有原生 SIMD；
+`ModeScalar` 保留为显式正确性对照，`ModeSIMD` 用于诊断。未实现的操作、
+不支持/禁用/模拟的运行时、向量尾部，以及带 validity/selection 的 math 路径
+仍用 scalar 保证语义，不能把它理解为所有运算或整条查询都已向量化。
+当前覆盖与边界见 [SIMD dispatch](docs/SIMD_KERNELS.md) 和
+[操作矩阵](docs/SIMD_OPERATION_MATRIX.md)。planner 的 bitmap/direct 策略测量
+规则保持独立、未变；历史 benchmark 不等于本次默认策略的新性能证据。
+
+查看实际机器的 literal 与 column-column 独立 dispatch：
+
+```bash
+GOEXPERIMENT=simd go run ./cmd/kernel-info -mode auto
+GOEXPERIMENT=simd go run ./cmd/kernel-info -mode auto -json
+```
 
 以下是复现命令。第一、二阶段本地完整验证各自通过，范围与日志分别见上面的
 Analyze 和统一表达式验收记录。历史 native/charged-reuse 验证也
@@ -368,6 +395,9 @@ GOEXPERIMENT=simd go run ./cmd/lazy-demo \
 ## Documentation
 
 - [当前状态、限制与后续阶段](docs/CURRENT_STATUS.md)
+- [SIMD 默认策略与运行时边界](docs/SIMD_KERNELS.md)
+- [SIMD 操作覆盖矩阵](docs/SIMD_OPERATION_MATRIX.md)
+- [Math 语义与 SIMD 边界](docs/MATH_KERNELS.md)
 - [破坏性 API 与资源迁移](docs/STREAM_MIGRATION.md)
 - [统一表达式求值边界](docs/EXPRESSION_EVALUATION.md)
 - [第二阶段统一表达式验收](validation/unified-expression-review.md)

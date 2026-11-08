@@ -2,8 +2,34 @@
 
 本文区分当前原生执行架构、历史验证结果和本轮工作。第一阶段 Analyze 与文档收口
 基线已提交为 `5dddf50587affba10fb9e39e3134e360a85f9d03`；本工作树在此基础上实现
-第二阶段统一表达式。第二阶段本地完整验收已通过、待发布，不继承第一阶段或历史
-Phase 文档的通过状态。
+第二阶段统一表达式。第二阶段本地完整验收记录属于历史状态，不继承为本轮
+SIMD 默认策略变更的通过结论；本轮独立检查另见
+[原生 SIMD 优先验证](../validation/simd-preferred/README.md)。
+
+## 本轮：原生 SIMD 优先默认
+
+- `scripts/build.sh` 是推荐构建入口：未设置 `GOEXPERIMENT` 时默认 `simd`，
+  无参数时构建 `./...`，保留显式 experiment 值（含空值）及 build 参数，
+  不运行 `go env -w` 或修改全局配置。直接 Go 命令仍需显式启用 experiment。
+- `ModeAuto` 优先选择已有、当前运行时可执行的原生 SIMD，不再等待逐项性能准入。
+  `ModeScalar` 保留正确性 reference，`ModeSIMD` 用于诊断并保留相同硬件保护。
+- 新默认覆盖 portable Float32 literal/column 比较、Int32/Uint32 column 比较、
+  Float64 Sub/Mul/Div 与 dense Float32/Float64 Abs/Sqrt。arm64 已有 literal
+  comparison 后端仍保留；其 Hash64 unroll 是非 SIMD，诊断不能声称 hardware SIMD。
+- amd64 Hash64/部分固定宽 compaction 仍要求 AVX-512、非模拟运行时和至少 512-bit
+  当前向量宽度。没有 native 后端、禁用/模拟 SIMD、math validity/selection、
+  短输入和尾部保留 scalar 语义路径。这不是所有操作均已向量化的承诺。
+- `kernel-info` 用独立的 `column_comparisons` JSON 数组和 `compare-columns-*`
+  行报告 column-column dispatch，不复用 literal KernelID 的结果。programmatic
+  查询使用 `ColumnComparisonCapability` / `Capabilities.ForColumns`。
+- planner 的 bitmap/direct 测量规则与既有精确批准项不变。旧性能记录保留为历史，
+  不是本轮 native arm64 验证、全平台提速或当前提交完整验收证据。
+
+本轮普通/SIMD 全仓测试、全仓 race、双模式 vet 与结构检查已通过，完整
+比较矩阵也已测量。共享宿主上的短样本不能证明全面提速；native arm64 未实机运行，
+原始 Parquet fixture 与旧 W4 性能目标也不在本轮通过范围。详细结果见
+[验证记录](../validation/simd-preferred/README.md)。实现覆盖见 [SIMD_KERNELS.md](SIMD_KERNELS.md)、
+[操作矩阵](SIMD_OPERATION_MATRIX.md) 与 [Math 契约](MATH_KERNELS.md)。
 
 ## 当前架构
 
@@ -131,6 +157,8 @@ checksum、策略等诊断，不保留结果行。`Materialize: true` 和 `Colle
 
 ## 验证与历史证据
 
+下面的已通过结果只覆盖对应历史阶段，不覆盖本轮原生 SIMD 优先默认变更。
+
 第二阶段统一表达式实现、定向/独立检查与本地完整 `scripts/validate.sh` 已通过。
 覆盖普通/SIMD、宿主支持的强制宽度、SIMD-disabled fallback、race、vet、GoDoc、
 结构/生成器、Linux build 与 demo。见
@@ -179,8 +207,12 @@ fallback、Linux build、race、vet、GoDoc、结构/生成器检查及 demo，�
    Program/Workspace、条件 active masks、region CSE、BOOL 投影、成员求值、
    错误需求边界与精确比较已纳入实现；旧 scalar/predicate 执行契约已删除。
    支持类型、promotion 和 managed budget 的限制仍按上文生效。
+4. **原生 SIMD 优先默认，本轮实现与验证。** 对齐 guarded dispatch、构建入口、
+   literal/column 独立诊断及当前文档；测试和性能结果按实际产出单独记录，
+   不沿用历史全仓通过结论或修改独立的 planner 策略规则。
 
 进一步扩大条件结果类型或开展性能优化不是本次已验收能力。代码实现、定向检查、
 全仓本地验收与发布是不同状态。
 
-第二阶段最终验证状态：本地完整 `scripts/validate.sh` exit 0，待发布；未声明 CI 通过或可合并。
+第二阶段历史验证状态：本地完整 `scripts/validate.sh` exit 0；该历史状态不代表
+本轮工作树、CI、发布或合并批准。

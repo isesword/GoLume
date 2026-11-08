@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"gocolumn/kernel"
+	"gocolumn/memory"
 	"io"
 	"os"
 )
@@ -25,16 +26,36 @@ type capabilityReport struct {
 }
 
 type report struct {
-	Arch    string             `json:"arch"`
-	Mode    string             `json:"mode"`
-	Kernels []capabilityReport `json:"kernels"`
+	Arch              string             `json:"arch"`
+	Mode              string             `json:"mode"`
+	Kernels           []capabilityReport `json:"kernels"`
+	ColumnComparisons []capabilityReport `json:"column_comparisons"`
+}
+
+// Report physical numeric types once; temporal aliases use their storage type.
+var columnComparisonTypes = [...]memory.DataType{
+	memory.TypeInt8, memory.TypeInt16, memory.TypeInt32, memory.TypeInt64,
+	memory.TypeUint8, memory.TypeUint16, memory.TypeUint32, memory.TypeUint64,
+	memory.TypeFloat32, memory.TypeFloat64,
+}
+
+func reportCapability(id string, selected, automatic, available kernel.KernelCapability) capabilityReport {
+	return capabilityReport{
+		ID:               id,
+		SelectedBackend:  selected.Backend,
+		AvailableBackend: available.Backend,
+		AutoAdmitted:     automatic.Backend != "scalar",
+		VectorBits:       selected.VectorBits,
+		HardwareSIMD:     selected.HardwareSIMD,
+		Emulated:         selected.Emulated,
+	}
 }
 
 func run(args []string, stdout, stderr io.Writer) int {
 	flags := flag.NewFlagSet("kernel-info", flag.ContinueOnError)
 	flags.SetOutput(stderr)
 	modeName := flags.String("mode", "auto", "kernel dispatch mode: scalar, auto, or simd")
-	jsonOutput := flags.Bool("json", false, "emit the selected per-kernel capabilities as JSON")
+	jsonOutput := flags.Bool("json", false, "emit kernel and column-comparison capabilities as JSON")
 	if err := flags.Parse(args); err != nil {
 		return 2
 	}
@@ -59,27 +80,37 @@ func run(args []string, stdout, stderr io.Writer) int {
 			fmt.Fprintf(stderr, "missing comparison capability for %s\n", id)
 			return 1
 		}
-		entries = append(entries, capabilityReport{
-			ID:               id.String(),
-			SelectedBackend:  capability.Backend,
-			VectorBits:       capability.VectorBits,
-			HardwareSIMD:     capability.HardwareSIMD,
-			Emulated:         capability.Emulated,
-			AvailableBackend: forcedCapability.Backend,
-			AutoAdmitted:     autoCapability.Backend != "scalar",
-		})
+		entries = append(entries, reportCapability(id.String(), capability, autoCapability, forcedCapability))
+	}
+	columns := make([]capabilityReport, 0, len(columnComparisonTypes)*5)
+	for _, typ := range columnComparisonTypes {
+		for op := kernel.CompareGT; op <= kernel.CompareEQ; op++ {
+			// These report IDs deliberately differ from literal ComparisonIDs.
+			id := fmt.Sprintf("compare-columns-%s-%s", typ, op)
+			capability, ok := set.ColumnComparisonCapability(typ, op)
+			autoCapability, autoOK := autoSet.ColumnComparisonCapability(typ, op)
+			forcedCapability, forcedOK := forcedSet.ColumnComparisonCapability(typ, op)
+			if !ok || !autoOK || !forcedOK {
+				fmt.Fprintf(stderr, "missing column-comparison capability for %s\n", id)
+				return 1
+			}
+			columns = append(columns, reportCapability(id, capability, autoCapability, forcedCapability))
+		}
 	}
 	if *jsonOutput {
-		if err := json.NewEncoder(stdout).Encode(report{Arch: set.Arch(), Mode: set.Mode().String(), Kernels: entries}); err != nil {
+		if err := json.NewEncoder(stdout).Encode(report{Arch: set.Arch(), Mode: set.Mode().String(), Kernels: entries, ColumnComparisons: columns}); err != nil {
 			fmt.Fprintln(stderr, err)
 			return 1
 		}
 		return 0
 	}
 	fmt.Fprintf(stdout, "arch=%s mode=%s\n", set.Arch(), set.Mode())
-	for _, entry := range entries {
-		fmt.Fprintf(stdout, "%-30s backend=%-28s vector=%3d hardware=%-5t emulated=%-5t\n",
-			entry.ID, entry.SelectedBackend, entry.VectorBits, entry.HardwareSIMD, entry.Emulated)
+	for _, group := range [][]capabilityReport{entries, columns} {
+		for _, entry := range group {
+			fmt.Fprintf(stdout, "%-30s backend=%-28s vector=%3d hardware=%-5t emulated=%-5t available=%-28s auto=%t\n",
+				entry.ID, entry.SelectedBackend, entry.VectorBits, entry.HardwareSIMD, entry.Emulated,
+				entry.AvailableBackend, entry.AutoAdmitted)
+		}
 	}
 	return 0
 }

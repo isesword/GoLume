@@ -1,0 +1,343 @@
+goos: linux
+goarch: amd64
+pkg: gocolumn/kernel
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+                                               │      scalar      │                 auto                  │                 simd                  │
+                                               │      sec/op      │     sec/op      vs base               │     sec/op      vs base               │
+Column32ComparisonGate int32 stream gt            1.986m ±    12%    1.374m ±   7%  -30.86% (p=0.002 n=6)    1.792m ±  76%        ~ (p=0.937 n=6)
+Column32ComparisonGate int32 stream ge            2.266m ±     6%    1.909m ±  60%        ~ (p=0.065 n=6)    1.915m ± 124%        ~ (p=0.310 n=6)
+Column32ComparisonGate int32 stream lt            2.961m ±     7%    1.626m ±  20%  -45.07% (p=0.002 n=6)    1.630m ± 188%        ~ (p=0.394 n=6)
+Column32ComparisonGate int32 stream le            3.192m ±     8%    1.888m ±  33%  -40.86% (p=0.002 n=6)    1.861m ± 145%        ~ (p=0.394 n=6)
+Column32ComparisonGate int32 stream eq            3.246m ±    27%    1.691m ±  45%  -47.91% (p=0.002 n=6)    1.559m ± 112%  -51.97% (p=0.026 n=6)
+Column32ComparisonGate int32 bitmap gt           198.89µ ±    15%   105.64µ ±  17%  -46.88% (p=0.002 n=6)    91.41µ ± 195%        ~ (p=0.310 n=6)
+Column32ComparisonGate int32 bitmap ge            236.2µ ±    11%    175.0µ ±  19%  -25.90% (p=0.002 n=6)    132.1µ ± 162%        ~ (p=0.394 n=6)
+Column32ComparisonGate int32 bitmap lt           213.49µ ±    13%   104.57µ ±  12%  -51.02% (p=0.002 n=6)    90.89µ ± 151%  -57.42% (p=0.041 n=6)
+Column32ComparisonGate int32 bitmap le            250.4µ ±    23%    175.1µ ±  69%  -30.09% (p=0.026 n=6)    130.1µ ± 184%        ~ (p=0.065 n=6)
+Column32ComparisonGate int32 bitmap eq           242.00µ ±    11%   111.73µ ±  67%  -53.83% (p=0.002 n=6)    95.82µ ± 113%  -60.40% (p=0.002 n=6)
+Column32ComparisonGate int32 nullable-tail gt    160.35µ ±    12%   103.96µ ±  66%        ~ (p=0.132 n=6)    90.77µ ±  37%  -43.39% (p=0.002 n=6)
+Column32ComparisonGate int32 nullable-tail ge     166.7µ ±    13%    141.4µ ±  28%        ~ (p=0.065 n=6)    134.4µ ±  53%        ~ (p=0.065 n=6)
+Column32ComparisonGate int32 nullable-tail lt    177.39µ ±    13%    96.39µ ±  10%  -45.66% (p=0.002 n=6)    99.13µ ±  14%  -44.12% (p=0.002 n=6)
+Column32ComparisonGate int32 nullable-tail le     201.3µ ±    16%    133.6µ ±  12%  -33.65% (p=0.002 n=6)    140.1µ ±  34%  -30.40% (p=0.009 n=6)
+Column32ComparisonGate int32 nullable-tail eq    211.06µ ±    20%    98.62µ ±  10%  -53.28% (p=0.002 n=6)   107.10µ ±  64%  -49.26% (p=0.004 n=6)
+Column32ComparisonGate int32 sparse gt           136.57µ ±    41%    81.00µ ±  29%  -40.69% (p=0.002 n=6)    71.65µ ±  29%  -47.54% (p=0.002 n=6)
+Column32ComparisonGate int32 sparse ge           163.75µ ±    10%    75.27µ ±  18%  -54.03% (p=0.002 n=6)    70.78µ ±  12%  -56.78% (p=0.002 n=6)
+Column32ComparisonGate int32 sparse lt            206.8µ ±    27%    149.9µ ±  11%  -27.52% (p=0.002 n=6)    167.9µ ±  22%  -18.78% (p=0.026 n=6)
+Column32ComparisonGate int32 sparse le            194.4µ ±     7%    139.7µ ±  18%  -28.13% (p=0.002 n=6)    151.0µ ±   7%  -22.34% (p=0.002 n=6)
+Column32ComparisonGate int32 sparse eq           198.76µ ±    10%    66.22µ ±  38%  -66.69% (p=0.002 n=6)    75.03µ ± 271%        ~ (p=0.065 n=6)
+Column32ComparisonGate int32 dense gt             199.8µ ±     5%    151.0µ ±  17%  -24.44% (p=0.002 n=6)    151.6µ ±  10%  -24.15% (p=0.002 n=6)
+Column32ComparisonGate int32 dense ge             198.8µ ±    10%    136.0µ ±  48%  -31.56% (p=0.041 n=6)    150.6µ ±  18%  -24.22% (p=0.002 n=6)
+Column32ComparisonGate int32 dense lt            161.77µ ±    13%    68.18µ ±  56%  -57.85% (p=0.002 n=6)    74.83µ ±  20%  -53.74% (p=0.002 n=6)
+Column32ComparisonGate int32 dense le            172.11µ ±     8%    71.91µ ±  26%  -58.22% (p=0.002 n=6)    72.77µ ±  39%  -57.72% (p=0.002 n=6)
+Column32ComparisonGate int32 dense eq            193.98µ ±     9%    72.83µ ± 139%  -62.46% (p=0.002 n=6)    72.55µ ±  23%  -62.60% (p=0.002 n=6)
+Column32ComparisonGate int32 equal gt            130.58µ ±    14%    68.83µ ±  32%  -47.29% (p=0.002 n=6)    71.33µ ±   7%  -45.37% (p=0.002 n=6)
+Column32ComparisonGate int32 equal ge             196.0µ ±    10%    134.1µ ±  14%  -31.58% (p=0.002 n=6)    148.9µ ±  25%  -24.03% (p=0.004 n=6)
+Column32ComparisonGate int32 equal lt            180.14µ ±    85%    75.38µ ±  17%  -58.16% (p=0.002 n=6)    71.91µ ±   8%  -60.08% (p=0.002 n=6)
+Column32ComparisonGate int32 equal le             193.6µ ±     4%    144.0µ ± 249%        ~ (p=0.065 n=6)    142.7µ ±  50%        ~ (p=0.065 n=6)
+Column32ComparisonGate int32 equal eq             213.6µ ±    14%    146.9µ ±  11%  -31.24% (p=0.002 n=6)    142.4µ ±   8%  -33.34% (p=0.002 n=6)
+Column32ComparisonGate int32 short gt             28.38n ±    11%    39.66n ±  91%  +39.79% (p=0.002 n=6)    39.05n ±  10%  +37.64% (p=0.002 n=6)
+Column32ComparisonGate int32 short ge             33.67n ±     7%    49.18n ±  61%  +46.04% (p=0.002 n=6)    49.41n ±  83%  +46.71% (p=0.002 n=6)
+Column32ComparisonGate int32 short lt             36.32n ±     7%    44.85n ± 142%  +23.49% (p=0.002 n=6)    42.83n ±  19%  +17.92% (p=0.004 n=6)
+Column32ComparisonGate int32 short le             36.16n ±    13%    46.35n ± 154%  +28.16% (p=0.002 n=6)    45.56n ±  19%  +25.98% (p=0.002 n=6)
+Column32ComparisonGate int32 short eq             37.19n ±     5%    51.90n ± 121%  +39.57% (p=0.002 n=6)    51.88n ±  91%  +39.51% (p=0.002 n=6)
+Column32ComparisonGate int32 tail gt              190.7n ±     8%    117.7n ± 127%        ~ (p=0.394 n=6)    122.2n ±  17%  -35.90% (p=0.002 n=6)
+Column32ComparisonGate int32 tail ge              182.7n ±    13%    176.7n ±  41%        ~ (p=1.000 n=6)    154.2n ±  12%  -15.58% (p=0.002 n=6)
+Column32ComparisonGate int32 tail lt              206.7n ±    84%    115.5n ± 126%  -44.15% (p=0.041 n=6)    124.4n ±  93%  -39.82% (p=0.041 n=6)
+Column32ComparisonGate int32 tail le              205.0n ±     7%    149.7n ± 157%        ~ (p=0.065 n=6)    152.9n ±  23%  -25.41% (p=0.002 n=6)
+Column32ComparisonGate int32 tail eq              203.4n ±     9%    118.8n ± 643%        ~ (p=0.065 n=6)    120.7n ±  15%  -40.70% (p=0.002 n=6)
+Column32ComparisonGate uint32 stream gt           2.275m ±     8%    1.502m ±   9%  -33.96% (p=0.002 n=6)    1.592m ±  15%  -30.01% (p=0.002 n=6)
+Column32ComparisonGate uint32 stream ge           2.733m ±    15%    1.963m ±  57%        ~ (p=0.065 n=6)    1.994m ±  13%  -27.04% (p=0.002 n=6)
+Column32ComparisonGate uint32 stream lt           3.315m ±    13%    1.801m ±  39%  -45.68% (p=0.002 n=6)    1.536m ±  45%  -53.67% (p=0.002 n=6)
+Column32ComparisonGate uint32 stream le           3.844m ±    17%    2.102m ±  56%  -45.33% (p=0.004 n=6)    1.984m ±  19%  -48.39% (p=0.002 n=6)
+Column32ComparisonGate uint32 stream eq           3.800m ±     9%    2.008m ±  23%  -47.16% (p=0.002 n=6)    1.706m ±  21%  -55.10% (p=0.002 n=6)
+Column32ComparisonGate uint32 bitmap gt          258.48µ ±    33%    98.83µ ±   7%  -61.77% (p=0.002 n=6)   103.55µ ±  16%  -59.94% (p=0.002 n=6)
+Column32ComparisonGate uint32 bitmap ge           276.4µ ±    76%    152.6µ ±  24%  -44.80% (p=0.002 n=6)    147.2µ ±  16%  -46.75% (p=0.002 n=6)
+Column32ComparisonGate uint32 bitmap lt          260.40µ ±    49%   106.44µ ± 109%  -59.12% (p=0.002 n=6)    97.08µ ±  18%  -62.72% (p=0.002 n=6)
+Column32ComparisonGate uint32 bitmap le           280.8µ ±    26%    152.7µ ±  83%  -45.63% (p=0.015 n=6)    160.2µ ±  20%  -42.95% (p=0.002 n=6)
+Column32ComparisonGate uint32 bitmap eq           374.0µ ±   218%    105.6µ ±  68%  -71.78% (p=0.002 n=6)    100.4µ ±  13%  -73.17% (p=0.002 n=6)
+Column32ComparisonGate uint32 nullable-tail gt   254.02µ ±   190%   105.79µ ± 105%  -58.35% (p=0.015 n=6)    99.14µ ±  21%  -60.97% (p=0.002 n=6)
+Column32ComparisonGate uint32 nullable-tail ge    189.7µ ±   251%    148.6µ ± 199%  -21.69% (p=0.041 n=6)    138.4µ ±  33%  -27.06% (p=0.015 n=6)
+Column32ComparisonGate uint32 nullable-tail lt   222.54µ ±   129%   101.46µ ±  70%  -54.41% (p=0.009 n=6)    92.38µ ±  14%  -58.49% (p=0.002 n=6)
+Column32ComparisonGate uint32 nullable-tail le    209.8µ ±   151%    143.2µ ±  99%  -31.72% (p=0.026 n=6)    139.1µ ±  30%  -33.72% (p=0.002 n=6)
+Column32ComparisonGate uint32 nullable-tail eq   310.84µ ±   316%   105.03µ ± 114%  -66.21% (p=0.009 n=6)    97.28µ ±  18%  -68.70% (p=0.002 n=6)
+Column32ComparisonGate uint32 sparse gt          146.86µ ±    80%    74.74µ ±  68%  -49.11% (p=0.009 n=6)    70.35µ ±  17%  -52.10% (p=0.002 n=6)
+Column32ComparisonGate uint32 sparse ge          158.74µ ±   980%    86.43µ ± 112%        ~ (p=0.093 n=6)    67.39µ ±  28%  -57.55% (p=0.002 n=6)
+Column32ComparisonGate uint32 sparse lt           197.4µ ±   277%    153.7µ ± 116%        ~ (p=0.240 n=6)    150.7µ ±  61%  -23.66% (p=0.041 n=6)
+Column32ComparisonGate uint32 sparse le           200.0µ ± 70824%    156.7µ ±  63%  -21.67% (p=0.026 n=6)    141.0µ ±  12%  -29.48% (p=0.002 n=6)
+Column32ComparisonGate uint32 sparse eq          198.82µ ±   110%    78.07µ ±  24%  -60.73% (p=0.002 n=6)    68.88µ ±  14%  -65.36% (p=0.002 n=6)
+Column32ComparisonGate uint32 dense gt            275.6µ ±    32%    155.9µ ±  61%  -43.43% (p=0.015 n=6)    132.4µ ±  26%  -51.94% (p=0.002 n=6)
+Column32ComparisonGate uint32 dense ge            200.6µ ±    49%    150.5µ ±  66%  -24.96% (p=0.041 n=6)    138.3µ ±   8%  -31.07% (p=0.002 n=6)
+Column32ComparisonGate uint32 dense lt           163.39µ ±    64%    73.79µ ±  69%  -54.84% (p=0.002 n=6)    75.07µ ±  15%  -54.05% (p=0.002 n=6)
+Column32ComparisonGate uint32 dense le           158.28µ ±    18%    69.04µ ±  97%  -56.38% (p=0.002 n=6)    71.97µ ±  18%  -54.53% (p=0.002 n=6)
+Column32ComparisonGate uint32 dense eq           170.44µ ±   125%    81.57µ ±  24%  -52.14% (p=0.002 n=6)    69.17µ ±  19%  -59.42% (p=0.002 n=6)
+Column32ComparisonGate uint32 equal gt           120.98µ ±   151%    71.08µ ±  45%  -41.24% (p=0.002 n=6)    65.13µ ± 142%  -46.16% (p=0.041 n=6)
+Column32ComparisonGate uint32 equal ge            197.7µ ±   212%    137.3µ ±  84%  -30.54% (p=0.041 n=6)    135.7µ ±  27%  -31.32% (p=0.002 n=6)
+Column32ComparisonGate uint32 equal lt           177.54µ ±   294%    72.60µ ±  15%  -59.10% (p=0.002 n=6)    66.05µ ±  22%  -62.80% (p=0.002 n=6)
+Column32ComparisonGate uint32 equal le            268.2µ ±   264%    146.5µ ±  43%  -45.38% (p=0.026 n=6)    135.4µ ±  15%  -49.52% (p=0.002 n=6)
+Column32ComparisonGate uint32 equal eq            212.3µ ±   188%    140.2µ ±  11%  -33.97% (p=0.002 n=6)    138.3µ ±   8%  -34.88% (p=0.002 n=6)
+Column32ComparisonGate uint32 short gt            28.90n ±   171%    43.04n ±  67%        ~ (p=0.240 n=6)    35.05n ±  15%        ~ (p=0.394 n=6)
+Column32ComparisonGate uint32 short ge            29.84n ±   153%    51.77n ±  26%        ~ (p=0.065 n=6)    44.16n ±  11%        ~ (p=0.065 n=6)
+Column32ComparisonGate uint32 short lt            32.76n ±   170%    43.71n ± 340%        ~ (p=0.065 n=6)    38.95n ±  18%        ~ (p=0.093 n=6)
+Column32ComparisonGate uint32 short le            34.03n ±    12%    46.44n ±  99%  +36.45% (p=0.002 n=6)    41.09n ±  12%  +20.73% (p=0.004 n=6)
+Column32ComparisonGate uint32 short eq            36.73n ±    13%    47.20n ± 119%  +28.47% (p=0.002 n=6)    46.37n ±   8%  +26.23% (p=0.002 n=6)
+Column32ComparisonGate uint32 tail gt             171.8n ±    25%    134.3n ± 103%        ~ (p=0.058 n=6)    111.8n ±  26%  -34.95% (p=0.002 n=6)
+Column32ComparisonGate uint32 tail ge             193.2n ±   202%    147.2n ± 137%  -23.78% (p=0.041 n=6)    134.6n ±  86%  -30.33% (p=0.041 n=6)
+Column32ComparisonGate uint32 tail lt             192.8n ±    11%    128.2n ± 129%        ~ (p=0.065 n=6)    115.3n ±   8%  -40.18% (p=0.002 n=6)
+Column32ComparisonGate uint32 tail le             197.9n ±    10%    163.4n ± 154%        ~ (p=0.394 n=6)    148.0n ±  12%  -25.19% (p=0.002 n=6)
+Column32ComparisonGate uint32 tail eq             207.5n ±    65%    116.0n ±  20%  -44.08% (p=0.002 n=6)    115.8n ±   9%  -44.16% (p=0.002 n=6)
+geomean                                           39.64µ             25.33µ         -36.11%                  24.22µ         -38.89%
+
+                                               │     scalar     │                 auto                  │                 simd                  │
+                                               │      B/s       │      B/s       vs base                │      B/s       vs base                │
+Column32ComparisonGate int32 stream gt           3.936Gi ±  11%   5.688Gi ±  7%   +44.53% (p=0.002 n=6)   4.626Gi ± 46%         ~ (p=0.937 n=6)
+Column32ComparisonGate int32 stream ge           3.449Gi ±   6%   4.105Gi ± 38%         ~ (p=0.065 n=6)   4.107Gi ± 56%         ~ (p=0.310 n=6)
+Column32ComparisonGate int32 stream lt           2.639Gi ±   6%   4.804Gi ± 25%   +82.02% (p=0.002 n=6)   4.846Gi ± 66%         ~ (p=0.394 n=6)
+Column32ComparisonGate int32 stream le           2.448Gi ±   7%   4.140Gi ± 25%   +69.13% (p=0.002 n=6)   4.210Gi ± 59%         ~ (p=0.394 n=6)
+Column32ComparisonGate int32 stream eq           2.407Gi ±  21%   4.628Gi ± 31%   +92.26% (p=0.002 n=6)   5.021Gi ± 53%  +108.61% (p=0.026 n=6)
+Column32ComparisonGate int32 bitmap gt           2.455Gi ±  13%   4.623Gi ± 20%   +88.31% (p=0.002 n=6)   5.342Gi ± 66%         ~ (p=0.310 n=6)
+Column32ComparisonGate int32 bitmap ge           2.068Gi ±  10%   2.792Gi ± 24%   +35.03% (p=0.002 n=6)   3.695Gi ± 62%         ~ (p=0.394 n=6)
+Column32ComparisonGate int32 bitmap lt           2.287Gi ±  12%   4.670Gi ± 14%  +104.18% (p=0.002 n=6)   5.372Gi ± 60%  +134.88% (p=0.041 n=6)
+Column32ComparisonGate int32 bitmap le           1.952Gi ±  19%   2.789Gi ± 41%   +42.86% (p=0.026 n=6)   3.755Gi ± 65%         ~ (p=0.065 n=6)
+Column32ComparisonGate int32 bitmap eq           2.018Gi ±  10%   4.376Gi ± 40%  +116.88% (p=0.002 n=6)   5.102Gi ± 53%  +152.85% (p=0.002 n=6)
+Column32ComparisonGate int32 nullable-tail gt    3.049Gi ±  13%   4.702Gi ± 40%         ~ (p=0.132 n=6)   5.387Gi ± 27%   +76.70% (p=0.002 n=6)
+Column32ComparisonGate int32 nullable-tail ge    2.934Gi ±  13%   3.455Gi ± 22%         ~ (p=0.065 n=6)   3.637Gi ± 35%         ~ (p=0.065 n=6)
+Column32ComparisonGate int32 nullable-tail lt    2.753Gi ±  14%   5.066Gi ± 11%   +84.01% (p=0.002 n=6)   4.926Gi ± 16%   +78.91% (p=0.002 n=6)
+Column32ComparisonGate int32 nullable-tail le    2.426Gi ±  19%   3.666Gi ± 11%   +51.11% (p=0.002 n=6)   3.488Gi ± 25%   +43.79% (p=0.009 n=6)
+Column32ComparisonGate int32 nullable-tail eq    2.314Gi ±  26%   4.952Gi ± 11%  +114.02% (p=0.002 n=6)   4.559Gi ± 39%   +97.07% (p=0.004 n=6)
+Column32ComparisonGate int32 sparse gt           3.576Gi ±  29%   6.046Gi ± 40%   +69.05% (p=0.002 n=6)   6.815Gi ± 23%   +90.56% (p=0.002 n=6)
+Column32ComparisonGate int32 sparse ge           2.984Gi ±   9%   6.510Gi ± 21%  +118.18% (p=0.002 n=6)   6.899Gi ± 13%  +131.24% (p=0.002 n=6)
+Column32ComparisonGate int32 sparse lt           2.361Gi ±  23%   3.260Gi ± 13%   +38.04% (p=0.002 n=6)   2.908Gi ± 29%   +23.13% (p=0.026 n=6)
+Column32ComparisonGate int32 sparse le           2.512Gi ±   7%   3.495Gi ± 15%   +39.10% (p=0.002 n=6)   3.236Gi ±  7%   +28.79% (p=0.002 n=6)
+Column32ComparisonGate int32 sparse eq           2.458Gi ±  11%   7.374Gi ± 28%  +200.04% (p=0.002 n=6)   6.508Gi ± 73%         ~ (p=0.065 n=6)
+Column32ComparisonGate int32 dense gt            2.444Gi ±   6%   3.251Gi ± 20%   +33.03% (p=0.002 n=6)   3.221Gi ± 12%   +31.83% (p=0.002 n=6)
+Column32ComparisonGate int32 dense ge            2.456Gi ±  11%   3.590Gi ± 33%   +46.14% (p=0.041 n=6)   3.242Gi ± 15%   +31.98% (p=0.002 n=6)
+Column32ComparisonGate int32 dense lt            3.031Gi ±  12%   7.162Gi ± 36%  +136.26% (p=0.002 n=6)   6.545Gi ± 17%  +115.91% (p=0.002 n=6)
+Column32ComparisonGate int32 dense le            2.837Gi ±   8%   6.803Gi ± 21%  +139.77% (p=0.002 n=6)   6.710Gi ± 28%  +136.48% (p=0.002 n=6)
+Column32ComparisonGate int32 dense eq            2.517Gi ±  10%   6.744Gi ± 58%  +167.92% (p=0.002 n=6)   6.730Gi ± 19%  +167.36% (p=0.002 n=6)
+Column32ComparisonGate int32 equal gt            3.741Gi ±  16%   7.094Gi ± 24%   +89.65% (p=0.002 n=6)   6.845Gi ±  7%   +82.99% (p=0.002 n=6)
+Column32ComparisonGate int32 equal ge            2.492Gi ±  11%   3.654Gi ± 13%   +46.63% (p=0.002 n=6)   3.286Gi ± 20%   +31.87% (p=0.004 n=6)
+Column32ComparisonGate int32 equal lt            2.713Gi ±  46%   6.478Gi ± 15%  +138.82% (p=0.002 n=6)   6.792Gi ±  9%  +150.39% (p=0.002 n=6)
+Column32ComparisonGate int32 equal le            2.525Gi ±   4%   3.399Gi ± 71%         ~ (p=0.065 n=6)   3.421Gi ± 33%         ~ (p=0.065 n=6)
+Column32ComparisonGate int32 equal eq            2.291Gi ±  16%   3.328Gi ± 12%   +45.26% (p=0.002 n=6)   3.432Gi ±  9%   +49.83% (p=0.002 n=6)
+Column32ComparisonGate int32 short gt            1.839Gi ±  10%   1.315Gi ± 48%   -28.48% (p=0.002 n=6)   1.336Gi ±  9%   -27.36% (p=0.002 n=6)
+Column32ComparisonGate int32 short ge            1.549Gi ±   8%   1.060Gi ± 38%   -31.53% (p=0.002 n=6)   1.058Gi ± 46%   -31.71% (p=0.002 n=6)
+Column32ComparisonGate int32 short lt            1.436Gi ±   7%   1.163Gi ± 59%   -19.02% (p=0.002 n=6)   1.219Gi ± 16%   -15.15% (p=0.004 n=6)
+Column32ComparisonGate int32 short le            1.442Gi ±  11%   1.126Gi ± 61%   -21.95% (p=0.002 n=6)   1.145Gi ± 16%   -20.64% (p=0.002 n=6)
+Column32ComparisonGate int32 short eq            1.402Gi ±   5%   1.005Gi ± 55%   -28.34% (p=0.002 n=6)   1.005Gi ± 48%   -28.33% (p=0.002 n=6)
+Column32ComparisonGate int32 tail gt             2.542Gi ±   9%   4.118Gi ± 56%         ~ (p=0.394 n=6)   3.965Gi ± 15%   +56.00% (p=0.002 n=6)
+Column32ComparisonGate int32 tail ge             2.652Gi ±  11%   2.827Gi ± 31%         ~ (p=1.000 n=6)   3.143Gi ± 13%   +18.52% (p=0.002 n=6)
+Column32ComparisonGate int32 tail lt             2.343Gi ±  46%   4.196Gi ± 56%   +79.04% (p=0.041 n=6)   3.894Gi ± 48%   +66.16% (p=0.041 n=6)
+Column32ComparisonGate int32 tail le             2.364Gi ±   7%   3.235Gi ± 61%         ~ (p=0.065 n=6)   3.170Gi ± 19%   +34.11% (p=0.002 n=6)
+Column32ComparisonGate int32 tail eq             2.389Gi ±   9%   4.079Gi ± 87%         ~ (p=0.065 n=6)   4.015Gi ± 13%   +68.04% (p=0.002 n=6)
+Column32ComparisonGate uint32 stream gt          3.434Gi ±   9%   5.201Gi ± 10%   +51.43% (p=0.002 n=6)   4.917Gi ± 13%   +43.16% (p=0.002 n=6)
+Column32ComparisonGate uint32 stream ge          2.858Gi ±  13%   3.980Gi ± 36%         ~ (p=0.065 n=6)   3.918Gi ± 11%   +37.07% (p=0.002 n=6)
+Column32ComparisonGate uint32 stream lt          2.361Gi ±  12%   4.354Gi ± 28%   +84.37% (p=0.002 n=6)   5.116Gi ± 31%  +116.66% (p=0.002 n=6)
+Column32ComparisonGate uint32 stream le          2.032Gi ±  20%   3.718Gi ± 36%   +82.91% (p=0.004 n=6)   3.938Gi ± 16%   +93.75% (p=0.002 n=6)
+Column32ComparisonGate uint32 stream eq          2.056Gi ±   8%   3.891Gi ± 30%   +89.26% (p=0.002 n=6)   4.580Gi ± 26%  +122.75% (p=0.002 n=6)
+Column32ComparisonGate uint32 bitmap gt          1.890Gi ±  29%   4.941Gi ±  6%  +161.43% (p=0.002 n=6)   4.717Gi ± 19%  +149.58% (p=0.002 n=6)
+Column32ComparisonGate uint32 bitmap ge          1.768Gi ±  43%   3.213Gi ± 20%   +81.77% (p=0.002 n=6)   3.317Gi ± 19%   +87.69% (p=0.002 n=6)
+Column32ComparisonGate uint32 bitmap lt          1.877Gi ±  33%   4.590Gi ± 52%  +144.61% (p=0.002 n=6)   5.032Gi ± 15%  +168.13% (p=0.002 n=6)
+Column32ComparisonGate uint32 bitmap le          1.739Gi ±  20%   3.198Gi ± 45%   +83.95% (p=0.015 n=6)   3.051Gi ± 25%   +75.46% (p=0.002 n=6)
+Column32ComparisonGate uint32 bitmap eq          1.344Gi ±  69%   4.627Gi ± 41%  +244.18% (p=0.002 n=6)   4.868Gi ± 11%  +262.13% (p=0.002 n=6)
+Column32ComparisonGate uint32 nullable-tail gt   2.105Gi ±  68%   4.627Gi ± 51%  +119.76% (p=0.015 n=6)   4.927Gi ± 26%  +134.02% (p=0.002 n=6)
+Column32ComparisonGate uint32 nullable-tail ge   2.583Gi ±  72%   3.293Gi ± 67%   +27.49% (p=0.041 n=6)   3.540Gi ± 25%   +37.05% (p=0.015 n=6)
+Column32ComparisonGate uint32 nullable-tail lt   2.237Gi ±  57%   4.813Gi ± 41%  +115.18% (p=0.009 n=6)   5.286Gi ± 17%  +136.33% (p=0.002 n=6)
+Column32ComparisonGate uint32 nullable-tail le   2.344Gi ±  60%   3.413Gi ± 50%   +45.60% (p=0.026 n=6)   3.512Gi ± 23%   +49.82% (p=0.002 n=6)
+Column32ComparisonGate uint32 nullable-tail eq   1.646Gi ±  77%   4.650Gi ± 53%  +182.50% (p=0.009 n=6)   5.020Gi ± 16%  +205.00% (p=0.002 n=6)
+Column32ComparisonGate uint32 sparse gt          3.331Gi ±  44%   6.533Gi ± 41%   +96.15% (p=0.009 n=6)   6.942Gi ± 14%  +108.43% (p=0.002 n=6)
+Column32ComparisonGate uint32 sparse ge          3.082Gi ±  91%   5.649Gi ± 53%         ~ (p=0.093 n=6)   7.246Gi ± 22%  +135.15% (p=0.002 n=6)
+Column32ComparisonGate uint32 sparse lt          2.491Gi ±  74%   3.178Gi ± 54%         ~ (p=0.240 n=6)   3.240Gi ± 38%   +30.07% (p=0.041 n=6)
+Column32ComparisonGate uint32 sparse le          2.450Gi ± 100%   3.117Gi ± 38%   +27.21% (p=0.026 n=6)   3.469Gi ± 12%   +41.58% (p=0.002 n=6)
+Column32ComparisonGate uint32 sparse eq          2.490Gi ±  53%   6.254Gi ± 19%  +151.22% (p=0.002 n=6)   7.089Gi ± 16%  +184.75% (p=0.002 n=6)
+Column32ComparisonGate uint32 dense gt           1.829Gi ±  42%   3.136Gi ± 38%   +71.41% (p=0.015 n=6)   3.687Gi ± 21%  +101.57% (p=0.002 n=6)
+Column32ComparisonGate uint32 dense ge           2.435Gi ±  33%   3.245Gi ± 40%   +33.25% (p=0.041 n=6)   3.532Gi ±  9%   +45.05% (p=0.002 n=6)
+Column32ComparisonGate uint32 dense lt           2.992Gi ±  39%   6.620Gi ± 41%  +121.21% (p=0.002 n=6)   6.596Gi ± 16%  +120.42% (p=0.002 n=6)
+Column32ComparisonGate uint32 dense le           3.085Gi ±  15%   7.073Gi ± 49%  +129.24% (p=0.002 n=6)   6.803Gi ± 16%  +120.48% (p=0.002 n=6)
+Column32ComparisonGate uint32 dense eq           2.871Gi ±  56%   5.986Gi ± 23%  +108.49% (p=0.002 n=6)   7.059Gi ± 16%  +145.87% (p=0.002 n=6)
+Column32ComparisonGate uint32 equal gt           4.037Gi ±  60%   6.869Gi ± 31%   +70.17% (p=0.002 n=6)   7.498Gi ± 59%   +85.75% (p=0.041 n=6)
+Column32ComparisonGate uint32 equal ge           2.471Gi ±  68%   3.557Gi ± 46%   +43.97% (p=0.041 n=6)   3.597Gi ± 21%   +45.60% (p=0.002 n=6)
+Column32ComparisonGate uint32 equal lt           2.752Gi ±  75%   6.735Gi ± 17%  +144.74% (p=0.002 n=6)   7.395Gi ± 18%  +168.72% (p=0.002 n=6)
+Column32ComparisonGate uint32 equal le           1.851Gi ±  73%   3.339Gi ± 30%   +80.36% (p=0.026 n=6)   3.607Gi ± 17%   +94.82% (p=0.002 n=6)
+Column32ComparisonGate uint32 equal eq           2.304Gi ±  65%   3.483Gi ± 12%   +51.19% (p=0.002 n=6)   3.532Gi ±  9%   +53.32% (p=0.002 n=6)
+Column32ComparisonGate uint32 short gt           1.805Gi ±  63%   1.214Gi ± 40%         ~ (p=0.240 n=6)   1.488Gi ± 13%         ~ (p=0.394 n=6)
+Column32ComparisonGate uint32 short ge           1.748Gi ±  60%   1.012Gi ± 21%         ~ (p=0.065 n=6)   1.181Gi ± 10%         ~ (p=0.065 n=6)
+Column32ComparisonGate uint32 short lt           1.592Gi ±  63%   1.199Gi ± 77%         ~ (p=0.065 n=6)   1.340Gi ± 15%         ~ (p=0.093 n=6)
+Column32ComparisonGate uint32 short le           1.533Gi ±  12%   1.124Gi ± 50%   -26.69% (p=0.002 n=6)   1.270Gi ± 13%   -17.14% (p=0.004 n=6)
+Column32ComparisonGate uint32 short eq           1.420Gi ±  15%   1.108Gi ± 54%   -21.94% (p=0.002 n=6)   1.125Gi ±  8%   -20.76% (p=0.002 n=6)
+Column32ComparisonGate uint32 tail gt            2.819Gi ±  20%   3.613Gi ± 51%         ~ (p=0.065 n=6)   4.335Gi ± 21%   +53.79% (p=0.002 n=6)
+Column32ComparisonGate uint32 tail ge            2.511Gi ±  67%   3.293Gi ± 58%   +31.14% (p=0.041 n=6)   3.598Gi ± 46%   +43.28% (p=0.041 n=6)
+Column32ComparisonGate uint32 tail lt            2.516Gi ±  12%   3.786Gi ± 56%         ~ (p=0.065 n=6)   4.201Gi ±  9%   +66.98% (p=0.002 n=6)
+Column32ComparisonGate uint32 tail le            2.447Gi ±  11%   2.984Gi ± 61%         ~ (p=0.394 n=6)   3.272Gi ± 14%   +33.72% (p=0.002 n=6)
+Column32ComparisonGate uint32 tail eq            2.335Gi ±  39%   4.177Gi ± 17%   +78.91% (p=0.002 n=6)   4.182Gi ± 10%   +79.15% (p=0.002 n=6)
+geomean                                          2.349Gi          3.668Gi         +56.15%                 3.835Gi         +63.29%
+
+                                               │    scalar    │                auto                │                simd                │
+                                               │     B/op     │    B/op     vs base                │    B/op     vs base                │
+Column32ComparisonGate int32 stream gt           0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate int32 stream ge           0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate int32 stream lt           0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate int32 stream le           0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate int32 stream eq           0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate int32 bitmap gt           0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate int32 bitmap ge           0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate int32 bitmap lt           0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate int32 bitmap le           0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate int32 bitmap eq           0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate int32 nullable-tail gt    0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate int32 nullable-tail ge    0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate int32 nullable-tail lt    0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate int32 nullable-tail le    0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate int32 nullable-tail eq    0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate int32 sparse gt           0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate int32 sparse ge           0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate int32 sparse lt           0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate int32 sparse le           0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate int32 sparse eq           0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate int32 dense gt            0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate int32 dense ge            0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate int32 dense lt            0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate int32 dense le            0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate int32 dense eq            0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate int32 equal gt            0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate int32 equal ge            0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate int32 equal lt            0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate int32 equal le            0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate int32 equal eq            0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate int32 short gt            0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate int32 short ge            0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate int32 short lt            0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate int32 short le            0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate int32 short eq            0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate int32 tail gt             0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate int32 tail ge             0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate int32 tail lt             0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate int32 tail le             0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate int32 tail eq             0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate uint32 stream gt          0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate uint32 stream ge          0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate uint32 stream lt          0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate uint32 stream le          0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate uint32 stream eq          0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate uint32 bitmap gt          0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate uint32 bitmap ge          0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate uint32 bitmap lt          0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate uint32 bitmap le          0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate uint32 bitmap eq          0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate uint32 nullable-tail gt   0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate uint32 nullable-tail ge   0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate uint32 nullable-tail lt   0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate uint32 nullable-tail le   0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate uint32 nullable-tail eq   0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate uint32 sparse gt          0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate uint32 sparse ge          0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate uint32 sparse lt          0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate uint32 sparse le          0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate uint32 sparse eq          0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate uint32 dense gt           0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate uint32 dense ge           0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate uint32 dense lt           0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate uint32 dense le           0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate uint32 dense eq           0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate uint32 equal gt           0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate uint32 equal ge           0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate uint32 equal lt           0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate uint32 equal le           0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate uint32 equal eq           0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate uint32 short gt           0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate uint32 short ge           0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate uint32 short lt           0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate uint32 short le           0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate uint32 short eq           0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate uint32 tail gt            0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate uint32 tail ge            0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate uint32 tail lt            0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate uint32 tail le            0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate uint32 tail eq            0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+geomean                                                     ²               +0.00%               ²               +0.00%               ²
+¹ all samples are equal
+² summaries must be >0 to compute geomean
+
+                                               │    scalar    │                auto                │                simd                │
+                                               │  allocs/op   │ allocs/op   vs base                │ allocs/op   vs base                │
+Column32ComparisonGate int32 stream gt           0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate int32 stream ge           0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate int32 stream lt           0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate int32 stream le           0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate int32 stream eq           0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate int32 bitmap gt           0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate int32 bitmap ge           0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate int32 bitmap lt           0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate int32 bitmap le           0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate int32 bitmap eq           0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate int32 nullable-tail gt    0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate int32 nullable-tail ge    0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate int32 nullable-tail lt    0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate int32 nullable-tail le    0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate int32 nullable-tail eq    0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate int32 sparse gt           0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate int32 sparse ge           0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate int32 sparse lt           0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate int32 sparse le           0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate int32 sparse eq           0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate int32 dense gt            0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate int32 dense ge            0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate int32 dense lt            0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate int32 dense le            0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate int32 dense eq            0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate int32 equal gt            0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate int32 equal ge            0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate int32 equal lt            0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate int32 equal le            0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate int32 equal eq            0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate int32 short gt            0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate int32 short ge            0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate int32 short lt            0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate int32 short le            0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate int32 short eq            0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate int32 tail gt             0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate int32 tail ge             0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate int32 tail lt             0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate int32 tail le             0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate int32 tail eq             0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate uint32 stream gt          0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate uint32 stream ge          0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate uint32 stream lt          0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate uint32 stream le          0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate uint32 stream eq          0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate uint32 bitmap gt          0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate uint32 bitmap ge          0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate uint32 bitmap lt          0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate uint32 bitmap le          0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate uint32 bitmap eq          0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate uint32 nullable-tail gt   0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate uint32 nullable-tail ge   0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate uint32 nullable-tail lt   0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate uint32 nullable-tail le   0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate uint32 nullable-tail eq   0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate uint32 sparse gt          0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate uint32 sparse ge          0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate uint32 sparse lt          0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate uint32 sparse le          0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate uint32 sparse eq          0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate uint32 dense gt           0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate uint32 dense ge           0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate uint32 dense lt           0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate uint32 dense le           0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate uint32 dense eq           0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate uint32 equal gt           0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate uint32 equal ge           0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate uint32 equal lt           0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate uint32 equal le           0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate uint32 equal eq           0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate uint32 short gt           0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate uint32 short ge           0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate uint32 short lt           0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate uint32 short le           0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate uint32 short eq           0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate uint32 tail gt            0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate uint32 tail ge            0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate uint32 tail lt            0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate uint32 tail le            0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+Column32ComparisonGate uint32 tail eq            0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=6) ¹   0.000 ± 0%       ~ (p=1.000 n=6) ¹
+geomean                                                     ²               +0.00%               ²               +0.00%               ²
+¹ all samples are equal
+² summaries must be >0 to compute geomean

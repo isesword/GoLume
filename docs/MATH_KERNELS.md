@@ -31,20 +31,27 @@ floating-point storage. All ten numeric widths have scalar reference backends.
   are zeroed and not evaluated. Output buffers and failure masks are supplied
   by the caller; kernels allocate no memory. A nil validity mask means dense.
 
-## SIMD and gates
+## SIMD dispatch and historical evidence
 
-Portable SIMD candidates exist for dense Float32/Float64 abs and sqrt. They are
-installed only in forced-SIMD mode on non-emulated runtimes. Nullable/selected
-batches use the scalar reference path; diagnostics describe the available
-backend, not a promise that every invocation vectorizes. All Auto math kernels
-remain scalar pending architecture-specific kernel and end-to-end gate evidence.
+Portable native SIMD for dense Float32/Float64 abs and sqrt is selected by
+both default `ModeAuto` and diagnostic `ModeSIMD` on SIMD-enabled,
+non-emulated runtimes. `ModeScalar` remains the explicit reference. The supported
+`./scripts/build.sh` defaults an unset `GOEXPERIMENT` to `simd`; direct Go
+commands must opt into the experiment themselves.
+
+Nullable/selected batches, short inputs, and vector tails retain scalar
+reference execution. Diagnostics describe a selected backend with a dense
+vector path, not a promise that every invocation vectorizes. Other math
+operations remain scalar because no retained native SIMD implementation exists.
+Kernel Auto selection no longer waits for historical performance admission;
+planner strategy decisions retain their separate measurement policy.
 
 There are no approximate pow/log replacements, fake vectorized integer
 division, or inaccurate modulo rewrites. Floor/ceil/round remain scalar because
 the portable SIMD API has no matching operations; architecture-specific
 implementations require separate evidence.
 
-The initial linux/amd64 measurement uses Go 1.27.3, GOMAXPROCS=1, 65,536 dense
+The historical initial linux/amd64 measurement used Go 1.27.3, GOMAXPROCS=1, 65,536 dense
 Float64 values, ten 1-second samples per case. Raw output is retained in
 `validation/fundamentals/math-kernel-amd64.txt`. Scalar/forced medians were:
 
@@ -53,9 +60,10 @@ Float64 values, ten 1-second samples per case. Raw output is retained in
 | abs | 81,925 | 15,619 | 5.25x |
 | sqrt | 393,602.5 | 41,063.5 | 9.59x |
 
-Both paths report zero allocations. These measurements are candidate evidence,
-not an Auto approval: expression end-to-end regressions, other batch sizes,
-null density, float32, and other architectures still need their own gate runs.
+Both measured paths reported zero allocations. These are historical candidate
+measurements, not a remeasurement of the native-preferred default or a claim
+about other batch sizes, null densities, Float32, or other architectures.
+Those workloads require their own correctness and performance measurements.
 
 ## Expression integration
 
@@ -91,5 +99,6 @@ Expression workspace measurements (same rows/sample policy) are retained in
 
 Both expression modes use 64 B/op and 1 allocation/op for the existing exported
 result view. Measurements were taken on a shared virtualized host. They do not
-replace the formal per-architecture approval gate or prove small-batch/null-heavy
-performance. No Auto approval is added by this change.
+prove performance of the current default, small-batch/null-heavy workloads, or
+native arm64 execution. The current Auto selection is a native-preferred policy,
+not a new benchmark result or a blanket speedup guarantee.

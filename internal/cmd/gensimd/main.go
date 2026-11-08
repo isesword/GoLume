@@ -309,7 +309,7 @@ func generatePortableSIMD() []byte {
 	b := header("goexperiment.simd")
 	b.WriteString("import (\n\t\"gocolumn/memory\"\n\t\"math/bits\"\n\t\"simd\"\n)\n\n")
 	b.WriteString(`func installGeneratedPortableSIMD(set *Set, mode Mode, vectorBits int) {
-	if mode != ModeSIMD {
+	if mode == ModeScalar || simd.Emulated() {
 		return
 	}
 	capability := KernelCapability{HardwareSIMD: true, VectorBits: vectorBits, Backend: "portable-simd"}
@@ -346,7 +346,8 @@ func generatePortableSIMD() []byte {
 	words := prepareComparison(len(values), out)
 	vectorThreshold := simd.BroadcastFloat32s(threshold)
 	lanes := simd.Float32s{}.Len()
-	laneMask := make([]int32, lanes)
+	var laneMaskStorage [64]int32
+	laneMask := laneMaskStorage[:lanes]
 	selected := 0
 	for wi := 0; wi < words; wi++ {
 		base := wi * 64
@@ -399,7 +400,7 @@ func generateArm64SIMD() []byte {
 		}
 	}
 	b.WriteString(`func installGeneratedArchSIMD(set *Set, mode Mode, vectorBits int) {
-	if vectorBits < 128 {
+	if mode == ModeScalar || vectorBits < 128 {
 		return
 	}
 	capability := KernelCapability{HardwareSIMD: true, VectorBits: 128, Backend: "archsimd-arm64-mask"}
@@ -407,16 +408,6 @@ func generateArm64SIMD() []byte {
 	for _, winner := range winners {
 		fmt.Fprintf(b, "\tset.d.%s[%s] = simdArm%s%s\n", winner.typ.field, winner.op.constant, winner.typ.name, winner.op.name)
 		fmt.Fprintf(b, "\tid%s%s, _ := ComparisonID(memory.Type%s, %s)\n\tset.setCapability(id%s%s, capability)\n", winner.typ.name, winner.op.name, winner.typ.name, winner.op.constant, winner.typ.name, winner.op.name)
-	}
-	b.WriteString(`
-	// These portable Float64 operations have independent native arm64 gate
-	// evidence. Their Auto registration lives here so other architectures do
-	// not inherit an arm64 decision.
-	floatCapability := KernelCapability{HardwareSIMD: true, VectorBits: vectorBits, Backend: "portable-simd"}
-`)
-	for _, op := range []operation{{"Sub", "ArithmeticSub", "-"}, {"Mul", "ArithmeticMul", "*"}, {"Div", "ArithmeticDiv", "/"}} {
-		fmt.Fprintf(b, "\tset.d.arithmeticFloat64[%s] = simdFloat64%s\n", op.constant, op.name)
-		fmt.Fprintf(b, "\tidFloat%s, _ := ArithmeticID(memory.TypeFloat64, %s)\n\tset.setCapability(idFloat%s, floatCapability)\n", op.name, op.constant, op.name)
 	}
 	b.WriteString("}\n\n")
 	for _, winner := range winners {

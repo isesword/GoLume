@@ -1,0 +1,14 @@
+== build.sh, experiment unset, archive VCS stamping disabled ==
+== build.sh, explicitly scalar experiment ==
+== linux/arm64 SIMD kernel cross-compilation only ==
+== full runtime-disabled integration subset ==
+ok  	gocolumn/kernel	0.295s
+ok  	gocolumn/expr	7.549s
+ok  	gocolumn/physical	0.964s
+ok  	gocolumn/engine	3.510s
+ok  	gocolumn/lazy	3.587s
+ok  	gocolumn/optimizer	0.009s
+ok  	gocolumn/memory	0.902s
+ok  	gocolumn/source/arrowrecord	0.033s
+== script syntax ==
+FINAL CHECKS PASS

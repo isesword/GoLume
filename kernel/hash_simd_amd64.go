@@ -6,11 +6,12 @@ import (
 	"gocolumn/internal/hashmix"
 	"gocolumn/memory"
 	"math/bits"
+	"simd"
 	"simd/archsimd"
 )
 
 func installArchSIMDHash(set *Set, mode Mode, vectorBits int) {
-	if mode != ModeSIMD || vectorBits < 512 || !archsimd.X86.AVX512() {
+	if mode == ModeScalar || simd.Emulated() || vectorBits < 512 || !archsimd.X86.AVX512() {
 		return
 	}
 	set.d.hash64 = hash64BatchX8
@@ -18,7 +19,7 @@ func installArchSIMDHash(set *Set, mode Mode, vectorBits int) {
 }
 
 func installArchSIMDCompact(set *Set, mode Mode, vectorBits int) {
-	if mode != ModeSIMD || vectorBits < 512 || !archsimd.X86.AVX512() {
+	if mode == ModeScalar || simd.Emulated() || vectorBits < 512 || !archsimd.X86.AVX512() {
 		return
 	}
 	set.d.compactInt32 = compactInt32X16

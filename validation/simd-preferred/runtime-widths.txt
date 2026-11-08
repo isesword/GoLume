@@ -1,0 +1,26 @@
+== GOEXPERIMENT=simd GODEBUG=simd=0 go test ./kernel ./cmd/kernel-info ==
+ok  	gocolumn/kernel	0.294s
+ok  	gocolumn/cmd/kernel-info	0.015s
+== GOEXPERIMENT=simd GODEBUG=simd=128 go test ./kernel ./cmd/kernel-info ==
+ok  	gocolumn/kernel	0.582s
+ok  	gocolumn/cmd/kernel-info	0.030s
+== GOEXPERIMENT=simd GODEBUG=simd=256 go test ./kernel ./cmd/kernel-info ==
+ok  	gocolumn/kernel	0.370s
+ok  	gocolumn/cmd/kernel-info	0.013s
+== GOEXPERIMENT=simd GODEBUG=simd=512 go test ./kernel ./cmd/kernel-info ==
+ok  	gocolumn/kernel	0.691s
+ok  	gocolumn/cmd/kernel-info	0.012s
+=== RUN   TestColumn32GateEnvironment
+    int32_columns_gate_simd_test.go:13: arch=amd64 GOEXPERIMENT=simd emulated=false int32_vector_bits=512 uint32_vector_bits=512
+    int32_columns_gate_simd_test.go:18: mode=scalar column32_backend=scalar
+    int32_columns_gate_simd_test.go:18: mode=auto column32_backend=portable-simd
+    int32_columns_gate_simd_test.go:18: mode=simd column32_backend=portable-simd
+--- PASS: TestColumn32GateEnvironment (0.00s)
+=== RUN   TestAVX512AutoDispatchHonorsHardwareAndVectorWidth
+--- PASS: TestAVX512AutoDispatchHonorsHardwareAndVectorWidth (0.00s)
+=== RUN   TestAutoSelectsAvailableNativeSIMD
+    native_simd_defaults_test.go:12: arch=amd64 emulated=false vector_bits=512
+--- PASS: TestAutoSelectsAvailableNativeSIMD (0.00s)
+PASS
+ok  	gocolumn/kernel	0.026s
+validation_max_native_bits=512

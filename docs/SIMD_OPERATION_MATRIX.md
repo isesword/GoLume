@@ -1,90 +1,104 @@
 # SIMD Operation Matrix
 
-This is the P0 baseline for the current GoLume tree. It records dispatch as
-implemented, not projected coverage. Refresh it whenever a kernel or execution
-path changes.
+This matrix describes current dispatch, not projected coverage or performance.
+Refresh it whenever a kernel or production execution path changes.
 
-- Baseline commit: `865f8dd99ccfdb8deaa53584f98577be720ba554`
-- Toolchain: `go1.27.0`
-- Host: `darwin/arm64`, Apple M4 Pro
-- Build experiment: `GOEXPERIMENT` is empty by default; SIMD commands below
-  explicitly enable `GOEXPERIMENT=simd`.
-- Verification: `go test ./...`, targeted SIMD tests, and targeted
-  `GODEBUG=simd=0` tests passed after the P0 documentation and first P1/P2
-  changes. Full CPU profiles and fresh one-second benchmark artifacts are
-  still pending.
+The supported Go 1.27 build entry is `./scripts/build.sh`. It defaults an unset
+`GOEXPERIMENT` to `simd`, honors explicit overrides (including an empty value),
+and changes no persistent Go settings. Direct Go commands still need the
+experiment explicitly enabled. `ModeAuto` prefers retained native SIMD wherever
+available; `ModeScalar` is the reference and `ModeSIMD` is diagnostic selection.
+Runtime emulation/disablement and hardware/vector-width guards remain in force.
+
+The former P0 baseline was `865f8dd99ccfdb8deaa53584f98577be720ba554` on Go
+1.27.0, darwin/arm64, Apple M4 Pro. Its test and benchmark records are historical,
+not verification of the current policy change. New native arm64 measurements
+and a blanket speedup claim are not supplied by this matrix.
 
 ## Reproduction
 
 ```sh
 go version
 go env GOOS GOARCH GOEXPERIMENT
-go test ./kernel ./memory ./expr ./engine ./lazy ./physical
-GOEXPERIMENT=simd go test ./kernel ./memory ./expr ./engine ./lazy ./physical
+./scripts/build.sh
+GOEXPERIMENT= ./scripts/build.sh
+go test ./kernel ./cmd/kernel-info ./memory ./expr ./engine ./lazy ./physical
+GOEXPERIMENT=simd go test ./kernel ./cmd/kernel-info ./memory ./expr ./engine ./lazy ./physical
 GOEXPERIMENT=simd go run ./cmd/kernel-info -mode scalar
-GOEXPERIMENT=simd go run ./cmd/kernel-info -mode auto
+GOEXPERIMENT=simd go run ./cmd/kernel-info -mode auto -json
 GOEXPERIMENT=simd go run ./cmd/kernel-info -mode simd
-GOEXPERIMENT=simd GODEBUG=simd=0 go test ./kernel ./expr ./engine ./lazy ./physical
+GOEXPERIMENT=simd GODEBUG=simd=0 go test ./kernel ./cmd/kernel-info ./expr ./engine ./lazy ./physical
 ```
 
-The repository's current Auto policy is architecture-specific. On the
-validated darwin/arm64 host it admits Int32/Uint32 comparison, Float64
-Sub/Mul/Div, and an `arm64-unrolled` Hash64 backend. Hash64 is deliberately
-reported as non-hardware-SIMD. linux/amd64 has no Auto approval without native
-benchmark evidence.
+These are commands to run, not a declaration that every check above passed.
+The CLI separates literal KernelIDs (`kernels`) from column-comparison reports
+(`column_comparisons`). `compare-int32-gt` and `compare-columns-int32-gt` may
+select different backends. Programmatic callers use `Capability(id)` for
+literal comparisons and `ColumnComparisonCapability(type, op)` for columns.
 
 ## Current operation matrix
 
-| Family | Physical operations | Current SIMD candidate | Auto policy | Main production callers |
-|---|---|---|---|---|
-| Comparison | Int32 GT/GE/LT/LE | arm64 mask, 128-bit | darwin/arm64 exact IDs | predicate compiler, filter |
-| Comparison | Uint32 GT/GE/LT/LE/EQ | arm64 mask, 128-bit | darwin/arm64 exact IDs | predicate compiler, filter |
-| Comparison | Int64/Uint64/Float64 | scalar (literal and column-column) | scalar pending native evidence | predicate compiler, filter |
-| Comparison | Int8/Int16/Uint8/Uint16 | native-width scalar `kernel.Set` entry, including column-column | scalar; no Auto admission | predicate compiler, filter |
-| Comparison | Float32 | portable SIMD forced literal/column-column candidate plus scalar | scalar Auto pending gate | predicate compiler, filter |
-| Arithmetic | Float64 Sub/Mul/Div | portable SIMD | darwin/arm64 exact IDs | expression projection |
-| Arithmetic | checked integer arithmetic | scalar | scalar | expression projection |
-| Boolean | bitmap AND/OR/NOT | word scalar | scalar | predicate registers |
-| Hash | Hash64 batch | four-way native scalar unroll | darwin/arm64 approved, non-SIMD | aggregate/partition preparation |
-| Hash | Hash128 batch | scalar | scalar | pair-key aggregation/join |
-| Scale | checked Int64 scale | bounded scalar | scalar | temporal/unit conversion |
-| String length | byte and UTF-8 length | scalar | scalar | string expressions |
-| String match | equality/prefix/suffix/contains | formal scalar `KernelID` entries | scalar pending SIMD evidence | predicate string filters |
-| Compact | fixed-width compaction | scalar or arch-specific candidate | evidence required per ID | filter materialization |
-| Parquet decode | Float32 + IntLogicalType 8/16 | native 4/1/2-byte scalar decode | scalar; no SIMD admission | lazy scan output |
-| Join payload/key | native narrow integer vectors | native scalar clone/materialize and key extraction | Float32 keys, pair/nullable spill paths pending | join output materialization |
+All native entries below require a SIMD-enabled, non-emulated runtime. Short
+inputs and vector tails may execute scalar. Nullable/selected Abs/Sqrt uses
+scalar reference evaluation even when the reported backend offers dense SIMD.
 
-## Evidence rules
+| Family | Physical operations | Auto native backend / guard | Remaining scalar boundary |
+|---|---|---|---|
+| Literal comparison | Float32 GT/GE/LT/LE/EQ | portable SIMD | unavailable native runtime, tails |
+| Literal comparison | Int32 GT/GE/LT/LE | arm64 mask, 128-bit | other architectures; Int32 EQ |
+| Literal comparison | Uint32 GT/GE/LT/LE/EQ | arm64 mask, 128-bit | other architectures |
+| Column comparison | Int32/Uint32/Float32 GT/GE/LT/LE/EQ | portable SIMD | unavailable native runtime, tails |
+| Both comparison shapes | Int8/Int16/Int64/Uint8/Uint16/Uint64/Float64 | none | typed scalar entries |
+| Arithmetic | Float64 Sub/Mul/Div | portable SIMD | unavailable native runtime, tails |
+| Arithmetic | Float64 Add, Float32 arithmetic, checked integers | none | scalar with existing numerical/overflow semantics |
+| Unary math | Float32/Float64 Abs/Sqrt | portable SIMD, dense inputs | nullable/selected inputs, tails |
+| Other math | integer math, Round/Floor/Ceil/Log/Mod/FloorDiv/Pow | none | typed scalar; no approximate replacements |
+| Boolean | bitmap AND/OR/NOT | none | word scalar |
+| Hash | Hash64 batch | amd64 AVX-512 with native width >=512 | arm64 Auto retains non-SIMD four-way unroll; other cases scalar |
+| Hash | Hash128 batch | none | scalar |
+| Scale | checked Int64 scale | none | bounded scalar |
+| String length / match | byte/UTF-8 length, equality/prefix/suffix/contains | none | scalar KernelID entries |
+| Compact | Int32/Int64/Uint32/Uint64/Float64 | amd64 AVX-512 Compress with native width >=512 | other architectures/widths |
+| Compact | Int8/Int16/Uint8/Uint16/Float32 | none | native-width scalar |
+| Parquet decode / payload | typed decode, clone/materialize, key extraction | no general SIMD backend | typed scalar paths; not a kernel SIMD claim |
+| Operator-owned loops | hash probes/state updates, merge/sort, Top-K, random gather | no general SIMD backend | algorithm/access-pattern work remains |
 
-- A KernelID is independent: one passing operation does not approve its whole
-  type family.
-- Auto admission requires the current gate policy: ten same-build one-second
-  samples, at least 10% kernel improvement, `p < 0.05`, and no related
-  end-to-end regression above 3%.
-- `GODEBUG=simd=0` is an emulation/disabled-runtime correctness check; it is
-  not evidence that hardware SIMD is available.
-- End-to-end evidence must include the real scan, expression, filter,
-  aggregate/join, and output path for the workload being claimed.
+Both amd64 wide operations require `archsimd.X86.AVX512()`, non-emulated SIMD,
+and a selected vector width of at least 512. AVX-512 hardware alone does not
+permit a wide backend when the runtime selects 128 or 256 bits. There is no
+AVX2 multiplication emulation. Auto's arm64 hash unroll is reported with
+`hardware_simd=false` and `vector_bits=0`, not mislabeled as SIMD.
 
-## P0 follow-up inventory
+## Correctness and evidence rules
 
-Float32 comparison now has an independent `KernelID`, literal and column-column
-portable SIMD forced candidates, and a formal scalar backend. Int32 and Uint32
-also have forced column-column candidates; all other physical widths use typed
-scalar column-column entries. Auto admission remains operation-specific and is
-not inferred from forced-mode correctness.
+- Report each operation and comparison shape independently. A literal
+  capability is not evidence for its column-to-column counterpart.
+- Auto selection expresses the native-preferred default, not a performance
+  certification. `auto_admitted` retains its report name but means selection
+  of a non-scalar-named backend; inspect `hardware_simd` for actual SIMD.
+- `GODEBUG=simd=0` checks disabled/emulated correctness. It cannot establish
+  hardware SIMD availability or performance.
+- The planner's measured bitmap/direct strategy decisions are independent and
+  unchanged. Existing strategy approvals still apply only to their recorded
+  architecture, width, operation, and selectivity bucket.
+- Historical gates used ten same-build one-second samples, at least 10%
+  kernel improvement, `p < 0.05`, and no related end-to-end regression above
+  3%. Those records remain useful evidence, not the current kernel admission
+  policy. New performance claims need new comparable samples and the actual
+  scan/expression/filter/aggregate or join/output path being claimed.
 
-The current bypass inventory is narrowed to the remaining operator-owned loops:
-`hashagg/{i32,u64,pair,string}.go` table probe/state updates, `join/{pair,dictionary}.go`
-probe loops, and `physical/order_stream.go` merge/sort loops. Native numeric
-pass-through, filter compact, take gather, and expression alias paths now use
-the native maps; these operator loops remain scalar until their access pattern
-and end-to-end cost are measured.
+## Remaining optimization inventory
 
-- [ ] Capture fresh CPU profiles and allocation/peak-memory measurements for
+The portable column-comparison kernels are selected in Auto now; their
+operator switch and stored-mask lane scan have not been rewritten as generated
+literal kernels. Remaining operator-owned loops include hash aggregation probe
+and state updates, join probes, and merge/sort. Native-width storage and batching
+alone do not make these SIMD.
+
+- Capture fresh CPU profiles and allocation/peak-memory measurements for
   numeric projection, filtering, aggregation, join, sort, strings, and Parquet.
-- [ ] Record every production loop that bypasses `kernel.Set`.
-- [ ] Pin the Polars comparison revision and link the corresponding compute
-  kernel sources, distinguishing SIMD from batching and parallelism.
-- [ ] Add fresh final-build benchmark artifacts under `validation/` before
-  changing any Auto allowlist.
+- Keep the inventory of production loops bypassing `kernel.Set` current.
+- For Polars comparisons, pin the revision and distinguish SIMD from batching
+  and parallelism.
+- Retain raw final-build kernel and end-to-end samples per target host before
+  claiming performance gains or changing planner strategy approvals.

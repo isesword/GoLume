@@ -1,0 +1,3427 @@
+{
+  "kernel": {
+    "cases": 80,
+    "samples_per_mode": 6,
+    "auto_median_faster_count": 70,
+    "auto_median_slower_count": 10,
+    "auto_vs_scalar_pct_range": [
+      -71.77948473894725,
+      73.53779118485
+    ],
+    "median_case_change_pct": -39.47594811294091,
+    "invariants": {
+      "B/op": {
+        "equal_across_modes": true,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "allocs/op": {
+        "equal_across_modes": true,
+        "min": 0.0,
+        "max": 0.0
+      }
+    },
+    "cases_data": [
+      {
+        "name": "BenchmarkColumn32ComparisonGate/type=int32/case=stream/op=gt",
+        "median": {
+          "scalar": {
+            "ns/op": 1986475.5,
+            "MB/s": 4225.93,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "auto": {
+            "ns/op": 1373529.5,
+            "MB/s": 6107.57,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "simd": {
+            "ns/op": 1792248.5,
+            "MB/s": 4966.67,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -30.855955686339954,
+        "simd_vs_scalar_ns_pct": -9.777467680824659
+      },
+      {
+        "name": "BenchmarkColumn32ComparisonGate/type=int32/case=stream/op=ge",
+        "median": {
+          "scalar": {
+            "ns/op": 2265528.5,
+            "MB/s": 3702.8199999999997,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "auto": {
+            "ns/op": 1908522.5,
+            "MB/s": 4407.83,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "simd": {
+            "ns/op": 1914723.0,
+            "MB/s": 4409.465,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -15.758177396576556,
+        "simd_vs_scalar_ns_pct": -15.484488497937676
+      },
+      {
+        "name": "BenchmarkColumn32ComparisonGate/type=int32/case=stream/op=lt",
+        "median": {
+          "scalar": {
+            "ns/op": 2960920.0,
+            "MB/s": 2834.09,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "auto": {
+            "ns/op": 1626295.5,
+            "MB/s": 5158.575,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "simd": {
+            "ns/op": 1630087.0,
+            "MB/s": 5203.594999999999,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -45.07465585020872,
+        "simd_vs_scalar_ns_pct": -44.946604433757074
+      },
+      {
+        "name": "BenchmarkColumn32ComparisonGate/type=int32/case=stream/op=le",
+        "median": {
+          "scalar": {
+            "ns/op": 3192393.0,
+            "MB/s": 2628.09,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "auto": {
+            "ns/op": 1887994.0,
+            "MB/s": 4444.924999999999,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "simd": {
+            "ns/op": 1860529.0,
+            "MB/s": 4520.84,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -40.85959967961338,
+        "simd_vs_scalar_ns_pct": -41.71992608679446
+      },
+      {
+        "name": "BenchmarkColumn32ComparisonGate/type=int32/case=stream/op=eq",
+        "median": {
+          "scalar": {
+            "ns/op": 3245769.5,
+            "MB/s": 2584.49,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "auto": {
+            "ns/op": 1690716.0,
+            "MB/s": 4969.025,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "simd": {
+            "ns/op": 1558804.5,
+            "MB/s": 5391.49,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -47.91016429231959,
+        "simd_vs_scalar_ns_pct": -51.974269891931634
+      },
+      {
+        "name": "BenchmarkColumn32ComparisonGate/type=int32/case=bitmap/op=gt",
+        "median": {
+          "scalar": {
+            "ns/op": 198891.5,
+            "MB/s": 2636.0550000000003,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "auto": {
+            "ns/op": 105642.0,
+            "MB/s": 4964.0599999999995,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "simd": {
+            "ns/op": 91407.5,
+            "MB/s": 5736.025,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -46.884607939504704,
+        "simd_vs_scalar_ns_pct": -54.041525153161395
+      },
+      {
+        "name": "BenchmarkColumn32ComparisonGate/type=int32/case=bitmap/op=ge",
+        "median": {
+          "scalar": {
+            "ns/op": 236188.0,
+            "MB/s": 2220.49,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "auto": {
+            "ns/op": 175012.5,
+            "MB/s": 2998.2250000000004,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "simd": {
+            "ns/op": 132142.0,
+            "MB/s": 3967.6499999999996,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -25.901188883431846,
+        "simd_vs_scalar_ns_pct": -44.0521957085034
+      },
+      {
+        "name": "BenchmarkColumn32ComparisonGate/type=int32/case=bitmap/op=lt",
+        "median": {
+          "scalar": {
+            "ns/op": 213485.5,
+            "MB/s": 2455.8500000000004,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "auto": {
+            "ns/op": 104567.0,
+            "MB/s": 5014.360000000001,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "simd": {
+            "ns/op": 90891.5,
+            "MB/s": 5768.35,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -51.01915586772871,
+        "simd_vs_scalar_ns_pct": -57.42497734038143
+      },
+      {
+        "name": "BenchmarkColumn32ComparisonGate/type=int32/case=bitmap/op=le",
+        "median": {
+          "scalar": {
+            "ns/op": 250405.0,
+            "MB/s": 2096.465,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "auto": {
+            "ns/op": 175055.5,
+            "MB/s": 2994.99,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "simd": {
+            "ns/op": 130081.5,
+            "MB/s": 4031.37,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -30.09105249495817,
+        "simd_vs_scalar_ns_pct": -48.05155647850482
+      },
+      {
+        "name": "BenchmarkColumn32ComparisonGate/type=int32/case=bitmap/op=eq",
+        "median": {
+          "scalar": {
+            "ns/op": 241999.0,
+            "MB/s": 2166.485,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "auto": {
+            "ns/op": 111731.5,
+            "MB/s": 4698.59,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "simd": {
+            "ns/op": 95822.0,
+            "MB/s": 5477.885,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -53.829767891602856,
+        "simd_vs_scalar_ns_pct": -60.40396861144055
+      },
+      {
+        "name": "BenchmarkColumn32ComparisonGate/type=int32/case=nullable-tail/op=gt",
+        "median": {
+          "scalar": {
+            "ns/op": 160352.5,
+            "MB/s": 3273.38,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "auto": {
+            "ns/op": 103956.0,
+            "MB/s": 5049.115,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "simd": {
+            "ns/op": 90772.5,
+            "MB/s": 5784.02,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -35.170327871408304,
+        "simd_vs_scalar_ns_pct": -43.391902215431635
+      },
+      {
+        "name": "BenchmarkColumn32ComparisonGate/type=int32/case=nullable-tail/op=ge",
+        "median": {
+          "scalar": {
+            "ns/op": 166747.0,
+            "MB/s": 3150.175,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "auto": {
+            "ns/op": 141350.5,
+            "MB/s": 3709.455,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "simd": {
+            "ns/op": 134374.5,
+            "MB/s": 3904.995,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -15.230558870624355,
+        "simd_vs_scalar_ns_pct": -19.414142383371214
+      },
+      {
+        "name": "BenchmarkColumn32ComparisonGate/type=int32/case=nullable-tail/op=lt",
+        "median": {
+          "scalar": {
+            "ns/op": 177387.5,
+            "MB/s": 2956.29,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "auto": {
+            "ns/op": 96387.0,
+            "MB/s": 5439.785,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "simd": {
+            "ns/op": 99132.0,
+            "MB/s": 5289.15,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -45.66302586146149,
+        "simd_vs_scalar_ns_pct": -44.11556620393207
+      },
+      {
+        "name": "BenchmarkColumn32ComparisonGate/type=int32/case=nullable-tail/op=le",
+        "median": {
+          "scalar": {
+            "ns/op": 201301.5,
+            "MB/s": 2604.63,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "auto": {
+            "ns/op": 133572.0,
+            "MB/s": 3935.865,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "simd": {
+            "ns/op": 140108.0,
+            "MB/s": 3745.16,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -33.64579995678124,
+        "simd_vs_scalar_ns_pct": -30.39892896972949
+      },
+      {
+        "name": "BenchmarkColumn32ComparisonGate/type=int32/case=nullable-tail/op=eq",
+        "median": {
+          "scalar": {
+            "ns/op": 211062.0,
+            "MB/s": 2484.225,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "auto": {
+            "ns/op": 98615.0,
+            "MB/s": 5316.75,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "simd": {
+            "ns/op": 107100.5,
+            "MB/s": 4895.555,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -53.27676227838265,
+        "simd_vs_scalar_ns_pct": -49.25637964200092
+      },
+      {
+        "name": "BenchmarkColumn32ComparisonGate/type=int32/case=sparse/op=gt",
+        "median": {
+          "scalar": {
+            "ns/op": 136572.0,
+            "MB/s": 3839.91,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "auto": {
+            "ns/op": 81003.5,
+            "MB/s": 6491.43,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "simd": {
+            "ns/op": 71652.0,
+            "MB/s": 7317.265,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -40.68806197463609,
+        "simd_vs_scalar_ns_pct": -47.53536596081188
+      },
+      {
+        "name": "BenchmarkColumn32ComparisonGate/type=int32/case=sparse/op=ge",
+        "median": {
+          "scalar": {
+            "ns/op": 163752.5,
+            "MB/s": 3203.63,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "auto": {
+            "ns/op": 75274.5,
+            "MB/s": 6989.74,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "simd": {
+            "ns/op": 70775.5,
+            "MB/s": 7408.1849999999995,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -54.031541503183156,
+        "simd_vs_scalar_ns_pct": -56.77898047358055
+      },
+      {
+        "name": "BenchmarkColumn32ComparisonGate/type=int32/case=sparse/op=lt",
+        "median": {
+          "scalar": {
+            "ns/op": 206773.0,
+            "MB/s": 2535.57,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "auto": {
+            "ns/op": 149863.0,
+            "MB/s": 3500.05,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "simd": {
+            "ns/op": 167932.0,
+            "MB/s": 3122.13,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -27.522935779816514,
+        "simd_vs_scalar_ns_pct": -18.78436739806454
+      },
+      {
+        "name": "BenchmarkColumn32ComparisonGate/type=int32/case=sparse/op=le",
+        "median": {
+          "scalar": {
+            "ns/op": 194399.0,
+            "MB/s": 2697.635,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "auto": {
+            "ns/op": 139718.5,
+            "MB/s": 3752.49,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "simd": {
+            "ns/op": 150975.0,
+            "MB/s": 3474.37,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -28.127973909330805,
+        "simd_vs_scalar_ns_pct": -22.337563464832634
+      },
+      {
+        "name": "BenchmarkColumn32ComparisonGate/type=int32/case=sparse/op=eq",
+        "median": {
+          "scalar": {
+            "ns/op": 198762.0,
+            "MB/s": 2638.9750000000004,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "auto": {
+            "ns/op": 66216.5,
+            "MB/s": 7918.045,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "simd": {
+            "ns/op": 75032.0,
+            "MB/s": 6988.275,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -66.6855334520683,
+        "simd_vs_scalar_ns_pct": -62.25032953985168
+      },
+      {
+        "name": "BenchmarkColumn32ComparisonGate/type=int32/case=dense/op=gt",
+        "median": {
+          "scalar": {
+            "ns/op": 199839.0,
+            "MB/s": 2623.83,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "auto": {
+            "ns/op": 151004.0,
+            "MB/s": 3490.48,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "simd": {
+            "ns/op": 151584.0,
+            "MB/s": 3458.965,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -24.43717192339834,
+        "simd_vs_scalar_ns_pct": -24.146938285319685
+      },
+      {
+        "name": "BenchmarkColumn32ComparisonGate/type=int32/case=dense/op=ge",
+        "median": {
+          "scalar": {
+            "ns/op": 198793.0,
+            "MB/s": 2637.465,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "auto": {
+            "ns/op": 136045.5,
+            "MB/s": 3854.275,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "simd": {
+            "ns/op": 150638.5,
+            "MB/s": 3480.995,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -31.564240189543902,
+        "simd_vs_scalar_ns_pct": -24.223438451052104
+      },
+      {
+        "name": "BenchmarkColumn32ComparisonGate/type=int32/case=dense/op=lt",
+        "median": {
+          "scalar": {
+            "ns/op": 161771.5,
+            "MB/s": 3254.88,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "auto": {
+            "ns/op": 68184.5,
+            "MB/s": 7690.05,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "simd": {
+            "ns/op": 74827.5,
+            "MB/s": 7027.6849999999995,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -57.85135206139525,
+        "simd_vs_scalar_ns_pct": -53.744942712406086
+      },
+      {
+        "name": "BenchmarkColumn32ComparisonGate/type=int32/case=dense/op=le",
+        "median": {
+          "scalar": {
+            "ns/op": 172109.5,
+            "MB/s": 3046.415,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "auto": {
+            "ns/op": 71910.0,
+            "MB/s": 7304.295,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "simd": {
+            "ns/op": 72775.0,
+            "MB/s": 7204.280000000001,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -58.21845975962977,
+        "simd_vs_scalar_ns_pct": -57.71587274380554
+      },
+      {
+        "name": "BenchmarkColumn32ComparisonGate/type=int32/case=dense/op=eq",
+        "median": {
+          "scalar": {
+            "ns/op": 193978.5,
+            "MB/s": 2702.91,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "auto": {
+            "ns/op": 72826.5,
+            "MB/s": 7241.57,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "simd": {
+            "ns/op": 72553.0,
+            "MB/s": 7226.52,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -62.45640625120825,
+        "simd_vs_scalar_ns_pct": -62.59740125838689
+      },
+      {
+        "name": "BenchmarkColumn32ComparisonGate/type=int32/case=equal/op=gt",
+        "median": {
+          "scalar": {
+            "ns/op": 130581.5,
+            "MB/s": 4016.475,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "auto": {
+            "ns/op": 68830.0,
+            "MB/s": 7617.215,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "simd": {
+            "ns/op": 71333.5,
+            "MB/s": 7349.835,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -47.28962372158384,
+        "simd_vs_scalar_ns_pct": -45.37243024471307
+      },
+      {
+        "name": "BenchmarkColumn32ComparisonGate/type=int32/case=equal/op=ge",
+        "median": {
+          "scalar": {
+            "ns/op": 195996.5,
+            "MB/s": 2675.56,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "auto": {
+            "ns/op": 134102.5,
+            "MB/s": 3923.1949999999997,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "simd": {
+            "ns/op": 148896.0,
+            "MB/s": 3528.15,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -31.579135341702536,
+        "simd_vs_scalar_ns_pct": -24.03129647723301
+      },
+      {
+        "name": "BenchmarkColumn32ComparisonGate/type=int32/case=equal/op=lt",
+        "median": {
+          "scalar": {
+            "ns/op": 180140.0,
+            "MB/s": 2912.525,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "auto": {
+            "ns/op": 75379.5,
+            "MB/s": 6955.625,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "simd": {
+            "ns/op": 71905.5,
+            "MB/s": 7292.6900000000005,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -58.15504607527478,
+        "simd_vs_scalar_ns_pct": -60.08354613078717
+      },
+      {
+        "name": "BenchmarkColumn32ComparisonGate/type=int32/case=equal/op=le",
+        "median": {
+          "scalar": {
+            "ns/op": 193552.5,
+            "MB/s": 2710.695,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "auto": {
+            "ns/op": 144005.0,
+            "MB/s": 3649.42,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "simd": {
+            "ns/op": 142745.5,
+            "MB/s": 3673.7749999999996,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -25.598997687965795,
+        "simd_vs_scalar_ns_pct": -26.24972552666589
+      },
+      {
+        "name": "BenchmarkColumn32ComparisonGate/type=int32/case=equal/op=eq",
+        "median": {
+          "scalar": {
+            "ns/op": 213588.5,
+            "MB/s": 2459.5950000000003,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "auto": {
+            "ns/op": 146856.5,
+            "MB/s": 3572.885,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "simd": {
+            "ns/op": 142380.0,
+            "MB/s": 3685.27,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -31.24325513780002,
+        "simd_vs_scalar_ns_pct": -33.33910767667735
+      },
+      {
+        "name": "BenchmarkColumn32ComparisonGate/type=int32/case=short/op=gt",
+        "median": {
+          "scalar": {
+            "ns/op": 28.375,
+            "MB/s": 1974.685,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "auto": {
+            "ns/op": 39.665,
+            "MB/s": 1412.385,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "simd": {
+            "ns/op": 39.055,
+            "MB/s": 1434.415,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": 39.78854625550661,
+        "simd_vs_scalar_ns_pct": 37.63876651982378
+      },
+      {
+        "name": "BenchmarkColumn32ComparisonGate/type=int32/case=short/op=ge",
+        "median": {
+          "scalar": {
+            "ns/op": 33.675,
+            "MB/s": 1663.0,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "auto": {
+            "ns/op": 49.18,
+            "MB/s": 1138.6399999999999,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "simd": {
+            "ns/op": 49.405,
+            "MB/s": 1135.73,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": 46.043058648849296,
+        "simd_vs_scalar_ns_pct": 46.71121009651078
+      },
+      {
+        "name": "BenchmarkColumn32ComparisonGate/type=int32/case=short/op=lt",
+        "median": {
+          "scalar": {
+            "ns/op": 36.32,
+            "MB/s": 1542.0749999999998,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "auto": {
+            "ns/op": 44.85,
+            "MB/s": 1248.755,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "simd": {
+            "ns/op": 42.83,
+            "MB/s": 1308.44,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": 23.485682819383257,
+        "simd_vs_scalar_ns_pct": 17.92400881057268
+      },
+      {
+        "name": "BenchmarkColumn32ComparisonGate/type=int32/case=short/op=le",
+        "median": {
+          "scalar": {
+            "ns/op": 36.165,
+            "MB/s": 1548.78,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "auto": {
+            "ns/op": 46.349999999999994,
+            "MB/s": 1208.8600000000001,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "simd": {
+            "ns/op": 45.56,
+            "MB/s": 1229.165,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": 28.162588137702183,
+        "simd_vs_scalar_ns_pct": 25.978155675376758
+      },
+      {
+        "name": "BenchmarkColumn32ComparisonGate/type=int32/case=short/op=eq",
+        "median": {
+          "scalar": {
+            "ns/op": 37.19,
+            "MB/s": 1505.8049999999998,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "auto": {
+            "ns/op": 51.905,
+            "MB/s": 1079.04,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "simd": {
+            "ns/op": 51.885000000000005,
+            "MB/s": 1079.27,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": 39.56708792686208,
+        "simd_vs_scalar_ns_pct": 39.51331002957787
+      },
+      {
+        "name": "BenchmarkColumn32ComparisonGate/type=int32/case=tail/op=gt",
+        "median": {
+          "scalar": {
+            "ns/op": 190.65,
+            "MB/s": 2728.95,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "auto": {
+            "ns/op": 117.7,
+            "MB/s": 4421.965,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "simd": {
+            "ns/op": 122.2,
+            "MB/s": 4257.135,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -38.26383425124574,
+        "simd_vs_scalar_ns_pct": -35.90348806713873
+      },
+      {
+        "name": "BenchmarkColumn32ComparisonGate/type=int32/case=tail/op=ge",
+        "median": {
+          "scalar": {
+            "ns/op": 182.64999999999998,
+            "MB/s": 2847.075,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "auto": {
+            "ns/op": 176.65,
+            "MB/s": 3035.09,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "simd": {
+            "ns/op": 154.2,
+            "MB/s": 3374.245,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -3.28497125650149,
+        "simd_vs_scalar_ns_pct": -15.576238707911305
+      },
+      {
+        "name": "BenchmarkColumn32ComparisonGate/type=int32/case=tail/op=lt",
+        "median": {
+          "scalar": {
+            "ns/op": 206.7,
+            "MB/s": 2516.215,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "auto": {
+            "ns/op": 115.45,
+            "MB/s": 4505.085,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "simd": {
+            "ns/op": 124.4,
+            "MB/s": 4180.95,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -44.14610546686018,
+        "simd_vs_scalar_ns_pct": -39.816158684083206
+      },
+      {
+        "name": "BenchmarkColumn32ComparisonGate/type=int32/case=tail/op=le",
+        "median": {
+          "scalar": {
+            "ns/op": 205.0,
+            "MB/s": 2538.26,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "auto": {
+            "ns/op": 149.7,
+            "MB/s": 3473.7799999999997,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "simd": {
+            "ns/op": 152.89999999999998,
+            "MB/s": 3404.015,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -26.975609756097562,
+        "simd_vs_scalar_ns_pct": -25.414634146341474
+      },
+      {
+        "name": "BenchmarkColumn32ComparisonGate/type=int32/case=tail/op=eq",
+        "median": {
+          "scalar": {
+            "ns/op": 203.45,
+            "MB/s": 2565.575,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "auto": {
+            "ns/op": 118.75,
+            "MB/s": 4379.860000000001,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "simd": {
+            "ns/op": 120.65,
+            "MB/s": 4311.07,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -41.63185057753748,
+        "simd_vs_scalar_ns_pct": -40.69796018677807
+      },
+      {
+        "name": "BenchmarkColumn32ComparisonGate/type=uint32/case=stream/op=gt",
+        "median": {
+          "scalar": {
+            "ns/op": 2274843.0,
+            "MB/s": 3687.705,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "auto": {
+            "ns/op": 1502210.5,
+            "MB/s": 5584.355,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "simd": {
+            "ns/op": 1592099.5,
+            "MB/s": 5279.375,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -33.9642120357317,
+        "simd_vs_scalar_ns_pct": -30.012774507955054
+      },
+      {
+        "name": "BenchmarkColumn32ComparisonGate/type=uint32/case=stream/op=ge",
+        "median": {
+          "scalar": {
+            "ns/op": 2733482.0,
+            "MB/s": 3069.21,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "auto": {
+            "ns/op": 1962772.5,
+            "MB/s": 4273.935,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "simd": {
+            "ns/op": 1994353.5,
+            "MB/s": 4207.02,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -28.19515548300665,
+        "simd_vs_scalar_ns_pct": -27.039815883184893
+      },
+      {
+        "name": "BenchmarkColumn32ComparisonGate/type=uint32/case=stream/op=lt",
+        "median": {
+          "scalar": {
+            "ns/op": 3315451.5,
+            "MB/s": 2535.39,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "auto": {
+            "ns/op": 1800947.5,
+            "MB/s": 4674.62,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "simd": {
+            "ns/op": 1535958.5,
+            "MB/s": 5493.275,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -45.68017357515258,
+        "simd_vs_scalar_ns_pct": -53.67271999002248
+      },
+      {
+        "name": "BenchmarkColumn32ComparisonGate/type=uint32/case=stream/op=le",
+        "median": {
+          "scalar": {
+            "ns/op": 3843964.5,
+            "MB/s": 2182.33,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "auto": {
+            "ns/op": 2101552.0,
+            "MB/s": 3991.705,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "simd": {
+            "ns/op": 1983951.0,
+            "MB/s": 4228.24,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -45.32852735762778,
+        "simd_vs_scalar_ns_pct": -48.387894841380565
+      },
+      {
+        "name": "BenchmarkColumn32ComparisonGate/type=uint32/case=stream/op=eq",
+        "median": {
+          "scalar": {
+            "ns/op": 3799809.5,
+            "MB/s": 2207.6549999999997,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "auto": {
+            "ns/op": 2007809.5,
+            "MB/s": 4178.21,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "simd": {
+            "ns/op": 1706093.5,
+            "MB/s": 4917.58,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -47.16025895508709,
+        "simd_vs_scalar_ns_pct": -55.10055175134438
+      },
+      {
+        "name": "BenchmarkColumn32ComparisonGate/type=uint32/case=bitmap/op=gt",
+        "median": {
+          "scalar": {
+            "ns/op": 258482.5,
+            "MB/s": 2029.255,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "auto": {
+            "ns/op": 98828.5,
+            "MB/s": 5305.085,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "simd": {
+            "ns/op": 103547.0,
+            "MB/s": 5064.715,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -61.76588357045447,
+        "simd_vs_scalar_ns_pct": -59.94042149855405
+      },
+      {
+        "name": "BenchmarkColumn32ComparisonGate/type=uint32/case=bitmap/op=ge",
+        "median": {
+          "scalar": {
+            "ns/op": 276429.0,
+            "MB/s": 1897.845,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "auto": {
+            "ns/op": 152592.0,
+            "MB/s": 3449.645,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "simd": {
+            "ns/op": 147205.5,
+            "MB/s": 3561.995,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -44.7988452731081,
+        "simd_vs_scalar_ns_pct": -46.747446903183096
+      },
+      {
+        "name": "BenchmarkColumn32ComparisonGate/type=uint32/case=bitmap/op=lt",
+        "median": {
+          "scalar": {
+            "ns/op": 260399.5,
+            "MB/s": 2014.935,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "auto": {
+            "ns/op": 106442.0,
+            "MB/s": 4928.79,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "simd": {
+            "ns/op": 97077.0,
+            "MB/s": 5402.67,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -59.12357742622394,
+        "simd_vs_scalar_ns_pct": -62.71997450071909
+      },
+      {
+        "name": "BenchmarkColumn32ComparisonGate/type=uint32/case=bitmap/op=le",
+        "median": {
+          "scalar": {
+            "ns/op": 280835.5,
+            "MB/s": 1866.955,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "auto": {
+            "ns/op": 152678.0,
+            "MB/s": 3434.175,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "simd": {
+            "ns/op": 160216.5,
+            "MB/s": 3275.7799999999997,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -45.63436602566271,
+        "simd_vs_scalar_ns_pct": -42.95005439127176
+      },
+      {
+        "name": "BenchmarkColumn32ComparisonGate/type=uint32/case=bitmap/op=eq",
+        "median": {
+          "scalar": {
+            "ns/op": 374024.0,
+            "MB/s": 1443.4,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "auto": {
+            "ns/op": 105551.5,
+            "MB/s": 4967.92,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "simd": {
+            "ns/op": 100364.0,
+            "MB/s": 5226.975,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -71.77948473894725,
+        "simd_vs_scalar_ns_pct": -73.1664278228135
+      },
+      {
+        "name": "BenchmarkColumn32ComparisonGate/type=uint32/case=nullable-tail/op=gt",
+        "median": {
+          "scalar": {
+            "ns/op": 254022.0,
+            "MB/s": 2260.63,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "auto": {
+            "ns/op": 105792.0,
+            "MB/s": 4968.014999999999,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "simd": {
+            "ns/op": 99135.5,
+            "MB/s": 5290.22,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -58.353213501192805,
+        "simd_vs_scalar_ns_pct": -60.97365582508601
+      },
+      {
+        "name": "BenchmarkColumn32ComparisonGate/type=uint32/case=nullable-tail/op=ge",
+        "median": {
+          "scalar": {
+            "ns/op": 189720.5,
+            "MB/s": 2773.51,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "auto": {
+            "ns/op": 148578.5,
+            "MB/s": 3535.99,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "simd": {
+            "ns/op": 138390.0,
+            "MB/s": 3801.085,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -21.685584847183094,
+        "simd_vs_scalar_ns_pct": -27.05585321565145
+      },
+      {
+        "name": "BenchmarkColumn32ComparisonGate/type=uint32/case=nullable-tail/op=lt",
+        "median": {
+          "scalar": {
+            "ns/op": 222539.0,
+            "MB/s": 2401.695,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "auto": {
+            "ns/op": 101463.0,
+            "MB/s": 5168.03,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "simd": {
+            "ns/op": 92376.0,
+            "MB/s": 5675.860000000001,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -54.40664332993318,
+        "simd_vs_scalar_ns_pct": -58.489972544138325
+      },
+      {
+        "name": "BenchmarkColumn32ComparisonGate/type=uint32/case=nullable-tail/op=le",
+        "median": {
+          "scalar": {
+            "ns/op": 209793.0,
+            "MB/s": 2516.8500000000004,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "auto": {
+            "ns/op": 143238.5,
+            "MB/s": 3664.4449999999997,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "simd": {
+            "ns/op": 139055.5,
+            "MB/s": 3770.815,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -31.723889738933142,
+        "simd_vs_scalar_ns_pct": -33.71775988712683
+      },
+      {
+        "name": "BenchmarkColumn32ComparisonGate/type=uint32/case=nullable-tail/op=eq",
+        "median": {
+          "scalar": {
+            "ns/op": 310841.0,
+            "MB/s": 1767.3500000000001,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "auto": {
+            "ns/op": 105029.5,
+            "MB/s": 4992.735000000001,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "simd": {
+            "ns/op": 97278.5,
+            "MB/s": 5390.395,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -66.21118192259065,
+        "simd_vs_scalar_ns_pct": -68.7047397222374
+      },
+      {
+        "name": "BenchmarkColumn32ComparisonGate/type=uint32/case=sparse/op=gt",
+        "median": {
+          "scalar": {
+            "ns/op": 146863.5,
+            "MB/s": 3576.2799999999997,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "auto": {
+            "ns/op": 74739.5,
+            "MB/s": 7014.855,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "simd": {
+            "ns/op": 70348.5,
+            "MB/s": 7454.1849999999995,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -49.10954730072482,
+        "simd_vs_scalar_ns_pct": -52.099398420982745
+      },
+      {
+        "name": "BenchmarkColumn32ComparisonGate/type=uint32/case=sparse/op=ge",
+        "median": {
+          "scalar": {
+            "ns/op": 158738.5,
+            "MB/s": 3308.775,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "auto": {
+            "ns/op": 86433.5,
+            "MB/s": 6065.905000000001,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "simd": {
+            "ns/op": 67386.5,
+            "MB/s": 7780.62,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -45.54975636030326,
+        "simd_vs_scalar_ns_pct": -57.548735813932986
+      },
+      {
+        "name": "BenchmarkColumn32ComparisonGate/type=uint32/case=sparse/op=lt",
+        "median": {
+          "scalar": {
+            "ns/op": 197439.0,
+            "MB/s": 2674.795,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "auto": {
+            "ns/op": 153730.0,
+            "MB/s": 3412.88,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "simd": {
+            "ns/op": 150733.5,
+            "MB/s": 3479.135,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -22.137976792832216,
+        "simd_vs_scalar_ns_pct": -23.655660735720907
+      },
+      {
+        "name": "BenchmarkColumn32ComparisonGate/type=uint32/case=sparse/op=le",
+        "median": {
+          "scalar": {
+            "ns/op": 199985.5,
+            "MB/s": 2630.86,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "auto": {
+            "ns/op": 156658.0,
+            "MB/s": 3346.71,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "simd": {
+            "ns/op": 141034.0,
+            "MB/s": 3724.88,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -21.665320735753347,
+        "simd_vs_scalar_ns_pct": -29.477887146818148
+      },
+      {
+        "name": "BenchmarkColumn32ComparisonGate/type=uint32/case=sparse/op=eq",
+        "median": {
+          "scalar": {
+            "ns/op": 198823.5,
+            "MB/s": 2673.17,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "auto": {
+            "ns/op": 78073.0,
+            "MB/s": 6715.62,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "simd": {
+            "ns/op": 68879.5,
+            "MB/s": 7611.75,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -60.73250898409896,
+        "simd_vs_scalar_ns_pct": -65.3564593722573
+      },
+      {
+        "name": "BenchmarkColumn32ComparisonGate/type=uint32/case=dense/op=gt",
+        "median": {
+          "scalar": {
+            "ns/op": 275598.0,
+            "MB/s": 1964.2649999999999,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "auto": {
+            "ns/op": 155893.0,
+            "MB/s": 3366.875,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "simd": {
+            "ns/op": 132445.5,
+            "MB/s": 3959.275,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -43.43464030943621,
+        "simd_vs_scalar_ns_pct": -51.94250321119892
+      },
+      {
+        "name": "BenchmarkColumn32ComparisonGate/type=uint32/case=dense/op=ge",
+        "median": {
+          "scalar": {
+            "ns/op": 200569.0,
+            "MB/s": 2614.515,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "auto": {
+            "ns/op": 150509.5,
+            "MB/s": 3483.825,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "simd": {
+            "ns/op": 138254.0,
+            "MB/s": 3792.37,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -24.958742377934772,
+        "simd_vs_scalar_ns_pct": -31.06910838664001
+      },
+      {
+        "name": "BenchmarkColumn32ComparisonGate/type=uint32/case=dense/op=lt",
+        "median": {
+          "scalar": {
+            "ns/op": 163392.0,
+            "MB/s": 3213.1,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "auto": {
+            "ns/op": 73793.0,
+            "MB/s": 7107.665,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "simd": {
+            "ns/op": 75071.5,
+            "MB/s": 7082.174999999999,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -54.83683411672542,
+        "simd_vs_scalar_ns_pct": -54.05436006658832
+      },
+      {
+        "name": "BenchmarkColumn32ComparisonGate/type=uint32/case=dense/op=le",
+        "median": {
+          "scalar": {
+            "ns/op": 158275.0,
+            "MB/s": 3313.01,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "auto": {
+            "ns/op": 69040.0,
+            "MB/s": 7594.695,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "simd": {
+            "ns/op": 71973.5,
+            "MB/s": 7304.465,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -56.37971884378455,
+        "simd_vs_scalar_ns_pct": -54.526299162849476
+      },
+      {
+        "name": "BenchmarkColumn32ComparisonGate/type=uint32/case=dense/op=eq",
+        "median": {
+          "scalar": {
+            "ns/op": 170441.0,
+            "MB/s": 3082.88,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "auto": {
+            "ns/op": 81569.0,
+            "MB/s": 6427.635,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "simd": {
+            "ns/op": 69169.5,
+            "MB/s": 7579.835,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -52.142383581415274,
+        "simd_vs_scalar_ns_pct": -59.41733503089046
+      },
+      {
+        "name": "BenchmarkColumn32ComparisonGate/type=uint32/case=equal/op=gt",
+        "median": {
+          "scalar": {
+            "ns/op": 120981.5,
+            "MB/s": 4334.34,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "auto": {
+            "ns/op": 71083.5,
+            "MB/s": 7375.68,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "simd": {
+            "ns/op": 65131.5,
+            "MB/s": 8051.165,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -41.24432247905672,
+        "simd_vs_scalar_ns_pct": -46.16408293830049
+      },
+      {
+        "name": "BenchmarkColumn32ComparisonGate/type=uint32/case=equal/op=ge",
+        "median": {
+          "scalar": {
+            "ns/op": 197650.0,
+            "MB/s": 2652.885,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "auto": {
+            "ns/op": 137282.5,
+            "MB/s": 3819.23,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "simd": {
+            "ns/op": 135739.5,
+            "MB/s": 3862.54,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -30.542625853781935,
+        "simd_vs_scalar_ns_pct": -31.323298760435115
+      },
+      {
+        "name": "BenchmarkColumn32ComparisonGate/type=uint32/case=equal/op=lt",
+        "median": {
+          "scalar": {
+            "ns/op": 177536.0,
+            "MB/s": 2954.85,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "auto": {
+            "ns/op": 72603.5,
+            "MB/s": 7231.805,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "simd": {
+            "ns/op": 66049.5,
+            "MB/s": 7940.305,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -59.10491393294881,
+        "simd_vs_scalar_ns_pct": -62.79655957101657
+      },
+      {
+        "name": "BenchmarkColumn32ComparisonGate/type=uint32/case=equal/op=le",
+        "median": {
+          "scalar": {
+            "ns/op": 268222.5,
+            "MB/s": 1987.8200000000002,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "auto": {
+            "ns/op": 146494.0,
+            "MB/s": 3585.1549999999997,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "simd": {
+            "ns/op": 135402.5,
+            "MB/s": 3872.6800000000003,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -45.38340370401439,
+        "simd_vs_scalar_ns_pct": -49.51858997660524
+      },
+      {
+        "name": "BenchmarkColumn32ComparisonGate/type=uint32/case=equal/op=eq",
+        "median": {
+          "scalar": {
+            "ns/op": 212314.0,
+            "MB/s": 2473.7349999999997,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "auto": {
+            "ns/op": 140187.0,
+            "MB/s": 3739.99,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "simd": {
+            "ns/op": 138254.5,
+            "MB/s": 3792.685,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -33.97185301016419,
+        "simd_vs_scalar_ns_pct": -34.88206147498516
+      },
+      {
+        "name": "BenchmarkColumn32ComparisonGate/type=uint32/case=short/op=gt",
+        "median": {
+          "scalar": {
+            "ns/op": 28.905,
+            "MB/s": 1937.8899999999999,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "auto": {
+            "ns/op": 43.045,
+            "MB/s": 1303.05,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "simd": {
+            "ns/op": 35.055,
+            "MB/s": 1597.5549999999998,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": 48.91887216744508,
+        "simd_vs_scalar_ns_pct": 21.276595744680836
+      },
+      {
+        "name": "BenchmarkColumn32ComparisonGate/type=uint32/case=short/op=ge",
+        "median": {
+          "scalar": {
+            "ns/op": 29.835,
+            "MB/s": 1876.91,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "auto": {
+            "ns/op": 51.775,
+            "MB/s": 1086.31,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "simd": {
+            "ns/op": 44.16,
+            "MB/s": 1268.615,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": 73.53779118485,
+        "simd_vs_scalar_ns_pct": 48.01407742584212
+      },
+      {
+        "name": "BenchmarkColumn32ComparisonGate/type=uint32/case=short/op=lt",
+        "median": {
+          "scalar": {
+            "ns/op": 32.765,
+            "MB/s": 1709.04,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "auto": {
+            "ns/op": 43.705,
+            "MB/s": 1287.69,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "simd": {
+            "ns/op": 38.945,
+            "MB/s": 1438.3200000000002,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": 33.38928734930566,
+        "simd_vs_scalar_ns_pct": 18.861590111399362
+      },
+      {
+        "name": "BenchmarkColumn32ComparisonGate/type=uint32/case=short/op=le",
+        "median": {
+          "scalar": {
+            "ns/op": 34.03,
+            "MB/s": 1645.6599999999999,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "auto": {
+            "ns/op": 46.435,
+            "MB/s": 1206.405,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "simd": {
+            "ns/op": 41.084999999999994,
+            "MB/s": 1363.585,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": 36.45312959153688,
+        "simd_vs_scalar_ns_pct": 20.731707317073145
+      },
+      {
+        "name": "BenchmarkColumn32ComparisonGate/type=uint32/case=short/op=eq",
+        "median": {
+          "scalar": {
+            "ns/op": 36.735,
+            "MB/s": 1524.405,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "auto": {
+            "ns/op": 47.195,
+            "MB/s": 1189.875,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "simd": {
+            "ns/op": 46.370000000000005,
+            "MB/s": 1207.92,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": 28.47420715938478,
+        "simd_vs_scalar_ns_pct": 26.228392541173285
+      },
+      {
+        "name": "BenchmarkColumn32ComparisonGate/type=uint32/case=tail/op=gt",
+        "median": {
+          "scalar": {
+            "ns/op": 171.8,
+            "MB/s": 3026.5249999999996,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "auto": {
+            "ns/op": 134.25,
+            "MB/s": 3879.245,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "simd": {
+            "ns/op": 111.75,
+            "MB/s": 4654.37,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -21.856810244470314,
+        "simd_vs_scalar_ns_pct": -34.953434225844006
+      },
+      {
+        "name": "BenchmarkColumn32ComparisonGate/type=uint32/case=tail/op=ge",
+        "median": {
+          "scalar": {
+            "ns/op": 193.2,
+            "MB/s": 2696.29,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "auto": {
+            "ns/op": 147.25,
+            "MB/s": 3535.835,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "simd": {
+            "ns/op": 134.6,
+            "MB/s": 3863.225,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -23.783643892339544,
+        "simd_vs_scalar_ns_pct": -30.33126293995859
+      },
+      {
+        "name": "BenchmarkColumn32ComparisonGate/type=uint32/case=tail/op=lt",
+        "median": {
+          "scalar": {
+            "ns/op": 192.75,
+            "MB/s": 2701.245,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "auto": {
+            "ns/op": 128.15,
+            "MB/s": 4064.74,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "simd": {
+            "ns/op": 115.3,
+            "MB/s": 4510.505,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -33.514915693904015,
+        "simd_vs_scalar_ns_pct": -40.18158236057069
+      },
+      {
+        "name": "BenchmarkColumn32ComparisonGate/type=uint32/case=tail/op=le",
+        "median": {
+          "scalar": {
+            "ns/op": 197.9,
+            "MB/s": 2627.7,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "auto": {
+            "ns/op": 163.39999999999998,
+            "MB/s": 3203.51,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "simd": {
+            "ns/op": 148.05,
+            "MB/s": 3513.67,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -17.433046993431045,
+        "simd_vs_scalar_ns_pct": -25.189489641232942
+      },
+      {
+        "name": "BenchmarkColumn32ComparisonGate/type=uint32/case=tail/op=eq",
+        "median": {
+          "scalar": {
+            "ns/op": 207.45,
+            "MB/s": 2506.695,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "auto": {
+            "ns/op": 116.0,
+            "MB/s": 4484.700000000001,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          },
+          "simd": {
+            "ns/op": 115.85,
+            "MB/s": 4490.639999999999,
+            "B/op": 0.0,
+            "allocs/op": 0.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -44.08291154495059,
+        "simd_vs_scalar_ns_pct": -44.15521812484936
+      }
+    ]
+  },
+  "query": {
+    "cases": 40,
+    "samples_per_mode": 6,
+    "auto_median_faster_count": 27,
+    "auto_median_slower_count": 13,
+    "auto_vs_scalar_pct_range": [
+      -27.682901442548633,
+      22.036159772472573
+    ],
+    "median_case_change_pct": -5.243759530382008,
+    "invariants": {
+      "B/op": {
+        "equal_across_modes": true,
+        "min": 29392.0,
+        "max": 193128.0
+      },
+      "allocs/op": {
+        "equal_across_modes": true,
+        "min": 174.0,
+        "max": 178.0
+      },
+      "peak_bytes": {
+        "equal_across_modes": true,
+        "min": 18248.0,
+        "max": 181608.0
+      },
+      "projected_rows/op": {
+        "equal_across_modes": true,
+        "min": 82.0,
+        "max": 6811.0
+      },
+      "source_rows/op": {
+        "equal_across_modes": true,
+        "min": 8199.0,
+        "max": 8199.0
+      }
+    },
+    "cases_data": [
+      {
+        "name": "BenchmarkCompare32FilterProjectKernelMode/type=int32/op=gt/pct=1/nullable=false",
+        "median": {
+          "scalar": {
+            "ns/op": 49081.5,
+            "MB/s": 2673.16,
+            "peak_bytes": 18248.0,
+            "projected_rows/op": 82.0,
+            "source_rows/op": 8199.0,
+            "B/op": 29392.0,
+            "allocs/op": 174.0
+          },
+          "auto": {
+            "ns/op": 48564.0,
+            "MB/s": 2713.8199999999997,
+            "peak_bytes": 18248.0,
+            "projected_rows/op": 82.0,
+            "source_rows/op": 8199.0,
+            "B/op": 29392.0,
+            "allocs/op": 174.0
+          },
+          "simd": {
+            "ns/op": 46300.5,
+            "MB/s": 2834.875,
+            "peak_bytes": 18248.0,
+            "projected_rows/op": 82.0,
+            "source_rows/op": 8199.0,
+            "B/op": 29392.0,
+            "allocs/op": 174.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -1.0543687540111812,
+        "simd_vs_scalar_ns_pct": -5.666085999816628
+      },
+      {
+        "name": "BenchmarkCompare32FilterProjectKernelMode/type=int32/op=gt/pct=50/nullable=false",
+        "median": {
+          "scalar": {
+            "ns/op": 116550.0,
+            "MB/s": 1125.56,
+            "peak_bytes": 99592.0,
+            "projected_rows/op": 4100.0,
+            "source_rows/op": 8199.0,
+            "B/op": 120976.0,
+            "allocs/op": 175.0
+          },
+          "auto": {
+            "ns/op": 121746.5,
+            "MB/s": 1078.215,
+            "peak_bytes": 99592.0,
+            "projected_rows/op": 4100.0,
+            "source_rows/op": 8199.0,
+            "B/op": 120976.0,
+            "allocs/op": 175.0
+          },
+          "simd": {
+            "ns/op": 113422.5,
+            "MB/s": 1156.6550000000002,
+            "peak_bytes": 99592.0,
+            "projected_rows/op": 4100.0,
+            "source_rows/op": 8199.0,
+            "B/op": 120976.0,
+            "allocs/op": 175.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": 4.458601458601463,
+        "simd_vs_scalar_ns_pct": -2.6833976833976814
+      },
+      {
+        "name": "BenchmarkCompare32FilterProjectKernelMode/type=int32/op=gt/pct=50/nullable=true",
+        "median": {
+          "scalar": {
+            "ns/op": 121834.0,
+            "MB/s": 1077.3,
+            "peak_bytes": 99864.0,
+            "projected_rows/op": 3438.0,
+            "source_rows/op": 8199.0,
+            "B/op": 114664.0,
+            "allocs/op": 178.0
+          },
+          "auto": {
+            "ns/op": 134236.0,
+            "MB/s": 979.62,
+            "peak_bytes": 99864.0,
+            "projected_rows/op": 3438.0,
+            "source_rows/op": 8199.0,
+            "B/op": 114664.0,
+            "allocs/op": 178.0
+          },
+          "simd": {
+            "ns/op": 114568.5,
+            "MB/s": 1145.08,
+            "peak_bytes": 99864.0,
+            "projected_rows/op": 3438.0,
+            "source_rows/op": 8199.0,
+            "B/op": 114664.0,
+            "allocs/op": 178.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": 10.17942446279363,
+        "simd_vs_scalar_ns_pct": -5.963442060508561
+      },
+      {
+        "name": "BenchmarkCompare32FilterProjectKernelMode/type=int32/op=gt/pct=99/nullable=true",
+        "median": {
+          "scalar": {
+            "ns/op": 168503.0,
+            "MB/s": 778.7,
+            "peak_bytes": 181608.0,
+            "projected_rows/op": 6811.0,
+            "source_rows/op": 8199.0,
+            "B/op": 193128.0,
+            "allocs/op": 178.0
+          },
+          "auto": {
+            "ns/op": 169916.0,
+            "MB/s": 772.095,
+            "peak_bytes": 181608.0,
+            "projected_rows/op": 6811.0,
+            "source_rows/op": 8199.0,
+            "B/op": 193128.0,
+            "allocs/op": 178.0
+          },
+          "simd": {
+            "ns/op": 166691.0,
+            "MB/s": 787.135,
+            "peak_bytes": 181608.0,
+            "projected_rows/op": 6811.0,
+            "source_rows/op": 8199.0,
+            "B/op": 193128.0,
+            "allocs/op": 178.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": 0.8385607377910276,
+        "simd_vs_scalar_ns_pct": -1.0753517741523888
+      },
+      {
+        "name": "BenchmarkCompare32FilterProjectKernelMode/type=int32/op=ge/pct=1/nullable=false",
+        "median": {
+          "scalar": {
+            "ns/op": 52574.0,
+            "MB/s": 2495.275,
+            "peak_bytes": 18248.0,
+            "projected_rows/op": 82.0,
+            "source_rows/op": 8199.0,
+            "B/op": 29392.0,
+            "allocs/op": 174.0
+          },
+          "auto": {
+            "ns/op": 44064.0,
+            "MB/s": 2978.0249999999996,
+            "peak_bytes": 18248.0,
+            "projected_rows/op": 82.0,
+            "source_rows/op": 8199.0,
+            "B/op": 29392.0,
+            "allocs/op": 174.0
+          },
+          "simd": {
+            "ns/op": 46403.5,
+            "MB/s": 2830.88,
+            "peak_bytes": 18248.0,
+            "projected_rows/op": 82.0,
+            "source_rows/op": 8199.0,
+            "B/op": 29392.0,
+            "allocs/op": 174.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -16.186708258835168,
+        "simd_vs_scalar_ns_pct": -11.736790048312852
+      },
+      {
+        "name": "BenchmarkCompare32FilterProjectKernelMode/type=int32/op=ge/pct=50/nullable=false",
+        "median": {
+          "scalar": {
+            "ns/op": 121308.5,
+            "MB/s": 1082.29,
+            "peak_bytes": 99592.0,
+            "projected_rows/op": 4100.0,
+            "source_rows/op": 8199.0,
+            "B/op": 120976.0,
+            "allocs/op": 175.0
+          },
+          "auto": {
+            "ns/op": 138504.5,
+            "MB/s": 947.435,
+            "peak_bytes": 99592.0,
+            "projected_rows/op": 4100.0,
+            "source_rows/op": 8199.0,
+            "B/op": 120976.0,
+            "allocs/op": 175.0
+          },
+          "simd": {
+            "ns/op": 110628.5,
+            "MB/s": 1186.49,
+            "peak_bytes": 99592.0,
+            "projected_rows/op": 4100.0,
+            "source_rows/op": 8199.0,
+            "B/op": 120976.0,
+            "allocs/op": 175.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": 14.175428762205456,
+        "simd_vs_scalar_ns_pct": -8.803999719722855
+      },
+      {
+        "name": "BenchmarkCompare32FilterProjectKernelMode/type=int32/op=ge/pct=50/nullable=true",
+        "median": {
+          "scalar": {
+            "ns/op": 120549.0,
+            "MB/s": 1088.3200000000002,
+            "peak_bytes": 99864.0,
+            "projected_rows/op": 3438.0,
+            "source_rows/op": 8199.0,
+            "B/op": 114664.0,
+            "allocs/op": 178.0
+          },
+          "auto": {
+            "ns/op": 123983.5,
+            "MB/s": 1058.1550000000002,
+            "peak_bytes": 99864.0,
+            "projected_rows/op": 3438.0,
+            "source_rows/op": 8199.0,
+            "B/op": 114664.0,
+            "allocs/op": 178.0
+          },
+          "simd": {
+            "ns/op": 124541.0,
+            "MB/s": 1053.595,
+            "peak_bytes": 99864.0,
+            "projected_rows/op": 3438.0,
+            "source_rows/op": 8199.0,
+            "B/op": 114664.0,
+            "allocs/op": 178.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": 2.849048934458187,
+        "simd_vs_scalar_ns_pct": 3.311516478776255
+      },
+      {
+        "name": "BenchmarkCompare32FilterProjectKernelMode/type=int32/op=ge/pct=99/nullable=true",
+        "median": {
+          "scalar": {
+            "ns/op": 167066.0,
+            "MB/s": 785.2249999999999,
+            "peak_bytes": 181608.0,
+            "projected_rows/op": 6811.0,
+            "source_rows/op": 8199.0,
+            "B/op": 193128.0,
+            "allocs/op": 178.0
+          },
+          "auto": {
+            "ns/op": 169025.0,
+            "MB/s": 776.465,
+            "peak_bytes": 181608.0,
+            "projected_rows/op": 6811.0,
+            "source_rows/op": 8199.0,
+            "B/op": 193128.0,
+            "allocs/op": 178.0
+          },
+          "simd": {
+            "ns/op": 166913.5,
+            "MB/s": 786.125,
+            "peak_bytes": 181608.0,
+            "projected_rows/op": 6811.0,
+            "source_rows/op": 8199.0,
+            "B/op": 193128.0,
+            "allocs/op": 178.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": 1.1725904732261538,
+        "simd_vs_scalar_ns_pct": -0.09128129002908825
+      },
+      {
+        "name": "BenchmarkCompare32FilterProjectKernelMode/type=int32/op=lt/pct=1/nullable=false",
+        "median": {
+          "scalar": {
+            "ns/op": 53003.5,
+            "MB/s": 2475.335,
+            "peak_bytes": 18248.0,
+            "projected_rows/op": 82.0,
+            "source_rows/op": 8199.0,
+            "B/op": 29392.0,
+            "allocs/op": 174.0
+          },
+          "auto": {
+            "ns/op": 46923.5,
+            "MB/s": 2832.045,
+            "peak_bytes": 18248.0,
+            "projected_rows/op": 82.0,
+            "source_rows/op": 8199.0,
+            "B/op": 29392.0,
+            "allocs/op": 174.0
+          },
+          "simd": {
+            "ns/op": 43359.0,
+            "MB/s": 3025.6,
+            "peak_bytes": 18248.0,
+            "projected_rows/op": 82.0,
+            "source_rows/op": 8199.0,
+            "B/op": 29392.0,
+            "allocs/op": 174.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -11.47094059826238,
+        "simd_vs_scalar_ns_pct": -18.195968190779855
+      },
+      {
+        "name": "BenchmarkCompare32FilterProjectKernelMode/type=int32/op=lt/pct=50/nullable=false",
+        "median": {
+          "scalar": {
+            "ns/op": 112584.0,
+            "MB/s": 1165.22,
+            "peak_bytes": 99592.0,
+            "projected_rows/op": 4100.0,
+            "source_rows/op": 8199.0,
+            "B/op": 120976.0,
+            "allocs/op": 175.0
+          },
+          "auto": {
+            "ns/op": 112340.5,
+            "MB/s": 1167.9099999999999,
+            "peak_bytes": 99592.0,
+            "projected_rows/op": 4100.0,
+            "source_rows/op": 8199.0,
+            "B/op": 120976.0,
+            "allocs/op": 175.0
+          },
+          "simd": {
+            "ns/op": 119387.0,
+            "MB/s": 1098.9650000000001,
+            "peak_bytes": 99592.0,
+            "projected_rows/op": 4100.0,
+            "source_rows/op": 8199.0,
+            "B/op": 120976.0,
+            "allocs/op": 175.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -0.2162829531727417,
+        "simd_vs_scalar_ns_pct": 6.042599303631069
+      },
+      {
+        "name": "BenchmarkCompare32FilterProjectKernelMode/type=int32/op=lt/pct=50/nullable=true",
+        "median": {
+          "scalar": {
+            "ns/op": 119126.0,
+            "MB/s": 1101.445,
+            "peak_bytes": 99864.0,
+            "projected_rows/op": 3438.0,
+            "source_rows/op": 8199.0,
+            "B/op": 114664.0,
+            "allocs/op": 178.0
+          },
+          "auto": {
+            "ns/op": 141935.0,
+            "MB/s": 925.865,
+            "peak_bytes": 99864.0,
+            "projected_rows/op": 3438.0,
+            "source_rows/op": 8199.0,
+            "B/op": 114664.0,
+            "allocs/op": 178.0
+          },
+          "simd": {
+            "ns/op": 119489.5,
+            "MB/s": 1097.9250000000002,
+            "peak_bytes": 99864.0,
+            "projected_rows/op": 3438.0,
+            "source_rows/op": 8199.0,
+            "B/op": 114664.0,
+            "allocs/op": 178.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": 19.146953645719655,
+        "simd_vs_scalar_ns_pct": 0.305139096418916
+      },
+      {
+        "name": "BenchmarkCompare32FilterProjectKernelMode/type=int32/op=lt/pct=99/nullable=true",
+        "median": {
+          "scalar": {
+            "ns/op": 170880.5,
+            "MB/s": 768.025,
+            "peak_bytes": 181608.0,
+            "projected_rows/op": 6811.0,
+            "source_rows/op": 8199.0,
+            "B/op": 193128.0,
+            "allocs/op": 178.0
+          },
+          "auto": {
+            "ns/op": 208536.0,
+            "MB/s": 633.81,
+            "peak_bytes": 181608.0,
+            "projected_rows/op": 6811.0,
+            "source_rows/op": 8199.0,
+            "B/op": 193128.0,
+            "allocs/op": 178.0
+          },
+          "simd": {
+            "ns/op": 181025.0,
+            "MB/s": 724.6800000000001,
+            "peak_bytes": 181608.0,
+            "projected_rows/op": 6811.0,
+            "source_rows/op": 8199.0,
+            "B/op": 193128.0,
+            "allocs/op": 178.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": 22.036159772472573,
+        "simd_vs_scalar_ns_pct": 5.936604820327651
+      },
+      {
+        "name": "BenchmarkCompare32FilterProjectKernelMode/type=int32/op=le/pct=1/nullable=false",
+        "median": {
+          "scalar": {
+            "ns/op": 56282.5,
+            "MB/s": 2330.865,
+            "peak_bytes": 18248.0,
+            "projected_rows/op": 82.0,
+            "source_rows/op": 8199.0,
+            "B/op": 29392.0,
+            "allocs/op": 174.0
+          },
+          "auto": {
+            "ns/op": 54319.0,
+            "MB/s": 2418.44,
+            "peak_bytes": 18248.0,
+            "projected_rows/op": 82.0,
+            "source_rows/op": 8199.0,
+            "B/op": 29392.0,
+            "allocs/op": 174.0
+          },
+          "simd": {
+            "ns/op": 45485.5,
+            "MB/s": 2884.19,
+            "peak_bytes": 18248.0,
+            "projected_rows/op": 82.0,
+            "source_rows/op": 8199.0,
+            "B/op": 29392.0,
+            "allocs/op": 174.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -3.4886510016434946,
+        "simd_vs_scalar_ns_pct": -19.183582818815793
+      },
+      {
+        "name": "BenchmarkCompare32FilterProjectKernelMode/type=int32/op=le/pct=50/nullable=false",
+        "median": {
+          "scalar": {
+            "ns/op": 123951.5,
+            "MB/s": 1062.415,
+            "peak_bytes": 99592.0,
+            "projected_rows/op": 4100.0,
+            "source_rows/op": 8199.0,
+            "B/op": 120976.0,
+            "allocs/op": 175.0
+          },
+          "auto": {
+            "ns/op": 121492.0,
+            "MB/s": 1082.115,
+            "peak_bytes": 99592.0,
+            "projected_rows/op": 4100.0,
+            "source_rows/op": 8199.0,
+            "B/op": 120976.0,
+            "allocs/op": 175.0
+          },
+          "simd": {
+            "ns/op": 120415.5,
+            "MB/s": 1089.77,
+            "peak_bytes": 99592.0,
+            "projected_rows/op": 4100.0,
+            "source_rows/op": 8199.0,
+            "B/op": 120976.0,
+            "allocs/op": 175.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -1.9842438373073312,
+        "simd_vs_scalar_ns_pct": -2.8527286882369274
+      },
+      {
+        "name": "BenchmarkCompare32FilterProjectKernelMode/type=int32/op=le/pct=50/nullable=true",
+        "median": {
+          "scalar": {
+            "ns/op": 123145.5,
+            "MB/s": 1065.3400000000001,
+            "peak_bytes": 99864.0,
+            "projected_rows/op": 3438.0,
+            "source_rows/op": 8199.0,
+            "B/op": 114664.0,
+            "allocs/op": 178.0
+          },
+          "auto": {
+            "ns/op": 134821.0,
+            "MB/s": 973.025,
+            "peak_bytes": 99864.0,
+            "projected_rows/op": 3438.0,
+            "source_rows/op": 8199.0,
+            "B/op": 114664.0,
+            "allocs/op": 178.0
+          },
+          "simd": {
+            "ns/op": 120415.0,
+            "MB/s": 1089.46,
+            "peak_bytes": 99864.0,
+            "projected_rows/op": 3438.0,
+            "source_rows/op": 8199.0,
+            "B/op": 114664.0,
+            "allocs/op": 178.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": 9.481061021312186,
+        "simd_vs_scalar_ns_pct": -2.2172958004961663
+      },
+      {
+        "name": "BenchmarkCompare32FilterProjectKernelMode/type=int32/op=le/pct=99/nullable=true",
+        "median": {
+          "scalar": {
+            "ns/op": 169193.0,
+            "MB/s": 775.395,
+            "peak_bytes": 181608.0,
+            "projected_rows/op": 6811.0,
+            "source_rows/op": 8199.0,
+            "B/op": 193128.0,
+            "allocs/op": 178.0
+          },
+          "auto": {
+            "ns/op": 179185.5,
+            "MB/s": 732.42,
+            "peak_bytes": 181608.0,
+            "projected_rows/op": 6811.0,
+            "source_rows/op": 8199.0,
+            "B/op": 193128.0,
+            "allocs/op": 178.0
+          },
+          "simd": {
+            "ns/op": 184053.0,
+            "MB/s": 712.915,
+            "peak_bytes": 181608.0,
+            "projected_rows/op": 6811.0,
+            "source_rows/op": 8199.0,
+            "B/op": 193128.0,
+            "allocs/op": 178.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": 5.90597719763819,
+        "simd_vs_scalar_ns_pct": 8.782869267641091
+      },
+      {
+        "name": "BenchmarkCompare32FilterProjectKernelMode/type=int32/op=eq/pct=1/nullable=false",
+        "median": {
+          "scalar": {
+            "ns/op": 64850.5,
+            "MB/s": 2023.0349999999999,
+            "peak_bytes": 18248.0,
+            "projected_rows/op": 82.0,
+            "source_rows/op": 8199.0,
+            "B/op": 29392.0,
+            "allocs/op": 174.0
+          },
+          "auto": {
+            "ns/op": 46898.0,
+            "MB/s": 2797.385,
+            "peak_bytes": 18248.0,
+            "projected_rows/op": 82.0,
+            "source_rows/op": 8199.0,
+            "B/op": 29392.0,
+            "allocs/op": 174.0
+          },
+          "simd": {
+            "ns/op": 49677.0,
+            "MB/s": 2659.855,
+            "peak_bytes": 18248.0,
+            "projected_rows/op": 82.0,
+            "source_rows/op": 8199.0,
+            "B/op": 29392.0,
+            "allocs/op": 174.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -27.682901442548633,
+        "simd_vs_scalar_ns_pct": -23.397660773625496
+      },
+      {
+        "name": "BenchmarkCompare32FilterProjectKernelMode/type=int32/op=eq/pct=50/nullable=false",
+        "median": {
+          "scalar": {
+            "ns/op": 150241.5,
+            "MB/s": 874.0050000000001,
+            "peak_bytes": 99592.0,
+            "projected_rows/op": 4100.0,
+            "source_rows/op": 8199.0,
+            "B/op": 120976.0,
+            "allocs/op": 175.0
+          },
+          "auto": {
+            "ns/op": 122294.0,
+            "MB/s": 1076.115,
+            "peak_bytes": 99592.0,
+            "projected_rows/op": 4100.0,
+            "source_rows/op": 8199.0,
+            "B/op": 120976.0,
+            "allocs/op": 175.0
+          },
+          "simd": {
+            "ns/op": 128137.0,
+            "MB/s": 1024.9,
+            "peak_bytes": 99592.0,
+            "projected_rows/op": 4100.0,
+            "source_rows/op": 8199.0,
+            "B/op": 120976.0,
+            "allocs/op": 175.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -18.601717900846303,
+        "simd_vs_scalar_ns_pct": -14.712645973316295
+      },
+      {
+        "name": "BenchmarkCompare32FilterProjectKernelMode/type=int32/op=eq/pct=50/nullable=true",
+        "median": {
+          "scalar": {
+            "ns/op": 139378.0,
+            "MB/s": 942.635,
+            "peak_bytes": 99864.0,
+            "projected_rows/op": 3438.0,
+            "source_rows/op": 8199.0,
+            "B/op": 114664.0,
+            "allocs/op": 178.0
+          },
+          "auto": {
+            "ns/op": 119741.5,
+            "MB/s": 1097.1599999999999,
+            "peak_bytes": 99864.0,
+            "projected_rows/op": 3438.0,
+            "source_rows/op": 8199.0,
+            "B/op": 114664.0,
+            "allocs/op": 178.0
+          },
+          "simd": {
+            "ns/op": 121386.5,
+            "MB/s": 1080.925,
+            "peak_bytes": 99864.0,
+            "projected_rows/op": 3438.0,
+            "source_rows/op": 8199.0,
+            "B/op": 114664.0,
+            "allocs/op": 178.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -14.08866535608202,
+        "simd_vs_scalar_ns_pct": -12.908421702133765
+      },
+      {
+        "name": "BenchmarkCompare32FilterProjectKernelMode/type=int32/op=eq/pct=99/nullable=true",
+        "median": {
+          "scalar": {
+            "ns/op": 183620.0,
+            "MB/s": 719.595,
+            "peak_bytes": 181608.0,
+            "projected_rows/op": 6811.0,
+            "source_rows/op": 8199.0,
+            "B/op": 193128.0,
+            "allocs/op": 178.0
+          },
+          "auto": {
+            "ns/op": 185809.5,
+            "MB/s": 709.0699999999999,
+            "peak_bytes": 181608.0,
+            "projected_rows/op": 6811.0,
+            "source_rows/op": 8199.0,
+            "B/op": 193128.0,
+            "allocs/op": 178.0
+          },
+          "simd": {
+            "ns/op": 179345.0,
+            "MB/s": 731.48,
+            "peak_bytes": 181608.0,
+            "projected_rows/op": 6811.0,
+            "source_rows/op": 8199.0,
+            "B/op": 193128.0,
+            "allocs/op": 178.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": 1.1924082343971243,
+        "simd_vs_scalar_ns_pct": -2.3281777584141183
+      },
+      {
+        "name": "BenchmarkCompare32FilterProjectKernelMode/type=uint32/op=gt/pct=1/nullable=false",
+        "median": {
+          "scalar": {
+            "ns/op": 52666.0,
+            "MB/s": 2492.73,
+            "peak_bytes": 18248.0,
+            "projected_rows/op": 82.0,
+            "source_rows/op": 8199.0,
+            "B/op": 29392.0,
+            "allocs/op": 174.0
+          },
+          "auto": {
+            "ns/op": 47717.0,
+            "MB/s": 2749.4849999999997,
+            "peak_bytes": 18248.0,
+            "projected_rows/op": 82.0,
+            "source_rows/op": 8199.0,
+            "B/op": 29392.0,
+            "allocs/op": 174.0
+          },
+          "simd": {
+            "ns/op": 44274.0,
+            "MB/s": 2964.335,
+            "peak_bytes": 18248.0,
+            "projected_rows/op": 82.0,
+            "source_rows/op": 8199.0,
+            "B/op": 29392.0,
+            "allocs/op": 174.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -9.39695439182775,
+        "simd_vs_scalar_ns_pct": -15.934378916188807
+      },
+      {
+        "name": "BenchmarkCompare32FilterProjectKernelMode/type=uint32/op=gt/pct=50/nullable=false",
+        "median": {
+          "scalar": {
+            "ns/op": 127024.0,
+            "MB/s": 1034.1399999999999,
+            "peak_bytes": 99592.0,
+            "projected_rows/op": 4100.0,
+            "source_rows/op": 8199.0,
+            "B/op": 120976.0,
+            "allocs/op": 175.0
+          },
+          "auto": {
+            "ns/op": 138139.5,
+            "MB/s": 949.65,
+            "peak_bytes": 99592.0,
+            "projected_rows/op": 4100.0,
+            "source_rows/op": 8199.0,
+            "B/op": 120976.0,
+            "allocs/op": 175.0
+          },
+          "simd": {
+            "ns/op": 125423.0,
+            "MB/s": 1046.58,
+            "peak_bytes": 99592.0,
+            "projected_rows/op": 4100.0,
+            "source_rows/op": 8199.0,
+            "B/op": 120976.0,
+            "allocs/op": 175.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": 8.750708527522356,
+        "simd_vs_scalar_ns_pct": -1.2603917369945816
+      },
+      {
+        "name": "BenchmarkCompare32FilterProjectKernelMode/type=uint32/op=gt/pct=50/nullable=true",
+        "median": {
+          "scalar": {
+            "ns/op": 131749.5,
+            "MB/s": 996.17,
+            "peak_bytes": 99864.0,
+            "projected_rows/op": 3438.0,
+            "source_rows/op": 8199.0,
+            "B/op": 114664.0,
+            "allocs/op": 178.0
+          },
+          "auto": {
+            "ns/op": 135861.5,
+            "MB/s": 965.8900000000001,
+            "peak_bytes": 99864.0,
+            "projected_rows/op": 3438.0,
+            "source_rows/op": 8199.0,
+            "B/op": 114664.0,
+            "allocs/op": 178.0
+          },
+          "simd": {
+            "ns/op": 128674.0,
+            "MB/s": 1020.04,
+            "peak_bytes": 99864.0,
+            "projected_rows/op": 3438.0,
+            "source_rows/op": 8199.0,
+            "B/op": 114664.0,
+            "allocs/op": 178.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": 3.121074463280693,
+        "simd_vs_scalar_ns_pct": -2.3343542100729087
+      },
+      {
+        "name": "BenchmarkCompare32FilterProjectKernelMode/type=uint32/op=gt/pct=99/nullable=true",
+        "median": {
+          "scalar": {
+            "ns/op": 196631.0,
+            "MB/s": 668.0,
+            "peak_bytes": 181608.0,
+            "projected_rows/op": 6811.0,
+            "source_rows/op": 8199.0,
+            "B/op": 193128.0,
+            "allocs/op": 178.0
+          },
+          "auto": {
+            "ns/op": 188986.0,
+            "MB/s": 694.515,
+            "peak_bytes": 181608.0,
+            "projected_rows/op": 6811.0,
+            "source_rows/op": 8199.0,
+            "B/op": 193128.0,
+            "allocs/op": 178.0
+          },
+          "simd": {
+            "ns/op": 203577.0,
+            "MB/s": 644.4000000000001,
+            "peak_bytes": 181608.0,
+            "projected_rows/op": 6811.0,
+            "source_rows/op": 8199.0,
+            "B/op": 193128.0,
+            "allocs/op": 178.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -3.8879932462327904,
+        "simd_vs_scalar_ns_pct": 3.532505047525558
+      },
+      {
+        "name": "BenchmarkCompare32FilterProjectKernelMode/type=uint32/op=ge/pct=1/nullable=false",
+        "median": {
+          "scalar": {
+            "ns/op": 60459.0,
+            "MB/s": 2185.105,
+            "peak_bytes": 18248.0,
+            "projected_rows/op": 82.0,
+            "source_rows/op": 8199.0,
+            "B/op": 29392.0,
+            "allocs/op": 174.0
+          },
+          "auto": {
+            "ns/op": 50549.0,
+            "MB/s": 2595.3,
+            "peak_bytes": 18248.0,
+            "projected_rows/op": 82.0,
+            "source_rows/op": 8199.0,
+            "B/op": 29392.0,
+            "allocs/op": 174.0
+          },
+          "simd": {
+            "ns/op": 53210.0,
+            "MB/s": 2465.395,
+            "peak_bytes": 18248.0,
+            "projected_rows/op": 82.0,
+            "source_rows/op": 8199.0,
+            "B/op": 29392.0,
+            "allocs/op": 174.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -16.39127342496568,
+        "simd_vs_scalar_ns_pct": -11.989943598140885
+      },
+      {
+        "name": "BenchmarkCompare32FilterProjectKernelMode/type=uint32/op=ge/pct=50/nullable=false",
+        "median": {
+          "scalar": {
+            "ns/op": 158606.5,
+            "MB/s": 827.595,
+            "peak_bytes": 99592.0,
+            "projected_rows/op": 4100.0,
+            "source_rows/op": 8199.0,
+            "B/op": 120976.0,
+            "allocs/op": 175.0
+          },
+          "auto": {
+            "ns/op": 130392.5,
+            "MB/s": 1006.29,
+            "peak_bytes": 99592.0,
+            "projected_rows/op": 4100.0,
+            "source_rows/op": 8199.0,
+            "B/op": 120976.0,
+            "allocs/op": 175.0
+          },
+          "simd": {
+            "ns/op": 134462.5,
+            "MB/s": 975.79,
+            "peak_bytes": 99592.0,
+            "projected_rows/op": 4100.0,
+            "source_rows/op": 8199.0,
+            "B/op": 120976.0,
+            "allocs/op": 175.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -17.78867826980609,
+        "simd_vs_scalar_ns_pct": -15.22257915028703
+      },
+      {
+        "name": "BenchmarkCompare32FilterProjectKernelMode/type=uint32/op=ge/pct=50/nullable=true",
+        "median": {
+          "scalar": {
+            "ns/op": 152130.0,
+            "MB/s": 862.3399999999999,
+            "peak_bytes": 99864.0,
+            "projected_rows/op": 3438.0,
+            "source_rows/op": 8199.0,
+            "B/op": 114664.0,
+            "allocs/op": 178.0
+          },
+          "auto": {
+            "ns/op": 124782.5,
+            "MB/s": 1055.285,
+            "peak_bytes": 99864.0,
+            "projected_rows/op": 3438.0,
+            "source_rows/op": 8199.0,
+            "B/op": 114664.0,
+            "allocs/op": 178.0
+          },
+          "simd": {
+            "ns/op": 142629.5,
+            "MB/s": 921.79,
+            "peak_bytes": 99864.0,
+            "projected_rows/op": 3438.0,
+            "source_rows/op": 8199.0,
+            "B/op": 114664.0,
+            "allocs/op": 178.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -17.976401761651218,
+        "simd_vs_scalar_ns_pct": -6.244987839347926
+      },
+      {
+        "name": "BenchmarkCompare32FilterProjectKernelMode/type=uint32/op=ge/pct=99/nullable=true",
+        "median": {
+          "scalar": {
+            "ns/op": 198879.5,
+            "MB/s": 660.125,
+            "peak_bytes": 181608.0,
+            "projected_rows/op": 6811.0,
+            "source_rows/op": 8199.0,
+            "B/op": 193128.0,
+            "allocs/op": 178.0
+          },
+          "auto": {
+            "ns/op": 194030.0,
+            "MB/s": 676.455,
+            "peak_bytes": 181608.0,
+            "projected_rows/op": 6811.0,
+            "source_rows/op": 8199.0,
+            "B/op": 193128.0,
+            "allocs/op": 178.0
+          },
+          "simd": {
+            "ns/op": 217790.5,
+            "MB/s": 602.395,
+            "peak_bytes": 181608.0,
+            "projected_rows/op": 6811.0,
+            "source_rows/op": 8199.0,
+            "B/op": 193128.0,
+            "allocs/op": 178.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -2.438411198740942,
+        "simd_vs_scalar_ns_pct": 9.508772900173224
+      },
+      {
+        "name": "BenchmarkCompare32FilterProjectKernelMode/type=uint32/op=lt/pct=1/nullable=false",
+        "median": {
+          "scalar": {
+            "ns/op": 59904.5,
+            "MB/s": 2189.9449999999997,
+            "peak_bytes": 18248.0,
+            "projected_rows/op": 82.0,
+            "source_rows/op": 8199.0,
+            "B/op": 29392.0,
+            "allocs/op": 174.0
+          },
+          "auto": {
+            "ns/op": 51692.5,
+            "MB/s": 2540.605,
+            "peak_bytes": 18248.0,
+            "projected_rows/op": 82.0,
+            "source_rows/op": 8199.0,
+            "B/op": 29392.0,
+            "allocs/op": 174.0
+          },
+          "simd": {
+            "ns/op": 61800.0,
+            "MB/s": 2124.475,
+            "peak_bytes": 18248.0,
+            "projected_rows/op": 82.0,
+            "source_rows/op": 8199.0,
+            "B/op": 29392.0,
+            "allocs/op": 174.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -13.708486006894304,
+        "simd_vs_scalar_ns_pct": 3.1642030231451734
+      },
+      {
+        "name": "BenchmarkCompare32FilterProjectKernelMode/type=uint32/op=lt/pct=50/nullable=false",
+        "median": {
+          "scalar": {
+            "ns/op": 130966.5,
+            "MB/s": 1002.45,
+            "peak_bytes": 99592.0,
+            "projected_rows/op": 4100.0,
+            "source_rows/op": 8199.0,
+            "B/op": 120976.0,
+            "allocs/op": 175.0
+          },
+          "auto": {
+            "ns/op": 123549.0,
+            "MB/s": 1062.83,
+            "peak_bytes": 99592.0,
+            "projected_rows/op": 4100.0,
+            "source_rows/op": 8199.0,
+            "B/op": 120976.0,
+            "allocs/op": 175.0
+          },
+          "simd": {
+            "ns/op": 151428.0,
+            "MB/s": 866.375,
+            "peak_bytes": 99592.0,
+            "projected_rows/op": 4100.0,
+            "source_rows/op": 8199.0,
+            "B/op": 120976.0,
+            "allocs/op": 175.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -5.663662081524667,
+        "simd_vs_scalar_ns_pct": 15.62346096139089
+      },
+      {
+        "name": "BenchmarkCompare32FilterProjectKernelMode/type=uint32/op=lt/pct=50/nullable=true",
+        "median": {
+          "scalar": {
+            "ns/op": 138269.0,
+            "MB/s": 949.08,
+            "peak_bytes": 99864.0,
+            "projected_rows/op": 3438.0,
+            "source_rows/op": 8199.0,
+            "B/op": 114664.0,
+            "allocs/op": 178.0
+          },
+          "auto": {
+            "ns/op": 123478.0,
+            "MB/s": 1062.405,
+            "peak_bytes": 99864.0,
+            "projected_rows/op": 3438.0,
+            "source_rows/op": 8199.0,
+            "B/op": 114664.0,
+            "allocs/op": 178.0
+          },
+          "simd": {
+            "ns/op": 138619.5,
+            "MB/s": 947.335,
+            "peak_bytes": 99864.0,
+            "projected_rows/op": 3438.0,
+            "source_rows/op": 8199.0,
+            "B/op": 114664.0,
+            "allocs/op": 178.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -10.697264028813402,
+        "simd_vs_scalar_ns_pct": 0.2534913827394458
+      },
+      {
+        "name": "BenchmarkCompare32FilterProjectKernelMode/type=uint32/op=lt/pct=99/nullable=true",
+        "median": {
+          "scalar": {
+            "ns/op": 212324.5,
+            "MB/s": 617.9549999999999,
+            "peak_bytes": 181608.0,
+            "projected_rows/op": 6811.0,
+            "source_rows/op": 8199.0,
+            "B/op": 193128.0,
+            "allocs/op": 178.0
+          },
+          "auto": {
+            "ns/op": 196144.0,
+            "MB/s": 668.9200000000001,
+            "peak_bytes": 181608.0,
+            "projected_rows/op": 6811.0,
+            "source_rows/op": 8199.0,
+            "B/op": 193128.0,
+            "allocs/op": 178.0
+          },
+          "simd": {
+            "ns/op": 207160.5,
+            "MB/s": 633.5550000000001,
+            "peak_bytes": 181608.0,
+            "projected_rows/op": 6811.0,
+            "source_rows/op": 8199.0,
+            "B/op": 193128.0,
+            "allocs/op": 178.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -7.620646698803013,
+        "simd_vs_scalar_ns_pct": -2.4321262972478497
+      },
+      {
+        "name": "BenchmarkCompare32FilterProjectKernelMode/type=uint32/op=le/pct=1/nullable=false",
+        "median": {
+          "scalar": {
+            "ns/op": 63925.5,
+            "MB/s": 2054.27,
+            "peak_bytes": 18248.0,
+            "projected_rows/op": 82.0,
+            "source_rows/op": 8199.0,
+            "B/op": 29392.0,
+            "allocs/op": 174.0
+          },
+          "auto": {
+            "ns/op": 53761.5,
+            "MB/s": 2440.51,
+            "peak_bytes": 18248.0,
+            "projected_rows/op": 82.0,
+            "source_rows/op": 8199.0,
+            "B/op": 29392.0,
+            "allocs/op": 174.0
+          },
+          "simd": {
+            "ns/op": 59852.0,
+            "MB/s": 2191.81,
+            "peak_bytes": 18248.0,
+            "projected_rows/op": 82.0,
+            "source_rows/op": 8199.0,
+            "B/op": 29392.0,
+            "allocs/op": 174.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -15.899758312410539,
+        "simd_vs_scalar_ns_pct": -6.372261460606488
+      },
+      {
+        "name": "BenchmarkCompare32FilterProjectKernelMode/type=uint32/op=le/pct=50/nullable=false",
+        "median": {
+          "scalar": {
+            "ns/op": 145554.5,
+            "MB/s": 903.8399999999999,
+            "peak_bytes": 99592.0,
+            "projected_rows/op": 4100.0,
+            "source_rows/op": 8199.0,
+            "B/op": 120976.0,
+            "allocs/op": 175.0
+          },
+          "auto": {
+            "ns/op": 127743.5,
+            "MB/s": 1027.195,
+            "peak_bytes": 99592.0,
+            "projected_rows/op": 4100.0,
+            "source_rows/op": 8199.0,
+            "B/op": 120976.0,
+            "allocs/op": 175.0
+          },
+          "simd": {
+            "ns/op": 158394.0,
+            "MB/s": 834.86,
+            "peak_bytes": 99592.0,
+            "projected_rows/op": 4100.0,
+            "source_rows/op": 8199.0,
+            "B/op": 120976.0,
+            "allocs/op": 175.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -12.236653624587357,
+        "simd_vs_scalar_ns_pct": 8.821094504120452
+      },
+      {
+        "name": "BenchmarkCompare32FilterProjectKernelMode/type=uint32/op=le/pct=50/nullable=true",
+        "median": {
+          "scalar": {
+            "ns/op": 141428.5,
+            "MB/s": 927.565,
+            "peak_bytes": 99864.0,
+            "projected_rows/op": 3438.0,
+            "source_rows/op": 8199.0,
+            "B/op": 114664.0,
+            "allocs/op": 178.0
+          },
+          "auto": {
+            "ns/op": 132000.0,
+            "MB/s": 994.135,
+            "peak_bytes": 99864.0,
+            "projected_rows/op": 3438.0,
+            "source_rows/op": 8199.0,
+            "B/op": 114664.0,
+            "allocs/op": 178.0
+          },
+          "simd": {
+            "ns/op": 159932.5,
+            "MB/s": 830.615,
+            "peak_bytes": 99864.0,
+            "projected_rows/op": 3438.0,
+            "source_rows/op": 8199.0,
+            "B/op": 114664.0,
+            "allocs/op": 178.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -6.666619528595719,
+        "simd_vs_scalar_ns_pct": 13.083642971536857
+      },
+      {
+        "name": "BenchmarkCompare32FilterProjectKernelMode/type=uint32/op=le/pct=99/nullable=true",
+        "median": {
+          "scalar": {
+            "ns/op": 206556.0,
+            "MB/s": 635.145,
+            "peak_bytes": 181608.0,
+            "projected_rows/op": 6811.0,
+            "source_rows/op": 8199.0,
+            "B/op": 193128.0,
+            "allocs/op": 178.0
+          },
+          "auto": {
+            "ns/op": 187792.0,
+            "MB/s": 699.4549999999999,
+            "peak_bytes": 181608.0,
+            "projected_rows/op": 6811.0,
+            "source_rows/op": 8199.0,
+            "B/op": 193128.0,
+            "allocs/op": 178.0
+          },
+          "simd": {
+            "ns/op": 229006.5,
+            "MB/s": 573.575,
+            "peak_bytes": 181608.0,
+            "projected_rows/op": 6811.0,
+            "source_rows/op": 8199.0,
+            "B/op": 193128.0,
+            "allocs/op": 178.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -9.084219291620677,
+        "simd_vs_scalar_ns_pct": 10.868965316911638
+      },
+      {
+        "name": "BenchmarkCompare32FilterProjectKernelMode/type=uint32/op=eq/pct=1/nullable=false",
+        "median": {
+          "scalar": {
+            "ns/op": 64639.0,
+            "MB/s": 2029.7849999999999,
+            "peak_bytes": 18248.0,
+            "projected_rows/op": 82.0,
+            "source_rows/op": 8199.0,
+            "B/op": 29392.0,
+            "allocs/op": 174.0
+          },
+          "auto": {
+            "ns/op": 50611.5,
+            "MB/s": 2606.5299999999997,
+            "peak_bytes": 18248.0,
+            "projected_rows/op": 82.0,
+            "source_rows/op": 8199.0,
+            "B/op": 29392.0,
+            "allocs/op": 174.0
+          },
+          "simd": {
+            "ns/op": 68589.5,
+            "MB/s": 1964.6150000000002,
+            "peak_bytes": 18248.0,
+            "projected_rows/op": 82.0,
+            "source_rows/op": 8199.0,
+            "B/op": 29392.0,
+            "allocs/op": 174.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -21.70129488389363,
+        "simd_vs_scalar_ns_pct": 6.111635390398984
+      },
+      {
+        "name": "BenchmarkCompare32FilterProjectKernelMode/type=uint32/op=eq/pct=50/nullable=false",
+        "median": {
+          "scalar": {
+            "ns/op": 174631.0,
+            "MB/s": 781.0999999999999,
+            "peak_bytes": 99592.0,
+            "projected_rows/op": 4100.0,
+            "source_rows/op": 8199.0,
+            "B/op": 120976.0,
+            "allocs/op": 175.0
+          },
+          "auto": {
+            "ns/op": 131480.0,
+            "MB/s": 998.4449999999999,
+            "peak_bytes": 99592.0,
+            "projected_rows/op": 4100.0,
+            "source_rows/op": 8199.0,
+            "B/op": 120976.0,
+            "allocs/op": 175.0
+          },
+          "simd": {
+            "ns/op": 148594.5,
+            "MB/s": 882.8599999999999,
+            "peak_bytes": 99592.0,
+            "projected_rows/op": 4100.0,
+            "source_rows/op": 8199.0,
+            "B/op": 120976.0,
+            "allocs/op": 175.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -24.709816699211483,
+        "simd_vs_scalar_ns_pct": -14.909437614169308
+      },
+      {
+        "name": "BenchmarkCompare32FilterProjectKernelMode/type=uint32/op=eq/pct=50/nullable=true",
+        "median": {
+          "scalar": {
+            "ns/op": 151922.0,
+            "MB/s": 865.11,
+            "peak_bytes": 99864.0,
+            "projected_rows/op": 3438.0,
+            "source_rows/op": 8199.0,
+            "B/op": 114664.0,
+            "allocs/op": 178.0
+          },
+          "auto": {
+            "ns/op": 144593.5,
+            "MB/s": 913.9,
+            "peak_bytes": 99864.0,
+            "projected_rows/op": 3438.0,
+            "source_rows/op": 8199.0,
+            "B/op": 114664.0,
+            "allocs/op": 178.0
+          },
+          "simd": {
+            "ns/op": 144257.5,
+            "MB/s": 921.515,
+            "peak_bytes": 99864.0,
+            "projected_rows/op": 3438.0,
+            "source_rows/op": 8199.0,
+            "B/op": 114664.0,
+            "allocs/op": 178.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -4.823856979239349,
+        "simd_vs_scalar_ns_pct": -5.045023103961244
+      },
+      {
+        "name": "BenchmarkCompare32FilterProjectKernelMode/type=uint32/op=eq/pct=99/nullable=true",
+        "median": {
+          "scalar": {
+            "ns/op": 226899.5,
+            "MB/s": 580.355,
+            "peak_bytes": 181608.0,
+            "projected_rows/op": 6811.0,
+            "source_rows/op": 8199.0,
+            "B/op": 193128.0,
+            "allocs/op": 178.0
+          },
+          "auto": {
+            "ns/op": 207540.0,
+            "MB/s": 632.1700000000001,
+            "peak_bytes": 181608.0,
+            "projected_rows/op": 6811.0,
+            "source_rows/op": 8199.0,
+            "B/op": 193128.0,
+            "allocs/op": 178.0
+          },
+          "simd": {
+            "ns/op": 207558.5,
+            "MB/s": 634.525,
+            "peak_bytes": 181608.0,
+            "projected_rows/op": 6811.0,
+            "source_rows/op": 8199.0,
+            "B/op": 193128.0,
+            "allocs/op": 178.0
+          }
+        },
+        "auto_vs_scalar_ns_pct": -8.532191564988024,
+        "simd_vs_scalar_ns_pct": -8.524038175491789
+      }
+    ]
+  }
+}

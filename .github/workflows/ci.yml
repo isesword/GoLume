@@ -68,10 +68,10 @@ jobs:
         run: |
           set -euo pipefail
           if [[ "$(go env GOARCH)" == "amd64" ]]; then
-            BITS="$(GOEXPERIMENT=simd go run ./cmd/kernel-info -mode simd | awk '/compare-int64/ {print $3}' | cut -d= -f2)"
+            BITS="$(GOEXPERIMENT=simd go run ./cmd/kernel-info -mode simd | awk '/hardware=true/ { split($3, p, "="); if (p[2]+0 > bits) bits = p[2]+0 } END { print bits+0 }')"
             if [[ -n "$BITS" ]] && (( BITS >= 256 )); then
               GOEXPERIMENT=simd GODEBUG=simd=+256 go test ./kernel ./expr ./engine ./radix
             else
-              echo "compare-int64 width ${BITS:-unknown} < 256, skipping +256 gate"
+              echo "native SIMD width ${BITS:-unknown} < 256, skipping +256 gate"
             fi
           fi

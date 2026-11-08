@@ -5,7 +5,7 @@ package kernel
 import "simd"
 
 func installSIMD(set *Set, mode Mode) {
-	if simd.Emulated() {
+	if mode == ModeScalar || simd.Emulated() {
 		return
 	}
 	vectorBits := simd.Int64s{}.Len() * 64

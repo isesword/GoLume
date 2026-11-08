@@ -11,7 +11,7 @@ import (
 )
 
 func installGeneratedPortableSIMD(set *Set, mode Mode, vectorBits int) {
-	if mode != ModeSIMD {
+	if mode == ModeScalar || simd.Emulated() {
 		return
 	}
 	capability := KernelCapability{HardwareSIMD: true, VectorBits: vectorBits, Backend: "portable-simd"}
@@ -90,7 +90,8 @@ func simdFloat32GT(values []float32, validity memory.Bitmap, out memory.Bitmap, 
 	words := prepareComparison(len(values), out)
 	vectorThreshold := simd.BroadcastFloat32s(threshold)
 	lanes := simd.Float32s{}.Len()
-	laneMask := make([]int32, lanes)
+	var laneMaskStorage [64]int32
+	laneMask := laneMaskStorage[:lanes]
 	selected := 0
 	for wi := 0; wi < words; wi++ {
 		base := wi * 64
@@ -124,7 +125,8 @@ func simdFloat32GE(values []float32, validity memory.Bitmap, out memory.Bitmap, 
 	words := prepareComparison(len(values), out)
 	vectorThreshold := simd.BroadcastFloat32s(threshold)
 	lanes := simd.Float32s{}.Len()
-	laneMask := make([]int32, lanes)
+	var laneMaskStorage [64]int32
+	laneMask := laneMaskStorage[:lanes]
 	selected := 0
 	for wi := 0; wi < words; wi++ {
 		base := wi * 64
@@ -158,7 +160,8 @@ func simdFloat32LT(values []float32, validity memory.Bitmap, out memory.Bitmap, 
 	words := prepareComparison(len(values), out)
 	vectorThreshold := simd.BroadcastFloat32s(threshold)
 	lanes := simd.Float32s{}.Len()
-	laneMask := make([]int32, lanes)
+	var laneMaskStorage [64]int32
+	laneMask := laneMaskStorage[:lanes]
 	selected := 0
 	for wi := 0; wi < words; wi++ {
 		base := wi * 64
@@ -192,7 +195,8 @@ func simdFloat32LE(values []float32, validity memory.Bitmap, out memory.Bitmap, 
 	words := prepareComparison(len(values), out)
 	vectorThreshold := simd.BroadcastFloat32s(threshold)
 	lanes := simd.Float32s{}.Len()
-	laneMask := make([]int32, lanes)
+	var laneMaskStorage [64]int32
+	laneMask := laneMaskStorage[:lanes]
 	selected := 0
 	for wi := 0; wi < words; wi++ {
 		base := wi * 64
@@ -226,7 +230,8 @@ func simdFloat32EQ(values []float32, validity memory.Bitmap, out memory.Bitmap, 
 	words := prepareComparison(len(values), out)
 	vectorThreshold := simd.BroadcastFloat32s(threshold)
 	lanes := simd.Float32s{}.Len()
-	laneMask := make([]int32, lanes)
+	var laneMaskStorage [64]int32
+	laneMask := laneMaskStorage[:lanes]
 	selected := 0
 	for wi := 0; wi < words; wi++ {
 		base := wi * 64

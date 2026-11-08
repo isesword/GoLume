@@ -1,0 +1,2 @@
+kernel 240 cases, six balanced samples each
+query 120 cases, six balanced samples each

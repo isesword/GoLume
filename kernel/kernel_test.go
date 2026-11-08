@@ -69,7 +69,7 @@ func TestNativeWidthCompactionPreservesSelectionOrder(t *testing.T) {
 	}
 }
 
-func TestKernelCapabilitiesAreExactAndAutoIsAllowlisted(t *testing.T) {
+func TestKernelCapabilitiesAreExactAndAutoPrefersNative(t *testing.T) {
 	auto := New(ModeAuto)
 	if !auto.Valid() || auto.Mode() != ModeAuto || auto.Arch() == "" {
 		t.Fatalf("invalid auto set: valid=%t mode=%s arch=%q", auto.Valid(), auto.Mode(), auto.Arch())
@@ -85,8 +85,12 @@ func TestKernelCapabilitiesAreExactAndAutoIsAllowlisted(t *testing.T) {
 			}
 			continue
 		}
-		if auto.Arch() != "arm64" || !approvedArm64AutoID(id) {
-			t.Fatalf("unapproved auto kernel %s=%+v", id, capability)
+		if capability.HardwareSIMD {
+			if capability.Emulated || capability.VectorBits <= 0 {
+				t.Fatalf("inconsistent native capability %s=%+v", id, capability)
+			}
+		} else if auto.Arch() != "arm64" || id != KernelHash64Batch || capability.Backend != "arm64-unrolled" {
+			t.Fatalf("unknown non-vector backend %s=%+v", id, capability)
 		}
 	}
 	if _, ok := auto.Capability(KernelID{}); ok {
@@ -140,18 +144,6 @@ func TestStringMatchKernelIDsHaveScalarCapabilities(t *testing.T) {
 			t.Fatalf("id=%s capability=%+v ok=%t", id, capability, ok)
 		}
 	}
-}
-
-func approvedArm64AutoID(id KernelID) bool {
-	if id == KernelHash64Batch {
-		return true
-	}
-	if id.kind == KernelComparison && (id.typ == memory.TypeInt32 || id.typ == memory.TypeUint32) {
-		op := CompareOp(id.op)
-		return op >= CompareGT && op <= CompareEQ && !(id.typ == memory.TypeInt32 && op == CompareEQ)
-	}
-	return id.kind == KernelArithmetic && id.typ == memory.TypeFloat64 &&
-		(ArithmeticOp(id.op) == ArithmeticSub || ArithmeticOp(id.op) == ArithmeticMul || ArithmeticOp(id.op) == ArithmeticDiv)
 }
 
 func TestCompareInt64ModesLengthsOpsAndNulls(t *testing.T) {

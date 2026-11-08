@@ -155,9 +155,8 @@ func column32CheckGate[T ~int32 | ~uint32](t *testing.T, edges []T, bind func(Se
 	}
 }
 
-// Column comparisons have no public operation-level capability ID yet. Compare
-// dispatch identities so a forced-mode scalar fallback is never labeled SIMD.
-// "candidate" describes selected code, not a portable claim about hardware.
+// Compare dispatch identities independently of capability reporting so a
+// scalar fallback is never mislabeled as selected native code.
 func column32GateBackend(s Set, unsigned bool, op CompareOp) string {
 	scalar := New(ModeScalar)
 	var selected, reference any
@@ -169,7 +168,7 @@ func column32GateBackend(s Set, unsigned bool, op CompareOp) string {
 	if reflect.ValueOf(selected).Pointer() == reflect.ValueOf(reference).Pointer() {
 		return "scalar"
 	}
-	return "candidate"
+	return "portable-simd"
 }
 
 // An intentionally bounded matrix: streaming all-op cases, plus short/tail,
@@ -260,18 +259,26 @@ func column32BenchmarkGate[T ~int32 | ~uint32](b *testing.B, unsigned bool, bind
 	}
 }
 
-// No Auto admission is granted by these gates. Changing this expectation needs
-// operation-level, native-hardware performance evidence and an explicit review.
-func column32CheckDispatch(t *testing.T, forcedBackend string) {
+// Auto and explicit SIMD select the same native column implementations.
+// Scalar mode and unavailable native hardware retain the reference backend.
+func column32CheckDispatch(t *testing.T, nativeBackend string) {
 	t.Helper()
 	for _, mode := range column32GateModes {
 		set := New(mode.mode)
 		want := "scalar"
-		if mode.mode == ModeSIMD {
-			want = forcedBackend
+		if mode.mode != ModeScalar {
+			want = nativeBackend
 		}
 		for _, unsigned := range []bool{false, true} {
 			for _, op := range column32GateOps {
+				typ := memory.TypeInt32
+				if unsigned {
+					typ = memory.TypeUint32
+				}
+				capability, ok := set.ColumnComparisonCapability(typ, op)
+				if !ok || capability.Backend != want || capability.HardwareSIMD != (want == "portable-simd") {
+					t.Fatalf("mode=%s type=%s op=%s capability=%+v ok=%t want=%s", mode.name, typ, op, capability, ok, want)
+				}
 				if got := column32GateBackend(set, unsigned, op); got != want {
 					t.Fatalf("mode=%s unsigned=%t op=%s backend=%s want=%s", mode.name, unsigned, op, got, want)
 				}

@@ -1,5 +1,14 @@
 # SIMD candidate decisions
 
+> **Historical decisions; Auto policy superseded.** The candidate measurements
+> and decisions below record the earlier measured-only Auto policy. Current
+> Auto prefers retained native SIMD wherever runtime guards permit, including
+> the existing Float32 literal and Int32/Uint32/Float32 column comparisons.
+> Deleted candidates stay deleted and unsupported operations stay scalar.
+> See [current dispatch](SIMD_KERNELS.md) and the [operation matrix](SIMD_OPERATION_MATRIX.md).
+> Planner strategy measurement rules are unchanged. This stage adds no native
+> arm64 execution evidence or universal performance claim.
+
 This file records candidates that are deliberately not promoted to Auto. A
 rejected candidate remains a formal scalar implementation and must not be
 silently reported as SIMD.

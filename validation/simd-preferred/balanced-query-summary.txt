@@ -1,0 +1,316 @@
+goos: linux
+goarch: amd64
+pkg: gocolumn/physical
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+                                                                         │     scalar     │                 auto                  │                 simd                 │
+                                                                         │     sec/op     │     sec/op      vs base               │    sec/op      vs base               │
+Compare32FilterProjectKernelMode/type=int32/op=gt/pct=1/nullable=false     49.08µ ±   30%   48.56µ ± 3191%        ~ (p=0.699 n=6)   46.30µ ±  40%        ~ (p=0.310 n=6)
+Compare32FilterProjectKernelMode/type=int32/op=gt/pct=50/nullable=false    116.6µ ±   29%   121.7µ ±   29%        ~ (p=0.485 n=6)   113.4µ ±  51%        ~ (p=0.937 n=6)
+Compare32FilterProjectKernelMode/type=int32/op=gt/pct=50/nullable=true     121.8µ ±   23%   134.2µ ±   98%        ~ (p=0.818 n=6)   114.6µ ±  53%        ~ (p=0.240 n=6)
+Compare32FilterProjectKernelMode/type=int32/op=gt/pct=99/nullable=true     168.5µ ±   61%   169.9µ ±   18%        ~ (p=0.699 n=6)   166.7µ ±  38%        ~ (p=1.000 n=6)
+Compare32FilterProjectKernelMode/type=int32/op=ge/pct=1/nullable=false     52.57µ ±   40%   44.06µ ±   26%        ~ (p=0.180 n=6)   46.40µ ± 107%        ~ (p=0.093 n=6)
+Compare32FilterProjectKernelMode/type=int32/op=ge/pct=50/nullable=false    121.3µ ±   35%   138.5µ ±   22%        ~ (p=0.485 n=6)   110.6µ ± 183%        ~ (p=0.485 n=6)
+Compare32FilterProjectKernelMode/type=int32/op=ge/pct=50/nullable=true     120.5µ ±   22%   124.0µ ±   56%        ~ (p=0.589 n=6)   124.5µ ± 106%        ~ (p=0.394 n=6)
+Compare32FilterProjectKernelMode/type=int32/op=ge/pct=99/nullable=true     167.1µ ± 1073%   169.0µ ±   23%        ~ (p=1.000 n=6)   166.9µ ±  15%        ~ (p=0.818 n=6)
+Compare32FilterProjectKernelMode/type=int32/op=lt/pct=1/nullable=false     53.00µ ±   62%   46.92µ ±   72%        ~ (p=0.240 n=6)   43.36µ ±  26%  -18.20% (p=0.026 n=6)
+Compare32FilterProjectKernelMode/type=int32/op=lt/pct=50/nullable=false    112.6µ ±  229%   112.3µ ±   79%        ~ (p=0.937 n=6)   119.4µ ±  13%        ~ (p=0.240 n=6)
+Compare32FilterProjectKernelMode/type=int32/op=lt/pct=50/nullable=true     119.1µ ±   86%   141.9µ ±   25%        ~ (p=0.699 n=6)   119.5µ ±   9%        ~ (p=0.818 n=6)
+Compare32FilterProjectKernelMode/type=int32/op=lt/pct=99/nullable=true     170.9µ ±   62%   208.5µ ±   23%        ~ (p=0.132 n=6)   181.0µ ±  21%        ~ (p=0.485 n=6)
+Compare32FilterProjectKernelMode/type=int32/op=le/pct=1/nullable=false     56.28µ ±   23%   54.32µ ±   23%        ~ (p=0.310 n=6)   45.49µ ±  12%  -19.18% (p=0.002 n=6)
+Compare32FilterProjectKernelMode/type=int32/op=le/pct=50/nullable=false    124.0µ ±   19%   121.5µ ±   31%        ~ (p=0.937 n=6)   120.4µ ±  17%        ~ (p=0.818 n=6)
+Compare32FilterProjectKernelMode/type=int32/op=le/pct=50/nullable=true     123.1µ ±   33%   134.8µ ±   22%        ~ (p=0.589 n=6)   120.4µ ±  12%        ~ (p=0.310 n=6)
+Compare32FilterProjectKernelMode/type=int32/op=le/pct=99/nullable=true     169.2µ ±  126%   179.2µ ±   30%        ~ (p=0.818 n=6)   184.1µ ±   8%        ~ (p=0.485 n=6)
+Compare32FilterProjectKernelMode/type=int32/op=eq/pct=1/nullable=false     64.85µ ±   87%   46.90µ ±   13%  -27.68% (p=0.002 n=6)   49.68µ ±  72%        ~ (p=0.065 n=6)
+Compare32FilterProjectKernelMode/type=int32/op=eq/pct=50/nullable=false    150.2µ ±   94%   122.3µ ±   19%        ~ (p=0.180 n=6)   128.1µ ±  19%        ~ (p=0.310 n=6)
+Compare32FilterProjectKernelMode/type=int32/op=eq/pct=50/nullable=true     139.4µ ±  138%   119.7µ ±   34%        ~ (p=0.180 n=6)   121.4µ ±  31%        ~ (p=0.065 n=6)
+Compare32FilterProjectKernelMode/type=int32/op=eq/pct=99/nullable=true     183.6µ ±  153%   185.8µ ±   23%        ~ (p=0.589 n=6)   179.3µ ±  29%        ~ (p=0.818 n=6)
+Compare32FilterProjectKernelMode/type=uint32/op=gt/pct=1/nullable=false    52.67µ ±  142%   47.72µ ±   95%        ~ (p=0.485 n=6)   44.27µ ± 107%        ~ (p=0.180 n=6)
+Compare32FilterProjectKernelMode/type=uint32/op=gt/pct=50/nullable=false   127.0µ ±  127%   138.1µ ±   63%        ~ (p=0.818 n=6)   125.4µ ± 299%        ~ (p=1.000 n=6)
+Compare32FilterProjectKernelMode/type=uint32/op=gt/pct=50/nullable=true    131.7µ ±  180%   135.9µ ±   18%        ~ (p=0.937 n=6)   128.7µ ±  21%        ~ (p=0.699 n=6)
+Compare32FilterProjectKernelMode/type=uint32/op=gt/pct=99/nullable=true    196.6µ ±  109%   189.0µ ±   18%        ~ (p=0.937 n=6)   203.6µ ±  85%        ~ (p=0.589 n=6)
+Compare32FilterProjectKernelMode/type=uint32/op=ge/pct=1/nullable=false    60.46µ ±  105%   50.55µ ±   30%        ~ (p=0.180 n=6)   53.21µ ±  19%        ~ (p=0.180 n=6)
+Compare32FilterProjectKernelMode/type=uint32/op=ge/pct=50/nullable=false   158.6µ ±   91%   130.4µ ±   14%        ~ (p=0.240 n=6)   134.5µ ±  27%        ~ (p=0.589 n=6)
+Compare32FilterProjectKernelMode/type=uint32/op=ge/pct=50/nullable=true    152.1µ ±   24%   124.8µ ±   67%        ~ (p=0.310 n=6)   142.6µ ±  18%        ~ (p=0.818 n=6)
+Compare32FilterProjectKernelMode/type=uint32/op=ge/pct=99/nullable=true    198.9µ ±   24%   194.0µ ±   18%        ~ (p=0.589 n=6)   217.8µ ±  13%        ~ (p=0.240 n=6)
+Compare32FilterProjectKernelMode/type=uint32/op=lt/pct=1/nullable=false    59.90µ ±   21%   51.69µ ±   21%  -13.71% (p=0.041 n=6)   61.80µ ±  16%        ~ (p=1.000 n=6)
+Compare32FilterProjectKernelMode/type=uint32/op=lt/pct=50/nullable=false   131.0µ ±   53%   123.5µ ±   13%        ~ (p=0.485 n=6)   151.4µ ±  27%        ~ (p=0.485 n=6)
+Compare32FilterProjectKernelMode/type=uint32/op=lt/pct=50/nullable=true    138.3µ ±   21%   123.5µ ±   30%  -10.70% (p=0.041 n=6)   138.6µ ±  24%        ~ (p=1.000 n=6)
+Compare32FilterProjectKernelMode/type=uint32/op=lt/pct=99/nullable=true    212.3µ ±   48%   196.1µ ±   34%        ~ (p=0.485 n=6)   207.2µ ±  28%        ~ (p=0.937 n=6)
+Compare32FilterProjectKernelMode/type=uint32/op=le/pct=1/nullable=false    63.93µ ±   16%   53.76µ ±   18%  -15.90% (p=0.041 n=6)   59.85µ ±  16%        ~ (p=0.485 n=6)
+Compare32FilterProjectKernelMode/type=uint32/op=le/pct=50/nullable=false   145.6µ ±   89%   127.7µ ±   16%        ~ (p=0.132 n=6)   158.4µ ±  88%        ~ (p=0.485 n=6)
+Compare32FilterProjectKernelMode/type=uint32/op=le/pct=50/nullable=true    141.4µ ±  254%   132.0µ ±   25%        ~ (p=0.394 n=6)   159.9µ ±  31%        ~ (p=0.699 n=6)
+Compare32FilterProjectKernelMode/type=uint32/op=le/pct=99/nullable=true    206.6µ ±  489%   187.8µ ±   32%        ~ (p=0.180 n=6)   229.0µ ±  20%        ~ (p=0.699 n=6)
+Compare32FilterProjectKernelMode/type=uint32/op=eq/pct=1/nullable=false    64.64µ ±   85%   50.61µ ±   43%  -21.70% (p=0.041 n=6)   68.59µ ±  44%        ~ (p=0.818 n=6)
+Compare32FilterProjectKernelMode/type=uint32/op=eq/pct=50/nullable=false   174.6µ ±  115%   131.5µ ±   18%        ~ (p=0.180 n=6)   148.6µ ±  27%        ~ (p=0.699 n=6)
+Compare32FilterProjectKernelMode/type=uint32/op=eq/pct=50/nullable=true    151.9µ ±  105%   144.6µ ±   16%        ~ (p=0.394 n=6)   144.3µ ±  18%        ~ (p=0.485 n=6)
+Compare32FilterProjectKernelMode/type=uint32/op=eq/pct=99/nullable=true    226.9µ ±   61%   207.5µ ±   23%        ~ (p=0.180 n=6)   207.6µ ± 943%        ~ (p=0.589 n=6)
+geomean                                                                    118.2µ           111.5µ           -5.70%                 113.9µ          -3.63%
+
+                                                                         │     scalar     │                 auto                  │                 simd                  │
+                                                                         │      B/s       │      B/s        vs base               │      B/s        vs base               │
+Compare32FilterProjectKernelMode/type=int32/op=gt/pct=1/nullable=false      2.490Gi ± 23%    2.527Gi ± 97%        ~ (p=0.699 n=6)    2.640Gi ± 29%        ~ (p=0.310 n=6)
+Compare32FilterProjectKernelMode/type=int32/op=gt/pct=50/nullable=false     1.048Gi ± 22%    1.004Gi ± 22%        ~ (p=0.485 n=6)    1.077Gi ± 34%        ~ (p=0.937 n=6)
+Compare32FilterProjectKernelMode/type=int32/op=gt/pct=50/nullable=true     1027.4Mi ± 19%    934.2Mi ± 50%        ~ (p=0.818 n=6)   1092.0Mi ± 35%        ~ (p=0.240 n=6)
+Compare32FilterProjectKernelMode/type=int32/op=gt/pct=99/nullable=true      742.6Mi ± 38%    736.3Mi ± 15%        ~ (p=0.699 n=6)    750.7Mi ± 28%        ~ (p=1.000 n=6)
+Compare32FilterProjectKernelMode/type=int32/op=ge/pct=1/nullable=false      2.324Gi ± 28%    2.774Gi ± 21%        ~ (p=0.180 n=6)    2.636Gi ± 52%        ~ (p=0.093 n=6)
+Compare32FilterProjectKernelMode/type=int32/op=ge/pct=50/nullable=false    1032.2Mi ± 26%    903.5Mi ± 29%        ~ (p=0.485 n=6)   1131.5Mi ± 65%        ~ (p=0.485 n=6)
+Compare32FilterProjectKernelMode/type=int32/op=ge/pct=50/nullable=true     1037.9Mi ± 18%   1009.1Mi ± 36%        ~ (p=0.589 n=6)   1004.8Mi ± 51%        ~ (p=0.394 n=6)
+Compare32FilterProjectKernelMode/type=int32/op=ge/pct=99/nullable=true      748.8Mi ± 91%    740.5Mi ± 19%        ~ (p=1.000 n=6)    749.7Mi ± 13%        ~ (p=0.818 n=6)
+Compare32FilterProjectKernelMode/type=int32/op=lt/pct=1/nullable=false      2.305Gi ± 38%    2.638Gi ± 43%        ~ (p=0.240 n=6)    2.818Gi ± 21%  +22.23% (p=0.026 n=6)
+Compare32FilterProjectKernelMode/type=int32/op=lt/pct=50/nullable=false     1.085Gi ± 70%    1.088Gi ± 44%        ~ (p=0.937 n=6)    1.023Gi ± 11%        ~ (p=0.240 n=6)
+Compare32FilterProjectKernelMode/type=int32/op=lt/pct=50/nullable=true     1050.4Mi ± 46%    883.0Mi ± 34%        ~ (p=0.699 n=6)   1047.1Mi ± 10%        ~ (p=0.818 n=6)
+Compare32FilterProjectKernelMode/type=int32/op=lt/pct=99/nullable=true      732.4Mi ± 38%    604.4Mi ± 23%        ~ (p=0.132 n=6)    691.1Mi ± 17%        ~ (p=0.485 n=6)
+Compare32FilterProjectKernelMode/type=int32/op=le/pct=1/nullable=false      2.171Gi ± 19%    2.252Gi ± 30%        ~ (p=0.310 n=6)    2.686Gi ± 11%  +23.74% (p=0.002 n=6)
+Compare32FilterProjectKernelMode/type=int32/op=le/pct=50/nullable=false    1013.2Mi ± 17%   1032.0Mi ± 24%        ~ (p=0.937 n=6)   1039.3Mi ± 15%        ~ (p=0.818 n=6)
+Compare32FilterProjectKernelMode/type=int32/op=le/pct=50/nullable=true     1016.0Mi ± 25%    927.9Mi ± 27%        ~ (p=0.589 n=6)   1039.0Mi ± 10%        ~ (p=0.310 n=6)
+Compare32FilterProjectKernelMode/type=int32/op=le/pct=99/nullable=true      739.5Mi ± 56%    698.5Mi ± 23%        ~ (p=0.818 n=6)    679.9Mi ±  8%        ~ (p=0.485 n=6)
+Compare32FilterProjectKernelMode/type=int32/op=eq/pct=1/nullable=false      1.884Gi ± 47%    2.605Gi ± 13%  +38.28% (p=0.002 n=6)    2.477Gi ± 42%        ~ (p=0.065 n=6)
+Compare32FilterProjectKernelMode/type=int32/op=eq/pct=50/nullable=false     833.5Mi ± 48%   1026.3Mi ± 16%        ~ (p=0.180 n=6)    977.4Mi ± 17%        ~ (p=0.310 n=6)
+Compare32FilterProjectKernelMode/type=int32/op=eq/pct=50/nullable=true      899.0Mi ± 58%   1046.3Mi ± 26%        ~ (p=0.180 n=6)   1030.9Mi ± 24%        ~ (p=0.065 n=6)
+Compare32FilterProjectKernelMode/type=int32/op=eq/pct=99/nullable=true      686.3Mi ± 61%    676.2Mi ± 20%        ~ (p=0.589 n=6)    697.6Mi ± 22%        ~ (p=0.818 n=6)
+Compare32FilterProjectKernelMode/type=uint32/op=gt/pct=1/nullable=false     2.322Gi ± 59%    2.561Gi ± 49%        ~ (p=0.485 n=6)    2.761Gi ± 52%        ~ (p=0.180 n=6)
+Compare32FilterProjectKernelMode/type=uint32/op=gt/pct=50/nullable=false    986.2Mi ± 56%    905.7Mi ± 38%        ~ (p=0.818 n=6)    998.1Mi ± 75%        ~ (p=1.000 n=6)
+Compare32FilterProjectKernelMode/type=uint32/op=gt/pct=50/nullable=true     950.0Mi ± 64%    921.1Mi ± 21%        ~ (p=0.937 n=6)    972.8Mi ± 25%        ~ (p=0.699 n=6)
+Compare32FilterProjectKernelMode/type=uint32/op=gt/pct=99/nullable=true     637.1Mi ± 52%    662.3Mi ± 15%        ~ (p=0.937 n=6)    614.5Mi ± 46%        ~ (p=0.589 n=6)
+Compare32FilterProjectKernelMode/type=uint32/op=ge/pct=1/nullable=false     2.035Gi ± 52%    2.417Gi ± 24%        ~ (p=0.180 n=6)    2.296Gi ± 24%        ~ (p=0.180 n=6)
+Compare32FilterProjectKernelMode/type=uint32/op=ge/pct=50/nullable=false    789.3Mi ± 48%    959.7Mi ± 17%        ~ (p=0.240 n=6)    930.6Mi ± 21%        ~ (p=0.589 n=6)
+Compare32FilterProjectKernelMode/type=uint32/op=ge/pct=50/nullable=true     822.4Mi ± 32%   1006.4Mi ± 40%        ~ (p=0.310 n=6)    879.1Mi ± 15%        ~ (p=0.818 n=6)
+Compare32FilterProjectKernelMode/type=uint32/op=ge/pct=99/nullable=true     629.5Mi ± 21%    645.1Mi ± 22%        ~ (p=0.589 n=6)    574.5Mi ± 12%        ~ (p=0.240 n=6)
+Compare32FilterProjectKernelMode/type=uint32/op=lt/pct=1/nullable=false     2.040Gi ± 25%    2.366Gi ± 26%  +16.01% (p=0.041 n=6)    1.979Gi ± 17%        ~ (p=1.000 n=6)
+Compare32FilterProjectKernelMode/type=uint32/op=lt/pct=50/nullable=false    956.0Mi ± 35%   1013.6Mi ± 12%        ~ (p=0.485 n=6)    826.2Mi ± 21%        ~ (p=0.485 n=6)
+Compare32FilterProjectKernelMode/type=uint32/op=lt/pct=50/nullable=true     905.1Mi ± 17%   1013.2Mi ± 23%  +11.94% (p=0.041 n=6)    903.4Mi ± 21%        ~ (p=1.000 n=6)
+Compare32FilterProjectKernelMode/type=uint32/op=lt/pct=99/nullable=true     589.3Mi ± 32%    637.9Mi ± 26%        ~ (p=0.485 n=6)    604.2Mi ± 22%        ~ (p=0.937 n=6)
+Compare32FilterProjectKernelMode/type=uint32/op=le/pct=1/nullable=false     1.913Gi ± 19%    2.273Gi ± 21%  +18.80% (p=0.041 n=6)    2.041Gi ± 14%        ~ (p=0.485 n=6)
+Compare32FilterProjectKernelMode/type=uint32/op=le/pct=50/nullable=false    862.0Mi ± 47%    979.6Mi ± 20%        ~ (p=0.132 n=6)    796.2Mi ± 47%        ~ (p=0.485 n=6)
+Compare32FilterProjectKernelMode/type=uint32/op=le/pct=50/nullable=true     884.6Mi ± 72%    948.1Mi ± 22%        ~ (p=0.394 n=6)    792.1Mi ± 43%        ~ (p=0.699 n=6)
+Compare32FilterProjectKernelMode/type=uint32/op=le/pct=99/nullable=true     605.7Mi ± 83%    667.1Mi ± 25%        ~ (p=0.180 n=6)    547.0Mi ± 17%        ~ (p=0.699 n=6)
+Compare32FilterProjectKernelMode/type=uint32/op=eq/pct=1/nullable=false     1.890Gi ± 46%    2.428Gi ± 30%  +28.41% (p=0.041 n=6)    1.830Gi ± 62%        ~ (p=0.818 n=6)
+Compare32FilterProjectKernelMode/type=uint32/op=eq/pct=50/nullable=false    744.9Mi ± 55%    952.2Mi ± 21%        ~ (p=0.180 n=6)    842.0Mi ± 35%        ~ (p=0.699 n=6)
+Compare32FilterProjectKernelMode/type=uint32/op=eq/pct=50/nullable=true     825.0Mi ± 51%    871.6Mi ± 19%        ~ (p=0.394 n=6)    878.8Mi ± 21%        ~ (p=0.485 n=6)
+Compare32FilterProjectKernelMode/type=uint32/op=eq/pct=99/nullable=true     553.5Mi ± 38%    602.9Mi ± 30%        ~ (p=0.180 n=6)    605.1Mi ± 90%        ~ (p=0.589 n=6)
+geomean                                                                     1.035Gi          1.098Gi         +6.02%                  1.074Gi         +3.78%
+
+                                                                         │   scalar    │                auto                 │                simd                 │
+                                                                         │ peak_bytes  │ peak_bytes   vs base                │ peak_bytes   vs base                │
+Compare32FilterProjectKernelMode/type=int32/op=gt/pct=1/nullable=false     18.25k ± 0%   18.25k ± 0%       ~ (p=1.000 n=6) ¹   18.25k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=gt/pct=50/nullable=false    99.59k ± 0%   99.59k ± 0%       ~ (p=1.000 n=6) ¹   99.59k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=gt/pct=50/nullable=true     99.86k ± 0%   99.86k ± 0%       ~ (p=1.000 n=6) ¹   99.86k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=gt/pct=99/nullable=true     181.6k ± 0%   181.6k ± 0%       ~ (p=1.000 n=6) ¹   181.6k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=ge/pct=1/nullable=false     18.25k ± 0%   18.25k ± 0%       ~ (p=1.000 n=6) ¹   18.25k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=ge/pct=50/nullable=false    99.59k ± 0%   99.59k ± 0%       ~ (p=1.000 n=6) ¹   99.59k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=ge/pct=50/nullable=true     99.86k ± 0%   99.86k ± 0%       ~ (p=1.000 n=6) ¹   99.86k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=ge/pct=99/nullable=true     181.6k ± 0%   181.6k ± 0%       ~ (p=1.000 n=6) ¹   181.6k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=lt/pct=1/nullable=false     18.25k ± 0%   18.25k ± 0%       ~ (p=1.000 n=6) ¹   18.25k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=lt/pct=50/nullable=false    99.59k ± 0%   99.59k ± 0%       ~ (p=1.000 n=6) ¹   99.59k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=lt/pct=50/nullable=true     99.86k ± 0%   99.86k ± 0%       ~ (p=1.000 n=6) ¹   99.86k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=lt/pct=99/nullable=true     181.6k ± 0%   181.6k ± 0%       ~ (p=1.000 n=6) ¹   181.6k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=le/pct=1/nullable=false     18.25k ± 0%   18.25k ± 0%       ~ (p=1.000 n=6) ¹   18.25k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=le/pct=50/nullable=false    99.59k ± 0%   99.59k ± 0%       ~ (p=1.000 n=6) ¹   99.59k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=le/pct=50/nullable=true     99.86k ± 0%   99.86k ± 0%       ~ (p=1.000 n=6) ¹   99.86k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=le/pct=99/nullable=true     181.6k ± 0%   181.6k ± 0%       ~ (p=1.000 n=6) ¹   181.6k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=eq/pct=1/nullable=false     18.25k ± 0%   18.25k ± 0%       ~ (p=1.000 n=6) ¹   18.25k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=eq/pct=50/nullable=false    99.59k ± 0%   99.59k ± 0%       ~ (p=1.000 n=6) ¹   99.59k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=eq/pct=50/nullable=true     99.86k ± 0%   99.86k ± 0%       ~ (p=1.000 n=6) ¹   99.86k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=eq/pct=99/nullable=true     181.6k ± 0%   181.6k ± 0%       ~ (p=1.000 n=6) ¹   181.6k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=gt/pct=1/nullable=false    18.25k ± 0%   18.25k ± 0%       ~ (p=1.000 n=6) ¹   18.25k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=gt/pct=50/nullable=false   99.59k ± 0%   99.59k ± 0%       ~ (p=1.000 n=6) ¹   99.59k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=gt/pct=50/nullable=true    99.86k ± 0%   99.86k ± 0%       ~ (p=1.000 n=6) ¹   99.86k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=gt/pct=99/nullable=true    181.6k ± 0%   181.6k ± 0%       ~ (p=1.000 n=6) ¹   181.6k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=ge/pct=1/nullable=false    18.25k ± 0%   18.25k ± 0%       ~ (p=1.000 n=6) ¹   18.25k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=ge/pct=50/nullable=false   99.59k ± 0%   99.59k ± 0%       ~ (p=1.000 n=6) ¹   99.59k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=ge/pct=50/nullable=true    99.86k ± 0%   99.86k ± 0%       ~ (p=1.000 n=6) ¹   99.86k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=ge/pct=99/nullable=true    181.6k ± 0%   181.6k ± 0%       ~ (p=1.000 n=6) ¹   181.6k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=lt/pct=1/nullable=false    18.25k ± 0%   18.25k ± 0%       ~ (p=1.000 n=6) ¹   18.25k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=lt/pct=50/nullable=false   99.59k ± 0%   99.59k ± 0%       ~ (p=1.000 n=6) ¹   99.59k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=lt/pct=50/nullable=true    99.86k ± 0%   99.86k ± 0%       ~ (p=1.000 n=6) ¹   99.86k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=lt/pct=99/nullable=true    181.6k ± 0%   181.6k ± 0%       ~ (p=1.000 n=6) ¹   181.6k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=le/pct=1/nullable=false    18.25k ± 0%   18.25k ± 0%       ~ (p=1.000 n=6) ¹   18.25k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=le/pct=50/nullable=false   99.59k ± 0%   99.59k ± 0%       ~ (p=1.000 n=6) ¹   99.59k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=le/pct=50/nullable=true    99.86k ± 0%   99.86k ± 0%       ~ (p=1.000 n=6) ¹   99.86k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=le/pct=99/nullable=true    181.6k ± 0%   181.6k ± 0%       ~ (p=1.000 n=6) ¹   181.6k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=eq/pct=1/nullable=false    18.25k ± 0%   18.25k ± 0%       ~ (p=1.000 n=6) ¹   18.25k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=eq/pct=50/nullable=false   99.59k ± 0%   99.59k ± 0%       ~ (p=1.000 n=6) ¹   99.59k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=eq/pct=50/nullable=true    99.86k ± 0%   99.86k ± 0%       ~ (p=1.000 n=6) ¹   99.86k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=eq/pct=99/nullable=true    181.6k ± 0%   181.6k ± 0%       ~ (p=1.000 n=6) ¹   181.6k ± 0%       ~ (p=1.000 n=6) ¹
+geomean                                                                    75.77k        75.77k       +0.00%                   75.77k       +0.00%
+¹ all samples are equal
+
+                                                                         │      scalar       │                   auto                    │                   simd                    │
+                                                                         │ projected_rows/op │ projected_rows/op  vs base                │ projected_rows/op  vs base                │
+Compare32FilterProjectKernelMode/type=int32/op=gt/pct=1/nullable=false            82.00 ± 0%          82.00 ± 0%       ~ (p=1.000 n=6) ¹          82.00 ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=gt/pct=50/nullable=false          4.100k ± 0%         4.100k ± 0%       ~ (p=1.000 n=6) ¹         4.100k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=gt/pct=50/nullable=true           3.438k ± 0%         3.438k ± 0%       ~ (p=1.000 n=6) ¹         3.438k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=gt/pct=99/nullable=true           6.811k ± 0%         6.811k ± 0%       ~ (p=1.000 n=6) ¹         6.811k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=ge/pct=1/nullable=false            82.00 ± 0%          82.00 ± 0%       ~ (p=1.000 n=6) ¹          82.00 ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=ge/pct=50/nullable=false          4.100k ± 0%         4.100k ± 0%       ~ (p=1.000 n=6) ¹         4.100k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=ge/pct=50/nullable=true           3.438k ± 0%         3.438k ± 0%       ~ (p=1.000 n=6) ¹         3.438k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=ge/pct=99/nullable=true           6.811k ± 0%         6.811k ± 0%       ~ (p=1.000 n=6) ¹         6.811k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=lt/pct=1/nullable=false            82.00 ± 0%          82.00 ± 0%       ~ (p=1.000 n=6) ¹          82.00 ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=lt/pct=50/nullable=false          4.100k ± 0%         4.100k ± 0%       ~ (p=1.000 n=6) ¹         4.100k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=lt/pct=50/nullable=true           3.438k ± 0%         3.438k ± 0%       ~ (p=1.000 n=6) ¹         3.438k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=lt/pct=99/nullable=true           6.811k ± 0%         6.811k ± 0%       ~ (p=1.000 n=6) ¹         6.811k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=le/pct=1/nullable=false            82.00 ± 0%          82.00 ± 0%       ~ (p=1.000 n=6) ¹          82.00 ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=le/pct=50/nullable=false          4.100k ± 0%         4.100k ± 0%       ~ (p=1.000 n=6) ¹         4.100k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=le/pct=50/nullable=true           3.438k ± 0%         3.438k ± 0%       ~ (p=1.000 n=6) ¹         3.438k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=le/pct=99/nullable=true           6.811k ± 0%         6.811k ± 0%       ~ (p=1.000 n=6) ¹         6.811k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=eq/pct=1/nullable=false            82.00 ± 0%          82.00 ± 0%       ~ (p=1.000 n=6) ¹          82.00 ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=eq/pct=50/nullable=false          4.100k ± 0%         4.100k ± 0%       ~ (p=1.000 n=6) ¹         4.100k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=eq/pct=50/nullable=true           3.438k ± 0%         3.438k ± 0%       ~ (p=1.000 n=6) ¹         3.438k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=eq/pct=99/nullable=true           6.811k ± 0%         6.811k ± 0%       ~ (p=1.000 n=6) ¹         6.811k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=gt/pct=1/nullable=false           82.00 ± 0%          82.00 ± 0%       ~ (p=1.000 n=6) ¹          82.00 ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=gt/pct=50/nullable=false         4.100k ± 0%         4.100k ± 0%       ~ (p=1.000 n=6) ¹         4.100k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=gt/pct=50/nullable=true          3.438k ± 0%         3.438k ± 0%       ~ (p=1.000 n=6) ¹         3.438k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=gt/pct=99/nullable=true          6.811k ± 0%         6.811k ± 0%       ~ (p=1.000 n=6) ¹         6.811k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=ge/pct=1/nullable=false           82.00 ± 0%          82.00 ± 0%       ~ (p=1.000 n=6) ¹          82.00 ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=ge/pct=50/nullable=false         4.100k ± 0%         4.100k ± 0%       ~ (p=1.000 n=6) ¹         4.100k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=ge/pct=50/nullable=true          3.438k ± 0%         3.438k ± 0%       ~ (p=1.000 n=6) ¹         3.438k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=ge/pct=99/nullable=true          6.811k ± 0%         6.811k ± 0%       ~ (p=1.000 n=6) ¹         6.811k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=lt/pct=1/nullable=false           82.00 ± 0%          82.00 ± 0%       ~ (p=1.000 n=6) ¹          82.00 ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=lt/pct=50/nullable=false         4.100k ± 0%         4.100k ± 0%       ~ (p=1.000 n=6) ¹         4.100k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=lt/pct=50/nullable=true          3.438k ± 0%         3.438k ± 0%       ~ (p=1.000 n=6) ¹         3.438k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=lt/pct=99/nullable=true          6.811k ± 0%         6.811k ± 0%       ~ (p=1.000 n=6) ¹         6.811k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=le/pct=1/nullable=false           82.00 ± 0%          82.00 ± 0%       ~ (p=1.000 n=6) ¹          82.00 ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=le/pct=50/nullable=false         4.100k ± 0%         4.100k ± 0%       ~ (p=1.000 n=6) ¹         4.100k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=le/pct=50/nullable=true          3.438k ± 0%         3.438k ± 0%       ~ (p=1.000 n=6) ¹         3.438k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=le/pct=99/nullable=true          6.811k ± 0%         6.811k ± 0%       ~ (p=1.000 n=6) ¹         6.811k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=eq/pct=1/nullable=false           82.00 ± 0%          82.00 ± 0%       ~ (p=1.000 n=6) ¹          82.00 ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=eq/pct=50/nullable=false         4.100k ± 0%         4.100k ± 0%       ~ (p=1.000 n=6) ¹         4.100k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=eq/pct=50/nullable=true          3.438k ± 0%         3.438k ± 0%       ~ (p=1.000 n=6) ¹         3.438k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=eq/pct=99/nullable=true          6.811k ± 0%         6.811k ± 0%       ~ (p=1.000 n=6) ¹         6.811k ± 0%       ~ (p=1.000 n=6) ¹
+geomean                                                                          1.675k              1.675k       +0.00%                         1.675k       +0.00%
+¹ all samples are equal
+
+                                                                         │     scalar     │                  auto                  │                  simd                  │
+                                                                         │ source_rows/op │ source_rows/op  vs base                │ source_rows/op  vs base                │
+Compare32FilterProjectKernelMode/type=int32/op=gt/pct=1/nullable=false        8.199k ± 0%      8.199k ± 0%       ~ (p=1.000 n=6) ¹      8.199k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=gt/pct=50/nullable=false       8.199k ± 0%      8.199k ± 0%       ~ (p=1.000 n=6) ¹      8.199k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=gt/pct=50/nullable=true        8.199k ± 0%      8.199k ± 0%       ~ (p=1.000 n=6) ¹      8.199k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=gt/pct=99/nullable=true        8.199k ± 0%      8.199k ± 0%       ~ (p=1.000 n=6) ¹      8.199k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=ge/pct=1/nullable=false        8.199k ± 0%      8.199k ± 0%       ~ (p=1.000 n=6) ¹      8.199k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=ge/pct=50/nullable=false       8.199k ± 0%      8.199k ± 0%       ~ (p=1.000 n=6) ¹      8.199k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=ge/pct=50/nullable=true        8.199k ± 0%      8.199k ± 0%       ~ (p=1.000 n=6) ¹      8.199k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=ge/pct=99/nullable=true        8.199k ± 0%      8.199k ± 0%       ~ (p=1.000 n=6) ¹      8.199k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=lt/pct=1/nullable=false        8.199k ± 0%      8.199k ± 0%       ~ (p=1.000 n=6) ¹      8.199k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=lt/pct=50/nullable=false       8.199k ± 0%      8.199k ± 0%       ~ (p=1.000 n=6) ¹      8.199k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=lt/pct=50/nullable=true        8.199k ± 0%      8.199k ± 0%       ~ (p=1.000 n=6) ¹      8.199k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=lt/pct=99/nullable=true        8.199k ± 0%      8.199k ± 0%       ~ (p=1.000 n=6) ¹      8.199k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=le/pct=1/nullable=false        8.199k ± 0%      8.199k ± 0%       ~ (p=1.000 n=6) ¹      8.199k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=le/pct=50/nullable=false       8.199k ± 0%      8.199k ± 0%       ~ (p=1.000 n=6) ¹      8.199k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=le/pct=50/nullable=true        8.199k ± 0%      8.199k ± 0%       ~ (p=1.000 n=6) ¹      8.199k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=le/pct=99/nullable=true        8.199k ± 0%      8.199k ± 0%       ~ (p=1.000 n=6) ¹      8.199k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=eq/pct=1/nullable=false        8.199k ± 0%      8.199k ± 0%       ~ (p=1.000 n=6) ¹      8.199k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=eq/pct=50/nullable=false       8.199k ± 0%      8.199k ± 0%       ~ (p=1.000 n=6) ¹      8.199k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=eq/pct=50/nullable=true        8.199k ± 0%      8.199k ± 0%       ~ (p=1.000 n=6) ¹      8.199k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=eq/pct=99/nullable=true        8.199k ± 0%      8.199k ± 0%       ~ (p=1.000 n=6) ¹      8.199k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=gt/pct=1/nullable=false       8.199k ± 0%      8.199k ± 0%       ~ (p=1.000 n=6) ¹      8.199k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=gt/pct=50/nullable=false      8.199k ± 0%      8.199k ± 0%       ~ (p=1.000 n=6) ¹      8.199k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=gt/pct=50/nullable=true       8.199k ± 0%      8.199k ± 0%       ~ (p=1.000 n=6) ¹      8.199k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=gt/pct=99/nullable=true       8.199k ± 0%      8.199k ± 0%       ~ (p=1.000 n=6) ¹      8.199k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=ge/pct=1/nullable=false       8.199k ± 0%      8.199k ± 0%       ~ (p=1.000 n=6) ¹      8.199k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=ge/pct=50/nullable=false      8.199k ± 0%      8.199k ± 0%       ~ (p=1.000 n=6) ¹      8.199k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=ge/pct=50/nullable=true       8.199k ± 0%      8.199k ± 0%       ~ (p=1.000 n=6) ¹      8.199k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=ge/pct=99/nullable=true       8.199k ± 0%      8.199k ± 0%       ~ (p=1.000 n=6) ¹      8.199k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=lt/pct=1/nullable=false       8.199k ± 0%      8.199k ± 0%       ~ (p=1.000 n=6) ¹      8.199k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=lt/pct=50/nullable=false      8.199k ± 0%      8.199k ± 0%       ~ (p=1.000 n=6) ¹      8.199k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=lt/pct=50/nullable=true       8.199k ± 0%      8.199k ± 0%       ~ (p=1.000 n=6) ¹      8.199k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=lt/pct=99/nullable=true       8.199k ± 0%      8.199k ± 0%       ~ (p=1.000 n=6) ¹      8.199k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=le/pct=1/nullable=false       8.199k ± 0%      8.199k ± 0%       ~ (p=1.000 n=6) ¹      8.199k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=le/pct=50/nullable=false      8.199k ± 0%      8.199k ± 0%       ~ (p=1.000 n=6) ¹      8.199k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=le/pct=50/nullable=true       8.199k ± 0%      8.199k ± 0%       ~ (p=1.000 n=6) ¹      8.199k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=le/pct=99/nullable=true       8.199k ± 0%      8.199k ± 0%       ~ (p=1.000 n=6) ¹      8.199k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=eq/pct=1/nullable=false       8.199k ± 0%      8.199k ± 0%       ~ (p=1.000 n=6) ¹      8.199k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=eq/pct=50/nullable=false      8.199k ± 0%      8.199k ± 0%       ~ (p=1.000 n=6) ¹      8.199k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=eq/pct=50/nullable=true       8.199k ± 0%      8.199k ± 0%       ~ (p=1.000 n=6) ¹      8.199k ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=eq/pct=99/nullable=true       8.199k ± 0%      8.199k ± 0%       ~ (p=1.000 n=6) ¹      8.199k ± 0%       ~ (p=1.000 n=6) ¹
+geomean                                                                       8.199k           8.199k       +0.00%                      8.199k       +0.00%
+¹ all samples are equal
+
+                                                                         │    scalar    │                 auto                 │                 simd                 │
+                                                                         │     B/op     │     B/op      vs base                │     B/op      vs base                │
+Compare32FilterProjectKernelMode/type=int32/op=gt/pct=1/nullable=false     28.70Ki ± 0%   28.70Ki ± 0%       ~ (p=1.000 n=6) ¹   28.70Ki ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=gt/pct=50/nullable=false    118.1Ki ± 0%   118.1Ki ± 0%       ~ (p=1.000 n=6) ¹   118.1Ki ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=gt/pct=50/nullable=true     112.0Ki ± 0%   112.0Ki ± 0%       ~ (p=1.000 n=6) ¹   112.0Ki ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=gt/pct=99/nullable=true     188.6Ki ± 0%   188.6Ki ± 0%       ~ (p=1.000 n=6) ¹   188.6Ki ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=ge/pct=1/nullable=false     28.70Ki ± 0%   28.70Ki ± 0%       ~ (p=1.000 n=6) ¹   28.70Ki ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=ge/pct=50/nullable=false    118.1Ki ± 0%   118.1Ki ± 0%       ~ (p=1.000 n=6) ¹   118.1Ki ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=ge/pct=50/nullable=true     112.0Ki ± 0%   112.0Ki ± 0%       ~ (p=1.000 n=6) ¹   112.0Ki ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=ge/pct=99/nullable=true     188.6Ki ± 0%   188.6Ki ± 0%       ~ (p=1.000 n=6) ¹   188.6Ki ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=lt/pct=1/nullable=false     28.70Ki ± 0%   28.70Ki ± 0%       ~ (p=1.000 n=6) ¹   28.70Ki ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=lt/pct=50/nullable=false    118.1Ki ± 0%   118.1Ki ± 0%       ~ (p=1.000 n=6) ¹   118.1Ki ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=lt/pct=50/nullable=true     112.0Ki ± 0%   112.0Ki ± 0%       ~ (p=1.000 n=6) ¹   112.0Ki ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=lt/pct=99/nullable=true     188.6Ki ± 0%   188.6Ki ± 0%       ~ (p=1.000 n=6) ¹   188.6Ki ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=le/pct=1/nullable=false     28.70Ki ± 0%   28.70Ki ± 0%       ~ (p=1.000 n=6) ¹   28.70Ki ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=le/pct=50/nullable=false    118.1Ki ± 0%   118.1Ki ± 0%       ~ (p=1.000 n=6) ¹   118.1Ki ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=le/pct=50/nullable=true     112.0Ki ± 0%   112.0Ki ± 0%       ~ (p=1.000 n=6) ¹   112.0Ki ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=le/pct=99/nullable=true     188.6Ki ± 0%   188.6Ki ± 0%       ~ (p=1.000 n=6) ¹   188.6Ki ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=eq/pct=1/nullable=false     28.70Ki ± 0%   28.70Ki ± 0%       ~ (p=1.000 n=6) ¹   28.70Ki ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=eq/pct=50/nullable=false    118.1Ki ± 0%   118.1Ki ± 0%       ~ (p=1.000 n=6) ¹   118.1Ki ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=eq/pct=50/nullable=true     112.0Ki ± 0%   112.0Ki ± 0%       ~ (p=1.000 n=6) ¹   112.0Ki ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=eq/pct=99/nullable=true     188.6Ki ± 0%   188.6Ki ± 0%       ~ (p=1.000 n=6) ¹   188.6Ki ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=gt/pct=1/nullable=false    28.70Ki ± 0%   28.70Ki ± 0%       ~ (p=1.000 n=6) ¹   28.70Ki ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=gt/pct=50/nullable=false   118.1Ki ± 0%   118.1Ki ± 0%       ~ (p=1.000 n=6) ¹   118.1Ki ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=gt/pct=50/nullable=true    112.0Ki ± 0%   112.0Ki ± 0%       ~ (p=1.000 n=6) ¹   112.0Ki ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=gt/pct=99/nullable=true    188.6Ki ± 0%   188.6Ki ± 0%       ~ (p=1.000 n=6) ¹   188.6Ki ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=ge/pct=1/nullable=false    28.70Ki ± 0%   28.70Ki ± 0%       ~ (p=1.000 n=6) ¹   28.70Ki ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=ge/pct=50/nullable=false   118.1Ki ± 0%   118.1Ki ± 0%       ~ (p=1.000 n=6) ¹   118.1Ki ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=ge/pct=50/nullable=true    112.0Ki ± 0%   112.0Ki ± 0%       ~ (p=1.000 n=6) ¹   112.0Ki ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=ge/pct=99/nullable=true    188.6Ki ± 0%   188.6Ki ± 0%       ~ (p=1.000 n=6) ¹   188.6Ki ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=lt/pct=1/nullable=false    28.70Ki ± 0%   28.70Ki ± 0%       ~ (p=1.000 n=6) ¹   28.70Ki ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=lt/pct=50/nullable=false   118.1Ki ± 0%   118.1Ki ± 0%       ~ (p=1.000 n=6) ¹   118.1Ki ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=lt/pct=50/nullable=true    112.0Ki ± 0%   112.0Ki ± 0%       ~ (p=1.000 n=6) ¹   112.0Ki ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=lt/pct=99/nullable=true    188.6Ki ± 0%   188.6Ki ± 0%       ~ (p=1.000 n=6) ¹   188.6Ki ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=le/pct=1/nullable=false    28.70Ki ± 0%   28.70Ki ± 0%       ~ (p=1.000 n=6) ¹   28.70Ki ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=le/pct=50/nullable=false   118.1Ki ± 0%   118.1Ki ± 0%       ~ (p=1.000 n=6) ¹   118.1Ki ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=le/pct=50/nullable=true    112.0Ki ± 0%   112.0Ki ± 0%       ~ (p=1.000 n=6) ¹   112.0Ki ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=le/pct=99/nullable=true    188.6Ki ± 0%   188.6Ki ± 0%       ~ (p=1.000 n=6) ¹   188.6Ki ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=eq/pct=1/nullable=false    28.70Ki ± 0%   28.70Ki ± 0%       ~ (p=1.000 n=6) ¹   28.70Ki ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=eq/pct=50/nullable=false   118.1Ki ± 0%   118.1Ki ± 0%       ~ (p=1.000 n=6) ¹   118.1Ki ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=eq/pct=50/nullable=true    112.0Ki ± 0%   112.0Ki ± 0%       ~ (p=1.000 n=6) ¹   112.0Ki ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=eq/pct=99/nullable=true    188.6Ki ± 0%   188.6Ki ± 0%       ~ (p=1.000 n=6) ¹   188.6Ki ± 0%       ~ (p=1.000 n=6) ¹
+geomean                                                                    91.99Ki        91.99Ki       +0.00%                   91.99Ki       +0.00%
+¹ all samples are equal
+
+                                                                         │   scalar   │                auto                │                simd                │
+                                                                         │ allocs/op  │ allocs/op   vs base                │ allocs/op   vs base                │
+Compare32FilterProjectKernelMode/type=int32/op=gt/pct=1/nullable=false     174.0 ± 0%   174.0 ± 0%       ~ (p=1.000 n=6) ¹   174.0 ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=gt/pct=50/nullable=false    175.0 ± 0%   175.0 ± 0%       ~ (p=1.000 n=6) ¹   175.0 ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=gt/pct=50/nullable=true     178.0 ± 0%   178.0 ± 0%       ~ (p=1.000 n=6) ¹   178.0 ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=gt/pct=99/nullable=true     178.0 ± 0%   178.0 ± 0%       ~ (p=1.000 n=6) ¹   178.0 ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=ge/pct=1/nullable=false     174.0 ± 0%   174.0 ± 0%       ~ (p=1.000 n=6) ¹   174.0 ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=ge/pct=50/nullable=false    175.0 ± 0%   175.0 ± 0%       ~ (p=1.000 n=6) ¹   175.0 ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=ge/pct=50/nullable=true     178.0 ± 0%   178.0 ± 0%       ~ (p=1.000 n=6) ¹   178.0 ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=ge/pct=99/nullable=true     178.0 ± 0%   178.0 ± 0%       ~ (p=1.000 n=6) ¹   178.0 ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=lt/pct=1/nullable=false     174.0 ± 0%   174.0 ± 0%       ~ (p=1.000 n=6) ¹   174.0 ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=lt/pct=50/nullable=false    175.0 ± 0%   175.0 ± 0%       ~ (p=1.000 n=6) ¹   175.0 ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=lt/pct=50/nullable=true     178.0 ± 0%   178.0 ± 0%       ~ (p=1.000 n=6) ¹   178.0 ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=lt/pct=99/nullable=true     178.0 ± 0%   178.0 ± 0%       ~ (p=1.000 n=6) ¹   178.0 ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=le/pct=1/nullable=false     174.0 ± 0%   174.0 ± 0%       ~ (p=1.000 n=6) ¹   174.0 ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=le/pct=50/nullable=false    175.0 ± 0%   175.0 ± 0%       ~ (p=1.000 n=6) ¹   175.0 ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=le/pct=50/nullable=true     178.0 ± 0%   178.0 ± 0%       ~ (p=1.000 n=6) ¹   178.0 ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=le/pct=99/nullable=true     178.0 ± 0%   178.0 ± 0%       ~ (p=1.000 n=6) ¹   178.0 ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=eq/pct=1/nullable=false     174.0 ± 0%   174.0 ± 0%       ~ (p=1.000 n=6) ¹   174.0 ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=eq/pct=50/nullable=false    175.0 ± 0%   175.0 ± 0%       ~ (p=1.000 n=6) ¹   175.0 ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=eq/pct=50/nullable=true     178.0 ± 0%   178.0 ± 0%       ~ (p=1.000 n=6) ¹   178.0 ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=int32/op=eq/pct=99/nullable=true     178.0 ± 0%   178.0 ± 0%       ~ (p=1.000 n=6) ¹   178.0 ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=gt/pct=1/nullable=false    174.0 ± 0%   174.0 ± 0%       ~ (p=1.000 n=6) ¹   174.0 ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=gt/pct=50/nullable=false   175.0 ± 0%   175.0 ± 0%       ~ (p=1.000 n=6) ¹   175.0 ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=gt/pct=50/nullable=true    178.0 ± 0%   178.0 ± 0%       ~ (p=1.000 n=6) ¹   178.0 ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=gt/pct=99/nullable=true    178.0 ± 0%   178.0 ± 0%       ~ (p=1.000 n=6) ¹   178.0 ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=ge/pct=1/nullable=false    174.0 ± 0%   174.0 ± 0%       ~ (p=1.000 n=6) ¹   174.0 ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=ge/pct=50/nullable=false   175.0 ± 0%   175.0 ± 0%       ~ (p=1.000 n=6) ¹   175.0 ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=ge/pct=50/nullable=true    178.0 ± 0%   178.0 ± 0%       ~ (p=1.000 n=6) ¹   178.0 ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=ge/pct=99/nullable=true    178.0 ± 0%   178.0 ± 0%       ~ (p=1.000 n=6) ¹   178.0 ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=lt/pct=1/nullable=false    174.0 ± 0%   174.0 ± 0%       ~ (p=1.000 n=6) ¹   174.0 ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=lt/pct=50/nullable=false   175.0 ± 0%   175.0 ± 0%       ~ (p=1.000 n=6) ¹   175.0 ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=lt/pct=50/nullable=true    178.0 ± 0%   178.0 ± 0%       ~ (p=1.000 n=6) ¹   178.0 ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=lt/pct=99/nullable=true    178.0 ± 0%   178.0 ± 0%       ~ (p=1.000 n=6) ¹   178.0 ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=le/pct=1/nullable=false    174.0 ± 0%   174.0 ± 0%       ~ (p=1.000 n=6) ¹   174.0 ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=le/pct=50/nullable=false   175.0 ± 0%   175.0 ± 0%       ~ (p=1.000 n=6) ¹   175.0 ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=le/pct=50/nullable=true    178.0 ± 0%   178.0 ± 0%       ~ (p=1.000 n=6) ¹   178.0 ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=le/pct=99/nullable=true    178.0 ± 0%   178.0 ± 0%       ~ (p=1.000 n=6) ¹   178.0 ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=eq/pct=1/nullable=false    174.0 ± 0%   174.0 ± 0%       ~ (p=1.000 n=6) ¹   174.0 ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=eq/pct=50/nullable=false   175.0 ± 0%   175.0 ± 0%       ~ (p=1.000 n=6) ¹   175.0 ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=eq/pct=50/nullable=true    178.0 ± 0%   178.0 ± 0%       ~ (p=1.000 n=6) ¹   178.0 ± 0%       ~ (p=1.000 n=6) ¹
+Compare32FilterProjectKernelMode/type=uint32/op=eq/pct=99/nullable=true    178.0 ± 0%   178.0 ± 0%       ~ (p=1.000 n=6) ¹   178.0 ± 0%       ~ (p=1.000 n=6) ¹
+geomean                                                                    176.2        176.2       +0.00%                   176.2       +0.00%
+¹ all samples are equal

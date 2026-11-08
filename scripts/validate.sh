@@ -18,7 +18,7 @@ GOEXPERIMENT=simd GODEBUG=simd=0 go run ./cmd/kernel-info -mode auto
 VALIDATE_ARCH="$(go env GOARCH)"
 GOEXPERIMENT=simd GODEBUG=simd=+128 go test ./kernel ./expr ./engine ./radix
 if [[ "$VALIDATE_ARCH" == "amd64" ]]; then
-	VALIDATE_BITS="$(GOEXPERIMENT=simd go run ./cmd/kernel-info -mode simd | awk '/compare-int64/ {print $3}' | cut -d= -f2)"
+	VALIDATE_BITS="$(GOEXPERIMENT=simd go run ./cmd/kernel-info -mode simd | awk '/hardware=true/ { split($3, p, "="); if (p[2]+0 > bits) bits = p[2]+0 } END { print bits+0 }')"
 	if (( VALIDATE_BITS >= 256 )); then
 		GOEXPERIMENT=simd GODEBUG=simd=+256 go test ./kernel ./expr ./engine ./radix
 	fi

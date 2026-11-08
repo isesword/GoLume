@@ -139,8 +139,8 @@ func TestMathIDsAndCapabilities(t *testing.T) {
 			if !ok {
 				t.Fatalf("missing %s", id)
 			}
-			if mode != ModeSIMD && (cap.HardwareSIMD || cap.Backend != "scalar") {
-				t.Fatalf("ungated math auto backend %s %+v", id, cap)
+			if mode == ModeScalar && (cap.HardwareSIMD || cap.Backend != "scalar") {
+				t.Fatalf("non-scalar backend in scalar mode %s %+v", id, cap)
 			}
 		}
 	}

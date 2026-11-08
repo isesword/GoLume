@@ -1,0 +1,3 @@
+GoDoc check: PASS (package docs and exported API comments follow naming conventions)
+kernel registry, gates file, and code are consistent
+SIMD structure checks passed

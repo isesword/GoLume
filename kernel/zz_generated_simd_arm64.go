@@ -11,7 +11,7 @@ import (
 )
 
 func installGeneratedArchSIMD(set *Set, mode Mode, vectorBits int) {
-	if vectorBits < 128 {
+	if mode == ModeScalar || vectorBits < 128 {
 		return
 	}
 	capability := KernelCapability{HardwareSIMD: true, VectorBits: 128, Backend: "archsimd-arm64-mask"}
@@ -42,20 +42,6 @@ func installGeneratedArchSIMD(set *Set, mode Mode, vectorBits int) {
 	set.d.compareUint32[CompareEQ] = simdArmUint32EQ
 	idUint32EQ, _ := ComparisonID(memory.TypeUint32, CompareEQ)
 	set.setCapability(idUint32EQ, capability)
-
-	// These portable Float64 operations have independent native arm64 gate
-	// evidence. Their Auto registration lives here so other architectures do
-	// not inherit an arm64 decision.
-	floatCapability := KernelCapability{HardwareSIMD: true, VectorBits: vectorBits, Backend: "portable-simd"}
-	set.d.arithmeticFloat64[ArithmeticSub] = simdFloat64Sub
-	idFloatSub, _ := ArithmeticID(memory.TypeFloat64, ArithmeticSub)
-	set.setCapability(idFloatSub, floatCapability)
-	set.d.arithmeticFloat64[ArithmeticMul] = simdFloat64Mul
-	idFloatMul, _ := ArithmeticID(memory.TypeFloat64, ArithmeticMul)
-	set.setCapability(idFloatMul, floatCapability)
-	set.d.arithmeticFloat64[ArithmeticDiv] = simdFloat64Div
-	idFloatDiv, _ := ArithmeticID(memory.TypeFloat64, ArithmeticDiv)
-	set.setCapability(idFloatDiv, floatCapability)
 }
 
 func simdArmInt32GT(values []int32, validity memory.Bitmap, out memory.Bitmap, threshold int32) int {

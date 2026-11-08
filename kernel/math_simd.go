@@ -8,9 +8,9 @@ import (
 )
 
 func installMathSIMD(set *Set, mode Mode, vectorBits int) {
-	// Candidates are correctness-testable in forced mode only. Auto requires
-	// architecture-specific kernel and end-to-end performance evidence.
-	if mode != ModeSIMD || simd.Emulated() {
+	// Prefer native dense SIMD in Auto and explicit SIMD mode. Nullable
+	// inputs retain the reference path below.
+	if mode == ModeScalar || simd.Emulated() {
 		return
 	}
 	for _, op := range []MathUnaryOp{MathAbs, MathSqrt} {
@@ -28,7 +28,7 @@ func simdMathFloat32Unary(in, out []float32, validity memory.Bitmap, op MathUnar
 		panic("kernel: math output too small")
 	}
 	// Keep sparse/nullable lanes on the reference path so inactive input is
-	// never evaluated. This is a dense candidate, not a claim of masked SIMD.
+	// never evaluated. This is a dense backend, not a claim of masked SIMD.
 	if validity != nil {
 		scalarMathFloatUnary(in, out, validity, op)
 		return

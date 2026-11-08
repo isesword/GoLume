@@ -1,5 +1,11 @@
 # GoLume SIMD 全面重构迭代 TODO
 
+> **历史阶段清单；Auto 策略已更新。** 下文的测量、勾选状态及“forced-only / Auto
+> 待准入”记录属于当时阶段，不是当前默认策略。现在 Auto 在运行时保护允许时优先
+> 使用已有原生 SIMD；被删除或尚未实现的后端不因此恢复。当前状态见
+> [SIMD dispatch](SIMD_KERNELS.md) 与 [操作矩阵](SIMD_OPERATION_MATRIX.md)。
+> planner 策略的独立测量规则不变；本轮未新增原生 arm64 执行证据，也不声称普遍提速。
+
 ## 目标与原则
 
 目标是在 Go 1.27 下，把 SIMD 从少数独立 kernel 扩展到原生位宽数据、表达式、过滤压缩、聚合、Join 及适用的字符串扫描热点，完成 arm64 与 amd64 的原生验收。

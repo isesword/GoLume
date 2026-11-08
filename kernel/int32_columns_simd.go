@@ -9,15 +9,18 @@ import (
 )
 
 func installInt32ColumnSIMD(set *Set, mode Mode, vectorBits int) {
-	if mode != ModeSIMD || simd.Emulated() {
+	if mode == ModeScalar || simd.Emulated() {
 		return
 	}
-	_ = vectorBits
 	set.d.compareInt32Columns[CompareGT] = simdInt32ColumnsGT
 	set.d.compareInt32Columns[CompareGE] = simdInt32ColumnsGE
 	set.d.compareInt32Columns[CompareLT] = simdInt32ColumnsLT
 	set.d.compareInt32Columns[CompareLE] = simdInt32ColumnsLE
 	set.d.compareInt32Columns[CompareEQ] = simdInt32ColumnsEQ
+	for op := CompareGT; op <= CompareEQ; op++ {
+		id, _ := ComparisonID(memory.TypeInt32, op)
+		set.d.caps.columns[id] = KernelCapability{HardwareSIMD: true, VectorBits: vectorBits, Backend: "portable-simd"}
+	}
 }
 
 func simdInt32Columns(left, right []int32, leftValid, rightValid, out memory.Bitmap, op CompareOp) int {
