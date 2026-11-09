@@ -253,7 +253,7 @@ func TestDecimalComparisonTypedMetadataAndRejections(t *testing.T) {
 		NullDecimal128(0, 0), NullDecimal128(38, 39), Null(memory.TypeDecimal),
 		EQ(Col("a"), Col("opaque")), EQ(Col("a"), I64(1)), EQ(F64(1), one), EQ(one, Str("1")), In(one, F64(1)),
 		If(Bool(false), Decimal128(decimal128.FromI64(10), 1, 0), one),
-		Add(one, one), CastTo(one, memory.TypeFloat64), CastTo(one, memory.TypeDecimal),
+		Add(one, I64(1)), Div(one, one), CastTo(one, memory.TypeFloat64), CastTo(one, memory.TypeDecimal),
 	} {
 		if _, err := Compile(schema, e); err == nil {
 			t.Fatalf("unsupported/invalid accepted: %s", e)

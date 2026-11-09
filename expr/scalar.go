@@ -976,6 +976,9 @@ func evalBinary(out, a, b *scalarRegister, op Op, result memory.DataType, rows i
 		return evalMathBinary(out, a, b, physical, rows, kernels)
 	}
 	combineValidity(out, a, b, rows)
+	if result == memory.TypeDecimal {
+		return evalDecimalBinary(out, a, b, op, rows)
+	}
 	if op == OpSplit {
 		return evalStringSplit(out, a, b, rows)
 	}

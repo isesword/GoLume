@@ -43,7 +43,10 @@ func (v Decimal128Literal) String() string {
 // For example, coefficient 12345 with precision 5 and scale 2 means 123.45.
 // Native decimal comparisons require two decimal operands, possibly with
 // different precisions/scales; implicit numeric/string conversion is rejected.
-// EQ/LT/LE/GT/GE and SQL IN use exact equality/ordering. Arithmetic, casts, and
+// EQ/LT/LE/GT/GE and SQL IN use exact equality/ordering. Add/Sub align to
+// max(scale); Mul adds scales (at most 38). The inferred result precision is
+// capped at 38 and overflow is checked per demanded non-NULL row. No operation
+// reduces scale or rounds. Division, casts, mixed numeric operands, and
 // conditional branches with different precision/scale remain unsupported.
 func Decimal128(value memory.Decimal128, precision, scale int32) Decimal128Literal {
 	return Decimal128Literal{Value: value, Precision: precision, Scale: scale}

@@ -313,7 +313,7 @@ func TestParquetDecimal128LazyExpressionRejectsUnsafeCoercions(t *testing.T) {
 		t.Fatal(err)
 	}
 	for name, expression := range map[string]expr.Expr{
-		"add_decimal":        Col("amount").Add(Col("fallback")),
+		"divide_decimal":     Col("amount").Div(Col("fallback")),
 		"add_integer":        Col("amount").Add(Lit(1)),
 		"compare_integer":    Col("amount").Eq(Lit(1)),
 		"cast_float":         Cast(Col("amount"), memory.TypeFloat64),

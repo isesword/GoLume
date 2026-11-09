@@ -257,9 +257,16 @@ ratio       : ~47.5x
 
 这是历史版本上的算法选择证据，不是当前分支重测或跨机器性能承诺。
 
+## Decimal128 精确算术
+
+原生 Decimal128 支持 `Add` / `Sub` / `Mul`，保留全部 scale，按有效执行行检查溢出；
+不静默舍入，也不转换为浮点数。结果精度、NULL、guard 和错误顺序的完整契约见
+[DECIMAL128_ARITHMETIC.md](docs/DECIMAL128_ARITHMETIC.md)。
+当前算术使用定宽整数实现，不宣称 Decimal128 SIMD 加速。
+
 ## Opaque Arrow payload
 
-未拥有专用算术 kernel 的 Arrow nested/decimal/extension 等列可以作为 opaque payload
+未拥有原生执行路径的 Arrow nested/更宽或负 scale decimal/extension 等列可以作为 opaque payload
 保留和筛选。但 bounded 模式下，无法提供可靠 sizing 的非连续 gather 会在分配前
 返回资源错误；这不是任意 Arrow 类型/操作都支持有限内存执行的承诺。
 

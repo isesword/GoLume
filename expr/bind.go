@@ -335,6 +335,9 @@ func bindBinary(bound *BoundExpr, n Binary) error {
 	}
 	left, right := bound.Children[0].Field, bound.Children[1].Field
 	nullable := left.Nullable || right.Nullable
+	if (left.Type == memory.TypeDecimal || right.Type == memory.TypeDecimal) && (n.Op == OpAdd || n.Op == OpSub || n.Op == OpMul) {
+		return bindDecimalArithmetic(bound, n.Op)
+	}
 	switch n.Op {
 	case OpGT, OpGE, OpLT, OpLE, OpEQ:
 		if err := bindComparison(bound.Children[0], bound.Children[1]); err != nil {

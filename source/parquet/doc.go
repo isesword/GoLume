@@ -4,8 +4,9 @@
 // values. UTF-8 STRING, DATE, and UTC TIMESTAMP annotations are supported;
 // DECIMAL precision 1..38 with nonnegative scale is decoded exactly to native
 // decimal128 vectors. Wider decimals, TIME, UNKNOWN, and other unsupported
-// annotations fail at OpenFile. Decimal arithmetic/expression execution is not
-// implemented yet. Fixed-length DELTA_BYTE_ARRAY and INT32/INT64
+// annotations fail at OpenFile. The expr package provides native decimal
+// comparisons, conditionals, and exact checked Add/Sub/Mul after decoding.
+// Fixed-length DELTA_BYTE_ARRAY and INT32/INT64
 // BYTE_STREAM_SPLIT are rejected because the upstream decoders are unavailable
 // or unsafe on scalar fallback. Fixed-length BYTE_STREAM_SPLIT is supported.
 // Selected decimal columns receive a page-bounded encoding-validation pass
