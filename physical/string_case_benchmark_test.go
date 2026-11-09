@@ -55,6 +55,10 @@ func TestStringCaseFilterProject(t *testing.T) {
 }
 
 func stringCaseQuery(t testing.TB, profile string, dictionary bool, pct int, op string, mode kernel.Mode) (func(bool), *selectionPeakManager) {
+	return stringCaseQueryCardinality(t, profile, dictionary, pct, op, mode, 8)
+}
+
+func stringCaseQueryCardinality(t testing.TB, profile string, dictionary bool, pct int, op string, mode kernel.Mode, entries int) (func(bool), *selectionPeakManager) {
 	t.Helper()
 	const rows = 8199
 	texts := []string{"MiXeD ASCII Word", "more ASCII 09", "a", "", " already lower ", "ALREADY UPPER", "middle-SKU", "two words"}
@@ -63,6 +67,21 @@ func stringCaseQuery(t testing.TB, profile string, dictionary bool, pct int, op 
 	}
 	if profile == "unchanged" {
 		texts = []string{"1234567890", "-=+", "00000", "", "456", "789", "0123", "!@$%"}
+	}
+	if profile == "long" {
+		for i := range texts {
+			texts[i] = strings.Repeat(texts[i]+"Ⱥ ", 32)
+		}
+	}
+	if entries != len(texts) {
+		values := make([]string, entries)
+		for i := range values {
+			values[i] = texts[i%len(texts)]
+			if entries > len(texts) {
+				values[i] = fmt.Sprintf("%s:%d", values[i], i)
+			}
+		}
+		texts = values
 	}
 	field := memory.Field{Name: "s", Type: memory.TypeString, Nullable: true, Encoding: memory.EncodingView}
 	batch := memory.NewBatch()
@@ -160,4 +179,44 @@ func stringCaseQuery(t testing.TB, profile string, dictionary bool, pct int, op 
 			t.Fatalf("rows=%d want=%d retained=%d", seen, len(wanted), m.Used())
 		}
 	}, m
+}
+
+// Vary dictionary cardinality across the bounded cache and fallback boundary,
+// including short tails and sparse selection. Each iteration opens, drains and
+// closes the full filter/project stream and verifies that its budget is released.
+func BenchmarkDictionaryStringCaseFilterProject(b *testing.B) {
+	for _, profile := range []string{"ascii", "unicode", "long"} {
+		for _, entries := range []int{8, 256, 257, 4096} {
+			for _, pct := range []int{1, 100} {
+				for _, op := range []string{"lower", "upper", "trim_control"} {
+					b.Run(fmt.Sprintf("%s/entries=%d/pct=%d/op=%s", profile, entries, pct, op), func(b *testing.B) {
+						drain, m := stringCaseQueryCardinality(b, profile, true, pct, op, kernel.ModeAuto, entries)
+						drain(true)
+						m.peak = 0
+						b.ReportAllocs()
+						b.ResetTimer()
+						for range b.N {
+							drain(false)
+						}
+						b.StopTimer()
+						b.ReportMetric(float64(m.peak), "peak_bytes")
+						b.ReportMetric(8199, "source_rows/op")
+					})
+				}
+			}
+		}
+	}
+}
+
+func TestDictionaryStringCaseFilterProjectCardinality(t *testing.T) {
+	for _, entries := range []int{1, 8, 255, 256, 257, 4096} {
+		for _, pct := range []int{1, 50, 100} {
+			for _, op := range []string{"lower", "upper"} {
+				for _, mode := range []kernel.Mode{kernel.ModeScalar, kernel.ModeSIMD} {
+					drain, _ := stringCaseQueryCardinality(t, "unicode", true, pct, op, mode, entries)
+					drain(true)
+				}
+			}
+		}
+	}
 }
