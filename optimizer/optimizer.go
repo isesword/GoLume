@@ -15,7 +15,7 @@ type Result struct {
 
 // Optimize validates plan and applies the current logical optimizer rules:
 // filter merge, projection merge/removal, projection pushdown, and predicate
-// pushdown annotations for source-level pruning.
+// pushdown annotations for source-level pruning and safe inner-join input filters.
 func Optimize(plan logical.Plan) (Result, error) {
 	if plan == nil {
 		return Result{}, fmt.Errorf("logical plan is nil")
@@ -27,7 +27,7 @@ func Optimize(plan logical.Plan) (Result, error) {
 	p := mergeFilters(plan, &rules)
 	p = mergeProjections(p, &rules)
 	p = mergeLimits(p, &rules)
-	p = pushPredicates(p, nil, &rules)
+	p = pushPredicates(p, nil, &rules, true)
 	p, err := pushProjection(p, nil, &rules)
 	if err != nil {
 		return Result{}, err
@@ -160,58 +160,85 @@ func mergeLimits(plan logical.Plan, rules *[]string) logical.Plan {
 // column-only and safe expression projections. Filters are retained as residual
 // row-level predicates because row-group statistics only prove that a group can
 // be skipped; they do not identify matching rows inside a retained group.
-func pushPredicates(plan logical.Plan, inherited expr.Expr, rules *[]string) logical.Plan {
+// allowJoinPushdown also tracks fallible ancestors, even when their predicates
+// cannot be inherited. New join input filters can change merge-output batch
+// boundaries and thus widen a later partial expression's demand before a Limit.
+func pushPredicates(plan logical.Plan, inherited expr.Expr, rules *[]string, allowJoinPushdown bool) logical.Plan {
 	switch n := plan.(type) {
 	case *logical.Filter:
 		var combined expr.Expr
 		if !mayError(n.Input, n.Predicate) {
 			combined = expr.MergeAnd(n.Predicate, inherited)
+		} else {
+			allowJoinPushdown = false
 		}
 		// An outer predicate cannot remove rows before a fallible inner filter:
 		// doing so could suppress an error that the original plan demanded.
-		child := pushPredicates(n.Input, combined, rules)
+		child := pushPredicates(n.Input, combined, rules, allowJoinPushdown)
 		return &logical.Filter{Input: child, Predicate: n.Predicate}
 	case *logical.Projection:
-		return &logical.Projection{Input: pushPredicates(n.Input, inherited, rules), Columns: append([]string(nil), n.Columns...)}
+		return &logical.Projection{Input: pushPredicates(n.Input, inherited, rules, allowJoinPushdown), Columns: append([]string(nil), n.Columns...)}
 	case *logical.ExprProjection:
+		for _, named := range n.Exprs {
+			if mayError(n.Input, named.Expr) {
+				allowJoinPushdown = false
+				break
+			}
+		}
 		predicate := predicateThroughExpressions(n, inherited)
 		if predicate != nil {
 			*rules = append(*rules, "expression-predicate-pushdown")
 		}
-		return &logical.ExprProjection{Input: pushPredicates(n.Input, predicate, rules), Exprs: cloneNamedExprs(n.Exprs), IncludeInput: n.IncludeInput}
+		return &logical.ExprProjection{Input: pushPredicates(n.Input, predicate, rules, allowJoinPushdown), Exprs: cloneNamedExprs(n.Exprs), IncludeInput: n.IncludeInput}
 	case *logical.Sort:
-		for _, key := range n.By {
-			value, err := key.Expression()
-			if err != nil || mayError(n.Input, value) {
-				inherited = nil
-				break
-			}
+		if sortKeysMayError(n.Input, n.By) {
+			inherited = nil
+			allowJoinPushdown = false
 		}
-		return &logical.Sort{Input: pushPredicates(n.Input, inherited, rules), By: cloneSortKeys(n.By)}
+		return &logical.Sort{Input: pushPredicates(n.Input, inherited, rules, allowJoinPushdown), By: cloneSortKeys(n.By)}
 	case *logical.TopK:
-		return &logical.TopK{Input: pushPredicates(n.Input, nil, rules), K: n.K, By: cloneSortKeys(n.By)}
+		if sortKeysMayError(n.Input, n.By) {
+			allowJoinPushdown = false
+		}
+		return &logical.TopK{Input: pushPredicates(n.Input, nil, rules, allowJoinPushdown), K: n.K, By: cloneSortKeys(n.By)}
 	case *logical.Limit:
-		return &logical.Limit{Input: pushPredicates(n.Input, nil, rules), N: n.N}
+		return &logical.Limit{Input: pushPredicates(n.Input, nil, rules, allowJoinPushdown), N: n.N}
 	case *logical.Join:
-		// A predicate above a join cannot be pushed blindly to either input: for
-		// outer joins it may change NULL-extension semantics, and even for inner
-		// joins expression ownership must first be resolved. Optimize predicates
-		// already inside each side independently and retain inherited predicates
-		// above the join as residual filters.
-		return &logical.Join{Left: pushPredicates(n.Left, nil, rules), Right: pushPredicates(n.Right, nil, rules), Type: n.Type, Keys: append([]logical.JoinKey(nil), n.Keys...), Suffix: n.Suffix, RadixBits: n.RadixBits, Workers: n.Workers}
+		var leftPredicate, rightPredicate expr.Expr
+		if allowJoinPushdown {
+			leftPredicate, rightPredicate = predicatesThroughJoin(n, inherited)
+		}
+		left, right := n.Left, n.Right
+		if leftPredicate != nil {
+			left = &logical.Filter{Input: left, Predicate: leftPredicate}
+		}
+		if rightPredicate != nil {
+			right = &logical.Filter{Input: right, Predicate: rightPredicate}
+		}
+		if leftPredicate != nil || rightPredicate != nil {
+			*rules = append(*rules, "inner-join-predicate-pushdown")
+		}
+		// Keep side filters as row-level residuals even if a source can prune
+		// whole groups. Outer/semi/anti joins remain strict boundaries.
+		return &logical.Join{Left: pushPredicates(left, nil, rules, allowJoinPushdown), Right: pushPredicates(right, nil, rules, allowJoinPushdown), Type: n.Type, Keys: append([]logical.JoinKey(nil), n.Keys...), Suffix: n.Suffix, RadixBits: n.RadixBits, Workers: n.Workers}
 	case *logical.ConfiguredAggregate:
-		return cloneConfiguredAggregate(n, pushPredicates(n.Input, nil, rules))
+		return cloneConfiguredAggregate(n, pushPredicates(n.Input, nil, rules, allowJoinPushdown))
 	case *logical.Aggregate:
 		// Predicates above an aggregate are HAVING predicates and may not be
 		// pushed through the aggregation boundary. Predicates already inside the
 		// aggregate subtree are optimized independently.
-		return &logical.Aggregate{Input: pushPredicates(n.Input, nil, rules), GroupBy: append([]string(nil), n.GroupBy...), Aggregates: append([]expr.Aggregate(nil), n.Aggregates...), Hints: n.Hints}
+		return &logical.Aggregate{Input: pushPredicates(n.Input, nil, rules, allowJoinPushdown), GroupBy: append([]string(nil), n.GroupBy...), Aggregates: append([]expr.Aggregate(nil), n.Aggregates...), Hints: n.Hints}
 	case *logical.Window:
+		// Window order keys are scalar expressions materialized before the
+		// window, just like Sort/TopK keys. Preserve their batch error domain.
+		if sortKeysMayError(n.Input, n.Spec.By) {
+			allowJoinPushdown = false
+		}
 		// A filter above a window changes the rows contributing to rank and
 		// rolling frames, even when it mentions only inherited input columns.
 		// Keep inherited predicates above this strict semantic boundary while
 		// still optimizing predicates already present in the child subtree.
-		return cloneWindow(n, pushPredicates(n.Input, nil, rules))
+		return cloneWindow(n, pushPredicates(n.Input, nil, rules, allowJoinPushdown))
 
 	case *logical.Scan:
 		out := cloneScan(n)
@@ -238,6 +265,18 @@ func mayError(input logical.Plan, value expr.Expr) bool {
 	}
 	bound, err := expr.Bind(schema, value)
 	return err != nil || bound.MayError
+}
+
+// sortKeysMayError is shared by every operator that materializes ordering
+// expressions, including window ordering rather than only Sort and TopK.
+func sortKeysMayError(input logical.Plan, keys []logical.SortKey) bool {
+	for _, key := range keys {
+		value, err := key.Expression()
+		if err != nil || mayError(input, value) {
+			return true
+		}
+	}
+	return false
 }
 
 // pushProjection propagates the columns required by each operator to the scan.
@@ -528,32 +567,34 @@ func pushProjection(plan logical.Plan, required map[string]struct{}, rules *[]st
 			rightReq[key.Right] = struct{}{}
 		}
 		if required == nil {
-			for _, f := range leftSchema.Fields {
-				leftReq[f.Name] = struct{}{}
+			for _, field := range leftSchema.Fields {
+				leftReq[field.Name] = struct{}{}
 			}
-			for _, f := range rightSchema.Fields {
-				rightReq[f.Name] = struct{}{}
+			for _, field := range rightSchema.Fields {
+				rightReq[field.Name] = struct{}{}
 			}
-		} else {
-			suffix := n.Suffix
-			if suffix == "" {
-				suffix = "_right"
+		}
+		columns := joinColumns(n, leftSchema, rightSchema)
+		// A retained right output may depend on another otherwise-unused column
+		// for its suffix. Keep the full collision chain so pruning cannot rename
+		// an output or silently bind a residual to a different input.
+		var requireColumn func(int)
+		requireColumn = func(index int) {
+			column := columns[index]
+			if column.right {
+				rightReq[column.input] = struct{}{}
+			} else {
+				leftReq[column.input] = struct{}{}
 			}
-			leftNames := make(map[string]struct{}, len(leftSchema.Fields))
-			for _, f := range leftSchema.Fields {
-				leftNames[f.Name] = struct{}{}
-				if _, ok := required[f.Name]; ok {
-					leftReq[f.Name] = struct{}{}
-				}
+			if column.collision >= 0 {
+				requireColumn(column.collision)
 			}
-			for _, f := range rightSchema.Fields {
-				outName := f.Name
-				if _, dup := leftNames[outName]; dup {
-					outName += suffix
-				}
-				if _, ok := required[outName]; ok {
-					rightReq[f.Name] = struct{}{}
-				}
+		}
+		for i, column := range columns {
+			_, wanted := required[column.output]
+			_, key := rightReq[column.input]
+			if required == nil || wanted || column.right && key {
+				requireColumn(i)
 			}
 		}
 		left, err := pushProjection(n.Left, leftReq, rules)
