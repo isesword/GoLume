@@ -728,7 +728,9 @@ func (s Set) Hash128Batch(a, b []uint64, valid []uint8, out []uint64) {
 	s.d.hash128(a, b, valid, out)
 }
 
-// ScaleInt64 multiplies valid values in place and returns the first overflow row.
+// ScaleInt64 multiplies valid values in place and returns the first overflow row,
+// or -1 on success. Invalid payloads are unchanged. On overflow the failing row
+// and every later row remain unchanged; only the valid prefix is scaled.
 func (s Set) ScaleInt64(values []int64, valid memory.Bitmap, factor int64) int {
 	return s.d.scaleInt64(values, valid, factor)
 }

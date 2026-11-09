@@ -15,6 +15,7 @@ func installSIMD(set *Set, mode Mode) {
 	installArchSumSIMD(set, mode, vectorBits)
 	installMathSIMD(set, mode, vectorBits)
 	installCheckedIntegerSIMD(set, mode, vectorBits)
+	installScaleSIMD(set, mode, vectorBits)
 	installGeneratedPortableSIMD(set, mode, vectorBits)
 	installArchSIMDHash(set, mode, vectorBits)
 	installArchSIMDCompact(set, mode, vectorBits)

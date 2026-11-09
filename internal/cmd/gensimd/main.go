@@ -63,6 +63,9 @@ func main() {
 		panic(err)
 	}
 	outputs := map[string][]byte{
+		"kernel/zz_generated_scale_amd64.go":           generateScaleSIMD("amd64"),
+		"kernel/zz_generated_scale_arm64.go":           generateScaleSIMD("arm64"),
+		"kernel/zz_generated_scale_other.go":           generateScaleSIMD("other"),
 		"kernel/zz_generated_checked_integer_amd64.go": generateCheckedInteger("amd64"),
 		"kernel/zz_generated_checked_integer_arm64.go": generateCheckedInteger("arm64"),
 		"kernel/zz_generated_checked_integer_other.go": generateCheckedInteger("other"),
