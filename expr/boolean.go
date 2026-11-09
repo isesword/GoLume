@@ -174,6 +174,13 @@ func evalBooleanInstruction(out *scalarRegister, in instruction, rows int, w *ev
 }
 
 func compareRegisters(a, b *scalarRegister, row int, op Op) (bool, error) {
+	if a.typ == memory.TypeDecimal || b.typ == memory.TypeDecimal {
+		if a.decimalType == nil || b.decimalType == nil {
+			return false, fmt.Errorf("decimal comparison requires native decimal128 metadata")
+		}
+		cmp := compareDecimal128(a.decimal[row], a.decimalType.DecimalScale, b.decimal[row], b.decimalType.DecimalScale)
+		return compareI64(int64(cmp), 0, op), nil
+	}
 	af, bf := familyOf(a.typ), familyOf(b.typ)
 	if af == familyString && bf == familyString {
 		av, err := registerString(a, row)

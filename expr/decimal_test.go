@@ -239,7 +239,7 @@ func TestDecimalExpressionRejectsUnsupportedAndMalformed(t *testing.T) {
 	wrong.Name = "different"
 	wrong.DecimalScale = 11
 	schema.Fields = append(schema.Fields, wrong)
-	for _, e := range []Expr{Add(Col("a"), Col("b")), Mul(Col("a"), I64(2)), Div(Col("a"), F64(2)), EQ(Col("a"), Col("b")), GT(Col("a"), I64(0)), In(Col("a"), Col("b")), CastTo(Col("a"), memory.TypeFloat64), CastTo(Col("a"), memory.TypeDecimal), Null(memory.TypeDecimal), If(Bool(true), Col("a"), Col("different")), Coalesce(Col("a"), I64(1))} {
+	for _, e := range []Expr{Add(Col("a"), Col("b")), Mul(Col("a"), I64(2)), Div(Col("a"), F64(2)), GT(Col("a"), I64(0)), CastTo(Col("a"), memory.TypeFloat64), CastTo(Col("a"), memory.TypeDecimal), Null(memory.TypeDecimal), If(Bool(true), Col("a"), Col("different")), Coalesce(Col("a"), I64(1))} {
 		if _, err := Compile(schema, e); err == nil {
 			t.Fatalf("unsupported decimal expression accepted: %#v", e)
 		}

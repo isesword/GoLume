@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/apache/arrow-go/v18/arrow/decimal128"
-	"gocolumn/expr"
 	"gocolumn/join"
 	"gocolumn/memory"
 	"gocolumn/source"
@@ -48,7 +47,6 @@ func TestNativeDecimalExecutionBoundaries(t *testing.T) {
 		t.Fatal(err)
 	}
 	for name, build := range map[string]func() error{
-		"comparison":    func() error { _, e := expr.Bind(schema, expr.EQ(expr.Col("amount"), expr.Col("amount"))); return e },
 		"sort payload":  func() error { _, e := NewSortSource(base, []SortKey{{Column: "id"}}, nil); return e },
 		"top-k payload": func() error { _, e := NewTopKSourceWithManager(base, 1, []SortKey{{Column: "id"}}, nil); return e },
 		"join payload": func() error {

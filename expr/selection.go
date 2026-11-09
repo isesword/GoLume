@@ -40,7 +40,7 @@ func (p *Program) planSelection() {
 			return false
 		}
 		switch in.Code {
-		case scalarColumn, scalarLiteralI64, scalarLiteralF64, scalarLiteralBool,
+		case scalarColumn, scalarLiteralI64, scalarLiteralF64, scalarLiteralBool, scalarLiteralDecimal,
 			scalarLiteralNull, scalarBinary, scalarCast, scalarTryCast, scalarUnary,
 			scalarCompare, scalarBoolean, scalarConditional, scalarInSet, codeConstTrue,
 			codeCmpScalar, codeAnd, codeOr, codeNot, codeIsNull, codeIsNotNull, codeCmpExtract:

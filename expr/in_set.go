@@ -28,6 +28,11 @@ type literalInSet struct {
 }
 
 func compileLiteralIn(bound *BoundExpr) *literalInSet {
+	// Decimal literals retain ordered scale-aware equality, including large
+	// lists; the 64-bit sorted-key representation cannot encode this domain.
+	if bound.Children[0].Field.Type == memory.TypeDecimal {
+		return nil
+	}
 	children := bound.Children[1:]
 	if len(children) < literalInThreshold {
 		return nil

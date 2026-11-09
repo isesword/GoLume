@@ -14,6 +14,8 @@ import (
 	"time"
 	"unicode"
 	"unicode/utf8"
+
+	"github.com/apache/arrow-go/v18/arrow/decimal128"
 )
 
 const (
@@ -34,6 +36,7 @@ const (
 	scalarConditional
 	scalarTryCast
 	scalarInSet
+	scalarLiteralDecimal
 )
 
 // ProjectionOutput maps one compiled root register to a named output column.
@@ -288,6 +291,13 @@ func (c *scalarCompiler) compileBound(bound *BoundExpr) (int, TypeInfo, error) {
 		case Int64Literal:
 			in.Code = scalarLiteralI64
 			in.I64 = n.Value
+		case Decimal128Literal:
+			in.Code = scalarLiteralDecimal
+			// Opcode-specific existing slots hold the full coefficient without
+			// increasing every instruction or register's metadata footprint.
+			in.LiteralI64, in.LiteralU64 = n.Value.HighBits(), n.Value.LowBits()
+		case Decimal128NullLiteral:
+			in.Code = scalarLiteralNull
 		case Float64Literal:
 			in.Code = scalarLiteralF64
 			in.F64 = n.Value
@@ -566,6 +576,12 @@ func evaluateInstructionsActive(instructions []instruction, batch *memory.Batch,
 		case codeConstTrue, codeCmpScalar, codeStringMatch, codeCmpExtract, codeIsNull, codeIsNotNull, codeAnd, codeOr, codeNot:
 			if err := evalSpecializedBoolean(r, in, batch, w, kernels); err != nil {
 				return err
+			}
+		case scalarLiteralDecimal:
+			r.validity = nil
+			value := decimal128.New(in.LiteralI64, in.LiteralU64)
+			for row := range r.decimal {
+				r.decimal[row] = value
 			}
 		case scalarLiteralBool:
 			fillAll(r.validity, batch.Rows)

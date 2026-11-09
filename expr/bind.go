@@ -116,6 +116,21 @@ func (b *expressionBinder) bindNode(e Expr) (*BoundExpr, error) {
 		bound.Field = computedField(memory.TypeInt64, false)
 	case Float64Literal:
 		bound.Field = computedField(memory.TypeFloat64, false)
+	case Decimal128Literal:
+		field, err := memory.Decimal128Field("", false, n.Precision, n.Scale)
+		if err != nil {
+			return nil, err
+		}
+		if !memory.Decimal128FitsPrecision(n.Value, n.Precision) {
+			return nil, fmt.Errorf("decimal literal coefficient exceeds precision %d", n.Precision)
+		}
+		bound.Field = field
+	case Decimal128NullLiteral:
+		field, err := memory.Decimal128Field("", true, n.Precision, n.Scale)
+		if err != nil {
+			return nil, err
+		}
+		bound.Field = field
 	case BoolLiteral:
 		bound.Field = computedField(memory.TypeBool, false)
 	case NullLiteral:
@@ -463,7 +478,13 @@ func bindTernary(bound *BoundExpr, n Ternary) error {
 // round through float64. Floating comparisons use IEEE equality and ordering.
 func bindComparison(left, right *BoundExpr) error {
 	if left.Field.Type == memory.TypeDecimal || right.Field.Type == memory.TypeDecimal {
-		return fmt.Errorf("native decimal comparison is not supported yet")
+		if err := left.Field.ValidateDecimal128(); err != nil {
+			return fmt.Errorf("decimal comparison requires two native decimal128 operands: %w", err)
+		}
+		if err := right.Field.ValidateDecimal128(); err != nil {
+			return fmt.Errorf("decimal comparison requires two native decimal128 operands: %w", err)
+		}
+		return nil
 	}
 	a, b := left.Field.Type, right.Field.Type
 	if IsNumeric(a) && IsNumeric(b) {

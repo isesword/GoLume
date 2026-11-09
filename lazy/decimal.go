@@ -1,6 +1,9 @@
 package lazy
 
-import "gocolumn/memory"
+import (
+	"gocolumn/expr"
+	"gocolumn/memory"
+)
 
 // Decimal128Chunk is a borrowed native decimal coefficient chunk. Precision
 // and scale are carried alongside the coefficient and must not be discarded.
@@ -55,4 +58,15 @@ func (s Series) Decimal128Chunks() ([]Decimal128Chunk, error) {
 		out = append(out, Decimal128Chunk{chunkBase: chunkBase{s.state, span.start, span.end}, vector: v})
 	}
 	return out, nil
+}
+
+// Decimal128 constructs an exact typed decimal literal from an unscaled
+// coefficient, precision, and scale. Invalid values fail during binding.
+func Decimal128(value memory.Decimal128, precision, scale int32) expr.Decimal128Literal {
+	return expr.Decimal128(value, precision, scale)
+}
+
+// NullDecimal128 constructs a decimal NULL with explicit precision and scale.
+func NullDecimal128(precision, scale int32) expr.Decimal128NullLiteral {
+	return expr.NullDecimal128(precision, scale)
 }
