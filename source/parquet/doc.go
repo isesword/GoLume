@@ -15,6 +15,13 @@
 // Limit and may decompress pages again during the subsequent decoding pass.
 // Decimal and unsigned value statistics are not used for row-group range
 // pruning; null-count pruning remains available.
+// Literal IN and NOT IN reuse supported equality ranges and SQL three-valued
+// logic, including NULL candidates. Missing or untrusted statistics and
+// unsupported value domains retain row groups conservatively. String bounds
+// are never used because prefix truncation cannot be ruled out. Float64
+// comparisons retain the possibility of NaN rows omitted from min/max.
+// Pruning never replaces the residual row-level predicate, and predicates
+// with potentially failing expressions do not prune row groups.
 //
 // Strings use charged, page-bounded view headers and copy only an admitted
 // row span into owned output. No borrowed page is advanced until its views

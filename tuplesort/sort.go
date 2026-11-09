@@ -343,7 +343,7 @@ func (s *Sorter) addRun(ctx context.Context, r *run) error {
 
 type cursor struct {
 	s        *Sorter
-	next     *segment
+	run      *run
 	restored *memory.RestoredSpill
 	payload  []byte
 	remain   uint64
@@ -369,12 +369,11 @@ func (c *cursor) advance(ctx context.Context) error {
 			return corrupt()
 		}
 		c.close()
-		if c.next == nil {
+		if c.run.first == nil {
 			c.valid = false
 			return nil
 		}
-		x := c.next
-		c.next = x.next
+		x := c.run.first
 		r, e := c.s.cfg.Spill.Restore(ctx, x.handle, [32]byte{}, c.s.cfg.Manager)
 		if e != nil {
 			return e
@@ -391,6 +390,17 @@ func (c *cursor) advance(ctx context.Context) error {
 		c.payload = p[16:]
 		if c.remain == 0 || c.remain > uint64(len(c.payload)/8) {
 			return corrupt()
+		}
+		// Restore owns an admitted payload copy. The file and its metadata no
+		// longer need to overlap the rest of the merge output. Advance the run
+		// only after deletion succeeds so failures remain owned for Close retry.
+		next := x.next
+		if e = c.s.deleteSegment(x); e != nil {
+			return e
+		}
+		c.run.first = next
+		if next == nil {
+			c.run.last = nil
 		}
 	}
 	if len(c.payload) < 8 {
@@ -418,8 +428,8 @@ func (s *Sorter) merge(ctx context.Context, a, b *run) (out *run, err error) {
 			err = errors.Join(err, s.drop(out))
 		}
 	}()
-	ca := &cursor{s: s, next: a.first}
-	cb := &cursor{s: s, next: b.first}
+	ca := &cursor{s: s, run: a}
+	cb := &cursor{s: s, run: b}
 	defer ca.close()
 	defer cb.close()
 	mem, e := s.cfg.Manager.Reserve(ctx, int64(2*s.cfg.BlockBytes+header))
@@ -552,7 +562,7 @@ func (s *Sorter) Finish(ctx context.Context) error {
 			s.final = out
 		}
 	}
-	s.cursor = &cursor{s: s, next: s.final.first}
+	s.cursor = &cursor{s: s, run: s.final}
 	s.finished = true
 	return nil
 }
@@ -603,6 +613,7 @@ func (s *Sorter) eof() ([]byte, bool, error) {
 	}
 	return nil, false, e
 }
+
 // Close releases owned resources and retries failed object deletions.
 func (s *Sorter) Close() error {
 	if s.closed && s.owned == nil {

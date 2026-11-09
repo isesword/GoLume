@@ -885,11 +885,20 @@ const (
 	truthAny = truthTrue | truthFalse | truthNull
 )
 
+// pruningRowGroup retains access to raw footer presence bits. Arrow's typed
+// statistics currently replace an absent null count or one absent bound with
+// zero, which must not be used as evidence to discard rows.
+type pruningRowGroup struct {
+	*metadata.RowGroupMetaData
+	file  *metadata.FileMetaData
+	index int
+}
+
 func rowGroupMayMatch(meta *metadata.FileMetaData, rowGroup int, predicate expr.Expr, bindings map[string]columnBinding) (bool, error) {
 	if predicate == nil {
 		return true, nil
 	}
-	rg := meta.RowGroup(rowGroup)
+	rg := &pruningRowGroup{RowGroupMetaData: meta.RowGroup(rowGroup), file: meta, index: rowGroup}
 	truth, err := predicateTruth(rg, predicate, bindings)
 	if err != nil {
 		return false, err
@@ -897,8 +906,10 @@ func rowGroupMayMatch(meta *metadata.FileMetaData, rowGroup int, predicate expr.
 	return truth&truthTrue != 0, nil
 }
 
-func predicateTruth(rg *metadata.RowGroupMetaData, predicate expr.Expr, bindings map[string]columnBinding) (truthSet, error) {
+func predicateTruth(rg *pruningRowGroup, predicate expr.Expr, bindings map[string]columnBinding) (truthSet, error) {
 	switch n := predicate.(type) {
+	case expr.InExpr:
+		return inPredicateTruth(rg, n, bindings)
 	case expr.Binary:
 		switch n.Op {
 		case expr.OpAnd, expr.OpOr:
@@ -940,7 +951,7 @@ func predicateTruth(rg *metadata.RowGroupMetaData, predicate expr.Expr, bindings
 	}
 }
 
-func comparisonTruth(rg *metadata.RowGroupMetaData, b expr.Binary, bindings map[string]columnBinding) (truthSet, error) {
+func comparisonTruth(rg *pruningRowGroup, b expr.Binary, bindings map[string]columnBinding) (truthSet, error) {
 	if extract, ok := b.Left.(expr.Unary); ok {
 		return extractComparisonTruth(rg, b, extract, bindings)
 	}
@@ -953,8 +964,60 @@ func comparisonTruth(rg *metadata.RowGroupMetaData, b expr.Binary, bindings map[
 		return truthAny, nil
 	}
 	stats, err := columnStatistics(rg, binding)
-	if err != nil || stats == nil {
+	if err != nil {
 		return truthAny, err
+	}
+	return columnComparisonTruth(rg, binding, stats, literal, op)
+}
+
+// inPredicateTruth is the SQL three-valued OR of literal equalities. In
+// particular, a NULL candidate makes a non-match NULL, not FALSE, so NOT IN
+// cannot keep that row. Only total literal leaves are considered; ApplyPushdown
+// separately disables all pruning when binding finds a demanded-error risk.
+func inPredicateTruth(rg *pruningRowGroup, in expr.InExpr, bindings map[string]columnBinding) (truthSet, error) {
+	column, ok := in.Value.(expr.Column)
+	if !ok || len(in.Values) == 0 {
+		return truthAny, nil // Bind rejects an empty list before pruning.
+	}
+	for _, candidate := range in.Values {
+		switch candidate.(type) {
+		case expr.Int64Literal, expr.Float64Literal, expr.StringLiteral, expr.BoolLiteral,
+			expr.NullLiteral, expr.Date32Literal, expr.TimestampLiteral, expr.TimestampUnitLiteral,
+			expr.DurationLiteral, expr.Decimal128Literal, expr.Decimal128NullLiteral:
+		default:
+			return truthAny, nil
+		}
+	}
+	binding, ok := bindings[column.Name]
+	if !ok {
+		return truthAny, nil
+	}
+	// Decode and validate the column statistics once, not once per candidate.
+	// Nil means unavailable/untrusted, not an empty value domain. NULL literals
+	// still provide useful truth information even when statistics are absent.
+	stats, err := columnStatistics(rg, binding)
+	if err != nil {
+		return truthAny, err
+	}
+	out := truthFalse
+	for _, candidate := range in.Values {
+		value := truthNull
+		switch candidate.(type) {
+		case expr.NullLiteral, expr.Decimal128NullLiteral:
+		default:
+			value, err = columnComparisonTruth(rg, binding, stats, candidate, expr.OpEQ)
+			if err != nil {
+				return truthAny, err
+			}
+		}
+		out = combineTruth(expr.OpOr, out, value)
+	}
+	return out, nil
+}
+
+func columnComparisonTruth(rg *pruningRowGroup, binding columnBinding, stats metadata.TypedStatistics, literal expr.Expr, op expr.Op) (truthSet, error) {
+	if stats == nil {
+		return truthAny, nil
 	}
 	// Parquet has no portable way to tell whether arbitrary BYTE_ARRAY min/max
 	// statistics were prefix-truncated. They are therefore never used to infer
@@ -1036,11 +1099,57 @@ func comparisonLiteral(binding columnBinding, literal expr.Expr) (int64, bool, e
 	}
 }
 
-func columnStatistics(rg *metadata.RowGroupMetaData, binding columnBinding) (metadata.TypedStatistics, error) {
+func columnStatistics(rg *pruningRowGroup, binding columnBinding) (metadata.TypedStatistics, error) {
+	if rg == nil || rg.RowGroupMetaData == nil || rg.file == nil || rg.Schema == nil ||
+		rg.index < 0 || rg.index >= len(rg.file.RowGroups) ||
+		binding.Index < 0 || binding.Index >= rg.Schema.NumColumns() {
+		return nil, nil
+	}
+	rawGroup := rg.file.RowGroups[rg.index]
+	if rawGroup == nil || binding.Index >= len(rawGroup.Columns) || rawGroup.Columns[binding.Index] == nil {
+		return nil, nil
+	}
+	rawColumn := rawGroup.Columns[binding.Index].MetaData
+	if rawColumn == nil || rawColumn.Statistics == nil {
+		return nil, nil
+	}
+	raw := rawColumn.Statistics
+	// Do not let Arrow's default zero turn an unknown count into "no NULLs".
+	// For these flat columns every row contributes one value or one null.
+	if !raw.IsSetNullCount() || raw.GetNullCount() < 0 || raw.GetNullCount() > rg.NumRows() {
+		return nil, nil
+	}
+	descriptor := rg.Schema.Column(binding.Index)
+	min, max := raw.Min, raw.Max
+	if descriptor.ColumnOrder() == arrowparquet.ColumnOrders.TypeDefinedOrder {
+		min, max = raw.MinValue, raw.MaxValue
+	}
+	// Arrow tests the two presence bits with OR, then silently ignores decode
+	// failures. Check the actual pair and physical width before it decodes.
+	if (min == nil) != (max == nil) {
+		return nil, nil
+	}
+	if min != nil {
+		width := 0
+		switch descriptor.PhysicalType() {
+		case arrowparquet.Types.Boolean:
+			width = 1
+		case arrowparquet.Types.Int32, arrowparquet.Types.Float:
+			width = 4
+		case arrowparquet.Types.Int64, arrowparquet.Types.Double:
+			width = 8
+		case arrowparquet.Types.FixedLenByteArray:
+			width = descriptor.TypeLength()
+		}
+		if width > 0 && (len(min) != width || len(max) != width) {
+			return nil, nil
+		}
+	}
 	chunk, err := rg.ColumnChunk(binding.Index)
 	if err != nil {
 		return nil, err
 	}
+	// Retain Arrow's writer-version and sort-order trust checks as well.
 	return chunk.Statistics()
 }
 
@@ -1099,7 +1208,7 @@ func boolStatistic(value bool) int64 {
 // literal using float64 min/max statistics. NaN bounds disable range reasoning;
 // NaN literals are FALSE on valid rows. Parquet may omit NaNs from statistics,
 // so ordinary comparisons must also retain FALSE as a possible result.
-func floatComparisonTruth(rg *metadata.RowGroupMetaData, stats metadata.TypedStatistics, literal expr.Expr, op expr.Op) (truthSet, error) {
+func floatComparisonTruth(rg *pruningRowGroup, stats metadata.TypedStatistics, literal expr.Expr, op expr.Op) (truthSet, error) {
 	value, ok := floatComparisonLiteral(literal)
 	if !ok {
 		return truthAny, nil
@@ -1134,7 +1243,7 @@ func floatComparisonLiteral(literal expr.Expr) (float64, bool) {
 }
 
 // floatRangeTruth mirrors rangeTruth for float64 bounds and literals.
-func floatRangeTruth(rg *metadata.RowGroupMetaData, stats metadata.TypedStatistics, hasMinMax bool, min, max, literal float64, op expr.Op) truthSet {
+func floatRangeTruth(rg *pruningRowGroup, stats metadata.TypedStatistics, hasMinMax bool, min, max, literal float64, op expr.Op) truthSet {
 	out := nullOnlyTruth(stats)
 	if stats.HasNullCount() && stats.NullCount() >= rg.NumRows() {
 		return out
@@ -1142,7 +1251,7 @@ func floatRangeTruth(rg *metadata.RowGroupMetaData, stats metadata.TypedStatisti
 	if math.IsNaN(literal) {
 		return out | truthFalse
 	}
-	if !hasMinMax {
+	if !hasMinMax || math.IsNaN(min) || math.IsNaN(max) || min > max {
 		return out | truthTrue | truthFalse
 	}
 	// NaN rows are valid but can be absent from min/max. They make every
@@ -1178,12 +1287,12 @@ func normalizeTimestampStatistic(binding columnBinding, value int64) (int64, err
 	return value * binding.TimestampScale, nil
 }
 
-func rangeTruth(rg *metadata.RowGroupMetaData, stats metadata.TypedStatistics, hasMinMax bool, min, max, literal int64, op expr.Op) truthSet {
+func rangeTruth(rg *pruningRowGroup, stats metadata.TypedStatistics, hasMinMax bool, min, max, literal int64, op expr.Op) truthSet {
 	out := nullOnlyTruth(stats)
 	if stats.HasNullCount() && stats.NullCount() >= rg.NumRows() {
 		return out
 	}
-	if !hasMinMax {
+	if !hasMinMax || min > max {
 		return out | truthTrue | truthFalse
 	}
 	var mayTrue, mayFalse bool
@@ -1222,7 +1331,7 @@ func nullOnlyTruth(stats metadata.TypedStatistics) truthSet {
 	return out
 }
 
-func stringPredicateTruth(rg *metadata.RowGroupMetaData, b expr.Binary, bindings map[string]columnBinding) (truthSet, error) {
+func stringPredicateTruth(rg *pruningRowGroup, b expr.Binary, bindings map[string]columnBinding) (truthSet, error) {
 	column, ok := b.Left.(expr.Column)
 	if !ok {
 		return truthAny, nil
@@ -1244,7 +1353,7 @@ func stringPredicateTruth(rg *metadata.RowGroupMetaData, b expr.Binary, bindings
 	return truthAny, nil
 }
 
-func extractComparisonTruth(rg *metadata.RowGroupMetaData, b expr.Binary, extract expr.Unary, bindings map[string]columnBinding) (truthSet, error) {
+func extractComparisonTruth(rg *pruningRowGroup, b expr.Binary, extract expr.Unary, bindings map[string]columnBinding) (truthSet, error) {
 	if extract.Op != expr.OpYear && extract.Op != expr.OpMonth && extract.Op != expr.OpDay &&
 		extract.Op != expr.OpHour && extract.Op != expr.OpMinute && extract.Op != expr.OpSecond {
 		return truthAny, nil
@@ -1352,16 +1461,12 @@ func temporalPartDomain(extract expr.Op) (int64, int64) {
 	}
 }
 
-func nullTruth(rg *metadata.RowGroupMetaData, name string, op expr.Op, bindings map[string]columnBinding) (truthSet, error) {
+func nullTruth(rg *pruningRowGroup, name string, op expr.Op, bindings map[string]columnBinding) (truthSet, error) {
 	binding, ok := bindings[name]
 	if !ok {
 		return truthAny, nil
 	}
-	chunk, err := rg.ColumnChunk(binding.Index)
-	if err != nil {
-		return truthAny, err
-	}
-	stats, err := chunk.Statistics()
+	stats, err := columnStatistics(rg, binding)
 	if err != nil || stats == nil || !stats.HasNullCount() {
 		return truthTrue | truthFalse, err
 	}
