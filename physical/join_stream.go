@@ -455,6 +455,7 @@ type spillableJoinStream struct {
 	nextPart    int
 	decoded     *memory.DecodedColumnarRun
 	byteOutput  *memory.Batch
+	savedOutput memory.Batch
 	started     time.Time
 	prepared    bool
 	closed      bool
@@ -629,19 +630,12 @@ func (s *spillableJoinStream) spillRows(ctx context.Context, schema memory.Schem
 	if len(rows) == 0 {
 		return joinRunRef{}, nil
 	}
-	// The gather is a subset of this morsel. Its reservation also covers
-	// append growth in nested vectors. Admit the selected codec payload before
-	// allocating either buffer: the source, gather, and encoder coexist.
-	fullBytes := memory.BatchBytes(batch)
-	if fullBytes > (math.MaxInt64-1024)/2 {
-		return joinRunRef{}, fmt.Errorf("join gather byte estimate overflows int64")
-	}
-	metadataBytes, err := joinBatchMetadataBytes(schema.Fields)
+	// Admit the actual runtime gather, including schema-extra columns and
+	// independently copied aliases, before allocating gather or codec objects.
+	// The bounded gather fixes all capacities in advance, so no append growth
+	// can consume bytes outside this admission.
+	estimate, err := joinGatherAdmissionBytes(schema, batch, rows)
 	if err != nil {
-		return joinRunRef{}, err
-	}
-	estimate := fullBytes * 2
-	if err := addJoinEstimate(&estimate, metadataBytes); err != nil {
 		return joinRunRef{}, err
 	}
 	encodedBytes, err := memory.EstimateColumnarRunSelectionBytes(schema, batch, rows)
@@ -654,7 +648,7 @@ func (s *spillableJoinStream) spillRows(ctx context.Context, schema memory.Schem
 	}
 	defer encoding.Release()
 	gathered := memory.NewBatch()
-	if err := takeRows(ctx, gathered, batch, rows); err != nil {
+	if err := takeJoinRowsBounded(ctx, gathered, batch, rows); err != nil {
 		gathered.ClearColumns()
 		gathered = nil
 		reservation.Release()
@@ -781,9 +775,9 @@ func (s *spillableJoinStream) restoreRun(ctx context.Context, schema memory.Sche
 	if err != nil {
 		return nil, err
 	}
-	if decoded.Batch.Rows != ref.rows {
+	if actualRows := decoded.Batch.Rows; actualRows != ref.rows {
 		_ = decoded.Close()
-		return nil, fmt.Errorf("%w: join run rows=%d want=%d", memory.ErrSpillCorrupt, decoded.Batch.Rows, ref.rows)
+		return nil, fmt.Errorf("%w: join run rows=%d want=%d", memory.ErrSpillCorrupt, actualRows, ref.rows)
 	}
 	return decoded, nil
 }
@@ -975,11 +969,23 @@ func (s *spillableJoinStream) probePartition(ctx context.Context, build *loadedJ
 		return result, err
 	}
 	defer matchedReservation.Release()
-	for _, ref := range leftRefs {
+	for i := range leftRefs {
+		ref := leftRefs[i]
 		decoded, err := s.restoreRun(ctx, s.leftSchema, s.leftFP, ref)
 		if err != nil {
 			s.deleteRefs(context.Background(), created.Values)
 			return result, err
+		}
+		// Restore owns independent buffers. This loaded-build branch never
+		// retries by repartitioning, so the consumed probe file is no longer
+		// needed while materializing output. Keep decoded fully admitted.
+		leftRefs[i] = joinRunRef{}
+		deleteErr := s.deleteRef(ctx, ref)
+		ref = joinRunRef{}
+		if deleteErr != nil {
+			_ = decoded.Close()
+			s.deleteRefs(context.Background(), created.Values)
+			return result, deleteErr
 		}
 		batch := decoded.Batch
 		pairs := make([]join.Pair, 0, s.outputRows)
@@ -1338,6 +1344,21 @@ func (s *spillableJoinStream) processRefs(ctx context.Context, leftOwner, rightO
 	defer rightRefs.Release()
 	build, err := s.loadBuild(ctx, rightRefs.Values)
 	if err == nil {
+		// Only complete build admission commits to probing. Decoded build
+		// batches are independent owners; files and their path/reference
+		// metadata need not overlap the output phase. Admission failure above
+		// retains all inputs for the skew/repartition fallback below.
+		for i := range rightRefs.Values {
+			ref := rightRefs.Values[i]
+			rightRefs.Values[i] = joinRunRef{}
+			deleteErr := s.deleteRef(ctx, ref)
+			ref = joinRunRef{}
+			if deleteErr != nil {
+				build.close()
+				return deleteErr // The store still owns a failed deletion.
+			}
+		}
+		rightRefs.Release()
 		var output spillmeta.Slice[joinRunRef]
 		output, err = s.probePartition(ctx, build, leftRefs.Values, partition)
 		build.close()
@@ -1414,7 +1435,11 @@ func (s *spillableJoinStream) prepare(ctx context.Context) error {
 
 func (s *spillableJoinStream) closeDecoded() {
 	if s.byteOutput != nil {
-		s.byteOutput.ClearColumns()
+		// Return the caller's original empty containers before destroying the
+		// decoded graph. Clearing the borrowed maps here would hide that graph
+		// from its owner and leave caller aliases retaining map capacity.
+		*s.byteOutput = s.savedOutput
+		s.savedOutput = memory.Batch{}
 		s.byteOutput = nil
 	}
 	if s.decoded != nil {
@@ -1425,10 +1450,58 @@ func (s *spillableJoinStream) closeDecoded() {
 
 func bindDecodedBatch(dst *memory.Batch, decoded *memory.Batch) {
 	dst.ClearColumns()
-	// Borrow every vector map, including native narrow numeric columns. The
-	// stream retains the backing run until its next Next call or Close; copying
-	// the complete header keeps newly added Batch types in this binding path.
+	original := *dst
 	*dst = *decoded
+	// Decoders create only schema-used maps. Keep the caller's empty maps for
+	// absent physical types, so the public stream Batch remains reusable.
+	if dst.Int8s == nil {
+		dst.Int8s = original.Int8s
+	}
+	if dst.Int16s == nil {
+		dst.Int16s = original.Int16s
+	}
+	if dst.Int32s == nil {
+		dst.Int32s = original.Int32s
+	}
+	if dst.Int64s == nil {
+		dst.Int64s = original.Int64s
+	}
+	if dst.Uint8s == nil {
+		dst.Uint8s = original.Uint8s
+	}
+	if dst.Uint16s == nil {
+		dst.Uint16s = original.Uint16s
+	}
+	if dst.Uint32s == nil {
+		dst.Uint32s = original.Uint32s
+	}
+	if dst.Uint64s == nil {
+		dst.Uint64s = original.Uint64s
+	}
+	if dst.Float32s == nil {
+		dst.Float32s = original.Float32s
+	}
+	if dst.Float64s == nil {
+		dst.Float64s = original.Float64s
+	}
+	if dst.Decimals == nil {
+		dst.Decimals = original.Decimals
+	}
+	if dst.Strings == nil {
+		dst.Strings = original.Strings
+	}
+	if dst.DictStrings == nil {
+		dst.DictStrings = original.DictStrings
+	}
+	if dst.StringLists == nil {
+		dst.StringLists = original.StringLists
+	}
+	if dst.Structs == nil {
+		dst.Structs = original.Structs
+	}
+	if dst.Opaque == nil {
+		dst.Opaque = original.Opaque
+	}
 }
 
 // Next emits one bounded output run. Inputs are radix-partitioned on first
@@ -1463,10 +1536,11 @@ func (s *spillableJoinStream) Next(ctx context.Context, dst *memory.Batch) (bool
 	if dst == nil {
 		return false, fmt.Errorf("join stream destination is nil")
 	}
-	// The previous decoded run is borrowed only until this call. Unbind the
-	// caller's view before releasing its backing reservation.
-	dst.ClearColumns()
+	// End the previous borrow before clearing the next destination. With the
+	// same destination this restores its original maps first; with a different
+	// destination it detaches the previous caller's header as well.
 	s.closeDecoded()
+	dst.ClearColumns()
 	if s.closed {
 		dst.ClearColumns()
 		return false, source.ErrBatchStreamClosed
@@ -1516,6 +1590,7 @@ func (s *spillableJoinStream) Next(ctx context.Context, dst *memory.Batch) (bool
 		return false, s.abort(err)
 	}
 	s.decoded = decoded
+	s.savedOutput = *dst
 	bindDecodedBatch(dst, decoded.Batch)
 	// Every representation borrows the decoded buffers. Remember the view so
 	// Close, or a Next using a different destination, unbinds it first.

@@ -190,8 +190,13 @@ func TestColumnarRunRoundTripNestedVectorsAndReservations(t *testing.T) {
 		t.Fatal(err)
 	}
 	wantRestoreBytes := payloadBytes + int64(len(ColumnarRunCodec))
-	if restoreManager.Used() != wantRestoreBytes || decodeManager.Used() != payloadBytes {
-		t.Fatalf("restore=%d decode=%d payload=%d", restoreManager.Used(), decodeManager.Used(), payloadBytes)
+	metadataBytes, err := ColumnarRunDecodeMetadataBytes(schema)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantDecodeBytes := payloadBytes + metadataBytes
+	if restoreManager.Used() != wantRestoreBytes || decodeManager.Used() != wantDecodeBytes {
+		t.Fatalf("restore=%d want=%d decode=%d want=%d", restoreManager.Used(), wantRestoreBytes, decodeManager.Used(), wantDecodeBytes)
 	}
 	assertNestedSpillFixture(t, decoded.Batch)
 

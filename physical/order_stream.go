@@ -271,9 +271,9 @@ func (s *externalSortStream) restoreSegment(ctx context.Context, ref sortSegment
 	if err != nil {
 		return nil, err
 	}
-	if decoded.Batch.Rows != ref.rows {
+	if actualRows := decoded.Batch.Rows; actualRows != ref.rows {
 		_ = decoded.Close()
-		return nil, fmt.Errorf("%w: external sort run rows=%d want=%d", memory.ErrSpillCorrupt, decoded.Batch.Rows, ref.rows)
+		return nil, fmt.Errorf("%w: external sort run rows=%d want=%d", memory.ErrSpillCorrupt, actualRows, ref.rows)
 	}
 	return decoded, nil
 }
@@ -793,10 +793,14 @@ func (s *externalSortStream) reserveCursorWorkspace(ctx context.Context, h *exte
 }
 
 func (s *externalSortStream) reserveMergeWorkspace(ctx context.Context, inputs []externalSortRun, encode bool) error {
+	metadata, err := memory.ColumnarRunDecodeMetadataBytes(s.internal)
+	if err != nil {
+		return err
+	}
 	var decoded, restoreOverlap, totalBytes, maxRow, codecBytes int64
 	for _, run := range inputs {
 		var err error
-		decoded, err = sortWorkspaceSize(decoded, run.maxSegmentBytes)
+		decoded, err = sortWorkspaceSize(decoded, run.maxSegmentBytes, metadata)
 		if err != nil {
 			return err
 		}

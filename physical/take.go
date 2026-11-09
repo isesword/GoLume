@@ -113,6 +113,13 @@ func takeRows(ctx context.Context, dst, src *gomemory.Batch, rows []int) error {
 		out.Encoding = v.Encoding
 		dst.Float64s[name] = out
 	}
+	for name, v := range src.Decimals {
+		out := &gomemory.Decimal128Vector{Values: make([]gomemory.Decimal128, n), Validity: compactValidity(nil, v.Validity, rows), Precision: v.Precision, Scale: v.Scale}
+		for i, row := range rows {
+			out.Values[i] = v.Values[row]
+		}
+		dst.Decimals[name] = out
+	}
 	for name, v := range src.DictStrings {
 		out := &gomemory.DictionaryStringVector{
 			Indices:          make([]uint32, n),

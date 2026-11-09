@@ -46,7 +46,9 @@ func (r *EncodedColumnarRun) Close() error {
 }
 
 // DecodedColumnarRun owns a reconstructed specialized Batch and its workspace
-// reservation. Close releases opaque Arrow references if future codecs add any.
+// reservation. Batch/vector aliases are borrowed until Close or the caller
+// relinquishes them by clearing the Batch. Close clears the still-owned graph
+// before releasing its reservation; it cannot erase detached external aliases.
 type DecodedColumnarRun struct {
 	Batch       *Batch
 	reservation Reservation
@@ -60,7 +62,7 @@ func (r *DecodedColumnarRun) Close() error {
 	}
 	r.once.Do(func() {
 		if r.Batch != nil {
-			r.Batch.ReleaseOwned()
+			destroyColumnarDecodedBatch(r.Batch)
 			r.Batch = nil
 		}
 		if r.reservation != nil {
@@ -116,7 +118,14 @@ func EncodeColumnarRun(ctx context.Context, schema Schema, batch *Batch, workspa
 }
 
 // DecodeColumnarRun reconstructs specialized vectors from a validated restored
-// payload. It reserves payload length before allocating vector buffers.
+// payload. Before allocation it reserves len(payload) plus the metadata charge
+// returned by ColumnarRunDecodeMetadataBytes. The owned Batch is sparse: maps
+// unused by schema are nil, unlike NewBatch. Callers that need reusable writable
+// maps must supply their own batch. Borrowed maps/vectors are read-only; clearing
+// the Batch relinquishes its bindings. Every alias becomes invalid on Close,
+// including vector/slice copies detached by a caller. Close clears the reachable
+// owned graph, not arbitrary aliases the caller retained past that lifetime.
+// Restored payload ownership and its reservation remain independent.
 func DecodeColumnarRun(ctx context.Context, schema Schema, restored *RestoredSpill, workspace Manager) (*DecodedColumnarRun, error) {
 	if ctx == nil {
 		return nil, fmt.Errorf("columnar decode context is nil")
@@ -127,49 +136,54 @@ func DecodeColumnarRun(ctx context.Context, schema Schema, restored *RestoredSpi
 	if workspace == nil {
 		return nil, fmt.Errorf("columnar decode requires a workspace manager")
 	}
-	payload := restored.Object.Payload
-	reservation, err := workspace.Reserve(ctx, int64(len(payload)))
+	metadata, err := ColumnarRunDecodeMetadataBytes(schema)
 	if err != nil {
-		return nil, fmt.Errorf("reserve columnar decode buffers: %w", err)
+		return nil, fmt.Errorf("%w: columnar decode schema: %v", ErrSpillCorrupt, err)
 	}
+	payload := restored.Object.Payload
+	charge, err := columnarDecodeAdd(int64(len(payload)), metadata)
+	if err != nil {
+		return nil, err
+	}
+	reservation, err := workspace.Reserve(ctx, charge)
+	if err != nil {
+		return nil, fmt.Errorf("reserve columnar decode buffers and metadata: %w", err)
+	}
+	owned := &DecodedColumnarRun{reservation: reservation}
+	success := false
+	defer func() {
+		if !success {
+			_ = owned.Close()
+		}
+	}()
 	reader := runReader{buf: payload}
 	if string(reader.bytes(8)) != string(columnarRunMagic[:]) || reader.u16() != columnarRunVersion {
-		reservation.Release()
 		return nil, fmt.Errorf("%w: columnar run magic or version mismatch", ErrSpillCorrupt)
 	}
 	rows64 := reader.u64()
 	if rows64 >= uint64(math.MaxInt) || reader.u32() != uint32(len(schema.Fields)) {
-		reservation.Release()
 		return nil, fmt.Errorf("%w: columnar run row or field count mismatch", ErrSpillCorrupt)
 	}
 	rows := int(rows64)
-	batch := NewBatch()
-	batch.Rows = rows
+	owned.Batch = newColumnarDecodeBatch(schema.Fields, rows)
 	for _, field := range schema.Fields {
-		if err := decodeRunField(&reader, batch, field, rows); err != nil {
-			batch.ReleaseOwned()
-			reservation.Release()
+		if err := decodeRunField(&reader, owned.Batch, field, rows); err != nil {
 			return nil, err
 		}
 	}
 	if reader.err != nil {
-		batch.ReleaseOwned()
-		reservation.Release()
 		return nil, reader.err
 	}
 	for _, field := range schema.Fields {
-		if err := validateRunField(batch, field, rows); err != nil {
-			batch.ReleaseOwned()
-			reservation.Release()
+		if err := validateColumnarDecodedField(owned.Batch, field, rows); err != nil {
 			return nil, fmt.Errorf("%w: decoded field %q: %v", ErrSpillCorrupt, field.Name, err)
 		}
 	}
 	if reader.pos != len(payload) {
-		batch.ReleaseOwned()
-		reservation.Release()
 		return nil, fmt.Errorf("%w: columnar run has trailing bytes", ErrSpillCorrupt)
 	}
-	return &DecodedColumnarRun{Batch: batch, reservation: reservation}, nil
+	success = true
+	return owned, nil
 }
 
 func columnarRunSize(schema Schema, batch *Batch) (int, error) {
@@ -644,165 +658,190 @@ func encodeNormalizedString(writer *runWriter, offsets []uint32, data []byte) {
 
 func decodeRunField(reader *runReader, batch *Batch, field Field, rows int) error {
 	if field.Type == TypeStruct {
-		validity := decodeValidity(reader, rows)
-		values := NewBatch()
-		values.Rows = rows
+		vector := &StructVector{Rows: rows, Encoding: field.Encoding}
+		batch.Structs[field.Name] = vector
+		vector.Fields = make([]Field, len(field.Children))
+		copy(vector.Fields, field.Children)
+		vector.Values = newColumnarDecodeBatch(field.Children, rows)
+		vector.Validity = decodeValidity(reader, rows)
 		for _, child := range field.Children {
-			if err := decodeRunField(reader, values, child, rows); err != nil {
+			if err := decodeRunField(reader, vector.Values, child, rows); err != nil {
 				return err
 			}
 		}
-		batch.Structs[field.Name] = &StructVector{Rows: rows, Fields: append([]Field(nil), field.Children...), Values: values, Validity: validity, Encoding: field.Encoding}
 		return reader.err
 	}
 	if field.Type == TypeList {
-		validity := decodeValidity(reader, rows)
-		offsets := reader.offsets(reader.u32(), rows+1)
+		vector := &StringListVector{Encoding: field.Encoding}
+		batch.StringLists[field.Name] = vector
+		vector.Values = &StringViewVector{Encoding: EncodingView}
+		vector.Validity = decodeValidity(reader, rows)
+		vector.Offsets = reader.offsets(reader.u32(), rows+1)
 		childRows := 0
-		if len(offsets) != 0 {
-			last := offsets[len(offsets)-1]
-			if uint64(last) > uint64(math.MaxInt) {
+		if len(vector.Offsets) != 0 {
+			last := vector.Offsets[len(vector.Offsets)-1]
+			if uint64(last) >= uint64(math.MaxInt) {
 				reader.fail("list child row count exceeds addressable memory")
 			} else {
 				childRows = int(last)
 			}
 		}
-		childValidity := decodeValidity(reader, childRows)
-		childOffsets := reader.offsets(reader.u32(), childRows+1)
-		data := reader.data()
-		batch.StringLists[field.Name] = &StringListVector{Offsets: offsets, Validity: validity, Values: &StringViewVector{Offsets: childOffsets, Data: data, Validity: childValidity, Encoding: EncodingView}, Encoding: field.Encoding}
+		vector.Values.Validity = decodeValidity(reader, childRows)
+		vector.Values.Offsets = reader.offsets(reader.u32(), childRows+1)
+		vector.Values.Data = reader.data()
 		return reader.err
 	}
 	if field.Type == TypeString || field.Type == TypeBinary {
-		validity := decodeValidity(reader, rows)
 		if field.Encoding == EncodingDictionary {
+			vector := &DictionaryStringVector{Encoding: field.Encoding}
+			batch.DictStrings[field.Name] = vector
+			vector.Validity = decodeValidity(reader, rows)
 			if !reader.requireArray(rows, 4, "dictionary indices exceed remaining payload") {
 				return reader.err
 			}
-			indices := make([]uint32, rows)
-			for i := range indices {
-				indices[i] = reader.u32()
+			vector.Indices = make([]uint32, rows)
+			for i := range vector.Indices {
+				vector.Indices[i] = reader.u32()
 			}
-			offsets := reader.offsets(reader.u32(), -1)
-			data := reader.data()
-			domain := reader.string()
-			batch.DictStrings[field.Name] = &DictionaryStringVector{Indices: indices, Validity: validity, Offsets: offsets, Data: data, DictionaryDomain: domain, Encoding: field.Encoding}
+			vector.Offsets = reader.offsets(reader.u32(), -1)
+			vector.Data = reader.data()
+			vector.DictionaryDomain = reader.string()
 			return reader.err
 		}
-		offsets := reader.offsets(reader.u32(), rows+1)
-		data := reader.data()
-		batch.Strings[field.Name] = &StringViewVector{Offsets: offsets, Data: data, Validity: validity, Encoding: field.Encoding}
+		vector := &StringViewVector{Encoding: field.Encoding}
+		batch.Strings[field.Name] = vector
+		vector.Validity = decodeValidity(reader, rows)
+		vector.Offsets = reader.offsets(reader.u32(), rows+1)
+		vector.Data = reader.data()
 		return reader.err
 	}
-	validity := decodeValidity(reader, rows)
 	switch field.Type {
 	case TypeDecimal:
-		if err := field.ValidateDecimal128(); err != nil {
-			return fmt.Errorf("%w: %v", ErrSpillCorrupt, err)
-		}
+		vector := &Decimal128Vector{Precision: field.DecimalPrecision, Scale: field.DecimalScale}
+		batch.Decimals[field.Name] = vector
+		vector.Validity = decodeValidity(reader, rows)
 		if int32(reader.u32()) != field.DecimalPrecision || int32(reader.u32()) != field.DecimalScale {
 			return fmt.Errorf("%w: decimal precision/scale mismatch", ErrSpillCorrupt)
 		}
 		if !reader.requireArray(rows, 16, "decimal values exceed remaining payload") {
 			return reader.err
 		}
-		values := make([]Decimal128, rows)
-		for i := range values {
+		vector.Values = make([]Decimal128, rows)
+		for i := range vector.Values {
 			lo := reader.u64()
 			hi := reader.u64()
-			values[i] = decimal128.New(int64(hi), lo)
+			vector.Values[i] = decimal128.New(int64(hi), lo)
 		}
-		batch.Decimals[field.Name] = &Decimal128Vector{Values: values, Validity: validity, Precision: field.DecimalPrecision, Scale: field.DecimalScale}
 	case TypeInt8:
+		vector := &Int8Vector{Encoding: field.Encoding}
+		batch.Int8s[field.Name] = vector
+		vector.Validity = decodeValidity(reader, rows)
 		if !reader.requireArray(rows, 1, "int8 values exceed remaining payload") {
 			return reader.err
 		}
-		values := make([]int8, rows)
-		for i := range values {
-			values[i] = int8(reader.u8())
+		vector.Values = make([]int8, rows)
+		for i := range vector.Values {
+			vector.Values[i] = int8(reader.u8())
 		}
-		batch.Int8s[field.Name] = &Int8Vector{Values: values, Validity: validity, Encoding: field.Encoding}
 	case TypeInt16:
+		vector := &Int16Vector{Encoding: field.Encoding}
+		batch.Int16s[field.Name] = vector
+		vector.Validity = decodeValidity(reader, rows)
 		if !reader.requireArray(rows, 2, "int16 values exceed remaining payload") {
 			return reader.err
 		}
-		values := make([]int16, rows)
-		for i := range values {
-			values[i] = int16(reader.u16())
+		vector.Values = make([]int16, rows)
+		for i := range vector.Values {
+			vector.Values[i] = int16(reader.u16())
 		}
-		batch.Int16s[field.Name] = &Int16Vector{Values: values, Validity: validity, Encoding: field.Encoding}
 	case TypeInt32, TypeDate32, TypeTime32:
+		vector := &Int32Vector{Encoding: field.Encoding}
+		batch.Int32s[field.Name] = vector
+		vector.Validity = decodeValidity(reader, rows)
 		if !reader.requireArray(rows, 4, "int32 values exceed remaining payload") {
 			return reader.err
 		}
-		values := make([]int32, rows)
-		for i := range values {
-			values[i] = int32(reader.u32())
+		vector.Values = make([]int32, rows)
+		for i := range vector.Values {
+			vector.Values[i] = int32(reader.u32())
 		}
-		batch.Int32s[field.Name] = &Int32Vector{Values: values, Validity: validity, Encoding: field.Encoding}
 	case TypeInt64, TypeDate64, TypeTimestamp, TypeTime64, TypeDuration:
+		vector := &Int64Vector{Encoding: field.Encoding}
+		batch.Int64s[field.Name] = vector
+		vector.Validity = decodeValidity(reader, rows)
 		if !reader.requireArray(rows, 8, "int64 values exceed remaining payload") {
 			return reader.err
 		}
-		values := make([]int64, rows)
-		for i := range values {
-			values[i] = int64(reader.u64())
+		vector.Values = make([]int64, rows)
+		for i := range vector.Values {
+			vector.Values[i] = int64(reader.u64())
 		}
-		batch.Int64s[field.Name] = &Int64Vector{Values: values, Validity: validity, Encoding: field.Encoding}
 	case TypeUint8:
+		vector := &Uint8Vector{Encoding: field.Encoding}
+		batch.Uint8s[field.Name] = vector
+		vector.Validity = decodeValidity(reader, rows)
 		if !reader.requireArray(rows, 1, "uint8 values exceed remaining payload") {
 			return reader.err
 		}
-		values := make([]uint8, rows)
-		for i := range values {
-			values[i] = reader.u8()
+		vector.Values = make([]uint8, rows)
+		for i := range vector.Values {
+			vector.Values[i] = reader.u8()
 		}
-		batch.Uint8s[field.Name] = &Uint8Vector{Values: values, Validity: validity, Encoding: field.Encoding}
 	case TypeUint16:
+		vector := &Uint16Vector{Encoding: field.Encoding}
+		batch.Uint16s[field.Name] = vector
+		vector.Validity = decodeValidity(reader, rows)
 		if !reader.requireArray(rows, 2, "uint16 values exceed remaining payload") {
 			return reader.err
 		}
-		values := make([]uint16, rows)
-		for i := range values {
-			values[i] = reader.u16()
+		vector.Values = make([]uint16, rows)
+		for i := range vector.Values {
+			vector.Values[i] = reader.u16()
 		}
-		batch.Uint16s[field.Name] = &Uint16Vector{Values: values, Validity: validity, Encoding: field.Encoding}
 	case TypeUint32, TypeBool:
+		vector := &Uint32Vector{Encoding: field.Encoding}
+		batch.Uint32s[field.Name] = vector
+		vector.Validity = decodeValidity(reader, rows)
 		if !reader.requireArray(rows, 4, "uint32 values exceed remaining payload") {
 			return reader.err
 		}
-		values := make([]uint32, rows)
-		for i := range values {
-			values[i] = reader.u32()
+		vector.Values = make([]uint32, rows)
+		for i := range vector.Values {
+			vector.Values[i] = reader.u32()
 		}
-		batch.Uint32s[field.Name] = &Uint32Vector{Values: values, Validity: validity, Encoding: field.Encoding}
 	case TypeUint64:
+		vector := &Uint64Vector{Encoding: field.Encoding}
+		batch.Uint64s[field.Name] = vector
+		vector.Validity = decodeValidity(reader, rows)
 		if !reader.requireArray(rows, 8, "uint64 values exceed remaining payload") {
 			return reader.err
 		}
-		values := make([]uint64, rows)
-		for i := range values {
-			values[i] = reader.u64()
+		vector.Values = make([]uint64, rows)
+		for i := range vector.Values {
+			vector.Values[i] = reader.u64()
 		}
-		batch.Uint64s[field.Name] = &Uint64Vector{Values: values, Validity: validity, Encoding: field.Encoding}
 	case TypeFloat32:
+		vector := &Float32Vector{Encoding: field.Encoding}
+		batch.Float32s[field.Name] = vector
+		vector.Validity = decodeValidity(reader, rows)
 		if !reader.requireArray(rows, 4, "float32 values exceed remaining payload") {
 			return reader.err
 		}
-		values := make([]float32, rows)
-		for i := range values {
-			values[i] = math.Float32frombits(reader.u32())
+		vector.Values = make([]float32, rows)
+		for i := range vector.Values {
+			vector.Values[i] = math.Float32frombits(reader.u32())
 		}
-		batch.Float32s[field.Name] = &Float32Vector{Values: values, Validity: validity, Encoding: field.Encoding}
 	case TypeFloat64:
+		vector := &Float64Vector{Encoding: field.Encoding}
+		batch.Float64s[field.Name] = vector
+		vector.Validity = decodeValidity(reader, rows)
 		if !reader.requireArray(rows, 8, "float64 values exceed remaining payload") {
 			return reader.err
 		}
-		values := make([]float64, rows)
-		for i := range values {
-			values[i] = math.Float64frombits(reader.u64())
+		vector.Values = make([]float64, rows)
+		for i := range vector.Values {
+			vector.Values[i] = math.Float64frombits(reader.u64())
 		}
-		batch.Float64s[field.Name] = &Float64Vector{Values: values, Validity: validity, Encoding: field.Encoding}
 	default:
 		return fmt.Errorf("%w: unsupported columnar field %q type %s", ErrSpillCorrupt, field.Name, field.Type)
 	}
@@ -955,7 +994,13 @@ func (r *runReader) data() []byte {
 		r.fail("columnar data exceeds addressable memory")
 		return nil
 	}
-	return append([]byte(nil), r.bytes(int(length))...)
+	data := r.bytes(int(length))
+	if r.err != nil {
+		return nil
+	}
+	out := make([]byte, len(data))
+	copy(out, data)
+	return out
 }
 func (r *runReader) string() string {
 	length := r.u32()
