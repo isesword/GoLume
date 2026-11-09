@@ -108,9 +108,10 @@ func (p *PreparedQuery) newSortedAggregateStream(ctx context.Context, schema mem
 	stream := &sortedAggregateStream{
 		query: p, schema: schema, budget: budget, input: input,
 		stateBudget: stateBudget, outputBudget: budget.Operator("SortedAggregateOutput", memory.MemoryWorkspace),
-		stateLease: stateLease, outputRows: outputRows, inputBatch: memory.NewBatch(),
+		stateLease: stateLease, outputRows: outputRows, inputStorage: *memory.NewBatch(),
 		started: time.Now(), active: acquirePrepared,
 	}
+	stream.inputBatch = &stream.inputStorage
 	if p.nativeAggregate() && len(p.cq.MultiAggregate.Columns) > 0 {
 		stream.numeric, err = aggregate.NewNumericBundle(p.cq.MultiAggregate.Types, p.multiLayouts(), func(bytes int64) (memory.Reservation, error) { return stateBudget.ReserveGrowth(ctx, bytes) })
 		if err == nil {
@@ -207,18 +208,21 @@ type sortedAggregateStream struct {
 	globalBindings     []globalAggregateLaneBinding
 	globalBindingLease memory.Reservation
 
-	inputBatch *memory.Batch
-	binding    aggregateBatchBinding
-	selection  memory.Bitmap
-	nextRow    int
-	predicate  aggregatePredicateWorkspace
-	state      aggregate.Int64Vector
-	bundle     *aggregate.Int64Bundle
-	numeric    *aggregate.NumericBundle
-	statistics *aggregate.StatisticsBundle
-	current    aggregateRecord
-	haveGroup  bool
-	inputDone  bool
+	// The input header lives with its owning stream; its public vector maps
+	// retain the ordinary NewBatch contract without a separate header allocation.
+	inputStorage memory.Batch
+	inputBatch   *memory.Batch
+	binding      aggregateBatchBinding
+	selection    memory.Bitmap
+	nextRow      int
+	predicate    aggregatePredicateWorkspace
+	state        aggregate.Int64Vector
+	bundle       *aggregate.Int64Bundle
+	numeric      *aggregate.NumericBundle
+	statistics   *aggregate.StatisticsBundle
+	current      aggregateRecord
+	haveGroup    bool
+	inputDone    bool
 
 	selectedRows int
 	groups       int
@@ -679,6 +683,7 @@ func (s *sortedAggregateStream) cleanup() error {
 		s.inputBatch.ClearColumns()
 		s.inputBatch = nil
 	}
+	s.inputStorage = memory.Batch{}
 	if s.input != nil {
 		s.closeErr = s.input.Close()
 		s.input = nil

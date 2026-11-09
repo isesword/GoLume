@@ -140,6 +140,12 @@ func NewJoinSourceWithOptions(ctx context.Context, left, right source.Source, ty
 	if left == nil || right == nil {
 		return nil, fmt.Errorf("physical join requires left and right sources")
 	}
+	if err := rejectNativeDecimalExecution(left.Schema()); err != nil {
+		return nil, err
+	}
+	if err := rejectNativeDecimalExecution(right.Schema()); err != nil {
+		return nil, err
+	}
 	if !opts.Kernels.Valid() {
 		return nil, fmt.Errorf("physical join requires a valid kernel set")
 	}

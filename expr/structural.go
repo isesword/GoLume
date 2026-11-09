@@ -45,7 +45,7 @@ func scalarKey(parts ...string) string {
 }
 
 func (s *structuralInterner) field(field memory.Field) int {
-	parts := []string{"field", field.Name, strconv.Itoa(int(field.Type)), strconv.FormatBool(field.Nullable), strconv.Itoa(int(field.Encoding)), field.DictionaryDomain, field.ArrowType}
+	parts := []string{"field", field.Name, strconv.Itoa(int(field.Type)), strconv.FormatBool(field.Nullable), strconv.Itoa(int(field.Encoding)), field.DictionaryDomain, field.ArrowType, strconv.Itoa(int(field.DecimalPrecision)), strconv.Itoa(int(field.DecimalScale))}
 	for _, child := range field.Children {
 		parts = append(parts, strconv.Itoa(s.field(child)))
 	}

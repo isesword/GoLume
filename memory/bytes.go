@@ -32,6 +32,9 @@ func BatchBytes(b *Batch) int64 {
 	for _, v := range b.Uint64s {
 		n += int64(len(v.Values))*8 + int64(len(v.Validity))*8
 	}
+	for _, v := range b.Decimals {
+		n += int64(len(v.Values))*16 + int64(len(v.Validity))*8
+	}
 	for _, v := range b.Float64s {
 		n += int64(len(v.Values))*8 + int64(len(v.Validity))*8
 	}

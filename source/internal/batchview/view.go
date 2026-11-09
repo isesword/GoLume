@@ -238,6 +238,12 @@ func scratchBytes(src *memory.Batch, offset, length int) (int64, error) {
 		}
 		n += validityBytes(v.Validity, offset, length)
 	}
+	for name, v := range src.Decimals {
+		if v == nil || len(v.Values) < end || v.Validity != nil && len(v.Validity) < memory.WordsFor(end) {
+			return 0, fmt.Errorf("decimal column %q shorter than source range", name)
+		}
+		n += validityBytes(v.Validity, offset, length)
+	}
 	for name, v := range src.Float64s {
 		if v == nil || len(v.Values) < end {
 			return 0, fmt.Errorf("column %q shorter than source range", name)
@@ -339,6 +345,9 @@ func (view *View) bind(dst, src *memory.Batch, offset, length int) error {
 	}
 	for name, v := range src.Float32s {
 		dst.Float32s[name] = &memory.Float32Vector{Values: v.Values[offset:end], Validity: validity(v.Validity, offset, length), Encoding: v.Encoding}
+	}
+	for name, v := range src.Decimals {
+		dst.Decimals[name] = &memory.Decimal128Vector{Values: v.Values[offset:end], Validity: validity(v.Validity, offset, length), Precision: v.Precision, Scale: v.Scale}
 	}
 	for name, v := range src.Float64s {
 		dst.Float64s[name] = &memory.Float64Vector{Values: v.Values[offset:end], Validity: validity(v.Validity, offset, length), Encoding: v.Encoding}

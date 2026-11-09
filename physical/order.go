@@ -56,6 +56,12 @@ func NewSortSource(input source.Source, keys []SortKey, manager memory.Manager) 
 // materialized row ordinals are split into contiguous runs, sorted concurrently,
 // then merged by the original global ordinal to preserve stable ordering.
 func NewSortSourceWithOptions(input source.Source, keys []SortKey, manager memory.Manager, opts SortSourceOptions) (source.Source, error) {
+	if input != nil {
+		if err := rejectNativeDecimalExecution(input.Schema()); err != nil {
+			return nil, err
+		}
+	}
+
 	if input == nil {
 		return nil, fmt.Errorf("sort input is nil")
 	}
@@ -358,6 +364,17 @@ func NewTopKSourceWithManager(input source.Source, k int, keys []SortKey, manage
 // promise stable replay, only input is scanned and winner payloads are retained
 // as budget-admitted snapshots; keyInput is not opened.
 func NewTopKSourceWithKeyInput(input, keyInput source.Source, k int, keys []SortKey, manager memory.Manager) (source.Source, error) {
+	if input != nil {
+		if err := rejectNativeDecimalExecution(input.Schema()); err != nil {
+			return nil, err
+		}
+	}
+	if keyInput != nil {
+		if err := rejectNativeDecimalExecution(keyInput.Schema()); err != nil {
+			return nil, err
+		}
+	}
+
 	if input == nil {
 		return nil, fmt.Errorf("top-k input is nil")
 	}

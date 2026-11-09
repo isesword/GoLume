@@ -174,6 +174,12 @@ func (s *DropColumnsSource) Dictionary(ctx context.Context, column string) (sour
 // includeInput is true, input fields are retained and aliases replace matching
 // columns; otherwise only the named expressions are exposed.
 func NewProjectSource(input source.Source, named []expr.NamedExpr, includeInput bool, managers ...memory.Manager) (*ProjectSource, error) {
+	if input != nil {
+		if err := rejectNativeDecimalExecution(input.Schema()); err != nil {
+			return nil, err
+		}
+	}
+
 	if input == nil {
 		return nil, fmt.Errorf("physical projection input is nil")
 	}
@@ -573,6 +579,9 @@ func bindAll(dst, src *memory.Batch) {
 	for k, v := range src.Uint64s {
 		dst.Uint64s[k] = v
 	}
+	for k, v := range src.Decimals {
+		dst.Decimals[k] = v
+	}
 	for k, v := range src.Float64s {
 		dst.Float64s[k] = v
 	}
@@ -631,6 +640,10 @@ func bindNamed(dst *memory.Batch, out string, src *memory.Batch, in string) erro
 		dst.Uint64s[out] = v
 		return nil
 	}
+	if v, ok := src.Decimals[in]; ok {
+		dst.Decimals[out] = v
+		return nil
+	}
 	if v, ok := src.Float64s[in]; ok {
 		dst.Float64s[out] = v
 		return nil
@@ -681,6 +694,7 @@ func removeColumn(dst *memory.Batch, name string) {
 	delete(dst.Uint32s, name)
 	delete(dst.Uint64s, name)
 	delete(dst.Float64s, name)
+	delete(dst.Decimals, name)
 	delete(dst.Strings, name)
 	delete(dst.DictStrings, name)
 	delete(dst.StringLists, name)

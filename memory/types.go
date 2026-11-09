@@ -46,8 +46,8 @@ const (
 	TypeTime64
 	// TypeDuration identifies Arrow duration values.
 	TypeDuration
-	// TypeDecimal identifies Arrow decimal values whose exact precision/scale is
-	// carried in Field.ArrowType.
+	// TypeDecimal identifies decimal values. Native decimal128 uses explicit
+	// Field.DecimalPrecision/DecimalScale; opaque Arrow sources retain ArrowType.
 	TypeDecimal
 	// TypeArrow identifies an Arrow logical type that is preserved by an Arrow
 	// RecordBatch source but does not yet have a specialized execution vector.
@@ -156,6 +156,11 @@ type Field struct {
 	// sources, including nested, extension, decimal, timezone, and other type
 	// metadata that is intentionally not collapsed into DataType.
 	ArrowType string
+	// DecimalPrecision and DecimalScale describe native decimal128 coefficients.
+	// Precision zero retains the legacy opaque Arrow decimal contract. Native
+	// decimals require 1 <= precision <= 38 and 0 <= scale <= precision.
+	DecimalPrecision int32
+	DecimalScale     int32
 	// Children describes nested logical fields. TypeList currently requires
 	// exactly one TypeString child named "item".
 	Children []Field

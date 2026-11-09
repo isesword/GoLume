@@ -24,11 +24,36 @@ type Source struct {
 // New constructs a zero-copy immutable source over batches.
 func New(schema memory.Schema, batches ...*memory.Batch) (*Source, error) {
 	s := &Source{identity: new(byte), schema: schema, batches: append([]*memory.Batch(nil), batches...), dicts: make(map[string]source.Dictionary)}
+	for _, field := range schema.Fields {
+		// Validate supported shapes even when the source has no batches. In
+		// particular, native decimals are scalar-only until nested storage and
+		// execution have matching precision/scale contracts.
+		var err error
+		switch field.Type {
+		case memory.TypeDecimal:
+			if field.DecimalPrecision != 0 {
+				err = field.ValidateDecimal128()
+			}
+		case memory.TypeStruct:
+			err = field.ValidateStruct()
+		case memory.TypeList:
+			err = field.ValidateListString()
+		}
+		if err != nil {
+			return nil, err
+		}
+	}
 	for i, b := range s.batches {
 		if b == nil {
 			return nil, fmt.Errorf("batch %d is nil", i)
 		}
 		for _, field := range schema.Fields {
+			if v, hasNative := b.Decimals[field.Name]; hasNative || (field.Type == memory.TypeDecimal && field.DecimalPrecision != 0) {
+				if err := v.ValidateField(field, b.Rows); err != nil {
+					return nil, fmt.Errorf("batch %d: %w", i, err)
+				}
+				continue
+			}
 			if field.Type == memory.TypeStruct {
 				v, ok := b.Structs[field.Name]
 				if !ok {
@@ -131,7 +156,7 @@ func (s *Source) NewBatchStreamWithPartitions(ctx context.Context, opts source.R
 			return nil, fmt.Errorf("inmemory: partition %d out of range", part.ID)
 		}
 	}
-	return &batchStream{s: s, parts: parts, opts: opts.Normalize(), projected: memory.NewBatch()}, nil
+	return &batchStream{s: s, parts: parts, opts: opts.Normalize(), projected: *memory.NewBatch()}, nil
 }
 
 // ApplyPushdown returns a shallow projected source. In-memory sources have no
@@ -190,7 +215,7 @@ type batchStream struct {
 	parts             []source.Partition
 	opts              source.ReadOptions
 	next, offset      int
-	projected         *memory.Batch
+	projected         memory.Batch
 	view              batchview.View
 	closed, exhausted bool
 	terminalErr       error
@@ -247,7 +272,7 @@ func (s *batchStream) Next(ctx context.Context, dst *memory.Batch) (bool, error)
 			return s.fail(err)
 		}
 	}
-	rows, err := s.view.Bind(ctx, dst, s.projected, s.offset, s.opts)
+	rows, err := s.view.Bind(ctx, dst, &s.projected, s.offset, s.opts)
 	if err != nil {
 		return s.fail(err)
 	}
@@ -261,11 +286,15 @@ func (s *batchStream) Next(ctx context.Context, dst *memory.Batch) (bool, error)
 
 // bindProjection selects schema-visible vectors without allocating value buffers.
 func (s *batchStream) bindProjection(src *memory.Batch) error {
-	dst := s.projected
+	dst := &s.projected
 	s.clearProjection()
 	dst.Rows = src.Rows
 	for _, field := range s.s.schema.Fields {
 		name := field.Name
+		if field.Type == memory.TypeDecimal && field.DecimalPrecision != 0 {
+			dst.Decimals[name] = src.Decimals[name]
+			continue
+		}
 		if v, ok := src.Int8s[name]; ok {
 			dst.Int8s[name] = v
 			continue
@@ -349,6 +378,7 @@ func (s *batchStream) clearProjection() {
 	clear(s.projected.Uint64s)
 	clear(s.projected.Float32s)
 	clear(s.projected.Float64s)
+	clear(s.projected.Decimals)
 	clear(s.projected.Strings)
 	clear(s.projected.DictStrings)
 	clear(s.projected.StringLists)

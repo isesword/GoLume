@@ -72,7 +72,12 @@ func (p Program) visitInstructions(visit func(instruction) bool) bool {
 }
 
 // ResultField returns an independent, complete scalar result descriptor.
-func (p Program) ResultField() memory.Field { return cloneBoundField(p.result) }
+func (p Program) ResultField() memory.Field {
+	if p.result == nil {
+		return memory.Field{}
+	}
+	return cloneBoundField(*p.result)
+}
 
 // OutputCount returns the number of named outputs.
 func (p Program) OutputCount() int { return len(p.outputs) }

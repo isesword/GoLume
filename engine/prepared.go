@@ -42,9 +42,12 @@ type PlanInfo struct {
 // bounded scratch can remain in the engine's charged, reclaimable cache; source
 // batches and output buffers never survive as cached execution state.
 type PreparedQuery struct {
-	e               *Engine
-	src             source.Source
-	cq              CompiledQuery
+	e   *Engine
+	src source.Source
+	cq  CompiledQuery
+	// Internal Execute consumers share this immutable output descriptor.
+	// Public stream construction still receives an independent caller schema.
+	executionSchema memory.Schema
 	stats           source.Stats
 	parts           []source.Partition
 	strategy        planner.Strategy
@@ -196,6 +199,7 @@ func (e *Engine) prepare(ctx context.Context, src source.Source, q expr.Query, o
 			}
 		}
 	}
+	pq.executionSchema = pq.resultSchema()
 	return pq, nil
 }
 

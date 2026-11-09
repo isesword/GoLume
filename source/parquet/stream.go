@@ -78,6 +78,8 @@ func (s *Source) NewBatchStreamWithPartitions(ctx context.Context, opts source.R
 			out.payloadRowBytes += 4
 		case memory.TypeInt64, memory.TypeUint64, memory.TypeTimestamp, memory.TypeFloat64:
 			out.payloadRowBytes += 8
+		case memory.TypeDecimal:
+			out.payloadRowBytes += 16
 		case memory.TypeString:
 			out.payloadRowBytes += 4
 			out.payloadOffsetBytes += 4
@@ -270,6 +272,8 @@ func (s *batchStream) Next(ctx context.Context, dst *memory.Batch) (bool, error)
 			err = s.decode.readUint64(s.chunks[i], b, rows, s.batch)
 		case memory.TypeFloat32:
 			err = s.decode.readFloat32(s.chunks[i], b, rows, s.batch)
+		case memory.TypeDecimal:
+			err = s.decode.readDecimal(s.chunks[i], b, rows, s.batch)
 		case memory.TypeFloat64:
 			err = s.decode.readFloat64(s.chunks[i], b, rows, s.batch)
 		case memory.TypeBool:
@@ -317,6 +321,12 @@ func (s *batchStream) openGroup(ctx context.Context) error {
 	for i, b := range s.bindings {
 		if err := s.checkContext(ctx); err != nil {
 			return err
+		}
+		if b.Type == memory.TypeDecimal {
+			physical := s.r.MetaData().Schema.Column(b.Index).PhysicalType()
+			if err := validateDecimalPages(ctx, rg, b, physical); err != nil {
+				return err
+			}
 		}
 		c, err := rg.Column(b.Index)
 		if err != nil {
@@ -421,6 +431,8 @@ func (s *batchStream) fixedBytes(rows int) int64 {
 		case memory.TypeFloat32:
 			width = 4
 			f32 = f32 || b.Nullable
+		case memory.TypeDecimal:
+			width = 16
 		case memory.TypeFloat64:
 			width = 8
 			f64 = f64 || b.Nullable
@@ -434,7 +446,7 @@ func (s *batchStream) fixedBytes(rows int) int64 {
 		bytes += int64(rows) * width
 		if b.Nullable {
 			bytes += int64(memory.WordsFor(rows)) * 8
-			defs = defs || b.Type != memory.TypeString
+			defs = defs || (b.Type != memory.TypeString && b.Type != memory.TypeDecimal)
 		}
 	}
 	if i64 {
@@ -550,6 +562,8 @@ func (s *batchStream) allocateFixed(ctx context.Context, want int, stringBytes i
 			s.batch.Int64s[b.Name] = &memory.Int64Vector{Values: make([]int64, n), Validity: valid}
 		case memory.TypeFloat32:
 			s.batch.Float32s[b.Name] = &memory.Float32Vector{Values: make([]float32, n), Validity: valid}
+		case memory.TypeDecimal:
+			s.batch.Decimals[b.Name] = &memory.Decimal128Vector{Values: make([]memory.Decimal128, n), Validity: valid, Precision: b.DecimalPrecision, Scale: b.DecimalScale}
 		case memory.TypeFloat64:
 			s.batch.Float64s[b.Name] = &memory.Float64Vector{Values: make([]float64, n), Validity: valid}
 		case memory.TypeUint64:
@@ -559,7 +573,7 @@ func (s *batchStream) allocateFixed(ctx context.Context, want int, stringBytes i
 		case memory.TypeString:
 			s.batch.Strings[b.Name] = &memory.StringViewVector{Offsets: make([]uint32, n+1), Validity: valid, Encoding: memory.EncodingView}
 		}
-		if b.Nullable && b.Type != memory.TypeString || isNarrowBinding(b) {
+		if b.Nullable && b.Type != memory.TypeString && b.Type != memory.TypeDecimal || isNarrowBinding(b) {
 			s.decode.defs = resize(s.decode.defs, n)
 		}
 		switch b.Type {
@@ -1040,7 +1054,7 @@ func (s *batchStream) StreamDiagnostics() map[string]string {
 }
 
 func bindStreamBatch(dst, src *memory.Batch) {
-	if dst.Int8s == nil || dst.Int16s == nil || dst.Int32s == nil || dst.Int64s == nil || dst.Uint8s == nil || dst.Uint16s == nil || dst.Uint32s == nil || dst.Uint64s == nil || dst.Float32s == nil || dst.Float64s == nil || dst.Strings == nil {
+	if dst.Int8s == nil || dst.Int16s == nil || dst.Int32s == nil || dst.Int64s == nil || dst.Uint8s == nil || dst.Uint16s == nil || dst.Uint32s == nil || dst.Uint64s == nil || dst.Float32s == nil || dst.Float64s == nil || dst.Decimals == nil || dst.Strings == nil {
 		*dst = *memory.NewBatch()
 	}
 	for k, v := range src.Int8s {
@@ -1069,6 +1083,9 @@ func bindStreamBatch(dst, src *memory.Batch) {
 	}
 	for k, v := range src.Float32s {
 		dst.Float32s[k] = v
+	}
+	for k, v := range src.Decimals {
+		dst.Decimals[k] = v
 	}
 	for k, v := range src.Float64s {
 		dst.Float64s[k] = v

@@ -94,7 +94,15 @@ func arrowDataType(field Field) (arrow.DataType, error) {
 			children[index] = converted
 		}
 		return arrow.StructOf(children...), nil
-	case TypeDecimal, TypeArrow:
+	case TypeDecimal:
+		if field.DecimalPrecision == 0 {
+			return nil, fmt.Errorf("logical type %s requires an explicit Arrow type adapter", field.Type)
+		}
+		if err := field.ValidateDecimal128(); err != nil {
+			return nil, err
+		}
+		return &arrow.Decimal128Type{Precision: field.DecimalPrecision, Scale: field.DecimalScale}, nil
+	case TypeArrow:
 		return nil, fmt.Errorf("logical type %s requires an explicit Arrow type adapter", field.Type)
 	default:
 		return nil, fmt.Errorf("logical type %s is not supported by Arrow sinks", field.Type)
@@ -120,6 +128,13 @@ func ArrowRecordRange(allocator arrowmem.Allocator, schema Schema, batch *Batch,
 	}
 	builder := array.NewRecordBuilder(allocator, arrowSchema)
 	defer builder.Release()
+	for _, field := range schema.Fields {
+		if field.Type == TypeDecimal {
+			if err := batch.Decimals[field.Name].ValidateField(field, batch.Rows); err != nil {
+				return nil, err
+			}
+		}
+	}
 	for row := offset; row < offset+length; row++ {
 		for column, field := range schema.Fields {
 			if err := appendArrowValue(builder.Field(column), batch, field, row); err != nil {
@@ -184,6 +199,8 @@ func appendArrowValue(builder array.Builder, batch *Batch, field Field, row int)
 		builder.(*array.Uint64Builder).Append(batch.Uint64s[field.Name].Values[row])
 	case TypeFloat32:
 		builder.(*array.Float32Builder).Append(batch.Float32s[field.Name].Values[row])
+	case TypeDecimal:
+		builder.(*array.Decimal128Builder).Append(batch.Decimals[field.Name].Values[row])
 	case TypeFloat64:
 		builder.(*array.Float64Builder).Append(batch.Float64s[field.Name].Values[row])
 	case TypeString:
@@ -230,6 +247,12 @@ func appendArrowValue(builder array.Builder, batch *Batch, field Field, row int)
 
 func batchValueValid(batch *Batch, field Field, row int) (bool, error) {
 	switch field.Type {
+	case TypeDecimal:
+		v := batch.Decimals[field.Name]
+		if v == nil || row < 0 || row >= len(v.Values) {
+			return false, fmt.Errorf("decimal vector is missing or shorter than rows")
+		}
+		return v.IsValid(row), nil
 	case TypeInt8:
 		value := batch.Int8s[field.Name]
 		if value == nil {

@@ -46,6 +46,9 @@ func BorrowBatchRange(src *Batch, offset, length int) (*Batch, error) {
 	for name, v := range src.Float32s {
 		dst.Float32s[name] = &Float32Vector{Values: v.Values[offset:end], Validity: borrowValidityRange(v.Validity, offset, length), Encoding: v.Encoding}
 	}
+	for name, v := range src.Decimals {
+		dst.Decimals[name] = &Decimal128Vector{Values: v.Values[offset:end], Validity: borrowValidityRange(v.Validity, offset, length), Precision: v.Precision, Scale: v.Scale}
+	}
 	for name, v := range src.Float64s {
 		dst.Float64s[name] = &Float64Vector{Values: v.Values[offset:end], Validity: borrowValidityRange(v.Validity, offset, length), Encoding: v.Encoding}
 	}
@@ -178,6 +181,11 @@ func BorrowedRangeMetadataBytes(src *Batch, offset, length int) (int64, error) {
 		if v == nil {
 			return 0, fmt.Errorf("nil float32 vector")
 		}
+		if err := add(v.Validity); err != nil {
+			return 0, err
+		}
+	}
+	for _, v := range src.Decimals {
 		if err := add(v.Validity); err != nil {
 			return 0, err
 		}

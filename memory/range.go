@@ -110,6 +110,17 @@ func estimateBatchRangeBytes(src *Batch, offset, length int, inheritedNulls bool
 			return 0, err
 		}
 	}
+	for name, v := range src.Decimals {
+		if err := v.validateRange(offset, length); err != nil {
+			return 0, fmt.Errorf("decimal column %q: %w", name, err)
+		}
+		if int64(length) > math.MaxInt64/16 {
+			return 0, fmt.Errorf("decimal range byte estimate overflows int64")
+		}
+		if err := add(int64(length)*16 + validityBytes(v.Validity)); err != nil {
+			return 0, err
+		}
+	}
 	for name, v := range src.Float64s {
 		if v == nil || len(v.Values) < end {
 			return 0, fmt.Errorf("float64 column %q is shorter than range", name)
@@ -272,6 +283,12 @@ func CloneBatchRange(src *Batch, offset, length int) (*Batch, error) {
 			return fail(name, fmt.Errorf("uint64 vector shorter than range"))
 		}
 		dst.Uint64s[name] = &Uint64Vector{Values: append([]uint64(nil), v.Values[offset:end]...), Validity: cloneValidityRange(v.Validity, offset, length), Encoding: v.Encoding}
+	}
+	for name, v := range src.Decimals {
+		if err := v.validateRange(offset, length); err != nil {
+			return fail(name, err)
+		}
+		dst.Decimals[name] = &Decimal128Vector{Values: append([]Decimal128(nil), v.Values[offset:end]...), Validity: cloneValidityRange(v.Validity, offset, length), Precision: v.Precision, Scale: v.Scale}
 	}
 	for name, v := range src.Float64s {
 		if v == nil || len(v.Values) < end {

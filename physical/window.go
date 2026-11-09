@@ -140,6 +140,12 @@ func NewWindowSource(input source.Source, partitionBy []string, orderBy []SortKe
 // NewWindowSourceWithOptions validates an analytic window source and selects
 // its resident, already-ordered, or external-sort implementation.
 func NewWindowSourceWithOptions(input source.Source, partitionBy []string, orderBy []SortKey, expressions []WindowExpression, outputFields []memory.Field, manager memory.Manager, options WindowSourceOptions) (source.Source, error) {
+	if input != nil {
+		if err := rejectNativeDecimalExecution(input.Schema()); err != nil {
+			return nil, err
+		}
+	}
+
 	if input == nil {
 		return nil, fmt.Errorf("window input is nil")
 	}

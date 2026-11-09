@@ -60,8 +60,10 @@ type Program struct {
 	nullable     bool
 	complexity   int
 	outputs      []programOutput
-	result       memory.Field
-	selection    *selectionPlan
+	// Result schema is immutable compile-time metadata. Keep it out of the
+	// by-value program copied through execution and nested region descriptors.
+	result    *memory.Field
+	selection *selectionPlan
 }
 
 // WorkspaceBytes returns logical register metadata and distinct physical-slot

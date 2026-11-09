@@ -2,10 +2,18 @@
 // streams. Prepared partition lists preserve their exact order and subset.
 // Signed and unsigned integer annotations retain their native widths and exact
 // values. UTF-8 STRING, DATE, and UTC TIMESTAMP annotations are supported;
-// DECIMAL, TIME, UNKNOWN, and other unsupported logical annotations fail at
-// OpenFile rather than being exposed as their physical storage values. Native
-// DECIMAL execution is not implemented. Unsigned value statistics are not used
-// for row-group range pruning; null-count pruning remains available.
+// DECIMAL precision 1..38 with nonnegative scale is decoded exactly to native
+// decimal128 vectors. Wider decimals, TIME, UNKNOWN, and other unsupported
+// annotations fail at OpenFile. Decimal arithmetic/expression execution is not
+// implemented yet. Fixed-length DELTA_BYTE_ARRAY and INT32/INT64
+// BYTE_STREAM_SPLIT are rejected because the upstream decoders are unavailable
+// or unsafe on scalar fallback. Fixed-length BYTE_STREAM_SPLIT is supported.
+// Selected decimal columns receive a page-bounded encoding-validation pass
+// before decoding, so inaccurate footer lists cannot bypass these restrictions.
+// This pass reads their complete selected row-group chunks even for an early
+// Limit and may decompress pages again during the subsequent decoding pass.
+// Decimal and unsigned value statistics are not used for row-group range
+// pruning; null-count pruning remains available.
 //
 // Strings use charged, page-bounded view headers and copy only an admitted
 // row span into owned output. No borrowed page is advanced until its views

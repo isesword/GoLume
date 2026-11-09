@@ -868,6 +868,8 @@ func isU32Type(t memory.DataType) bool {
 
 func seriesRowValid(batch *memory.Batch, field memory.Field, row int) bool {
 	switch {
+	case field.Type == memory.TypeDecimal && field.DecimalPrecision != 0:
+		return batch.Decimals[field.Name].IsValid(row)
 	case isI32Type(field.Type):
 		return batch.Int32s[field.Name].IsValid(row)
 	case isI64Type(field.Type):

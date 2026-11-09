@@ -358,10 +358,7 @@ func TestParquetRejectsUnsupportedLogicalAnnotations(t *testing.T) {
 		length   int
 		legacy   bool
 	}{
-		{"decimal_int32", schema.NewDecimalLogicalType(9, 2), arrowparquet.Types.Int32, -1, true},
-		{"decimal_int64", schema.NewDecimalLogicalType(18, 4), arrowparquet.Types.Int64, -1, true},
-		{"decimal_bytes", schema.NewDecimalLogicalType(20, 4), arrowparquet.Types.ByteArray, -1, true},
-		{"decimal_fixed", schema.NewDecimalLogicalType(38, 4), arrowparquet.Types.FixedLenByteArray, 16, true},
+		{"decimal256", schema.NewDecimalLogicalType(39, 4), arrowparquet.Types.ByteArray, -1, true},
 		{"time_millis_utc", schema.NewTimeLogicalType(true, schema.TimeUnitMillis), arrowparquet.Types.Int32, -1, true},
 		{"time_micros_utc", schema.NewTimeLogicalType(true, schema.TimeUnitMicros), arrowparquet.Types.Int64, -1, true},
 		{"time_nanos_local", schema.NewTimeLogicalType(false, schema.TimeUnitNanos), arrowparquet.Types.Int64, -1, false},
@@ -394,7 +391,7 @@ func TestParquetRejectsUnsupportedLogicalAnnotations(t *testing.T) {
 				if err == nil || !strings.Contains(err.Error(), `column "value" logical type`) || !strings.Contains(err.Error(), "not supported") {
 					t.Fatalf("expected explicit annotation error, got %v", err)
 				}
-				if strings.HasPrefix(tc.name, "decimal") && !strings.Contains(err.Error(), "precision and scale") {
+				if strings.HasPrefix(tc.name, "decimal") && !strings.Contains(err.Error(), "precision") {
 					t.Fatalf("decimal error omits semantics: %v", err)
 				}
 			})

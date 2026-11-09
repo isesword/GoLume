@@ -20,7 +20,8 @@ func Compile(schema memory.Schema, e Expr) (Program, error) {
 	if err != nil {
 		return Program{}, err
 	}
-	program := Program{instructions: compiler.instructions, root: root, typ: info.Type, nullable: info.Nullable, complexity: len(compiler.instructions), result: bound.OutputField("")}
+	result := bound.OutputField("")
+	program := Program{instructions: compiler.instructions, root: root, typ: info.Type, nullable: info.Nullable, complexity: len(compiler.instructions), result: &result}
 	program.planStorage()
 	program.planSelection()
 	return program, nil

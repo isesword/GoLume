@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
+	"github.com/apache/arrow-go/v18/arrow/decimal128"
 	"math"
 	"sync"
 )
@@ -307,7 +308,11 @@ func runFieldSize(batch *Batch, field Field, rows int) (int64, error) {
 	if int64(rows) > math.MaxInt64/int64(width) {
 		return 0, fmt.Errorf("fixed-width field %q size overflow", field.Name)
 	}
-	return addRunSizes(validityBytes, int64(rows)*int64(width))
+	metadataBytes := int64(0)
+	if field.Type == TypeDecimal {
+		metadataBytes = 8
+	}
+	return addRunSizes(validityBytes, metadataBytes, int64(rows)*int64(width))
 }
 
 func addRunSizes(parts ...int64) (int64, error) {
@@ -445,6 +450,12 @@ func validateRunField(batch *Batch, field Field, rows int) error {
 
 func fixedRunField(batch *Batch, field Field, rows int) (Bitmap, int, error) {
 	switch field.Type {
+	case TypeDecimal:
+		v := batch.Decimals[field.Name]
+		if err := v.ValidateField(field, rows); err != nil {
+			return nil, 0, err
+		}
+		return v.Validity, 16, nil
 	case TypeInt8:
 		v := batch.Int8s[field.Name]
 		if v == nil || len(v.Values) != rows {
@@ -555,6 +566,13 @@ func encodeRunField(writer *runWriter, batch *Batch, field Field, rows int) erro
 	}
 	encodeValidity(writer, validity, rows)
 	switch field.Type {
+	case TypeDecimal:
+		writer.u32(uint32(field.DecimalPrecision))
+		writer.u32(uint32(field.DecimalScale))
+		for _, value := range batch.Decimals[field.Name].Values {
+			writer.u64(value.LowBits())
+			writer.u64(uint64(value.HighBits()))
+		}
 	case TypeInt8:
 		for _, value := range batch.Int8s[field.Name].Values {
 			writer.u8(uint8(value))
@@ -678,6 +696,23 @@ func decodeRunField(reader *runReader, batch *Batch, field Field, rows int) erro
 	}
 	validity := decodeValidity(reader, rows)
 	switch field.Type {
+	case TypeDecimal:
+		if err := field.ValidateDecimal128(); err != nil {
+			return fmt.Errorf("%w: %v", ErrSpillCorrupt, err)
+		}
+		if int32(reader.u32()) != field.DecimalPrecision || int32(reader.u32()) != field.DecimalScale {
+			return fmt.Errorf("%w: decimal precision/scale mismatch", ErrSpillCorrupt)
+		}
+		if !reader.requireArray(rows, 16, "decimal values exceed remaining payload") {
+			return reader.err
+		}
+		values := make([]Decimal128, rows)
+		for i := range values {
+			lo := reader.u64()
+			hi := reader.u64()
+			values[i] = decimal128.New(int64(hi), lo)
+		}
+		batch.Decimals[field.Name] = &Decimal128Vector{Values: values, Validity: validity, Precision: field.DecimalPrecision, Scale: field.DecimalScale}
 	case TypeInt8:
 		if !reader.requireArray(rows, 1, "int8 values exceed remaining payload") {
 			return reader.err

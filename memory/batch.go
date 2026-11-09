@@ -16,6 +16,7 @@ type Batch struct {
 	Uint64s     map[string]*Uint64Vector
 	Float32s    map[string]*Float32Vector
 	Float64s    map[string]*Float64Vector
+	Decimals    map[string]*Decimal128Vector
 	Strings     map[string]*StringViewVector
 	DictStrings map[string]*DictionaryStringVector
 	StringLists map[string]*StringListVector
@@ -36,6 +37,7 @@ func NewBatch() *Batch {
 		Uint64s:     make(map[string]*Uint64Vector),
 		Float32s:    make(map[string]*Float32Vector),
 		Float64s:    make(map[string]*Float64Vector),
+		Decimals:    make(map[string]*Decimal128Vector),
 		Strings:     make(map[string]*StringViewVector),
 		DictStrings: make(map[string]*DictionaryStringVector),
 		StringLists: make(map[string]*StringListVector),
@@ -84,6 +86,7 @@ func (b *Batch) ClearColumns() {
 	clear(b.Uint64s)
 	clear(b.Float32s)
 	clear(b.Float64s)
+	clear(b.Decimals)
 	clear(b.Strings)
 	clear(b.DictStrings)
 	clear(b.StringLists)

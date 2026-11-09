@@ -9,6 +9,11 @@ import (
 )
 
 func compileQuery(schema memory.Schema, q expr.Query) (CompiledQuery, error) {
+	for _, field := range schema.Fields {
+		if field.Type == memory.TypeDecimal && field.DecimalPrecision != 0 {
+			return CompiledQuery{}, fmt.Errorf("native decimal aggregation is not supported yet for column %q", field.Name)
+		}
+	}
 	outputNames := make(map[string]struct{}, len(q.GroupBy)+len(q.Aggregates))
 	for _, name := range q.GroupBy {
 		if _, duplicate := outputNames[name]; duplicate {

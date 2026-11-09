@@ -24,7 +24,9 @@ type columnBinding struct {
 	Nullable bool
 	// TimestampScale converts the physical int64 timestamp unit to UTC
 	// nanoseconds. It is one for ordinary int64 and nanosecond timestamps.
-	TimestampScale int64
+	TimestampScale   int64
+	DecimalPrecision int32
+	DecimalScale     int32
 }
 
 // Source exposes projected flat Parquet columns as row-group partitions. It
@@ -51,8 +53,8 @@ func (s *Source) PlanIdentity() string { return fmt.Sprintf("parquet:%p", s.meta
 // OpenFile discovers a flat primitive Parquet schema and exposes supported
 // integer, float, boolean, UTF-8 string, date, and UTC timestamp columns.
 // Repeated/nested columns and unsupported physical or logical types are
-// rejected rather than silently decoded incorrectly. DECIMAL and TIME annotations
-// are not supported by this native reader.
+// rejected rather than silently decoded incorrectly. DECIMAL precision 1..38
+// and nonnegative scale are decoded exactly to decimal128; TIME is unsupported.
 func OpenFile(path string) (*Source, error) {
 	base, err := openMetadata(path)
 	if err != nil {
@@ -124,7 +126,37 @@ func bindingAt(meta *metadata.FileMetaData, index int, logicalName string) (colu
 	switch d.LogicalType().(type) {
 	case schema.NoLogicalType, schema.IntLogicalType, schema.StringLogicalType, schema.DateLogicalType, schema.TimestampLogicalType:
 	case schema.DecimalLogicalType:
-		return columnBinding{}, fmt.Errorf("parquet column %q logical type %s is not supported by native scan; DECIMAL precision and scale must be preserved", d.Path(), d.LogicalType())
+		decimal := d.LogicalType().(schema.DecimalLogicalType)
+
+		if _, err := memory.Decimal128Field(logicalName, binding.Nullable, decimal.Precision(), decimal.Scale()); err != nil {
+			return columnBinding{}, fmt.Errorf("parquet column %q logical type %s is not supported: %w", d.Path(), d.LogicalType(), err)
+		}
+		switch d.PhysicalType() {
+		case arrowparquet.Types.Int32:
+			if decimal.Precision() > 9 {
+				return columnBinding{}, fmt.Errorf("parquet decimal column %q INT32 precision exceeds 9", d.Path())
+			}
+		case arrowparquet.Types.Int64:
+			if decimal.Precision() > 18 {
+				return columnBinding{}, fmt.Errorf("parquet decimal column %q INT64 precision exceeds 18", d.Path())
+			}
+		case arrowparquet.Types.ByteArray:
+		case arrowparquet.Types.FixedLenByteArray:
+			// Exact Parquet precision capacities for widths below decimal128.
+			capacities := [...]int32{0, 2, 4, 6, 9, 11, 14, 16, 18, 21, 23, 26, 28, 31, 33, 35}
+			length := d.TypeLength()
+			if length < 1 || length < len(capacities) && decimal.Precision() > capacities[length] {
+				return columnBinding{}, fmt.Errorf("parquet decimal column %q precision %d is incompatible with fixed width %d", d.Path(), decimal.Precision(), length)
+			}
+		default:
+			return columnBinding{}, fmt.Errorf("parquet decimal column %q physical type %s is not supported", d.Path(), d.PhysicalType())
+		}
+		if err := validateDecimalPageEncodings(meta, index); err != nil {
+			return columnBinding{}, err
+		}
+		binding.Type = memory.TypeDecimal
+		binding.DecimalPrecision, binding.DecimalScale = decimal.Precision(), decimal.Scale()
+		return binding, nil
 	default:
 		return columnBinding{}, fmt.Errorf("parquet column %q logical type %s is not supported by native scan", d.Path(), d.LogicalType())
 	}
@@ -192,6 +224,9 @@ func bindingAt(meta *metadata.FileMetaData, index int, logicalName string) (colu
 }
 
 func fieldForBinding(b columnBinding) memory.Field {
+	if b.Type == memory.TypeDecimal {
+		return memory.Field{Name: b.Name, Type: b.Type, Nullable: b.Nullable, Encoding: memory.EncodingPlain, DecimalPrecision: b.DecimalPrecision, DecimalScale: b.DecimalScale}
+	}
 	encoding := memory.EncodingPlain
 	if b.Type == memory.TypeString {
 		encoding = memory.EncodingView
@@ -376,6 +411,12 @@ type typedDecoder struct {
 	denseF64  []float64
 	denseBool []bool
 	defs      []int16
+	// Inline decimal lookahead is bounded decoder metadata, not row-scaled scratch.
+	decimalI32   [1]int32
+	decimalI64   [1]int64
+	decimalBytes [1]arrowparquet.ByteArray
+	decimalFixed [1]arrowparquet.FixedLenByteArray
+	decimalDef   [1]int16
 }
 
 // scatterNullable fills already reserved vectors and writes each validity
@@ -922,7 +963,7 @@ func comparisonTruth(rg *metadata.RowGroupMetaData, b expr.Binary, bindings map[
 	// int64 range evaluator (UINT64 can exceed MaxInt64). Until a matching
 	// unsigned metadata evaluator is available, retain value ranges and use
 	// only null counts; the residual evaluator compares unsigned values exactly.
-	if binding.Type == memory.TypeString || binding.Type == memory.TypeUint32 || binding.Type == memory.TypeUint64 {
+	if binding.Type == memory.TypeString || binding.Type == memory.TypeUint32 || binding.Type == memory.TypeUint64 || binding.Type == memory.TypeDecimal {
 		if stats.HasNullCount() && stats.NullCount() >= rg.NumRows() {
 			return truthNull, nil
 		}

@@ -143,7 +143,9 @@ func TestGlobalBatchReviewCountOnlyParentValidity(t *testing.T) {
 		{Name: "pred", Type: memory.TypeInt32},
 		{Name: "plain", Type: memory.TypeString, Nullable: true},
 		{Name: "dict", Type: memory.TypeString, Nullable: true, Encoding: memory.EncodingDictionary},
-		{Name: "nested", Type: memory.TypeStruct, Nullable: true},
+		// The source schema is valid, but the replacement stream below omits
+		// this child payload to prove COUNT reads only the parent validity.
+		memory.StructField("nested", true, memory.Field{Name: "value", Type: memory.TypeInt64, Nullable: true}),
 		memory.ListStringField("list", true, true),
 		{Name: "opaque", Type: memory.TypeArrow, Nullable: true},
 		{Name: "numeric", Type: memory.TypeFloat64, Nullable: true},

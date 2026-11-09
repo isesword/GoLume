@@ -105,6 +105,9 @@ func (b *expressionBinder) bindNode(e Expr) (*BoundExpr, error) {
 		if !ok {
 			return nil, fmt.Errorf("column %q not found", n.Name)
 		}
+		if field.Type == memory.TypeDecimal && field.DecimalPrecision != 0 {
+			return nil, fmt.Errorf("native decimal expression execution is not supported yet for column %q", n.Name)
+		}
 		bound.Field = cloneBoundField(field)
 		bound.Columns = []string{n.Name}
 	case Int64Literal:

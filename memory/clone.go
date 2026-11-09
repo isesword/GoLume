@@ -38,6 +38,13 @@ func CloneBatch(src *Batch) (*Batch, error) {
 	for k, v := range src.Uint64s {
 		dst.Uint64s[k] = &Uint64Vector{Values: append([]uint64(nil), v.Values...), Validity: append(Bitmap(nil), v.Validity...), Encoding: v.Encoding}
 	}
+	for k, v := range src.Decimals {
+		if err := v.Validate(src.Rows); err != nil {
+			dst.ReleaseOwned()
+			return nil, fmt.Errorf("decimal column %q: %w", k, err)
+		}
+		dst.Decimals[k] = &Decimal128Vector{Values: append([]Decimal128(nil), v.Values...), Validity: append(Bitmap(nil), v.Validity...), Precision: v.Precision, Scale: v.Scale}
+	}
 	for k, v := range src.Float64s {
 		dst.Float64s[k] = &Float64Vector{Values: append([]float64(nil), v.Values...), Validity: append(Bitmap(nil), v.Validity...), Encoding: v.Encoding}
 	}

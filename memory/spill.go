@@ -859,6 +859,10 @@ func writeFieldFingerprint(h hash.Hash, field Field) {
 		_, _ = h.Write([]byte{0})
 	}
 	writeFingerprintUint32(h, uint32(field.Encoding))
+	if field.Type == TypeDecimal {
+		writeFingerprintUint32(h, uint32(field.DecimalPrecision))
+		writeFingerprintUint32(h, uint32(field.DecimalScale))
+	}
 	writeFingerprintString(h, field.ArrowType)
 	writeFingerprintString(h, field.DictionaryDomain)
 	writeFingerprintUint32(h, uint32(len(field.Children)))

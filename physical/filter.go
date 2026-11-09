@@ -32,6 +32,12 @@ func NewFilterSource(input source.Source, predicate expr.Expr) (source.Source, e
 // slice emits row counts only. Output bindings are borrowed until Next/Close.
 // A nil predicate selects every row. The source holds no execution workspace.
 func NewFilterProjectSource(input source.Source, predicate expr.Expr, columns []string) (source.Source, error) {
+	if input != nil {
+		if err := rejectNativeDecimalExecution(input.Schema()); err != nil {
+			return nil, err
+		}
+	}
+
 	if input == nil {
 		return nil, fmt.Errorf("filter input is nil")
 	}

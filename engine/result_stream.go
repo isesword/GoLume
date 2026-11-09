@@ -70,7 +70,12 @@ func (p *PreparedQuery) executeTyped(ctx context.Context, opts ExecuteOptions, a
 		typedCollector = &typedResultCollector{query: p, result: typed, account: resultCollector{budget: budget.Operator("CollectTypedResult", memory.MemoryRetainedState)}}
 		defer typedCollector.account.close()
 	}
-	schema := p.resultSchema()
+	schema := p.executionSchema
+	if schema.Fields == nil {
+		// Keep manually assembled internal plans usable without mutating
+		// their metadata or introducing lazy writes on concurrent execution.
+		schema = p.resultSchema()
+	}
 	var stream source.BatchStream
 	readOpts := source.ReadOptions{Kernels: p.e.kernels, BatchRows: p.e.opts.Pipeline.MaxMorselRows, BatchBytes: p.e.opts.Pipeline.MaxMorselBytes}
 	switch {
