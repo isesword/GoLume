@@ -1098,9 +1098,11 @@ func (h *candidateHeap) Pop() any {
 
 // batchAccumulator owns a growing materialized batch and opaque Arrow slices.
 type batchAccumulator struct {
-	schema memory.Schema
-	batch  *memory.Batch
-	opaque map[string][]arrow.Array
+	// Only the external sorter pre-admits dictionary growth from actual rows.
+	ownedDictionaries bool
+	schema            memory.Schema
+	batch             *memory.Batch
+	opaque            map[string][]arrow.Array
 }
 
 func newBatchAccumulator(schema memory.Schema) *batchAccumulator {
@@ -1255,10 +1257,11 @@ func (a *batchAccumulator) appendRow(src *memory.Batch, row int) error {
 				}
 				out := a.batch.DictStrings[f.Name]
 				if out == nil {
-					out = &memory.DictionaryStringVector{Offsets: v.Offsets, Data: v.Data, DictionaryDomain: v.DictionaryDomain, Encoding: v.Encoding}
+					out = &memory.DictionaryStringVector{}
 				}
-				out.Indices = append(out.Indices, v.Indices[row])
-				out.Validity = appendOneValidity(out.Validity, v.Validity, row, len(out.Indices)-1)
+				if err := appendSortDictionaryRowMode(out, v, row, v.IsValid(row), a.ownedDictionaries); err != nil {
+					return fmt.Errorf("append dictionary column %q: %w", f.Name, err)
+				}
 				a.batch.DictStrings[f.Name] = out
 			} else {
 				v := src.Strings[f.Name]
@@ -1341,6 +1344,11 @@ func (a *batchAccumulator) appendOpaque(name string, v *memory.OpaqueVector, row
 }
 
 func (a *batchAccumulator) finish() (*memory.Batch, error) {
+	for _, v := range a.batch.DictStrings {
+		if a.ownedDictionaries && v.DictionaryDomain == "" {
+			finishSortDictionary(v)
+		}
+	}
 	for name, arrs := range a.opaque {
 		if len(arrs) == 0 {
 			continue

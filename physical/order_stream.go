@@ -11,6 +11,7 @@ import (
 	"gocolumn/source"
 	"math"
 	"sort"
+	"unsafe"
 )
 
 const (
@@ -27,8 +28,20 @@ type sortSegmentRef struct {
 // bounded physical segments, allowing hierarchical merge to reduce open run
 // fan-in without creating a single input-sized file or decode buffer.
 type externalSortRun struct {
-	segments spillmeta.Slice[sortSegmentRef]
-	rows     int64
+	segments        spillmeta.Slice[sortSegmentRef]
+	rows            int64
+	maxSegmentBytes int64
+	bytes           int64
+	maxRowBytes     int64
+	maxCodecBytes   int64
+	depth           int
+}
+
+const externalSortLevels = 32
+
+type externalSortLevel struct {
+	runs  [externalSortFanIn - 1]externalSortRun
+	count int
 }
 
 type externalSortStream struct {
@@ -42,10 +55,11 @@ type externalSortStream struct {
 	runBytes    int64
 	chunkRows   int
 
-	sortBudget *memory.OperatorBudget
-	encode     *memory.OperatorBudget
-	restore    *memory.OperatorBudget
-	output     *memory.OperatorBudget
+	sortBudget memory.Manager
+	encode     memory.Manager
+	restore    memory.Manager
+	output     memory.Manager
+	workspace  *sortWorkspace
 	metadata   memory.Manager
 
 	baseMetadata memory.Reservation
@@ -141,6 +155,11 @@ func newExternalSortStream(ctx context.Context, owner *SortSource, opts source.R
 	if err != nil {
 		return nil, err
 	}
+	// Covers the workspace owner and its bounded live allocation tokens.
+	if metadataBytes > math.MaxInt64-4096 {
+		return nil, memory.ErrBudgetExceeded
+	}
+	metadataBytes += 4096
 	baseMetadata, err := metadata.Reserve(ctx, metadataBytes)
 	if err != nil {
 		return nil, err
@@ -170,14 +189,12 @@ func newExternalSortStream(ctx context.Context, owner *SortSource, opts source.R
 	if chunkRows > 4096 {
 		chunkRows = 4096
 	}
+	workspace := &sortWorkspace{parent: query.Operator("ExternalSortWorkspace", memory.MemoryWorkspace)}
 	return &externalSortStream{
 		owner: owner, query: query, store: spillmeta.NewStore(store, metadata), opts: opts, internal: internal,
 		fingerprint: memory.SchemaFingerprint(internal), ordinal: ordinal, runBytes: runBytes, chunkRows: chunkRows,
-		sortBudget: query.Operator("ExternalSortRun", memory.MemoryWorkspace),
-		encode:     query.Operator("ExternalSortEncode", memory.MemorySpillBuffer),
-		restore:    query.Operator("ExternalSortRestore", memory.MemorySpillBuffer),
-		output:     query.Operator("ExternalSortOutput", memory.MemoryWorkspace),
-		metadata:   metadata, baseMetadata: baseMetadata,
+		sortBudget: workspace, encode: workspace, restore: workspace, output: workspace, workspace: workspace,
+		metadata: metadata, baseMetadata: baseMetadata,
 	}, nil
 }
 
@@ -274,7 +291,19 @@ func (s *externalSortStream) makeInitialRun(ctx context.Context, batch *memory.B
 	if err != nil || estimate*2+int64(rows)*16+1024 > math.MaxInt64-bindingBytes {
 		return externalSortRun{}, memory.ErrBudgetExceeded
 	}
-	reservation, err := s.sortBudget.Reserve(ctx, estimate*2+int64(rows)*16+1024+bindingBytes)
+	sortBytes := estimate*2 + int64(rows)*16 + 1024 + bindingBytes
+	encodedBytes, err := memory.EstimateColumnarRunRangeBytes(s.owner.input.Schema(), batch, start, rows)
+	if err != nil {
+		return externalSortRun{}, err
+	}
+	peak, err := sortWorkspaceSize(s.workspace.Used(), sortBytes, encodedBytes, int64(rows)*8, 4)
+	if err != nil {
+		return externalSortRun{}, err
+	}
+	if err = s.workspace.ensure(ctx, peak); err != nil {
+		return externalSortRun{}, err
+	}
+	reservation, err := s.sortBudget.Reserve(ctx, sortBytes)
 	if err != nil {
 		return externalSortRun{}, err
 	}
@@ -313,16 +342,66 @@ func (s *externalSortStream) makeInitialRun(ctx context.Context, batch *memory.B
 		return externalSortRun{}, err
 	}
 	run.rows = int64(rows)
+	run.maxSegmentBytes = ref.handle.Bytes()
+	run.bytes = ref.handle.Bytes()
+	run.maxRowBytes = estimate + 8
+	run.maxCodecBytes, err = sortBatchCodecBytes(s.internal, sorted)
+	if err != nil {
+		run.segments.Release()
+		return externalSortRun{}, err
+	}
 	return run, nil
 }
 
 func (s *externalSortStream) generateRuns(ctx context.Context) (result spillmeta.Slice[externalSortRun], resultErr error) {
+	frontierBytes := 2 * int64(unsafe.Sizeof([externalSortLevels]externalSortLevel{}))
+	frontier, err := s.metadata.Reserve(ctx, frontierBytes)
+	if err != nil {
+		return result, err
+	}
+	defer frontier.Release()
+	var levels [externalSortLevels]externalSortLevel
+	defer func() {
+		for i := range levels {
+			for j := 0; j < levels[i].count; j++ {
+				levels[i].runs[j].segments.Release()
+			}
+		}
+	}()
+	addRun := func(owner *externalSortRun) error {
+		// Move, rather than borrow, the incoming segment-array owner. A merge
+		// may release that array while this call is still on the stack.
+		run := *owner
+		*owner = externalSortRun{}
+		for i := range levels {
+			level := &levels[i]
+			if level.count < len(level.runs) {
+				level.runs[level.count] = run
+				level.count++
+				return nil
+			}
+			var inputs [externalSortFanIn]externalSortRun
+			copy(inputs[:], level.runs[:])
+			inputs[externalSortFanIn-1] = run
+			run = externalSortRun{}
+			clear(level.runs[:])
+			level.count = 0
+			merged, err := s.mergeRunGroup(ctx, inputs[:])
+			if err != nil {
+				return err
+			}
+			run = merged
+			merged = externalSortRun{}
+		}
+		run.segments.Release()
+		return fmt.Errorf("external sort run frontier overflow")
+	}
 	stream, err := source.OpenBatchStream(ctx, s.owner.input, s.opts)
 	if err != nil {
 		return result, err
 	}
 	batch := memory.NewBatch()
-	defer batch.ReleaseOwned()
+	defer batch.ClearColumns()
 	var runs spillmeta.Slice[externalSortRun]
 	defer func() {
 		if resultErr != nil {
@@ -331,11 +410,15 @@ func (s *externalSortStream) generateRuns(ctx context.Context) (result spillmeta
 	}()
 	var ordinalBase uint64
 	for {
+		// The child may be another sort. Never hold idle phase credit while
+		// asking it for input; its live output remains independently admitted.
+		s.workspace.trim(0)
 		ok, nextErr := stream.Next(ctx, batch)
 		if nextErr != nil {
 			return result, errors.Join(nextErr, stream.Close())
 		}
 		if !ok {
+			batch.ClearColumns()
 			if closeErr := stream.Close(); closeErr != nil {
 				return result, closeErr
 			}
@@ -368,8 +451,7 @@ func (s *externalSortStream) generateRuns(ctx context.Context) (result spillmeta
 				_ = stream.Close()
 				return result, runErr
 			}
-			if err := runs.Append(ctx, s.metadata, run); err != nil {
-				run.segments.Release()
+			if err := addRun(&run); err != nil {
 				_ = stream.Close()
 				return result, err
 			}
@@ -377,37 +459,59 @@ func (s *externalSortStream) generateRuns(ctx context.Context) (result spillmeta
 		}
 		ordinalBase += uint64(batch.Rows)
 		s.inputRows += int64(batch.Rows)
+		// Drop borrowed vector headers before the child invalidates its output
+		// at Next/Close, not after later frontier merges have finished.
+		batch.ClearColumns()
+	}
+	for i := range levels {
+		for j := 0; j < levels[i].count; j++ {
+			if err := runs.Append(ctx, s.metadata, levels[i].runs[j]); err != nil {
+				return result, err
+			}
+			levels[i].runs[j] = externalSortRun{}
+		}
+		levels[i].count = 0
 	}
 	return runs, nil
 }
 
 type externalSortCursor struct {
-	owner        *externalSortStream
-	segments     []sortSegmentRef
-	segment      int
-	row          int
-	decoded      *memory.DecodedColumnarRun
-	deleteOnLoad bool
+	owner          *externalSortStream
+	run            *externalSortRun
+	segment        int
+	row            int
+	decoded        *memory.DecodedColumnarRun
+	remainingBytes int64
+	loadedBytes    int64
 }
 
 func (c *externalSortCursor) load(ctx context.Context) error {
-	for c.decoded == nil && c.segment < len(c.segments) {
-		ref := c.segments[c.segment]
+	for c.decoded == nil && c.segment < len(c.run.segments.Values) {
+		ref := c.run.segments.Values[c.segment]
+		loadedBytes := ref.handle.Bytes()
 		decoded, err := c.owner.restoreSegment(ctx, ref)
 		if err != nil {
 			return err
 		}
-		if c.deleteOnLoad {
-			if err := c.owner.deleteSegment(ctx, ref); err != nil {
-				_ = decoded.Close()
-				return err
-			}
+		if err := c.owner.deleteSegment(ctx, ref); err != nil {
+			_ = decoded.Close()
+			return err
+		}
+		// The decoded batch is independent. Drop the consumed handle reference
+		// before releasing its array when no unread segment remains.
+		c.run.segments.Values[c.segment] = sortSegmentRef{}
+		ref = sortSegmentRef{}
+		if c.segment+1 == len(c.run.segments.Values) {
+			c.run.segments.Release()
 		}
 		c.decoded = decoded
+		c.loadedBytes = loadedBytes
 		c.row = 0
 		if decoded.Batch.Rows == 0 {
 			_ = decoded.Close()
 			c.decoded = nil
+			c.remainingBytes -= c.loadedBytes
+			c.loadedBytes = 0
 			c.segment++
 		}
 	}
@@ -422,13 +526,15 @@ func (c *externalSortCursor) advance(ctx context.Context) error {
 	if c.decoded != nil {
 		_ = c.decoded.Close()
 		c.decoded = nil
+		c.remainingBytes -= c.loadedBytes
+		c.loadedBytes = 0
 	}
 	c.segment++
 	return c.load(ctx)
 }
 
 func (c *externalSortCursor) close() {
-	c.segments = nil
+	c.run = nil
 	if c.decoded != nil {
 		_ = c.decoded.Close()
 		c.decoded = nil
@@ -478,14 +584,14 @@ func (h *externalSortHeap) Pop() any {
 	return value
 }
 
-func (s *externalSortStream) openCursors(ctx context.Context, runs []externalSortRun, deleteOnLoad bool) ([]*externalSortCursor, externalSortHeap, error) {
+func (s *externalSortStream) openCursors(ctx context.Context, runs []externalSortRun) ([]*externalSortCursor, externalSortHeap, error) {
 	if len(runs) > externalSortFanIn {
 		return nil, externalSortHeap{}, fmt.Errorf("external sort fan-in exceeded")
 	}
 	cursors := make([]*externalSortCursor, 0, len(runs))
 	h := externalSortHeap{keys: s.owner.keys, ord: s.ordinal, items: make([]*externalSortCursor, 0, len(runs))}
-	for _, run := range runs {
-		cursor := &externalSortCursor{owner: s, segments: run.segments.Values, deleteOnLoad: deleteOnLoad}
+	for i := range runs {
+		cursor := &externalSortCursor{owner: s, run: &runs[i], remainingBytes: runs[i].bytes}
 		if err := cursor.load(ctx); err != nil {
 			for _, opened := range cursors {
 				opened.close()
@@ -501,13 +607,94 @@ func (s *externalSortStream) openCursors(ctx context.Context, runs []externalSor
 	return cursors, h, nil
 }
 
+func sortDictionaryDomainBytes(batch *memory.Batch) (int64, error) {
+	var total int64
+	for _, v := range batch.DictStrings {
+		if v == nil {
+			return 0, fmt.Errorf("nil dictionary output")
+		}
+		var err error
+		total, err = sortWorkspaceSize(total, int64(len(v.DictionaryDomain)))
+		if err != nil {
+			return 0, err
+		}
+	}
+	for _, v := range batch.Structs {
+		if v == nil || v.Values == nil {
+			return 0, fmt.Errorf("nil struct output")
+		}
+		children, err := sortDictionaryDomainBytes(v.Values)
+		if err != nil {
+			return 0, err
+		}
+		total, err = sortWorkspaceSize(total, children)
+		if err != nil {
+			return 0, err
+		}
+	}
+	return total, nil
+}
+
+func sortBatchCodecBytes(schema memory.Schema, batch *memory.Batch) (int64, error) {
+	encoded, err := memory.EstimateColumnarRunRangeBytes(schema, batch, 0, batch.Rows)
+	if err != nil {
+		return 0, err
+	}
+	data, err := memory.EstimateBatchRangeBytes(batch, 0, batch.Rows)
+	if err != nil {
+		return 0, err
+	}
+	// A merge may produce a new 64-byte SHA256 dictionary identity.
+	// Reserve that maximum even when the input domain is shorter.
+	extra, err := sortDictionaryIdentityGrowth(batch)
+	if err != nil {
+		return 0, err
+	}
+	return sortWorkspaceSize(encoded-data, extra)
+}
+
+func sortDictionaryIdentityGrowth(batch *memory.Batch) (int64, error) {
+	var total int64
+	for _, v := range batch.DictStrings {
+		var err error
+		total, err = sortWorkspaceSize(total, max(0, int64(64-len(v.DictionaryDomain))))
+		if err != nil {
+			return 0, err
+		}
+	}
+	for _, v := range batch.Structs {
+		n, err := sortDictionaryIdentityGrowth(v.Values)
+		if err != nil {
+			return 0, err
+		}
+		total, err = sortWorkspaceSize(total, n)
+		if err != nil {
+			return 0, err
+		}
+	}
+	return total, nil
+}
+
 func (s *externalSortStream) buildMergedBatch(ctx context.Context, h *externalSortHeap) (*memory.Batch, memory.Reservation, error) {
 	if h.Len() == 0 {
 		return nil, nil, nil
 	}
+	var remainingBytes int64
+	for _, cursor := range h.items {
+		var err error
+		remainingBytes, err = sortWorkspaceSize(remainingBytes, cursor.remainingBytes)
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+	targetBytes := min(s.runBytes, remainingBytes)
+	if targetBytes > (math.MaxInt64-1024)/3 {
+		return nil, nil, memory.ErrBudgetExceeded
+	}
 	accumulator := newBatchAccumulator(s.internal)
+	accumulator.ownedDictionaries = true
 	var reservation memory.Reservation
-	var estimated int64
+	var estimated, domainCharge int64
 	for h.Len() > 0 && accumulator.batch.Rows < s.chunkRows {
 		cursor := h.items[0]
 		rowBytes, err := memory.EstimateBatchRangeBytes(cursor.decoded.Batch, cursor.row, 1)
@@ -522,12 +709,12 @@ func (s *externalSortStream) buildMergedBatch(ctx context.Context, h *externalSo
 			break
 		}
 		if reservation == nil {
-			reserveBytes := s.runBytes*2 + 1024
-			if rowBytes > s.runBytes {
-				if rowBytes > (math.MaxInt64-1024)/2 {
+			reserveBytes := targetBytes*3 + 1024
+			if rowBytes > targetBytes {
+				if rowBytes > (math.MaxInt64-1024)/3 {
 					return nil, nil, fmt.Errorf("external sort output row estimate overflows int64")
 				}
-				reserveBytes = rowBytes*2 + 1024
+				reserveBytes = rowBytes*3 + 1024
 			}
 			reservation, err = s.output.Reserve(ctx, reserveBytes)
 			if err != nil {
@@ -536,6 +723,21 @@ func (s *externalSortStream) buildMergedBatch(ctx context.Context, h *externalSo
 			}
 		}
 		if err := accumulator.appendRow(cursor.decoded.Batch, cursor.row); err != nil {
+			reservation.Release()
+			accumulator.batch.ReleaseOwned()
+			return nil, nil, err
+		}
+		// Dictionary domains are borrowed from decoded batches, just like their
+		// dictionaries. BatchBytes excludes these strings. Transfer admission
+		// to the output before advancing can close the last decoded owner.
+		domains, err := sortDictionaryDomainBytes(accumulator.batch)
+		if err == nil && domains > domainCharge {
+			err = reservation.(*sortWorkspaceReservation).grow(ctx, domains-domainCharge)
+			if err == nil {
+				domainCharge = domains
+			}
+		}
+		if err != nil {
 			reservation.Release()
 			accumulator.batch.ReleaseOwned()
 			return nil, nil, err
@@ -559,6 +761,17 @@ func (s *externalSortStream) buildMergedBatch(ctx context.Context, h *externalSo
 		}
 		return nil, nil, err
 	}
+	// A mixed dictionary receives a new content identity at finish. Admit
+	// that identity too before exposing the output beyond this phase.
+	domains, domainErr := sortDictionaryDomainBytes(batch)
+	if domainErr == nil && domains > domainCharge {
+		domainErr = reservation.(*sortWorkspaceReservation).grow(ctx, domains-domainCharge)
+	}
+	if domainErr != nil {
+		batch.ReleaseOwned()
+		reservation.Release()
+		return nil, nil, domainErr
+	}
 	if reservation != nil && memory.BatchBytes(batch) > reservation.Bytes() {
 		actual := memory.BatchBytes(batch)
 		batch.ReleaseOwned()
@@ -568,8 +781,76 @@ func (s *externalSortStream) buildMergedBatch(ctx context.Context, h *externalSo
 	return batch, reservation, nil
 }
 
+// reserveMergeWorkspace protects the full decode/restore, output, and encode
+// overlap using the inputs' actual admitted maximum segment and row sizes.
+func (s *externalSortStream) reserveCursorWorkspace(ctx context.Context, h *externalSortHeap) error {
+	// The plan borrows scalar sizes only, never another owner's segment slice.
+	var plans [externalSortFanIn]externalSortRun
+	for i, c := range h.items {
+		plans[i] = externalSortRun{bytes: c.remainingBytes, maxSegmentBytes: c.run.maxSegmentBytes, maxRowBytes: c.run.maxRowBytes, maxCodecBytes: c.run.maxCodecBytes}
+	}
+	return s.reserveMergeWorkspace(ctx, plans[:len(h.items)], false)
+}
+
+func (s *externalSortStream) reserveMergeWorkspace(ctx context.Context, inputs []externalSortRun, encode bool) error {
+	var decoded, restoreOverlap, totalBytes, maxRow, codecBytes int64
+	for _, run := range inputs {
+		var err error
+		decoded, err = sortWorkspaceSize(decoded, run.maxSegmentBytes)
+		if err != nil {
+			return err
+		}
+		totalBytes, err = sortWorkspaceSize(totalBytes, run.bytes)
+		if err != nil {
+			return err
+		}
+		restoreOverlap = max(restoreOverlap, run.maxSegmentBytes)
+		maxRow = max(maxRow, run.maxRowBytes)
+		codecBytes, err = sortWorkspaceSize(codecBytes, run.maxCodecBytes)
+		if err != nil {
+			return err
+		}
+	}
+	target := max(min(s.runBytes, totalBytes), maxRow)
+	if target > (math.MaxInt64-4096)/4 {
+		return memory.ErrBudgetExceeded
+	}
+	// Each append may briefly retain an old buffer plus a grown capacity.
+	// Three times logical payload covers this overlap, not only steady capacity.
+	output, err := sortWorkspaceSize(target*3, 1024, codecBytes)
+	if err != nil {
+		return err
+	}
+	overlap := restoreOverlap
+	if encode {
+		encoded, err := sortWorkspaceSize(target, 1024, codecBytes)
+		if err != nil {
+			return err
+		}
+		overlap = max(overlap, encoded)
+	}
+	peak, err := sortWorkspaceSize(decoded, output, overlap, 2048)
+	if err != nil {
+		return err
+	}
+	return s.workspace.ensure(ctx, peak)
+}
+
 func (s *externalSortStream) mergeRunGroup(ctx context.Context, inputs []externalSortRun) (result externalSortRun, resultErr error) {
-	cursors, h, err := s.openCursors(ctx, inputs, false)
+	defer s.workspace.trim(0)
+	defer func() {
+		for i := range inputs {
+			inputs[i].segments.Release()
+		}
+	}()
+	depth := 0
+	for _, run := range inputs {
+		depth = max(depth, run.depth+1)
+	}
+	if err := s.reserveMergeWorkspace(ctx, inputs, true); err != nil {
+		return result, err
+	}
+	cursors, h, err := s.openCursors(ctx, inputs)
 	if err != nil {
 		return externalSortRun{}, err
 	}
@@ -578,7 +859,11 @@ func (s *externalSortStream) mergeRunGroup(ctx context.Context, inputs []externa
 			cursor.close()
 		}
 	}()
-	var output externalSortRun
+	output := externalSortRun{depth: depth}
+	for _, run := range inputs {
+		output.maxRowBytes = max(output.maxRowBytes, run.maxRowBytes)
+	}
+	s.mergeLevels = max(s.mergeLevels, depth)
 	defer func() {
 		if resultErr != nil {
 			output.segments.Release()
@@ -590,8 +875,15 @@ func (s *externalSortStream) mergeRunGroup(ctx context.Context, inputs []externa
 			_ = s.deleteRun(context.Background(), output)
 			return externalSortRun{}, err
 		}
+		codecBytes, codecErr := sortBatchCodecBytes(s.internal, batch)
+		if codecErr != nil {
+			batch.ReleaseOwned()
+			reservation.Release()
+			return externalSortRun{}, codecErr
+		}
 		ref, err := s.spillBatch(ctx, batch)
 		batch.ReleaseOwned()
+		batch = nil
 		reservation.Release()
 		if err != nil {
 			_ = s.deleteRun(context.Background(), output)
@@ -601,12 +893,9 @@ func (s *externalSortStream) mergeRunGroup(ctx context.Context, inputs []externa
 			return externalSortRun{}, err
 		}
 		output.rows += int64(ref.rows)
-	}
-	for _, input := range inputs {
-		if err := s.deleteRun(ctx, input); err != nil {
-			_ = s.deleteRun(context.Background(), output)
-			return externalSortRun{}, err
-		}
+		output.maxSegmentBytes = max(output.maxSegmentBytes, ref.handle.Bytes())
+		output.bytes += ref.handle.Bytes()
+		output.maxCodecBytes = max(output.maxCodecBytes, codecBytes)
 	}
 	return output, nil
 }
@@ -620,7 +909,9 @@ func releaseSortRuns(runs *spillmeta.Slice[externalSortRun]) {
 }
 
 // Ownership of runs is transferred in and either returned or released on error.
-func (s *externalSortStream) mergeHierarchy(ctx context.Context, runs spillmeta.Slice[externalSortRun]) (result spillmeta.Slice[externalSortRun], resultErr error) {
+func (s *externalSortStream) mergeHierarchy(ctx context.Context, owner *spillmeta.Slice[externalSortRun]) (result spillmeta.Slice[externalSortRun], resultErr error) {
+	runs := *owner
+	*owner = spillmeta.Slice[externalSortRun]{}
 	defer func() {
 		if resultErr != nil {
 			releaseSortRuns(&runs)
@@ -640,13 +931,14 @@ func (s *externalSortStream) mergeHierarchy(ctx context.Context, runs spillmeta.
 				releaseSortRuns(&next)
 				return result, err
 			}
+			merged = externalSortRun{}
 			for i := start; i < end; i++ {
 				runs.Values[i].segments.Release()
 			}
 		}
 		runs.Release()
 		runs = next
-		s.mergeLevels++
+		next = spillmeta.Slice[externalSortRun]{}
 	}
 	return runs, nil
 }
@@ -656,12 +948,16 @@ func (s *externalSortStream) prepare(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	runs, err = s.mergeHierarchy(ctx, runs)
+	runs, err = s.mergeHierarchy(ctx, &runs)
 	if err != nil {
 		return err
 	}
 	s.finalRuns = runs
-	s.finalDecoded, s.finalHeap, err = s.openCursors(ctx, s.finalRuns.Values, true)
+	runs = spillmeta.Slice[externalSortRun]{}
+	if err = s.reserveMergeWorkspace(ctx, s.finalRuns.Values, false); err != nil {
+		return err
+	}
+	s.finalDecoded, s.finalHeap, err = s.openCursors(ctx, s.finalRuns.Values)
 	if err != nil {
 		return err
 	}
@@ -708,6 +1004,9 @@ func (s *externalSortStream) Next(ctx context.Context, dst *memory.Batch) (bool,
 		s.exhausted = true
 		return false, s.cleanup()
 	}
+	if err := s.reserveCursorWorkspace(ctx, &s.finalHeap); err != nil {
+		return false, s.abort(err)
+	}
 	batch, reservation, err := s.buildMergedBatch(ctx, &s.finalHeap)
 	if err != nil {
 		return false, s.abort(err)
@@ -716,6 +1015,9 @@ func (s *externalSortStream) Next(ctx context.Context, dst *memory.Batch) (bool,
 	s.outputBatch, s.outputMem = batch, reservation
 	s.outputRows += int64(batch.Rows)
 	bindDecodedBatch(dst, batch)
+	// Downstream operators may need to prepare while this batch is borrowed.
+	// Keep admission for live buffers, not unused headroom from this phase.
+	s.workspace.trim(s.workspace.Used())
 	return true, nil
 }
 
@@ -729,6 +1031,7 @@ func (s *externalSortStream) cleanup() error {
 	releaseSortRuns(&s.finalRuns)
 	err := s.store.Close()
 	s.store = nil
+	s.workspace.close()
 	s.internal = memory.Schema{}
 	s.ordinal = ""
 	if s.baseMetadata != nil {
