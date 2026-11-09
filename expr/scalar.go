@@ -1331,6 +1331,9 @@ func evalUnary(out, in *scalarRegister, op Op, source memory.DataType, rows int,
 }
 
 func evalStringUnary(out, in *scalarRegister, op Op, rows int) error {
+	if op == OpLower || op == OpUpper {
+		return evalStringCase(out, in, op, rows)
+	}
 	offsets := ensureOffsets(out, rows)
 	offsets[0] = 0
 	out.data = out.data[:0]
