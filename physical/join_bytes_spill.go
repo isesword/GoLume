@@ -312,7 +312,7 @@ func (s *spillableJoinStream) processByteSkew(ctx context.Context, leftRefs, rig
 	if err := errors.Join(s.deleteRefsStrict(ctx, leftRefs), s.deleteRefsStrict(ctx, rightRefs)); err != nil {
 		return err
 	}
-	return s.outputRuns.Append(ctx, s.metadata, created.Values...)
+	return s.appendOutputRuns(ctx, &created)
 }
 
 func (s *spillableJoinStream) skewRowEqual(batch *memory.Batch, row int, key hashagg.Key128, byteKey []byte) (bool, error) {
@@ -343,7 +343,14 @@ func (s *spillableJoinStream) appendOutputPairs(ctx context.Context, build *load
 			return s.appendOutputPairs(ctx, build, left, pairs[middle:], partition, created)
 		}
 	}
-	ref, err := s.flushPairs(ctx, build, left, pairs, partition)
+	ref, preflight, err := s.flushPairs(ctx, build, left, pairs, partition)
+	if preflight && len(pairs) > 1 {
+		middle := len(pairs) / 2
+		if err := s.appendOutputPairs(ctx, build, left, pairs[:middle], partition, created); err != nil {
+			return err
+		}
+		return s.appendOutputPairs(ctx, build, left, pairs[middle:], partition, created)
+	}
 	if err != nil {
 		return err
 	}

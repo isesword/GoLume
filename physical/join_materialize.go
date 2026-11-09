@@ -284,6 +284,16 @@ func cloneBatch(src *memory.Batch) (*memory.Batch, error) {
 }
 
 func materializeJoinBatch(dst *memory.Batch, s *JoinSource, left *memory.Batch, pairs []join.Pair) error {
+	return materializeJoinBatchMode(dst, s, left, pairs, false)
+}
+
+// bounded mode is used by the spill encoder after its full peak is admitted.
+func materializeJoinBatchMode(dst *memory.Batch, s *JoinSource, left *memory.Batch, pairs []join.Pair, bounded bool) error {
+	if bounded {
+		if err := initializeJoinMaterialization(dst, s, left, pairs); err != nil {
+			return err
+		}
+	}
 	n := len(pairs)
 	for _, b := range s.bindings {
 		switch b.field.Type {
@@ -513,7 +523,10 @@ func materializeJoinBatch(dst *memory.Batch, s *JoinSource, left *memory.Batch, 
 			}
 			dst.Strings[b.out] = out
 		case memory.TypeList:
-			out := resetStringList(dst.StringLists[b.out])
+			out := dst.StringLists[b.out]
+			if !bounded {
+				out = resetStringList(out)
+			}
 			for _, p := range pairs {
 				src, row, ok := joinSourceRow(s, left, b, p)
 				if !ok {
@@ -533,9 +546,19 @@ func materializeJoinBatch(dst *memory.Batch, s *JoinSource, left *memory.Batch, 
 			dst.StringLists[b.out] = out
 		case memory.TypeStruct:
 			var out *memory.StructVector
+			if bounded {
+				out = dst.Structs[b.out]
+			}
 			for _, p := range pairs {
 				src, row, ok := joinSourceRow(s, left, b, p)
 				if !ok {
+					if bounded {
+						// parentValid=false never reads a source child value.
+						if err := memory.AppendStructRow(out, out, 0, false); err != nil {
+							return err
+						}
+						continue
+					}
 					if out == nil {
 						out = &memory.StructVector{Fields: append([]memory.Field(nil), b.field.Children...), Values: memory.NewBatch(), Encoding: memory.EncodingView}
 					}
