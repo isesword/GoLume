@@ -129,7 +129,7 @@ func bindSortKey(batch *memory.Batch, schema memory.Schema, key SortKey) (boundS
 		}
 		bound = bindSortNumbers(vector.Values, vector.Validity)
 	case memory.TypeString, memory.TypeBinary:
-		if field.Type == memory.TypeString && field.Encoding == memory.EncodingDictionary {
+		if field.Encoding == memory.EncodingDictionary {
 			vector, err := batch.DictionaryString(key.Column)
 			if err != nil {
 				return boundSortKey{}, err

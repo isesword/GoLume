@@ -255,7 +255,11 @@ func TestExternalSortDecodeMetadataIsPhaseAdmitted(t *testing.T) {
 	if err := stream.reserveMergeWorkspace(ctx, inputs, false); err != nil {
 		t.Fatal(err)
 	}
-	want := int64(externalSortFanIn)*(100+metadata) + 3*400 + 1024 + 100 + 2048
+	outputMetadata, err := externalSortAccumulatorMetadataBytes(stream.internal)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := int64(externalSortFanIn)*(100+metadata) + 3*400 + 1024 + outputMetadata + 100 + 2048
 	if stream.workspace.capacity != want {
 		t.Fatalf("phase admission=%d want=%d (per-cursor metadata=%d)", stream.workspace.capacity, want, metadata)
 	}

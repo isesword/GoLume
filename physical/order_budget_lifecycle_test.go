@@ -309,8 +309,8 @@ func TestExternalSortOutputRetainsLargeDictionaryDomain(t *testing.T) {
 				if b.DictStrings["value"].DictionaryDomain != domain {
 					t.Fatal("domain changed")
 				}
-				if s.outputMem.Bytes() < int64(len(domain))+memory.BatchBytes(s.outputBatch) {
-					t.Fatal("output domain not covered", s.outputMem.Bytes(), len(domain), memory.BatchBytes(s.outputBatch))
+				if s.outputOwner.reservation.Bytes() < int64(len(domain))+memory.BatchBytes(s.outputOwner.batch) {
+					t.Fatal("output domain not covered", s.outputOwner.reservation.Bytes(), len(domain), memory.BatchBytes(s.outputOwner.batch))
 				}
 				if q.Used() < int64(len(domain)) {
 					t.Fatal("parent admission lost domain", q.Used())
@@ -616,8 +616,8 @@ func TestExternalSortRepeatedDictionaryCodesStayWithinEncodedBound(t *testing.T)
 			break
 		}
 		d := dst.DictStrings["value"]
-		if d.DictionaryLen() > 2 || int64(len(d.DictionaryDomain))+memory.BatchBytes(dst) > s.outputMem.Bytes() {
-			t.Fatal("dictionary amplification", d.DictionaryLen(), memory.BatchBytes(dst), s.outputMem.Bytes())
+		if d.DictionaryLen() > 2 || int64(len(d.DictionaryDomain))+memory.BatchBytes(dst) > s.outputOwner.reservation.Bytes() {
+			t.Fatal("dictionary amplification", d.DictionaryLen(), memory.BatchBytes(dst), s.outputOwner.reservation.Bytes())
 		}
 		for row, key := range dst.Int64s["key"].Values {
 			if key != int64(seen) || string(d.DictionaryValue(d.Indices[row])) != strings.Repeat(string(rune('a'+seen%2)), 1024) {

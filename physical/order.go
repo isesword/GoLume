@@ -955,14 +955,16 @@ func snapshotCell(batch *memory.Batch, schema memory.Schema, column string, row 
 		}
 		cell.null = !v.IsValid(row)
 		cell.f64 = v.Values[row]
-	case memory.TypeString:
+	case memory.TypeString, memory.TypeBinary:
 		if f.Encoding == memory.EncodingDictionary {
 			v, err := batch.DictionaryString(column)
 			if err != nil {
 				return cell, err
 			}
 			cell.null = !v.IsValid(row)
-			cell.text = v.DictionaryValue(v.Indices[row])
+			if !cell.null {
+				cell.text = v.DictionaryValue(v.Indices[row])
+			}
 		} else {
 			v, err := batch.String(column)
 			if err != nil {
@@ -971,13 +973,6 @@ func snapshotCell(batch *memory.Batch, schema memory.Schema, column string, row 
 			cell.null = !v.IsValid(row)
 			cell.text = v.ValueBytes(row)
 		}
-	case memory.TypeBinary:
-		v, err := batch.String(column)
-		if err != nil {
-			return cell, err
-		}
-		cell.null = !v.IsValid(row)
-		cell.text = v.ValueBytes(row)
 	default:
 		return cell, fmt.Errorf("sort column %q type %s is not orderable", column, f.Type)
 	}
