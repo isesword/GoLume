@@ -1383,18 +1383,19 @@ func evalStringUnary(out, in *scalarRegister, op Op, rows int) error {
 			if err != nil {
 				return err
 			}
-			scratch, err := scratchReservation(out, int64(len(text))*8+64)
-			if err != nil {
-				return err
+			// Trim transformations borrow a subslice of text and allocate no
+			// scratch payload. Keep the pre-transform cancellation checkpoint,
+			// then charge only the owned result through appendScalarResult.
+			if out.checkContext != nil {
+				if err := out.checkContext(); err != nil {
+					return err
+				}
 			}
 			value, err := transformString(text, op)
 			if err != nil {
-				scratch.Release()
 				return fmt.Errorf("%s at row %d: %w", op, row, err)
 			}
-			err = appendScalarResult(out, value, op, row)
-			scratch.Release()
-			if err != nil {
+			if err := appendScalarResult(out, value, op, row); err != nil {
 				return err
 			}
 		}
