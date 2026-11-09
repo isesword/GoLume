@@ -10,7 +10,6 @@ import (
 	"gocolumn/pipeline"
 	"gocolumn/source"
 	"math"
-	"sort"
 	"unsafe"
 )
 
@@ -228,6 +227,11 @@ func (s *externalSortStream) spillBatch(ctx context.Context, batch *memory.Batch
 		return sortSegmentRef{}, err
 	}
 	defer encoded.Close()
+	return s.spillEncoded(ctx, encoded, batch.Rows)
+}
+
+// spillEncoded borrows its independent encoded payload only for this write.
+func (s *externalSortStream) spillEncoded(ctx context.Context, encoded *memory.EncodedColumnarRun, rows int) (sortSegmentRef, error) {
 	handle, err := s.store.Spill(ctx, memory.SpillObject{
 		Kind: memory.SpillColumnarRun, Codec: memory.ColumnarRunCodec,
 		SchemaFingerprint: s.fingerprint, Payload: encoded.Payload,
@@ -235,7 +239,7 @@ func (s *externalSortStream) spillBatch(ctx context.Context, batch *memory.Batch
 	if err != nil {
 		return sortSegmentRef{}, err
 	}
-	ref := sortSegmentRef{handle: handle, rows: batch.Rows}
+	ref := sortSegmentRef{handle: handle, rows: rows}
 	s.spillRuns++
 	s.spillBytes += handle.Bytes()
 	s.query.RecordSpilledBytes(handle.Bytes())
@@ -281,61 +285,64 @@ func (s *externalSortStream) restoreSegment(ctx context.Context, ref sortSegment
 }
 
 func (s *externalSortStream) makeInitialRun(ctx context.Context, batch *memory.Batch, start, end int, ordinalBase uint64) (externalSortRun, error) {
-	rows := end - start
-	estimate, err := memory.EstimateBatchRangeBytes(batch, start, rows)
+	if err := validateExternalSortInitialGather(batch); err != nil {
+		return externalSortRun{}, err
+	}
+	return s.makeInitialRunValidated(ctx, batch, start, end, ordinalBase)
+}
+
+// Input bindings are immutable from their one-time bounded validation until
+// every initial gather has closed, before the child is advanced or closed.
+func (s *externalSortStream) makeInitialRunValidated(ctx context.Context, batch *memory.Batch, start, end int, ordinalBase uint64) (externalSortRun, error) {
+	plan, err := planExternalSortInitialGatherValidated(s.owner.input.Schema(), batch, start, end, len(s.owner.keys), ordinalBase)
 	if err != nil {
 		return externalSortRun{}, err
 	}
-	if estimate > (math.MaxInt64-int64(rows)*16-1024)/2 {
-		return externalSortRun{}, fmt.Errorf("external sort run byte estimate overflows int64")
-	}
-	bindingBytes, err := sortBindingBytes(len(s.owner.keys))
-	if err != nil || estimate*2+int64(rows)*16+1024 > math.MaxInt64-bindingBytes {
-		return externalSortRun{}, memory.ErrBudgetExceeded
-	}
-	sortBytes := estimate*2 + int64(rows)*16 + 1024 + bindingBytes
-	encodedBytes, err := memory.EstimateColumnarRunRangeBytes(s.owner.input.Schema(), batch, start, rows)
+	peak, err := sortWorkspaceSize(s.workspace.Used(), plan.gatherBytes, plan.encodeBytes)
 	if err != nil {
 		return externalSortRun{}, err
 	}
-	peak, err := sortWorkspaceSize(s.workspace.Used(), sortBytes, encodedBytes, int64(rows)*8, 4)
+	if err := s.workspace.ensure(ctx, peak); err != nil {
+		return externalSortRun{}, err
+	}
+	defer s.workspace.trim(0)
+	owner, err := newExternalSortInitialGather(ctx, s.sortBudget, s.owner.input.Schema(), batch, s.owner.keys, s.ordinal, ordinalBase, plan)
 	if err != nil {
 		return externalSortRun{}, err
 	}
-	if err = s.workspace.ensure(ctx, peak); err != nil {
-		return externalSortRun{}, err
-	}
-	reservation, err := s.sortBudget.Reserve(ctx, sortBytes)
-	if err != nil {
-		return externalSortRun{}, err
-	}
-	defer reservation.Release()
-	indices := make([]int, rows)
-	for index := range indices {
-		indices[index] = start + index
-	}
-	cmp, err := newBatchComparator(batch, s.owner.input.Schema(), s.owner.keys)
-	if err != nil {
-		return externalSortRun{}, err
-	}
-	sort.SliceStable(indices, func(i, j int) bool { return cmp.less(indices[i], indices[j]) })
-	if err := ctx.Err(); err != nil {
-		return externalSortRun{}, err
-	}
-	sorted := memory.NewBatch()
-	if err := takeRows(ctx, sorted, batch, indices); err != nil {
-		return externalSortRun{}, err
-	}
-	defer sorted.ReleaseOwned()
-	ordinals := make([]uint64, rows)
-	for outputRow, inputRow := range indices {
-		if uint64(inputRow) > math.MaxUint64-ordinalBase {
-			return externalSortRun{}, fmt.Errorf("external sort row ordinal overflows uint64")
+	defer func() {
+		if owner != nil {
+			owner.close()
+			owner = nil
 		}
-		ordinals[outputRow] = ordinalBase + uint64(inputRow)
+	}()
+	// Gathered lists/structs may have materialized validity that the source
+	// lacked. Propagate their actual shape, not just the source's logical size.
+	gatheredBytes, err := memory.EstimateBatchRangeBytes(owner.batch, 0, owner.batch.Rows)
+	if err != nil {
+		return externalSortRun{}, err
 	}
-	sorted.Uint64s[s.ordinal] = &memory.Uint64Vector{Values: ordinals}
-	ref, err := s.spillBatch(ctx, sorted)
+	legacyRowBytes, err := sortWorkspaceSize(plan.rangeBytes, 8)
+	if err != nil {
+		return externalSortRun{}, err
+	}
+	codecBytes, err := sortBatchCodecBytes(s.internal, owner.batch)
+	if err != nil {
+		return externalSortRun{}, err
+	}
+	encoded, err := memory.EncodeColumnarRun(ctx, s.internal, owner.batch, s.encode)
+	// The encoding is independent. End every gather/index/binding reference
+	// before file metadata can use the returned workspace credit.
+	owner.close()
+	owner = nil
+	s.workspace.trim(s.workspace.Used())
+	if err != nil {
+		return externalSortRun{}, err
+	}
+	ref, err := s.spillEncoded(ctx, encoded, end-start)
+	_ = encoded.Close()
+	encoded = nil
+	s.workspace.trim(s.workspace.Used())
 	if err != nil {
 		return externalSortRun{}, err
 	}
@@ -343,15 +350,11 @@ func (s *externalSortStream) makeInitialRun(ctx context.Context, batch *memory.B
 	if err := run.segments.Append(ctx, s.metadata, ref); err != nil {
 		return externalSortRun{}, err
 	}
-	run.rows = int64(rows)
+	run.rows = int64(end - start)
 	run.maxSegmentBytes = ref.handle.Bytes()
 	run.bytes = ref.handle.Bytes()
-	run.maxRowBytes = estimate + 8
-	run.maxCodecBytes, err = sortBatchCodecBytes(s.internal, sorted)
-	if err != nil {
-		run.segments.Release()
-		return externalSortRun{}, err
-	}
+	run.maxRowBytes = max(legacyRowBytes, gatheredBytes)
+	run.maxCodecBytes = codecBytes
 	return run, nil
 }
 
@@ -403,7 +406,15 @@ func (s *externalSortStream) generateRuns(ctx context.Context) (result spillmeta
 		return result, err
 	}
 	batch := memory.NewBatch()
-	defer batch.ClearColumns()
+	defer func() { *batch = memory.Batch{} }()
+	closeInput := func() error {
+		// This is a borrowed source graph, not our gathered owner. Detach its
+		// header without traversing it: a rejected graph may be cyclic, and
+		// ClearColumns/ReleaseOwned would recursively revisit the bad graph.
+		// The child remains responsible for ending its own resource ownership.
+		*batch = memory.Batch{}
+		return stream.Close()
+	}
 	var runs spillmeta.Slice[externalSortRun]
 	defer func() {
 		if resultErr != nil {
@@ -417,45 +428,42 @@ func (s *externalSortStream) generateRuns(ctx context.Context) (result spillmeta
 		s.workspace.trim(0)
 		ok, nextErr := stream.Next(ctx, batch)
 		if nextErr != nil {
-			return result, errors.Join(nextErr, stream.Close())
+			return result, errors.Join(nextErr, closeInput())
 		}
 		if !ok {
-			batch.ClearColumns()
-			if closeErr := stream.Close(); closeErr != nil {
+			if closeErr := closeInput(); closeErr != nil {
 				return result, closeErr
 			}
 			break
 		}
+		// Validate the complete runtime graph before the recursive range
+		// estimator below, including bindings not present in the schema.
+		if err := validateExternalSortInitialGather(batch); err != nil {
+			return result, errors.Join(err, closeInput())
+		}
 		if uint64(batch.Rows) > math.MaxUint64-ordinalBase {
-			_ = stream.Close()
-			return result, fmt.Errorf("external sort input row ordinal overflows uint64")
+			return result, errors.Join(fmt.Errorf("external sort input row ordinal overflows uint64"), closeInput())
 		}
 		for start := 0; start < batch.Rows; {
-			end := start + s.chunkRows
-			if end > batch.Rows {
-				end = batch.Rows
-			}
+			end := start + min(s.chunkRows, batch.Rows-start)
 			// Variable-width rows may be much wider than the schema estimate.
 			// Shrink before allocating until one run fits its target byte share.
 			for end-start > 1 {
 				estimate, estimateErr := memory.EstimateBatchRangeBytes(batch, start, end-start)
 				if estimateErr != nil {
-					_ = stream.Close()
-					return result, estimateErr
+					return result, errors.Join(estimateErr, closeInput())
 				}
 				if estimate <= s.runBytes {
 					break
 				}
 				end = start + (end-start)/2
 			}
-			run, runErr := s.makeInitialRun(ctx, batch, start, end, ordinalBase)
+			run, runErr := s.makeInitialRunValidated(ctx, batch, start, end, ordinalBase)
 			if runErr != nil {
-				_ = stream.Close()
-				return result, runErr
+				return result, errors.Join(runErr, closeInput())
 			}
 			if err := addRun(&run); err != nil {
-				_ = stream.Close()
-				return result, err
+				return result, errors.Join(err, closeInput())
 			}
 			start = end
 		}

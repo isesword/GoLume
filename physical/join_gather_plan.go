@@ -122,17 +122,32 @@ func joinGatherStringPayload(total *int64, v *memory.StringViewVector, rows int)
 }
 
 func joinGatherDictionaryPayload(total *int64, v *memory.DictionaryStringVector, rows int) error {
+	return joinGatherDictionaryPayloadMode(total, v, rows, false)
+}
+
+// External sort's unadvertised runtime dictionaries can have no table when all
+// logical rows are NULL. The bounded copier never dereferences their codes.
+// Keep the join wrapper strict; the codec independently validates declared data.
+func joinGatherDictionaryPayloadMode(total *int64, v *memory.DictionaryStringVector, rows int, allowEmptyNullDictionary bool) error {
 	if v == nil {
 		return fmt.Errorf("join gather nil dictionary vector")
 	}
 	if err := joinGatherFixedPayload(total, len(v.Indices), v.Validity, rows, 4); err != nil {
 		return err
 	}
-	if err := joinGatherOffsets(v.Offsets, len(v.Data)); err != nil {
-		return err
+	if len(v.Offsets) != 0 || !allowEmptyNullDictionary {
+		if err := joinGatherOffsets(v.Offsets, len(v.Data)); err != nil {
+			return err
+		}
+	}
+	cardinality := 0
+	if len(v.Offsets) != 0 {
+		cardinality = len(v.Offsets) - 1
 	}
 	for i, code := range v.Indices {
-		if (v.Validity == nil || memory.IsSet(v.Validity, i)) && uint64(code) >= uint64(len(v.Offsets)-1) {
+		// Empty tables have cardinality zero, so every valid logical row is
+		// rejected, even when its code is zero. Hidden NULL codes are irrelevant.
+		if (v.Validity == nil || memory.IsSet(v.Validity, i)) && uint64(code) >= uint64(cardinality) {
 			return fmt.Errorf("join gather dictionary code out of range")
 		}
 	}
@@ -182,6 +197,10 @@ type joinGatherAncestor struct {
 }
 
 func joinGatherPayload(batch *memory.Batch, parent *joinGatherAncestor) (int64, error) {
+	return joinGatherPayloadMode(batch, parent, false)
+}
+
+func joinGatherPayloadMode(batch *memory.Batch, parent *joinGatherAncestor, allowEmptyNullDictionary bool) (int64, error) {
 	if batch == nil || batch.Rows < 0 {
 		return 0, fmt.Errorf("join gather nil batch or invalid rows")
 	}
@@ -293,7 +312,7 @@ func joinGatherPayload(batch *memory.Batch, parent *joinGatherAncestor) (int64, 
 		}
 	}
 	for _, v := range batch.DictStrings {
-		if err := joinGatherDictionaryPayload(&total, v, batch.Rows); err != nil {
+		if err := joinGatherDictionaryPayloadMode(&total, v, batch.Rows, allowEmptyNullDictionary); err != nil {
 			return 0, err
 		}
 	}
@@ -312,7 +331,7 @@ func joinGatherPayload(batch *memory.Batch, parent *joinGatherAncestor) (int64, 
 		if err := addJoinGatherProduct(&total, uint64(len(v.Validity)), 8); err != nil {
 			return 0, err
 		}
-		child, err := joinGatherPayload(v.Values, &here)
+		child, err := joinGatherPayloadMode(v.Values, &here, allowEmptyNullDictionary)
 		if err != nil {
 			return 0, err
 		}
@@ -384,9 +403,35 @@ func joinGatherFixedOwned(total *int64, rows, width int, bitmap bool) error {
 	return nil
 }
 
+// joinGatherSelection represents either a permutation or a contiguous range.
+// Range planning must not allocate the very index array it is admitting.
+type joinGatherSelection struct {
+	rows         []int
+	start, count int
+}
+
+func (s joinGatherSelection) len() int {
+	if s.rows != nil {
+		return len(s.rows)
+	}
+	return s.count
+}
+
+func (s joinGatherSelection) row(i int) int {
+	if s.rows != nil {
+		return s.rows[i]
+	}
+	return s.start + i
+}
+
 func joinGatherStringSize(v *memory.StringViewVector, rows []int, parent *memory.StructVector) (int, error) {
+	return joinGatherStringSizeSelected(v, joinGatherSelection{rows: rows}, parent)
+}
+
+func joinGatherStringSizeSelected(v *memory.StringViewVector, rows joinGatherSelection, parent *memory.StructVector) (int, error) {
 	var bytes int64
-	for _, row := range rows {
+	for i := 0; i < rows.len(); i++ {
+		row := rows.row(i)
 		// Top-level takeRows copies hidden NULL spans. Struct append does not.
 		if parent != nil && (!parent.IsValid(row) || !v.IsValid(row)) {
 			continue
@@ -402,8 +447,13 @@ func joinGatherStringSize(v *memory.StringViewVector, rows []int, parent *memory
 }
 
 func joinGatherListSize(v *memory.StringListVector, rows []int, parent *memory.StructVector) (int, int, error) {
+	return joinGatherListSizeSelected(v, joinGatherSelection{rows: rows}, parent)
+}
+
+func joinGatherListSizeSelected(v *memory.StringListVector, rows joinGatherSelection, parent *memory.StructVector) (int, int, error) {
 	var elements, bytes int64
-	for _, row := range rows {
+	for i := 0; i < rows.len(); i++ {
+		row := rows.row(i)
 		if (parent != nil && !parent.IsValid(row)) || !v.IsValid(row) {
 			continue
 		}
@@ -420,10 +470,20 @@ func joinGatherListSize(v *memory.StringListVector, rows []int, parent *memory.S
 			}
 		}
 	}
-	if uint64(elements) >= uint64(math.MaxInt) || uint64(elements) > math.MaxUint32 || uint64(bytes) > uint64(math.MaxInt) || uint64(bytes) > math.MaxUint32 {
-		return 0, 0, fmt.Errorf("join gather list exceeds offset representation")
+	if err := joinGatherListSizeLimits(uint64(elements), uint64(bytes)); err != nil {
+		return 0, 0, err
 	}
 	return int(elements), int(bytes), nil
+}
+
+// A list's child string vector needs elements+1 offsets. Both that slice length
+// and its encoded uint32 offset count must fit; the final byte offset itself may
+// equal MaxUint32. Check pure counts before any conversion or allocation.
+func joinGatherListSizeLimits(elements, bytes uint64) error {
+	if elements >= uint64(math.MaxInt) || elements >= math.MaxUint32 || bytes > uint64(math.MaxInt) || bytes > math.MaxUint32 {
+		return fmt.Errorf("join gather list exceeds offset representation")
+	}
+	return nil
 }
 
 func joinGatherStringOwned(total *int64, rows, bytes int, bitmap bool) error {
@@ -440,27 +500,35 @@ func joinGatherStringOwned(total *int64, rows, bytes int, bitmap bool) error {
 }
 
 func joinGatherListOwned(total *int64, v *memory.StringListVector, rows []int, parent *memory.StructVector) error {
-	elements, bytes, err := joinGatherListSize(v, rows, parent)
+	return joinGatherListOwnedSelected(total, v, joinGatherSelection{rows: rows}, parent)
+}
+
+func joinGatherListOwnedSelected(total *int64, v *memory.StringListVector, rows joinGatherSelection, parent *memory.StructVector) error {
+	elements, bytes, err := joinGatherListSizeSelected(v, rows, parent)
 	if err != nil {
 		return err
 	}
-	if err := joinGatherStringOwned(total, len(rows), 0, true); err != nil {
+	if err := joinGatherStringOwned(total, rows.len(), 0, true); err != nil {
 		return err
 	}
 	return joinGatherStringOwned(total, elements, bytes, true)
 }
 
 func joinGatherStructOwned(v *memory.StructVector, rows []int) (int64, int64, error) {
+	return joinGatherStructOwnedSelected(v, joinGatherSelection{rows: rows})
+}
+
+func joinGatherStructOwnedSelected(v *memory.StructVector, rows joinGatherSelection) (int64, int64, error) {
 	// Match TakeStructRows' empty-selection shape: Fields and an empty Batch.
 	var owned int64
 	metadata := int64(4096)
 	if err := addJoinGatherProduct(&metadata, uint64(len(v.Fields)), uint64(unsafe.Sizeof(memory.Field{}))); err != nil {
 		return 0, 0, err
 	}
-	if len(rows) == 0 {
+	if rows.len() == 0 {
 		return owned, metadata, nil
 	}
-	if err := addJoinGatherProduct(&owned, uint64(joinGatherWords(len(rows))), 8); err != nil {
+	if err := addJoinGatherProduct(&owned, uint64(joinGatherWords(rows.len())), 8); err != nil {
 		return 0, 0, err
 	}
 	for _, field := range v.Fields {
@@ -491,16 +559,16 @@ func joinGatherStructOwned(v *memory.StructVector, rows []int) (int64, int64, er
 			width = 8
 		case memory.TypeString:
 			if str := v.Values.Strings[field.Name]; str != nil {
-				bytes, err := joinGatherStringSize(str, rows, v)
+				bytes, err := joinGatherStringSizeSelected(str, rows, v)
 				if err != nil {
 					return 0, 0, err
 				}
-				if err := joinGatherStringOwned(&owned, len(rows), bytes, true); err != nil {
+				if err := joinGatherStringOwned(&owned, rows.len(), bytes, true); err != nil {
 					return 0, 0, err
 				}
 			} else {
 				dictionary := v.Values.DictStrings[field.Name]
-				if err := joinGatherFixedOwned(&owned, len(rows), 4, true); err != nil {
+				if err := joinGatherFixedOwned(&owned, rows.len(), 4, true); err != nil {
 					return 0, 0, err
 				}
 				if err := addJoinGatherProduct(&owned, uint64(len(dictionary.Offsets)), 4); err != nil {
@@ -514,14 +582,14 @@ func joinGatherStructOwned(v *memory.StructVector, rows []int) (int64, int64, er
 			if err := addJoinEstimate(&metadata, 512); err != nil {
 				return 0, 0, err
 			}
-			if err := joinGatherListOwned(&owned, v.Values.StringLists[field.Name], rows, v); err != nil {
+			if err := joinGatherListOwnedSelected(&owned, v.Values.StringLists[field.Name], rows, v); err != nil {
 				return 0, 0, err
 			}
 		default:
 			return 0, 0, fmt.Errorf("unsupported bounded join gather struct child")
 		}
 		if width != 0 {
-			if err := joinGatherFixedOwned(&owned, len(rows), width, true); err != nil {
+			if err := joinGatherFixedOwned(&owned, rows.len(), width, true); err != nil {
 				return 0, 0, err
 			}
 		}
@@ -544,140 +612,148 @@ func planJoinGather(batch *memory.Batch, rows []int) (int64, int64, int64, error
 			return 0, 0, 0, fmt.Errorf("join gather selected row %d out of range", row)
 		}
 	}
+	owned, metadata, err := planJoinGatherSelected(batch, joinGatherSelection{rows: rows})
+	return payload, owned, metadata, err
+}
+
+// planJoinGatherSelected computes selected capacities after the caller has
+// validated the complete source graph and the selection bounds. It performs no
+// whole-source dictionary-code scans, so a validated batch may feed many chunks.
+func planJoinGatherSelected(batch *memory.Batch, rows joinGatherSelection) (int64, int64, error) {
 	var owned int64
 	metadata := int64(4096)
 	for _, v := range batch.Int8s {
 		if err := addJoinEstimate(&metadata, 512); err != nil {
-			return 0, 0, 0, err
+			return 0, 0, err
 		}
-		if err := joinGatherFixedOwned(&owned, len(rows), 1, v.Validity != nil); err != nil {
-			return 0, 0, 0, err
+		if err := joinGatherFixedOwned(&owned, rows.len(), 1, v.Validity != nil); err != nil {
+			return 0, 0, err
 		}
 	}
 	for _, v := range batch.Int16s {
 		if err := addJoinEstimate(&metadata, 512); err != nil {
-			return 0, 0, 0, err
+			return 0, 0, err
 		}
-		if err := joinGatherFixedOwned(&owned, len(rows), 2, v.Validity != nil); err != nil {
-			return 0, 0, 0, err
+		if err := joinGatherFixedOwned(&owned, rows.len(), 2, v.Validity != nil); err != nil {
+			return 0, 0, err
 		}
 	}
 	for _, v := range batch.Int32s {
 		if err := addJoinEstimate(&metadata, 512); err != nil {
-			return 0, 0, 0, err
+			return 0, 0, err
 		}
-		if err := joinGatherFixedOwned(&owned, len(rows), 4, v.Validity != nil); err != nil {
-			return 0, 0, 0, err
+		if err := joinGatherFixedOwned(&owned, rows.len(), 4, v.Validity != nil); err != nil {
+			return 0, 0, err
 		}
 	}
 	for _, v := range batch.Int64s {
 		if err := addJoinEstimate(&metadata, 512); err != nil {
-			return 0, 0, 0, err
+			return 0, 0, err
 		}
-		if err := joinGatherFixedOwned(&owned, len(rows), 8, v.Validity != nil); err != nil {
-			return 0, 0, 0, err
+		if err := joinGatherFixedOwned(&owned, rows.len(), 8, v.Validity != nil); err != nil {
+			return 0, 0, err
 		}
 	}
 	for _, v := range batch.Uint8s {
 		if err := addJoinEstimate(&metadata, 512); err != nil {
-			return 0, 0, 0, err
+			return 0, 0, err
 		}
-		if err := joinGatherFixedOwned(&owned, len(rows), 1, v.Validity != nil); err != nil {
-			return 0, 0, 0, err
+		if err := joinGatherFixedOwned(&owned, rows.len(), 1, v.Validity != nil); err != nil {
+			return 0, 0, err
 		}
 	}
 	for _, v := range batch.Uint16s {
 		if err := addJoinEstimate(&metadata, 512); err != nil {
-			return 0, 0, 0, err
+			return 0, 0, err
 		}
-		if err := joinGatherFixedOwned(&owned, len(rows), 2, v.Validity != nil); err != nil {
-			return 0, 0, 0, err
+		if err := joinGatherFixedOwned(&owned, rows.len(), 2, v.Validity != nil); err != nil {
+			return 0, 0, err
 		}
 	}
 	for _, v := range batch.Uint32s {
 		if err := addJoinEstimate(&metadata, 512); err != nil {
-			return 0, 0, 0, err
+			return 0, 0, err
 		}
-		if err := joinGatherFixedOwned(&owned, len(rows), 4, v.Validity != nil); err != nil {
-			return 0, 0, 0, err
+		if err := joinGatherFixedOwned(&owned, rows.len(), 4, v.Validity != nil); err != nil {
+			return 0, 0, err
 		}
 	}
 	for _, v := range batch.Uint64s {
 		if err := addJoinEstimate(&metadata, 512); err != nil {
-			return 0, 0, 0, err
+			return 0, 0, err
 		}
-		if err := joinGatherFixedOwned(&owned, len(rows), 8, v.Validity != nil); err != nil {
-			return 0, 0, 0, err
+		if err := joinGatherFixedOwned(&owned, rows.len(), 8, v.Validity != nil); err != nil {
+			return 0, 0, err
 		}
 	}
 	for _, v := range batch.Float32s {
 		if err := addJoinEstimate(&metadata, 512); err != nil {
-			return 0, 0, 0, err
+			return 0, 0, err
 		}
-		if err := joinGatherFixedOwned(&owned, len(rows), 4, v.Validity != nil); err != nil {
-			return 0, 0, 0, err
+		if err := joinGatherFixedOwned(&owned, rows.len(), 4, v.Validity != nil); err != nil {
+			return 0, 0, err
 		}
 	}
 	for _, v := range batch.Float64s {
 		if err := addJoinEstimate(&metadata, 512); err != nil {
-			return 0, 0, 0, err
+			return 0, 0, err
 		}
-		if err := joinGatherFixedOwned(&owned, len(rows), 8, v.Validity != nil); err != nil {
-			return 0, 0, 0, err
+		if err := joinGatherFixedOwned(&owned, rows.len(), 8, v.Validity != nil); err != nil {
+			return 0, 0, err
 		}
 	}
 	for _, v := range batch.Decimals {
 		if err := addJoinEstimate(&metadata, 512); err != nil {
-			return 0, 0, 0, err
+			return 0, 0, err
 		}
-		if err := joinGatherFixedOwned(&owned, len(rows), 16, v.Validity != nil); err != nil {
-			return 0, 0, 0, err
+		if err := joinGatherFixedOwned(&owned, rows.len(), 16, v.Validity != nil); err != nil {
+			return 0, 0, err
 		}
 	}
 	for _, v := range batch.DictStrings {
 		if err := addJoinEstimate(&metadata, 512); err != nil {
-			return 0, 0, 0, err
+			return 0, 0, err
 		}
-		if err := joinGatherFixedOwned(&owned, len(rows), 4, v.Validity != nil); err != nil {
-			return 0, 0, 0, err
+		if err := joinGatherFixedOwned(&owned, rows.len(), 4, v.Validity != nil); err != nil {
+			return 0, 0, err
 		}
 	}
 	for _, v := range batch.Strings {
 		if err := addJoinEstimate(&metadata, 512); err != nil {
-			return 0, 0, 0, err
+			return 0, 0, err
 		}
-		bytes, err := joinGatherStringSize(v, rows, nil)
+		bytes, err := joinGatherStringSizeSelected(v, rows, nil)
 		if err != nil {
-			return 0, 0, 0, err
+			return 0, 0, err
 		}
-		if err := joinGatherStringOwned(&owned, len(rows), bytes, v.Validity != nil); err != nil {
-			return 0, 0, 0, err
+		if err := joinGatherStringOwned(&owned, rows.len(), bytes, v.Validity != nil); err != nil {
+			return 0, 0, err
 		}
 	}
 	for _, v := range batch.StringLists {
 		if err := addJoinEstimate(&metadata, 1024); err != nil {
-			return 0, 0, 0, err
+			return 0, 0, err
 		}
-		if err := joinGatherListOwned(&owned, v, rows, nil); err != nil {
-			return 0, 0, 0, err
+		if err := joinGatherListOwnedSelected(&owned, v, rows, nil); err != nil {
+			return 0, 0, err
 		}
 	}
 	for _, v := range batch.Structs {
 		if err := addJoinEstimate(&metadata, 512); err != nil {
-			return 0, 0, 0, err
+			return 0, 0, err
 		}
-		childOwned, childMetadata, err := joinGatherStructOwned(v, rows)
+		childOwned, childMetadata, err := joinGatherStructOwnedSelected(v, rows)
 		if err != nil {
-			return 0, 0, 0, err
+			return 0, 0, err
 		}
 		if err := addJoinEstimate(&owned, childOwned); err != nil {
-			return 0, 0, 0, err
+			return 0, 0, err
 		}
 		if err := addJoinEstimate(&metadata, childMetadata); err != nil {
-			return 0, 0, 0, err
+			return 0, 0, err
 		}
 	}
-	return payload, owned, metadata, nil
+	return owned, metadata, nil
 }
 
 // takeJoinRowsBounded is used only after joinGatherAdmissionBytes is reserved.

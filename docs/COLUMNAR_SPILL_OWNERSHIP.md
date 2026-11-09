@@ -37,9 +37,62 @@ spill store for cleanup; decoded reservations stay charged until their actual
 use ends. Failed build admission retains input files for skew/repartition fallback.
 
 External-sort cursors keep decoded batches internal and pre-admit metadata for
-every simultaneously live cursor. External-sort output accumulators have a
-separate ownership/accounting path; this decoder change does not establish a
-complete metadata bound for those accumulators.
+every simultaneously live cursor. Their merge/output accumulators independently
+pre-admit sparse maps, descriptors, owned outer Fields arrays, backing capacities,
+and old/new buffer overlap. The output owner restores the caller's original
+empty map containers before destroying its graph and releasing its reservation.
+Absent types reuse the caller's empty maps; a zero-valued destination can still
+have nil maps for absent types. Borrowed output is not an extensible result builder.
+
+## External-sort initial gathers
+
+Initial-run gathering admits the actual runtime bindings it will copy, not just
+columns advertised by the schema. Repeated aliases receive separate destination
+descriptors and buffers and are charged separately. The ordinary inmemory stream
+projects root bindings to its advertised schema before sorting; custom Sources
+can expose additional root bindings. Valid wide declared Structs still require
+independent gather metadata, even when the source already paid for its own graph.
+
+A zero-allocation range plan counts selected buffer capacities, typed-map
+containers and entries, column and List child descriptors, copied outer
+Struct.Fields arrays, sorting indices, key bindings, and the stable ordinal.
+The original range-based sort allowance remains a lower bound. The plan does not
+impose join's separate full-source-payload floor on every small sort chunk.
+Copying uses exact capacities, including validity introduced by List and Struct
+canonicalization. Encoder headroom also covers that introduced validity and the
+ordinal, before gathering starts. The whole borrowed input graph is validated
+for shapes, cycles and depth before recursive range statistics are evaluated.
+
+The initial owner holds partially built state immediately, including a copied
+extra Uint64 binding displaced by the internal ordinal. That extra is not
+projected away to reduce its fee, and no source vector is overwritten. Once
+encoding has produced an independent payload, the owner clears its vectors,
+maps, Fields, indices and key bindings before returning workspace credit. The
+encoded payload remains charged through the file write and is released before
+registering the new run's reference array. Failed file deletion remains the
+query store's responsibility; it does not keep an already-consumed gather alive.
+
+Gathered Struct children follow the runtime Struct.Fields list, as in ordinary
+takeRows. Other child-map entries are validated but are not falsely described as
+copied output. Top-level dictionary tables and domains are borrowed only while
+the source is still live; nested dictionary fallback copies its table buffers.
+Unadvertised all-NULL runtime dictionaries may omit their table, with arbitrary
+hidden codes; any valid row still needs a valid dictionary entry. This opt-in
+keeps the strict join validation and declared-dictionary codec rules unchanged.
+Copied Fields arrays are shallow: names and Children remain borrowed immutable
+metadata. The source's own input allocations and borrowed binding containers
+remain the Source's responsibility. On an invalid input graph or child error,
+the sorter detaches its borrowed header without recursively destroying that
+untrusted graph, then closes the child owner.
+
+Opaque runtime extras are explicitly rejected before gathering. Ordinary
+unbounded takeRows can gather Arrow extras, but this bounded path has no proven
+Arrow allocation plan; this is a deliberate restriction, not complete Arrow
+support. Native Decimal runtime extras can be copied, but advertised Decimal
+Sort remains subject to its existing public execution rejection. Gathered Struct
+children remain the supported scalar/string/List<String> forms, not arbitrary
+recursive, Decimal or Binary children. Unsupported representations return an
+error rather than being silently omitted.
 
 ## What the metadata charge covers
 

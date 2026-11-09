@@ -154,12 +154,19 @@ func estimateBatchRangeBytes(src *Batch, offset, length int, inheritedNulls bool
 			return 0, fmt.Errorf("list column %q offsets are shorter than range", name)
 		}
 		valueStart, valueEnd := v.Offsets[offset], v.Offsets[end]
-		if valueStart > valueEnd || int(valueEnd) >= len(v.Values.Offsets) {
-			return 0, fmt.Errorf("list column %q value offsets are invalid", name)
-		}
-		dataStart, dataEnd := v.Values.Offsets[valueStart], v.Values.Offsets[valueEnd]
-		if dataStart > dataEnd || int(dataEnd) > len(v.Values.Data) {
-			return 0, fmt.Errorf("list column %q string offsets are invalid", name)
+		var dataStart, dataEnd uint32
+		if valueStart == 0 && valueEnd == 0 && len(v.Values.Offsets) == 0 {
+			// A zero-row StringView may have no offsets, including the child
+			// of valid empty/NULL lists. Gathered output still owns its {0}
+			// sentinel, charged by (childLength+1)*4 below.
+		} else {
+			if valueStart > valueEnd || int(valueEnd) >= len(v.Values.Offsets) {
+				return 0, fmt.Errorf("list column %q value offsets are invalid", name)
+			}
+			dataStart, dataEnd = v.Values.Offsets[valueStart], v.Values.Offsets[valueEnd]
+			if dataStart > dataEnd || int(dataEnd) > len(v.Values.Data) {
+				return 0, fmt.Errorf("list column %q string offsets are invalid", name)
+			}
 		}
 		childLength := int64(valueEnd - valueStart)
 		childValidity := int64(0)
