@@ -8,6 +8,7 @@ The low-level join package keeps specialized reusable build/probe tables:
 join.I32Table
 join.DictionaryTable
 join.PairTable
+join.BytesTable
 join.RadixPairTable       // opt-in experiment
 ```
 
@@ -138,9 +139,33 @@ partitions.
 
 ## 8. Next join work
 
-1. LLC/NUMA/skew-aware join cost model;
-2. bounded multi-morsel output for extreme one-to-many joins;
-3. radix dictionary join;
-4. spillable build partitions;
-5. sort-merge fallback;
-6. full outer unmatched tracking.
+1. LLC/NUMA-aware join cost model;
+2. parallel resident radix execution for dictionary and canonical-byte keys.
+
+## 9. Generic canonical-key joins and bounded execution
+
+Plain UTF8 strings, mixed dictionary/plain strings, and composites containing
+more than two supported integer/temporal/string columns use an injective
+canonical key (type tags, fixed-width integers, and length-prefixed strings).
+Dictionary-local codes are never used as equality across domains. Every NULL
+component makes the equality key invalid. Inner, left, right, full, semi and
+anti modes are supported.
+
+Memory-only execution retains an exact-byte hash table. With a finite query
+memory limit and an explicit finite spill quota, the same generic keys also use
+execution-scoped radix partitioning and columnar spill runs. Partition hashes
+only route rows; resident table lookup and the single-key-skew fallback compare
+complete canonical keys. Oversized multi-key partitions are repartitioned, while
+one-key duplicate partitions are processed run by run. Variable-width output
+morsels are split using measured payload-byte estimates. Generic resident radix
+options and bounded execution without spill configuration remain unsupported.
+
+Spill joins do not promise the memory-only probe/build row ordering. Their
+partition/run order is deterministic for unchanged sources, but callers needing
+a particular result order should use an explicit sort. Output batches are
+borrowed until the next stream call or Close. Run handles, metadata, encoding
+scratch, decoded payloads, key tables, pair buffers and output are admitted
+against the query budget; exhausted memory or disk quotas fail explicitly and
+clean up the owned runs. A single input morsel, dictionary, key or output row
+that cannot fit still fails rather than using an unbounded fallback. Very
+fragmented inputs may also exhaust the finite metadata budget.

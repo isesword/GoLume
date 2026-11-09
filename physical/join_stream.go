@@ -454,6 +454,7 @@ type spillableJoinStream struct {
 	outputRuns  spillmeta.Slice[joinRunRef]
 	nextPart    int
 	decoded     *memory.DecodedColumnarRun
+	byteOutput  *memory.Batch
 	started     time.Time
 	prepared    bool
 	closed      bool
@@ -484,6 +485,11 @@ func newSpillableJoinStream(ctx context.Context, owner *JoinSource, opts source.
 	}
 	if !query.SpillConfigured() {
 		return nil, fmt.Errorf("spillable join requires an explicit finite spill quota")
+	}
+	if owner.shape == joinBytes {
+		// Child source allocations must stay in the execution query even when
+		// callers supply an unrelated or unlimited compatibility manager.
+		opts.MemoryManager = query.Operator("SourceScan", memory.MemoryWorkspace)
 	}
 	store, err := query.SpillManager()
 	if err != nil {
@@ -667,21 +673,29 @@ func (s *spillableJoinStream) partitionBatch(ctx context.Context, schema memory.
 				return err
 			}
 		}
-		key, mask, err := s.encodedKey(batch, left, row)
-		if err != nil {
-			return err
-		}
 		var hash uint64
-		if mask == 3 {
-			// The Auto Hash64Batch candidate was rejected for this spill path:
-			// its end-to-end median regressed 3.39% against this scalar hash on
-			// darwin/arm64. Keep the partitioner scalar until an architecture-
-			// specific gate proves a stable whole-query win.
-			hash = hashagg.Hash128(key)
+		if s.owner.shape == joinBytes {
+			var err error
+			hash, err = s.owner.bytePartitionHash(batch, left, row)
+			if err != nil {
+				return err
+			}
 		} else {
-			// SQL NULL keys never match. Partition zero preserves deterministic
-			// unmatched outer rows without hashing physical garbage values.
-			hash = 0
+			key, mask, err := s.encodedKey(batch, left, row)
+			if err != nil {
+				return err
+			}
+			if mask == 3 {
+				// The Auto Hash64Batch candidate was rejected for this spill path:
+				// its end-to-end median regressed 3.39% against this scalar hash on
+				// darwin/arm64. Keep the partitioner scalar until an architecture-
+				// specific gate proves a stable whole-query win.
+				hash = hashagg.Hash128(key)
+			} else {
+				// SQL NULL keys never match. Partition zero preserves deterministic
+				// unmatched outer rows without hashing physical garbage values.
+				hash = 0
+			}
 		}
 		partition := int(hash >> bitOffset & (joinRadixPartitions - 1))
 		rowsByPartition[partition] = append(rowsByPartition[partition], row)
@@ -759,11 +773,20 @@ type loadedJoinBuild struct {
 	locations   []rowLocation
 	table       *join.PairTable
 	reservation memory.Reservation
+	byteOwner   *JoinSource
 }
 
 func (b *loadedJoinBuild) close() {
 	if b == nil {
 		return
+	}
+	if b.byteOwner != nil {
+		b.byteOwner.bytesTable = nil
+		for _, reservation := range b.byteOwner.reservations {
+			reservation.Release()
+		}
+		b.byteOwner.reservations = nil
+		b.byteOwner = nil
 	}
 	for _, decoded := range b.decoded {
 		_ = decoded.Close()
@@ -776,6 +799,9 @@ func (b *loadedJoinBuild) close() {
 }
 
 func (s *spillableJoinStream) loadBuild(ctx context.Context, refs []joinRunRef) (*loadedJoinBuild, error) {
+	if s.owner.shape == joinBytes {
+		return s.loadByteBuild(ctx, refs)
+	}
 	total := 0
 	for _, ref := range refs {
 		if ref.rows > math.MaxInt-total {
@@ -915,37 +941,18 @@ func (s *spillableJoinStream) probePartition(ctx context.Context, build *loadedJ
 			return result, err
 		}
 		batch := decoded.Batch
-		keys, masks, scratch, err := newJoinProbeKeys(ctx, s.state, batch.Rows)
-		if err != nil {
-			_ = decoded.Close()
-			s.deleteRefs(context.Background(), created.Values)
-			return result, err
-		}
-		for row := 0; row < batch.Rows; row++ {
-			keys[row], masks[row], err = s.encodedKey(batch, true, row)
-			if err != nil {
-				scratch.Release()
-				_ = decoded.Close()
-				s.deleteRefs(context.Background(), created.Values)
-				return result, err
-			}
-		}
 		pairs := make([]join.Pair, 0, s.outputRows)
 		flush := func() error {
 			if len(pairs) == 0 {
 				return nil
 			}
-			out, err := s.flushPairs(ctx, build, batch, pairs, partition)
-			if err != nil {
-				return err
-			}
-			if err := created.Append(ctx, s.metadata, out); err != nil {
+			if err := s.appendOutputPairs(ctx, build, batch, pairs, partition, &created); err != nil {
 				return err
 			}
 			pairs = pairs[:0]
 			return nil
 		}
-		summary, err := build.table.Probe(keys, masks, s.owner.typ, func(pair join.Pair) error {
+		summary, err := s.probeBuild(ctx, build, batch, func(pair join.Pair) error {
 			if pair.BuildRow >= 0 {
 				matched[pair.BuildRow] = true
 			}
@@ -959,7 +966,6 @@ func (s *spillableJoinStream) probePartition(ctx context.Context, build *loadedJ
 			err = flush()
 		}
 		s.matchedProbe += int64(summary.MatchedProbeRows)
-		scratch.Release()
 		_ = decoded.Close()
 		if err != nil {
 			s.deleteRefs(context.Background(), created.Values)
@@ -974,24 +980,16 @@ func (s *spillableJoinStream) probePartition(ctx context.Context, build *loadedJ
 			}
 			pairs = append(pairs, join.Pair{ProbeRow: -1, BuildRow: buildRow})
 			if len(pairs) == s.outputRows {
-				out, err := s.flushPairs(ctx, build, nil, pairs, partition)
-				if err != nil {
+				if err := s.appendOutputPairs(ctx, build, nil, pairs, partition, &created); err != nil {
 					s.deleteRefs(context.Background(), created.Values)
-					return result, err
-				}
-				if err := created.Append(ctx, s.metadata, out); err != nil {
 					return result, err
 				}
 				pairs = pairs[:0]
 			}
 		}
 		if len(pairs) != 0 {
-			out, err := s.flushPairs(ctx, build, nil, pairs, partition)
-			if err != nil {
+			if err := s.appendOutputPairs(ctx, build, nil, pairs, partition, &created); err != nil {
 				s.deleteRefs(context.Background(), created.Values)
-				return result, err
-			}
-			if err := created.Append(ctx, s.metadata, out); err != nil {
 				return result, err
 			}
 		}
@@ -1065,29 +1063,21 @@ func (s *spillableJoinStream) appendLeftOnly(ctx context.Context, left *memory.B
 	for _, row := range rows {
 		pairs = append(pairs, join.Pair{ProbeRow: row, BuildRow: -1})
 		if len(pairs) == s.outputRows {
-			ref, err := s.flushPairs(ctx, empty, left, pairs, partition)
-			if err != nil {
-				return err
-			}
-			if err := created.Append(ctx, s.metadata, ref); err != nil {
+			if err := s.appendOutputPairs(ctx, empty, left, pairs, partition, created); err != nil {
 				return err
 			}
 			pairs = pairs[:0]
 		}
 	}
 	if len(pairs) != 0 {
-		ref, err := s.flushPairs(ctx, empty, left, pairs, partition)
-		if err != nil {
-			return err
-		}
-		if err := created.Append(ctx, s.metadata, ref); err != nil {
+		if err := s.appendOutputPairs(ctx, empty, left, pairs, partition, created); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (s *spillableJoinStream) appendSkewMatches(ctx context.Context, left *memory.Batch, leftRows []int, right *memory.Batch, key hashagg.Key128, partition int, created *spillmeta.Slice[joinRunRef]) (int, error) {
+func (s *spillableJoinStream) appendSkewMatches(ctx context.Context, left *memory.Batch, leftRows []int, right *memory.Batch, key hashagg.Key128, byteKey []byte, partition int, created *spillmeta.Slice[joinRunRef]) (int, error) {
 	locationReservation, err := s.state.Reserve(ctx, int64(right.Rows)*16)
 	if err != nil {
 		return 0, err
@@ -1095,11 +1085,11 @@ func (s *spillableJoinStream) appendSkewMatches(ctx context.Context, left *memor
 	defer locationReservation.Release()
 	build := &loadedJoinBuild{batches: []*memory.Batch{right}, locations: make([]rowLocation, 0, right.Rows)}
 	for row := 0; row < right.Rows; row++ {
-		candidate, mask, err := s.encodedKey(right, false, row)
+		equal, err := s.skewRowEqual(right, row, key, byteKey)
 		if err != nil {
 			return 0, err
 		}
-		if mask == 3 && candidate == key {
+		if equal {
 			build.locations = append(build.locations, rowLocation{batch: 0, row: row})
 		}
 	}
@@ -1113,11 +1103,7 @@ func (s *spillableJoinStream) appendSkewMatches(ctx context.Context, left *memor
 			pairs = append(pairs, join.Pair{ProbeRow: leftRow, BuildRow: buildRow})
 			outputs++
 			if len(pairs) == s.outputRows {
-				ref, err := s.flushPairs(ctx, build, left, pairs, partition)
-				if err != nil {
-					return outputs, err
-				}
-				if err := created.Append(ctx, s.metadata, ref); err != nil {
+				if err := s.appendOutputPairs(ctx, build, left, pairs, partition, created); err != nil {
 					return outputs, err
 				}
 				pairs = pairs[:0]
@@ -1125,18 +1111,14 @@ func (s *spillableJoinStream) appendSkewMatches(ctx context.Context, left *memor
 		}
 	}
 	if len(pairs) != 0 {
-		ref, err := s.flushPairs(ctx, build, left, pairs, partition)
-		if err != nil {
-			return outputs, err
-		}
-		if err := created.Append(ctx, s.metadata, ref); err != nil {
+		if err := s.appendOutputPairs(ctx, build, left, pairs, partition, created); err != nil {
 			return outputs, err
 		}
 	}
 	return outputs, nil
 }
 
-func (s *spillableJoinStream) appendSkewUnmatchedRight(ctx context.Context, right *memory.Batch, key hashagg.Key128, validKeyMatched bool, partition int, created *spillmeta.Slice[joinRunRef]) error {
+func (s *spillableJoinStream) appendSkewUnmatchedRight(ctx context.Context, right *memory.Batch, key hashagg.Key128, byteKey []byte, validKeyMatched bool, partition int, created *spillmeta.Slice[joinRunRef]) error {
 	locationReservation, err := s.state.Reserve(ctx, int64(right.Rows)*16)
 	if err != nil {
 		return err
@@ -1144,11 +1126,11 @@ func (s *spillableJoinStream) appendSkewUnmatchedRight(ctx context.Context, righ
 	defer locationReservation.Release()
 	build := &loadedJoinBuild{batches: []*memory.Batch{right}, locations: make([]rowLocation, 0, right.Rows)}
 	for row := 0; row < right.Rows; row++ {
-		candidate, mask, err := s.encodedKey(right, false, row)
+		equal, err := s.skewRowEqual(right, row, key, byteKey)
 		if err != nil {
 			return err
 		}
-		if mask != 3 || candidate != key || !validKeyMatched {
+		if !equal || !validKeyMatched {
 			build.locations = append(build.locations, rowLocation{batch: 0, row: row})
 		}
 	}
@@ -1156,22 +1138,14 @@ func (s *spillableJoinStream) appendSkewUnmatchedRight(ctx context.Context, righ
 	for buildRow := range build.locations {
 		pairs = append(pairs, join.Pair{ProbeRow: -1, BuildRow: buildRow})
 		if len(pairs) == s.outputRows {
-			ref, err := s.flushPairs(ctx, build, nil, pairs, partition)
-			if err != nil {
-				return err
-			}
-			if err := created.Append(ctx, s.metadata, ref); err != nil {
+			if err := s.appendOutputPairs(ctx, build, nil, pairs, partition, created); err != nil {
 				return err
 			}
 			pairs = pairs[:0]
 		}
 	}
 	if len(pairs) != 0 {
-		ref, err := s.flushPairs(ctx, build, nil, pairs, partition)
-		if err != nil {
-			return err
-		}
-		if err := created.Append(ctx, s.metadata, ref); err != nil {
+		if err := s.appendOutputPairs(ctx, build, nil, pairs, partition, created); err != nil {
 			return err
 		}
 	}
@@ -1179,6 +1153,9 @@ func (s *spillableJoinStream) appendSkewUnmatchedRight(ctx context.Context, righ
 }
 
 func (s *spillableJoinStream) processSingleKeySkew(ctx context.Context, leftRefs, rightRefs []joinRunRef, partition int) error {
+	if s.owner.shape == joinBytes {
+		return s.processByteSkew(ctx, leftRefs, rightRefs, partition)
+	}
 	key, hasBuildKey, err := s.skewBuildKey(ctx, rightRefs)
 	if err != nil {
 		return err
@@ -1230,7 +1207,7 @@ func (s *spillableJoinStream) processSingleKeySkew(ctx context.Context, leftRefs
 					err = restoreErr
 					break
 				}
-				_, err = s.appendSkewMatches(ctx, left.Batch, matching, right.Batch, key, partition, &created)
+				_, err = s.appendSkewMatches(ctx, left.Batch, matching, right.Batch, key, nil, partition, &created)
 				_ = right.Close()
 				if err != nil {
 					break
@@ -1254,7 +1231,7 @@ func (s *spillableJoinStream) processSingleKeySkew(ctx context.Context, leftRefs
 				s.deleteRefs(context.Background(), created.Values)
 				return err
 			}
-			err = s.appendSkewUnmatchedRight(ctx, right.Batch, key, validKeyMatched, partition, &created)
+			err = s.appendSkewUnmatchedRight(ctx, right.Batch, key, nil, validKeyMatched, partition, &created)
 			_ = right.Close()
 			if err != nil {
 				s.deleteRefs(context.Background(), created.Values)
@@ -1293,6 +1270,13 @@ func (s *spillableJoinStream) processRefs(ctx context.Context, leftRefs, rightRe
 	}
 	if !isJoinPressure(err) {
 		return err
+	}
+	if s.owner.shape == joinBytes {
+		if skewErr := s.processByteSkew(ctx, leftRefs, rightRefs, partition); skewErr == nil {
+			return nil
+		} else if !errors.Is(skewErr, ErrJoinSkewExhausted) {
+			return skewErr
+		}
 	}
 	if depth >= maxJoinRadixDepth {
 		if skewErr := s.processSingleKeySkew(ctx, leftRefs, rightRefs, partition); skewErr == nil {
@@ -1346,6 +1330,10 @@ func (s *spillableJoinStream) prepare(ctx context.Context) error {
 }
 
 func (s *spillableJoinStream) closeDecoded() {
+	if s.byteOutput != nil {
+		s.byteOutput.ClearColumns()
+		s.byteOutput = nil
+	}
 	if s.decoded != nil {
 		_ = s.decoded.Close()
 		s.decoded = nil
@@ -1364,6 +1352,31 @@ func bindDecodedBatch(dst *memory.Batch, decoded *memory.Batch) {
 // demand; subsequent demand processes partitions lazily and therefore never
 // retains the complete build, probe, or amplified output in memory.
 func (s *spillableJoinStream) Next(ctx context.Context, dst *memory.Batch) (bool, error) {
+	if s.owner.shape == joinBytes {
+		if s.terminalErr != nil {
+			if dst != nil {
+				dst.ClearColumns()
+			}
+			return false, s.terminalErr
+		}
+		if s.closed {
+			if dst != nil {
+				dst.ClearColumns()
+			}
+			return false, source.ErrBatchStreamClosed
+		}
+		if ctx == nil {
+			return false, s.abort(fmt.Errorf("generic spill join context is nil"))
+		}
+		if dst == nil {
+			return false, s.abort(fmt.Errorf("generic spill join destination is nil"))
+		}
+		if query := memory.QueryBudgetFromContext(ctx); query != nil && query != s.query {
+			return false, s.abort(fmt.Errorf("generic spill join cannot change query ownership"))
+		} else if query == nil {
+			ctx = memory.WithQueryBudget(ctx, s.query)
+		}
+	}
 	if dst == nil {
 		return false, fmt.Errorf("join stream destination is nil")
 	}
@@ -1425,6 +1438,9 @@ func (s *spillableJoinStream) Next(ctx context.Context, dst *memory.Batch) (bool
 	}
 	s.decoded = decoded
 	bindDecodedBatch(dst, decoded.Batch)
+	if s.owner.shape == joinBytes {
+		s.byteOutput = dst
+	}
 	return true, nil
 }
 
@@ -1477,9 +1493,9 @@ func (s *spillableJoinStream) cleanup() error {
 
 func (s *spillableJoinStream) abort(err error) error {
 	if s.terminalErr == nil {
-		s.terminalErr = err
+		s.terminalErr = errors.Join(err, s.cleanup())
 	}
-	return errors.Join(err, s.cleanup())
+	return s.terminalErr
 }
 
 // Close releases restored buffers and every still-owned input/output run.

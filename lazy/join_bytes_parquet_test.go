@@ -187,6 +187,50 @@ func TestPlainStringAndCompositeParquetJoins(t *testing.T) {
 	}
 }
 
+func TestBoundedStringAndCompositeParquetJoins(t *testing.T) {
+	left, lr := plainJoinParquet(t, "lid", 137)
+	right, rr := plainJoinParquet(t, "rid", 75)
+	opts := engine.DefaultOptions()
+	opts.ExecutionPolicy = engine.ExecutionBounded
+	opts.Spill = engine.SpillOptions{Directory: t.TempDir(), MaxBytes: 128 << 20}
+	opts.MemoryLimitBytes = 4 << 20
+	s := NewSession(opts)
+	defer s.Close()
+	names := []string{"s", "x", "n"}
+	for keys := 1; keys <= 3; keys++ {
+		for typ := InnerJoin; typ <= FullJoin; typ++ {
+			t.Run(fmt.Sprintf("keys%d/%s", keys, typ), func(t *testing.T) {
+				frame := s.FromSource(left).Join(s.FromSource(right), JoinOptions{Type: typ, LeftOn: names[:keys], RightOn: names[:keys]})
+				want := parquetJoinReference(lr, rr, keys, typ)
+				for repeat := 0; repeat < 2; repeat++ {
+					result, err := frame.Collect(context.Background())
+					if err != nil {
+						t.Fatal(err)
+					}
+					var got []string
+					for _, batch := range result.batches() {
+						for i := 0; i < batch.Rows; i++ {
+							li, ri := int64(-1), int64(-1)
+							if v := batch.Int64s["lid"]; v != nil && v.IsValid(i) {
+								li = v.Values[i]
+							}
+							if v := batch.Int64s["rid"]; v != nil && v.IsValid(i) {
+								ri = v.Values[i]
+							}
+							got = append(got, fmt.Sprintf("%d/%d", li, ri))
+						}
+					}
+					result.Close()
+					sort.Strings(got)
+					if !reflect.DeepEqual(got, want) {
+						t.Fatalf("repeat=%d got=%d want=%d (pair mismatch)", repeat, len(got), len(want))
+					}
+				}
+			})
+		}
+	}
+}
+
 func BenchmarkPlainStringParquetJoin(b *testing.B) {
 	left, _ := plainJoinParquet(b, "lid", 4096)
 	right, _ := plainJoinParquet(b, "rid", 512)

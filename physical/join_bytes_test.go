@@ -214,11 +214,11 @@ func TestGenericJoinStringsCompositeAndAllModes(t *testing.T) {
 
 func TestGenericJoinRejectsUnsafeStrategiesBeforeReading(t *testing.T) {
 	base := genericJoinSource(t, []genericJoinRow{{s: "x"}}, false, 1)
-	for _, opts := range []JoinSourceOptions{{Spillable: true, SpillConfigured: true}, {RequireBounded: true}, {RadixBits: 1}} {
+	for _, opts := range []JoinSourceOptions{{RequireBounded: true}, {RadixBits: 1}} {
 		opts.Kernels = kernel.New(kernel.ModeScalar)
 		left, right := &countingSource{Source: base}, &countingSource{Source: base}
 		_, err := NewJoinSourceWithOptions(context.Background(), left, right, join.Inner, []JoinKey{{"s", "s"}}, "", nil, opts)
-		if err == nil || !strings.Contains(err.Error(), "MemoryOnly") {
+		if err == nil || !strings.Contains(err.Error(), "generic string/composite") {
 			t.Fatalf("err=%v", err)
 		}
 		if left.reads != 0 || right.reads != 0 {

@@ -177,8 +177,8 @@ func NewJoinSourceWithOptions(ctx context.Context, left, right source.Source, ty
 	if s.shape == joinBytes {
 		manager = s.keyManager
 	}
-	if s.shape == joinBytes && (opts.Spillable || opts.RequireBounded || opts.RadixBits != 0) {
-		return nil, fmt.Errorf("generic string/composite join supports MemoryOnly hash execution; bounded, spill and explicit radix execution are not supported")
+	if s.shape == joinBytes && (opts.RadixBits != 0 || (opts.RequireBounded && !opts.Spillable)) {
+		return nil, fmt.Errorf("generic string/composite join requires finite spill configuration for bounded execution; explicit resident radix is not supported")
 	}
 	if s.spillable && !opts.SpillConfigured {
 		return nil, fmt.Errorf("spillable join requires an explicit finite spill quota")
@@ -297,7 +297,7 @@ func fixedJoinSchemaWidth(schema memory.Schema) (int64, bool) {
 }
 
 func (s *JoinSource) canAttemptBoundedBroadcast(ctx context.Context, limit int64) bool {
-	if limit <= 0 || s.radixBits != 0 || source.ReplayabilityOf(s.right) != source.ReplayStable {
+	if s.shape == joinBytes || limit <= 0 || s.radixBits != 0 || source.ReplayabilityOf(s.right) != source.ReplayStable {
 		return false
 	}
 	rightWidth, rightFixed := fixedJoinSchemaWidth(s.right.Schema())
@@ -774,17 +774,29 @@ func (s *JoinSource) initStreamingPartitions(ctx context.Context) error {
 		rows := leftStats.Rows
 		if s.typ == join.Inner || s.typ == join.Left || s.typ == join.Right || s.typ == join.Full {
 			var mulErr error
-			rows, mulErr = safeMulRows(leftStats.Rows, rightStats.Rows)
+			buildRows := rightStats.Rows
+			if (s.typ == join.Left || s.typ == join.Full) && buildRows == 0 {
+				buildRows = 1
+			}
+			rows, mulErr = safeMulRows(leftStats.Rows, buildRows)
 			if mulErr != nil {
 				rows = int64(^uint64(0) >> 1)
 			}
 			if s.typ == join.Right || s.typ == join.Full {
 				if rows <= int64(^uint64(0)>>1)-rightStats.Rows {
 					rows += rightStats.Rows
+				} else {
+					rows = int64(^uint64(0) >> 1)
 				}
 			}
 		}
-		s.leftParts, _ = s.left.Partitions(ctx)
+		if s.shape == joinBytes {
+			if err := s.reserveBytePartitions(ctx, 1); err != nil {
+				return err
+			}
+		} else {
+			s.leftParts, _ = s.left.Partitions(ctx)
+		}
 		s.parts = []source.Partition{{ID: 0, Rows: rows}}
 		s.stats = source.Stats{Rows: rows, Partitions: 1, RowsUpperBound: true}
 		return nil

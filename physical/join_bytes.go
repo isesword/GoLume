@@ -239,8 +239,8 @@ func (s *JoinSource) probeByteKeys(ctx context.Context, batch *memory.Batch, emi
 }
 
 // resetBytePairs reserves the conservative output-pair bound before allocating.
-// Generic joins deliberately fail on the finite budget instead of silently
-// entering an unbounded fallback or an unimplemented spill path.
+// Resident generic readers fail on the finite budget rather than silently
+// switching strategies after preparation. Bounded queries use the spill stream.
 func (r *joinReader) resetBytePairs(ctx context.Context, rows int64) error {
 	if r.pairReservation != nil {
 		r.pairReservation.Release()
