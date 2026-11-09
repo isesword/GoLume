@@ -343,6 +343,13 @@ func (w *evaluationState) evaluateConditional(out *scalarRegister, in instructio
 }
 
 func copyConditionalRow(out, value *scalarRegister, row int) error {
+	if out.decimalType != nil {
+		if value.decimalType == nil || out.decimalType.DecimalPrecision != value.decimalType.DecimalPrecision || out.decimalType.DecimalScale != value.decimalType.DecimalScale {
+			return fmt.Errorf("decimal conditional branch metadata mismatch")
+		}
+		out.decimal[row] = value.decimal[row]
+		return nil
+	}
 	if out.typ == memory.TypeBool {
 		if memory.IsSet(value.Truth, row) {
 			memory.Set(out.Truth, row)
@@ -424,7 +431,7 @@ func streamingConditional(in instruction) bool {
 }
 func fixedConditionalType(typ memory.DataType) bool {
 	switch typ {
-	case memory.TypeBool, memory.TypeInt8, memory.TypeInt16, memory.TypeInt32, memory.TypeInt64,
+	case memory.TypeDecimal, memory.TypeBool, memory.TypeInt8, memory.TypeInt16, memory.TypeInt32, memory.TypeInt64,
 		memory.TypeUint8, memory.TypeUint16, memory.TypeUint32, memory.TypeUint64,
 		memory.TypeFloat32, memory.TypeFloat64, memory.TypeDate32, memory.TypeDate64,
 		memory.TypeTimestamp, memory.TypeTime32, memory.TypeTime64, memory.TypeDuration:

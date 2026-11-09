@@ -162,6 +162,31 @@ func compactSelectedParents(ctx context.Context, dst, src *memory.Batch, rows []
 		out.Encoding = v.Encoding
 		dst.Uint64s[name] = out
 	}
+	for name, v := range src.Decimals {
+		out := dst.Decimals[name]
+		if out == nil {
+			out = &memory.Decimal128Vector{}
+		}
+		if cap(out.Values) < n {
+			out.Values = make([]memory.Decimal128, n)
+		} else {
+			out.Values = out.Values[:n]
+		}
+		for i, row := range rows {
+			if i&4095 == 0 {
+				if err := ctx.Err(); err != nil {
+					return err
+				}
+			}
+			out.Values[i] = v.Values[row]
+			if parents != nil && (!rowValid(v.Validity, row) || !parents.valid(row)) {
+				out.Values[i] = memory.Decimal128{}
+			}
+		}
+		out.Validity = compactValidityParents(out.Validity, v.Validity, rows, parents)
+		out.Precision, out.Scale = v.Precision, v.Scale
+		dst.Decimals[name] = out
+	}
 	for name, v := range src.Float64s {
 		out := ensureF64(dst.Float64s[name], n)
 		if got := kernels.CompactFloat64(v.Values[:src.Rows], selection, out.Values); got != n {

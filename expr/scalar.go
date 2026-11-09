@@ -60,16 +60,18 @@ type scalarRegister struct {
 	typ        memory.DataType
 	validity   memory.Bitmap
 
-	i8  []int8
-	i16 []int16
-	i32 []int32
-	i64 []int64
-	u8  []uint8
-	u16 []uint16
-	u32 []uint32
-	u64 []uint64
-	f32 []float32
-	f64 []float64
+	i8          []int8
+	i16         []int16
+	i32         []int32
+	i64         []int64
+	u8          []uint8
+	u16         []uint16
+	u32         []uint32
+	u64         []uint64
+	f32         []float32
+	f64         []float64
+	decimal     []memory.Decimal128
+	decimalType *memory.Field
 
 	strView *memory.StringViewVector
 	strDict *memory.DictionaryStringVector
@@ -87,7 +89,7 @@ type scalarRegister struct {
 	acquire         func(int64) (memory.Reservation, error)
 	checkContext    func() error
 	jsonReservation memory.Reservation
-	buffers         [17]memory.Reservation
+	buffers         [18]memory.Reservation
 	ownedValidity   memory.Bitmap
 	listValidity    memory.Bitmap
 }
@@ -355,6 +357,10 @@ func (c *scalarCompiler) compileBound(bound *BoundExpr) (int, TypeInfo, error) {
 			return 0, info, fmt.Errorf("unsupported bound expression %T", e)
 		}
 	}
+	if bound.Field.Type == memory.TypeDecimal && bound.Field.DecimalPrecision != 0 {
+		field := bound.OutputField("")
+		in.Decimal = &field
+	}
 	c.instructions = append(c.instructions, in)
 	reg := len(c.instructions) - 1
 	c.memo[key] = reg
@@ -376,6 +382,7 @@ type ScalarValue struct {
 	Uint64           *memory.Uint64Vector
 	Float32          *memory.Float32Vector
 	Float64          *memory.Float64Vector
+	Decimal          *memory.Decimal128Vector
 	String           *memory.StringViewVector
 	DictionaryString *memory.DictionaryStringVector
 	StringList       *memory.StringListVector
@@ -384,6 +391,10 @@ type ScalarValue struct {
 
 func scalarValue(r *scalarRegister, rows int) ScalarValue {
 	v := ScalarValue{Type: r.typ}
+	if r.decimalType != nil {
+		v.Decimal = &memory.Decimal128Vector{Values: r.decimal[:rows], Validity: r.validity, Precision: r.decimalType.DecimalPrecision, Scale: r.decimalType.DecimalScale}
+		return v
+	}
 	switch r.typ {
 	case memory.TypeInt8:
 		v.Int8 = &memory.Int8Vector{Values: r.i8[:rows], Validity: r.validity, Encoding: memory.EncodingPlain}
@@ -519,6 +530,7 @@ func evaluateInstructionsActive(instructions []instruction, batch *memory.Batch,
 			r.acquire, r.reserve, r.checkContext = w.acquire, w.reserve, w.checkContext
 		}
 		r.typ = instructionResultType(in)
+		r.decimalType = in.Decimal
 		if in.Code != scalarColumn {
 			r.constant = in.compactLiteral
 			if err := prepareInstructionBuffers(r, in, batch.Rows); err != nil {
@@ -527,7 +539,11 @@ func evaluateInstructionsActive(instructions []instruction, batch *memory.Batch,
 		}
 		switch in.Code {
 		case scalarColumn:
-			if err := validateBoundColumn(batch, in.Column, in.Type); err != nil {
+			if in.Decimal != nil {
+				if err := validateDecimalColumn(batch, in.Column, in.Decimal); err != nil {
+					return err
+				}
+			} else if err := validateBoundColumn(batch, in.Column, in.Type); err != nil {
 				return err
 			}
 			if err := bindScalarColumn(r, batch, in.Column, in.Type); err != nil {
@@ -671,6 +687,14 @@ func evaluateInstructionsActive(instructions []instruction, batch *memory.Batch,
 
 func bindScalarColumn(r *scalarRegister, batch *memory.Batch, name string, typ memory.DataType) error {
 	r.constant = false
+	if r.decimalType != nil {
+		v, err := batch.Decimal(name)
+		if err != nil {
+			return err
+		}
+		r.decimal, r.validity = v.Values, v.Validity
+		return nil
+	}
 	switch typ {
 	case memory.TypeInt8:
 		v, err := batch.Int8(name)

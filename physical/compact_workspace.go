@@ -185,6 +185,9 @@ func compactLayoutParents(src, dst *memory.Batch, rows []int, allocate, bounded 
 	if len(src.Float32s) != len(dst.Float32s) {
 		fits = false
 	}
+	if len(src.Decimals) != len(dst.Decimals) {
+		fits = false
+	}
 	if len(src.Float64s) != len(dst.Float64s) {
 		fits = false
 	}
@@ -513,6 +516,46 @@ func compactLayoutParents(src, dst *memory.Batch, rows []int, allocate, bounded 
 			out.Values = make([]float32, n)
 			out.Validity = bits
 			dst.Float32s[name] = out
+		}
+	}
+	for name, v := range src.Decimals {
+		if v == nil || src.Rows < 0 || len(v.Values) < src.Rows {
+			return 0, false, fmt.Errorf("short compact decimal %q", name)
+		}
+		view := *v
+		view.Values = view.Values[:src.Rows]
+		if err := view.Validate(src.Rows); err != nil {
+			return 0, false, fmt.Errorf("compact decimal %q: %w", name, err)
+		}
+		out := dst.Decimals[name]
+		if out == nil {
+			fits = false
+			if allocate {
+				out = &memory.Decimal128Vector{}
+			}
+		}
+		var old memory.Bitmap
+		if out != nil {
+			old = out.Validity
+		}
+		bits, err := validity(v.Validity, old, n, true)
+		if err != nil {
+			return 0, false, err
+		}
+		if out == nil || cap(out.Values) < n {
+			fits = false
+		}
+		if int64(n) > (math.MaxInt64-total)/16 {
+			return 0, false, fmt.Errorf("compact decimal size overflow")
+		}
+		if err := add(int64(n) * 16); err != nil {
+			return 0, false, err
+		}
+		if allocate {
+			out.Values = make([]memory.Decimal128, n)
+			out.Validity = bits
+			out.Precision, out.Scale = v.Precision, v.Scale
+			dst.Decimals[name] = out
 		}
 	}
 	for name, v := range src.Float64s {

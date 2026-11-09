@@ -105,8 +105,10 @@ func (b *expressionBinder) bindNode(e Expr) (*BoundExpr, error) {
 		if !ok {
 			return nil, fmt.Errorf("column %q not found", n.Name)
 		}
-		if field.Type == memory.TypeDecimal && field.DecimalPrecision != 0 {
-			return nil, fmt.Errorf("native decimal expression execution is not supported yet for column %q", n.Name)
+		if field.Type == memory.TypeDecimal && (field.DecimalPrecision != 0 || field.DecimalScale != 0) {
+			if err := field.ValidateDecimal128(); err != nil {
+				return nil, err
+			}
 		}
 		bound.Field = cloneBoundField(field)
 		bound.Columns = []string{n.Name}
@@ -236,13 +238,23 @@ func (b *expressionBinder) bindNode(e Expr) (*BoundExpr, error) {
 			return nil, fmt.Errorf("CASE: %w", err)
 		}
 		if n.Else == nil {
-			if err := bindChildren(NullLiteral{Type: field.Type}); err != nil {
+			if field.Type == memory.TypeDecimal {
+				nullField := cloneBoundField(field)
+				nullField.Nullable = true
+				bound.Children = append(bound.Children, &BoundExpr{Expr: NullLiteral{Type: field.Type}, Field: nullField})
+			} else if err := bindChildren(NullLiteral{Type: field.Type}); err != nil {
 				return nil, err
 			}
 			field.Nullable = true
 		}
 		bound.Field = field
-		bound.Expr = CaseExpr{Whens: branches, Else: bound.Children[len(bound.Children)-1].Expr}
+		otherwise := bound.Children[len(bound.Children)-1].Expr
+		if n.Else == nil && field.Type == memory.TypeDecimal {
+			// Keep the source expression re-bindable: the implicit NULL child
+			// carries precision/scale in its bound field, not in NullLiteral.
+			otherwise = nil
+		}
+		bound.Expr = CaseExpr{Whens: branches, Else: otherwise}
 	case CoalesceExpr:
 		if len(n.Values) == 0 {
 			return nil, fmt.Errorf("COALESCE requires at least one value")
@@ -450,6 +462,9 @@ func bindTernary(bound *BoundExpr, n Ternary) error {
 // Native integer comparisons, including mixed signed/unsigned values, must not
 // round through float64. Floating comparisons use IEEE equality and ordering.
 func bindComparison(left, right *BoundExpr) error {
+	if left.Field.Type == memory.TypeDecimal || right.Field.Type == memory.TypeDecimal {
+		return fmt.Errorf("native decimal comparison is not supported yet")
+	}
 	a, b := left.Field.Type, right.Field.Type
 	if IsNumeric(a) && IsNumeric(b) {
 		return nil
@@ -501,6 +516,22 @@ func bindComparison(left, right *BoundExpr) error {
 }
 
 func branchField(values []*BoundExpr) (memory.Field, error) {
+	if values[0].Field.Type == memory.TypeDecimal {
+		field := values[0].OutputField("")
+		if err := field.ValidateDecimal128(); err != nil {
+			return memory.Field{}, err
+		}
+		for _, value := range values[1:] {
+			if err := value.Field.ValidateDecimal128(); err != nil {
+				return memory.Field{}, err
+			}
+			if field.DecimalPrecision != value.Field.DecimalPrecision || field.DecimalScale != value.Field.DecimalScale {
+				return memory.Field{}, fmt.Errorf("decimal conditional branches require identical precision and scale")
+			}
+			field.Nullable = field.Nullable || value.Field.Nullable
+		}
+		return field, nil
+	}
 	field := computedField(values[0].Field.Type, values[0].Field.Nullable)
 	if !conditionalScalarType(field.Type) {
 		return memory.Field{}, fmt.Errorf("conditional result type %s is not supported", field.Type)

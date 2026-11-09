@@ -62,6 +62,9 @@ func (s *structuralInterner) expression(bound *BoundExpr) int {
 		parts = []string{"bool", strconv.FormatBool(n.Value)}
 	case NullLiteral:
 		parts = []string{"null", strconv.Itoa(int(n.Type))}
+		if n.Type == memory.TypeDecimal {
+			parts = append(parts, strconv.Itoa(s.field(bound.Field)))
+		}
 	case IfExpr:
 		parts = []string{"if"}
 	case CaseExpr:

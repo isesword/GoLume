@@ -28,7 +28,8 @@ const (
 // Instruction is one typed vector operation. Specialized comparison opcodes are
 // kernel selections in the same program, not a separate predicate language.
 type instruction struct {
-	storageOwner        int // One-based physical owner; zero denotes an unplanned register.
+	Decimal             *memory.Field // Immutable native decimal metadata; nil for opaque decimals.
+	storageOwner        int           // One-based physical owner; zero denotes an unplanned register.
 	Kind                uint8
 	compactLiteral      bool // Scalar payload; all consumers support register reads.
 	Regions             []Program

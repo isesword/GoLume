@@ -155,6 +155,9 @@ func prepareScalarBuffers(r *scalarRegister, rows int) error {
 	if r.typ == memory.TypeBool {
 		return scalarResize(&r.Truth, memory.WordsFor(rows), &r.buffers[14], r.acquire)
 	}
+	if r.decimalType != nil {
+		return scalarResize(&r.decimal, rows, &r.buffers[17], r.acquire)
+	}
 	switch r.typ {
 	case memory.TypeInt8:
 		return scalarResize(&r.i8, rows, &r.buffers[1], r.acquire)

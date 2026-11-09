@@ -174,12 +174,6 @@ func (s *DropColumnsSource) Dictionary(ctx context.Context, column string) (sour
 // includeInput is true, input fields are retained and aliases replace matching
 // columns; otherwise only the named expressions are exposed.
 func NewProjectSource(input source.Source, named []expr.NamedExpr, includeInput bool, managers ...memory.Manager) (*ProjectSource, error) {
-	if input != nil {
-		if err := rejectNativeDecimalExecution(input.Schema()); err != nil {
-			return nil, err
-		}
-	}
-
 	if input == nil {
 		return nil, fmt.Errorf("physical projection input is nil")
 	}
@@ -514,6 +508,8 @@ func (s *projectBatchStream) Close() error { return s.state.Close() }
 
 func bindScalarValue(dst *memory.Batch, name string, v expr.ScalarValue) error {
 	switch {
+	case v.Decimal != nil:
+		dst.Decimals[name] = v.Decimal
 	case v.Int8 != nil:
 		dst.Int8s[name] = v.Int8
 	case v.Int16 != nil:

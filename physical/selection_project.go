@@ -20,6 +20,9 @@ func supportsSelectedProject(input source.Source, named []expr.NamedExpr, includ
 		return false
 	}
 	for _, f := range input.Schema().Fields {
+		if f.Type == memory.TypeDecimal && f.ValidateDecimal128() == nil {
+			continue
+		}
 		if !selectionFixedWidth(f.Type) {
 			return false
 		}

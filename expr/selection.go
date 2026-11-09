@@ -31,8 +31,11 @@ func (p *Program) planSelection() {
 	if len(p.instructions) == 0 {
 		return
 	}
-	columns := make(map[string]memory.DataType)
+	columns := make(map[string]selectedColumn)
 	supported := p.visitInstructions(func(in instruction) bool {
+		if in.Type == memory.TypeDecimal && in.Decimal == nil {
+			return false
+		}
 		if selectionWidth(instructionResultType(in)) == 0 {
 			return false
 		}
@@ -48,10 +51,10 @@ func (p *Program) planSelection() {
 			if selectionWidth(in.Type) == 0 {
 				return false
 			}
-			columns[in.Column] = in.Type
+			columns[in.Column] = selectedColumn{name: in.Column, typ: in.Type, decimal: in.Decimal}
 		}
 		if in.RightColumn != "" {
-			columns[in.RightColumn] = in.Type
+			columns[in.RightColumn] = selectedColumn{name: in.RightColumn, typ: in.Type}
 		}
 		return true
 	})
@@ -59,8 +62,8 @@ func (p *Program) planSelection() {
 		return
 	}
 	plan := &selectionPlan{columns: make([]selectedColumn, 0, len(columns))}
-	for name, typ := range columns {
-		plan.columns = append(plan.columns, selectedColumn{name: name, typ: typ})
+	for _, column := range columns {
+		plan.columns = append(plan.columns, column)
 	}
 	slices.SortFunc(plan.columns, func(a, b selectedColumn) int { return cmp.Compare(a.name, b.name) })
 	p.selection = plan
@@ -68,6 +71,8 @@ func (p *Program) planSelection() {
 
 func selectionWidth(t memory.DataType) int64 {
 	switch t {
+	case memory.TypeDecimal:
+		return 16
 	case memory.TypeInt8, memory.TypeUint8:
 		return 1
 	case memory.TypeInt16, memory.TypeUint16:
@@ -83,6 +88,7 @@ func selectionWidth(t memory.DataType) int64 {
 }
 
 type selectedColumn struct {
+	decimal  *memory.Field
 	name     string
 	typ      memory.DataType
 	validity memory.Bitmap
@@ -194,7 +200,11 @@ func (s *selectedWorkspace) gather(ctx context.Context, input *memory.Batch, row
 	// Validate before allocating or reading vectors. Only referenced columns are
 	// relevant to this evaluation; unrelated input payloads remain untouched.
 	for _, c := range s.columns {
-		if err := validateBoundColumn(input, c.name, c.typ); err != nil {
+		if c.decimal != nil {
+			if err := validateDecimalColumn(input, c.name, c.decimal); err != nil {
+				return err
+			}
+		} else if err := validateBoundColumn(input, c.name, c.typ); err != nil {
 			return err
 		}
 	}
@@ -252,6 +262,8 @@ func gatherSelectedValues[T any](ctx context.Context, dst []T, validity memory.B
 }
 func allocateSelectedColumn(b *memory.Batch, c selectedColumn, rows int) {
 	switch c.typ {
+	case memory.TypeDecimal:
+		b.Decimals[c.name] = &memory.Decimal128Vector{Values: make([]memory.Decimal128, rows), Validity: c.validity, Precision: c.decimal.DecimalPrecision, Scale: c.decimal.DecimalScale}
 	case memory.TypeInt8:
 		b.Int8s[c.name] = &memory.Int8Vector{Values: make([]int8, rows), Validity: c.validity}
 	case memory.TypeInt16:
@@ -276,6 +288,13 @@ func allocateSelectedColumn(b *memory.Batch, c selectedColumn, rows int) {
 }
 func gatherSelectedColumn(ctx context.Context, dst, src *memory.Batch, c selectedColumn, rows []int) error {
 	switch c.typ {
+	case memory.TypeDecimal:
+		d, v := dst.Decimals[c.name], src.Decimals[c.name]
+		d.Values, d.Validity = d.Values[:len(rows)], c.validity[:memory.WordsFor(len(rows))]
+		if v.Validity == nil {
+			d.Validity = nil
+		}
+		return gatherSelectedValues(ctx, d.Values, d.Validity, v.Values, v.Validity, rows)
 	case memory.TypeInt8:
 		d, v := dst.Int8s[c.name], src.Int8s[c.name]
 		d.Values, d.Validity = d.Values[:len(rows)], c.validity[:memory.WordsFor(len(rows))]

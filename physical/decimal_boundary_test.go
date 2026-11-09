@@ -48,13 +48,7 @@ func TestNativeDecimalExecutionBoundaries(t *testing.T) {
 		t.Fatal(err)
 	}
 	for name, build := range map[string]func() error{
-		"expression":     func() error { _, e := expr.Bind(schema, expr.Col("amount")); return e },
-		"comparison":     func() error { _, e := expr.Bind(schema, expr.EQ(expr.Col("amount"), expr.Col("amount"))); return e },
-		"filter payload": func() error { _, e := NewFilterSource(base, expr.GT(expr.Col("id"), expr.I64(1))); return e },
-		"project payload": func() error {
-			_, e := NewProjectSource(base, []expr.NamedExpr{expr.Named(expr.I64(1), "one")}, true)
-			return e
-		},
+		"comparison":    func() error { _, e := expr.Bind(schema, expr.EQ(expr.Col("amount"), expr.Col("amount"))); return e },
 		"sort payload":  func() error { _, e := NewSortSource(base, []SortKey{{Column: "id"}}, nil); return e },
 		"top-k payload": func() error { _, e := NewTopKSourceWithManager(base, 1, []SortKey{{Column: "id"}}, nil); return e },
 		"join payload": func() error {
