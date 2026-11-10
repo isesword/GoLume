@@ -1913,6 +1913,9 @@ func utcCalendarTime(source memory.DataType, value int64) (time.Time, error) {
 }
 
 func evalCast(out, in *scalarRegister, from, to memory.DataType, rows int) error {
+	if date32CastSupported(from, to) {
+		return evalDate32Cast(out, in, from, to, rows, false)
+	}
 	if to == memory.TypeDecimal || from == memory.TypeDecimal && to != memory.TypeString {
 		return evalDecimalCast(out, in, from, to, rows, false)
 	}
@@ -2319,6 +2322,13 @@ func registerString(r *scalarRegister, row int) ([]byte, error) {
 }
 
 func appendScalarText(dst []byte, r *scalarRegister, row int) ([]byte, error) {
+	if r.typ == memory.TypeDate32 {
+		v, err := registerInt64(r, row)
+		if err != nil {
+			return dst, err
+		}
+		return appendDate32Text(dst, int32(v)), nil
+	}
 	if r.typ == memory.TypeDecimal {
 		return appendDecimal128Text(dst, r.decimal[row], r.decimalType.DecimalScale), nil
 	}

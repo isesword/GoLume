@@ -36,6 +36,14 @@ SIMD / hash / radix / scheduler
 以及 **runtime feedback → aggregate CostModel**。下文介绍当前用法；Phase 2/3
 阶段文档和 benchmark 只记录各自版本、平台与输入上的结果。
 
+## Date32 日历转换
+
+`CastTo` / `TryCastTo` 支持 String→Date32、Date32↔UTC 纳秒 Timestamp，
+包含严格 ISO 日期校验、负 epoch 向下取整、范围检查和 SQL NULL 语义。
+**破坏性变更：Date32→String 现在输出 ISO 日历日期，不再输出 epoch days。**
+需要物理值文本时显式先转 Int32，再转 String。完整 int32 日期范围、扩展年份、
+迁移与未完成的时间单位/时区范围见 [Date32 转换](docs/DATE32_CASTS.md)。
+
 ## 统一表达式与条件求值
 
 `expr.Compile(schema, expression)` 和 `expr.CompileExpressions(schema, named)`

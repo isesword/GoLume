@@ -1008,7 +1008,8 @@ func (v CoalesceExpr) Alias(name string) NamedExpr { return Named(v, name) }
 func (v InExpr) Alias(name string) NamedExpr { return Named(v, name) }
 
 // TryCastExpr converts numeric or string input to a numeric target, or native
-// Decimal128 to an integer target. Invalid syntax, overflow, and inexact
+// Decimal128 to an integer target, or supported Date32 calendar/physical
+// conversions. Invalid syntax, overflow, and inexact
 // decimal conversion become NULL. Child expression errors are not
 // suppressed; unsupported source/target types fail during binding.
 type TryCastExpr struct {
@@ -1021,25 +1022,26 @@ func (TryCastExpr) exprNode() {}
 // String returns the SQL-like TRY_CAST spelling.
 func (c TryCastExpr) String() string { return fmt.Sprintf("TRY_CAST(%s AS %s)", c.Value, c.Target) }
 
-// TryCastTo converts v to a numeric target, replacing conversion failures with NULL.
+// TryCastTo converts v to a supported target, replacing conversion failures with NULL.
+// Date32 supports ISO strings, Int32/Int64 epoch days, and UTC nanosecond timestamps.
 // Native Decimal128 input permits only integer targets and requires exactness.
 func TryCastTo(v Expr, target memory.DataType) TryCastExpr {
 	return TryCastExpr{Value: v, Target: target}
 }
 
-// TryCast converts the column to a numeric target with invalid values becoming NULL.
+// TryCast converts the column to a supported target with invalid values becoming NULL.
 func (c Column) TryCast(target memory.DataType) TryCastExpr { return TryCastTo(c, target) }
 
-// TryCast converts the string to a numeric target with invalid values becoming NULL.
+// TryCast converts the string to a supported target with invalid values becoming NULL.
 func (v StringLiteral) TryCast(target memory.DataType) TryCastExpr { return TryCastTo(v, target) }
 
-// TryCast converts the cast result to a numeric target with invalid values becoming NULL.
+// TryCast converts the cast result to a supported target with invalid values becoming NULL.
 func (c Cast) TryCast(target memory.DataType) TryCastExpr { return TryCastTo(c, target) }
 
 // Cast strictly converts the result to another target type.
 func (c TryCastExpr) Cast(target memory.DataType) Cast { return CastTo(c, target) }
 
-// TryCast converts the result to another numeric target with invalid values becoming NULL.
+// TryCast converts the result to another supported target with invalid values becoming NULL.
 func (c TryCastExpr) TryCast(target memory.DataType) TryCastExpr { return TryCastTo(c, target) }
 
 // Alias names the result of a tolerant conversion.

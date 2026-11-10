@@ -15,6 +15,9 @@ var errNumericCast = errors.New("invalid numeric syntax or out-of-range value")
 // buffers (including nullable output) have already been admitted by the scalar
 // workspace. No intermediate widened vector or per-row register is allocated.
 func evalNumericCast(out, in *scalarRegister, from, to memory.DataType, rows int, tolerant bool) error {
+	if date32CastSupported(from, to) {
+		return evalDate32Cast(out, in, from, to, rows, tolerant)
+	}
 	if from == memory.TypeDecimal || to == memory.TypeDecimal {
 		return evalDecimalCast(out, in, from, to, rows, tolerant)
 	}
@@ -32,7 +35,7 @@ func evalNumericCast(out, in *scalarRegister, from, to memory.DataType, rows int
 		if isValidRegister(out, row) {
 			var text []byte
 			if from == memory.TypeString {
-				data, readErr := registerString(in, row)
+				data, readErr := castStringBytes(in, row)
 				if readErr != nil {
 					return readErr // Storage errors are not conversion errors.
 				}
@@ -79,16 +82,7 @@ func evalNumericCast(out, in *scalarRegister, from, to memory.DataType, rows int
 				if !tolerant {
 					return fmt.Errorf("cast %s to %s at row %d: %w", from, to, row, err)
 				}
-				if out.validity == nil {
-					validity := ensureValidity(out, rows)
-					for i := range validity {
-						validity[i] = ^uint64(0)
-					}
-					if len(validity) > 0 {
-						validity[len(validity)-1] &= memory.TailMask(rows)
-					}
-				}
-				out.validity[row>>6] &^= uint64(1) << uint(row&63)
+				invalidateCastRow(out, rows, row)
 				si, ui, fv = 0, 0, 0
 			}
 		}

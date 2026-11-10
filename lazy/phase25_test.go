@@ -231,9 +231,10 @@ func TestLazyTypedExpressionsFloatStringDateTimestamp(t *testing.T) {
 			Col("f").Add(F64(0.5)).Alias("f2"),
 			Concat(Col("s"), Str("!")).Alias("label"),
 			Cast(Col("d"), memory.TypeString).Alias("day_text"),
+			Cast(Cast(Col("d"), memory.TypeInt32), memory.TypeString).Alias("epoch_day_text"),
 		).
 		Filter(Col("f2").Gt(F64(2.0))).
-		SelectExprs(Col("f2").Alias("f2"), Col("label").Alias("label"), Col("day_text").Alias("day_text"), Col("ts").Alias("ts")).
+		SelectExprs(Col("f2").Alias("f2"), Col("label").Alias("label"), Col("day_text").Alias("day_text"), Col("epoch_day_text").Alias("epoch_day_text"), Col("ts").Alias("ts")).
 		Collect(context.Background())
 	if err != nil {
 		t.Fatal(err)
@@ -250,8 +251,12 @@ func TestLazyTypedExpressionsFloatStringDateTimestamp(t *testing.T) {
 		t.Fatalf("labels=%q,%q", label.ValueBytes(0), label.ValueBytes(1))
 	}
 	day, _ := frame.batches()[0].String("day_text")
-	if string(day.ValueBytes(0)) != "20" || string(day.ValueBytes(1)) != "30" {
+	if string(day.ValueBytes(0)) != "1970-01-21" || string(day.ValueBytes(1)) != "1970-01-31" {
 		t.Fatalf("days=%q,%q", day.ValueBytes(0), day.ValueBytes(1))
+	}
+	epochDay, _ := frame.batches()[0].String("epoch_day_text")
+	if string(epochDay.ValueBytes(0)) != "20" || string(epochDay.ValueBytes(1)) != "30" {
+		t.Fatalf("epoch days=%q,%q", epochDay.ValueBytes(0), epochDay.ValueBytes(1))
 	}
 	ts, _ := frame.batches()[0].Int64("ts")
 	if ts.Values[0] != 200 || ts.Values[1] != 300 {

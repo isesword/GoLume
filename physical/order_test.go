@@ -193,9 +193,9 @@ func TestTopKRejectsActualVariableKeyStateOverBudget(t *testing.T) {
 		_ = reader.Close()
 		t.Fatalf("top-k error=%v, want ErrBudgetExceeded for retained string key", err)
 	}
-	if manager.Used() == 0 {
+	if manager.Used() != 0 {
 		_ = reader.Close()
-		t.Fatal("top-k should retain its accepted base reservation until Close")
+		t.Fatal("top-k should release its reservation after a failed Next")
 	}
 	if err := reader.Close(); err != nil {
 		t.Fatal(err)

@@ -229,8 +229,8 @@ func (b *expressionBinder) bindNode(e Expr) (*BoundExpr, error) {
 				return nil, err
 			}
 		}
-		if !(input.Type == memory.TypeDecimal && (isSignedInteger(n.Target) || unsignedInteger(n.Target))) && (!IsNumeric(n.Target) || !(IsNumeric(input.Type) || input.Type == memory.TypeString)) {
-			return nil, fmt.Errorf("TRY_CAST requires numeric/string input and numeric target, or native decimal128 input and integer target, got %s to %s", input.Type, n.Target)
+		if !date32CastSupported(input.Type, n.Target) && !(input.Type == memory.TypeDecimal && (isSignedInteger(n.Target) || unsignedInteger(n.Target))) && (!IsNumeric(n.Target) || !(IsNumeric(input.Type) || input.Type == memory.TypeString)) {
+			return nil, fmt.Errorf("TRY_CAST requires a supported numeric, decimal128, or date32 conversion, got %s to %s", input.Type, n.Target)
 		}
 		bound.Field = computedField(n.Target, true)
 		bound.Expr = TryCastExpr{Value: bound.Children[0].Expr, Target: n.Target}
@@ -669,6 +669,9 @@ func cloneBoundField(field memory.Field) memory.Field {
 }
 
 func castMayError(from, to memory.DataType) bool {
+	if from == memory.TypeTimestamp && to == memory.TypeDate32 {
+		return false
+	}
 	if from == memory.TypeString && from != to {
 		return true
 	}

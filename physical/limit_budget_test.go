@@ -598,9 +598,9 @@ func TestLimitResidentSortTransferredArrowOutput(t *testing.T) {
 	for _, n := range []int64{2, 3, 4} {
 		for _, end := range []string{"close", "eof", "cancel"} {
 			t.Run(fmt.Sprintf("limit=%d/%s", n, end), func(t *testing.T) {
-				// Resident Sort gathers with the default allocator and transfers
-				// owned Arrow output into Limit's input, rather than retaining it
-				// in the child stream. Track those allocations, not only the source.
+				// Opaque resident output is a sequence of borrowed one-row batches.
+				// Check the full logical prefix independently of physical batching,
+				// including all Arrow allocations and terminal ownership paths.
 				allocator := arrowmem.NewCheckedAllocator(arrowmem.NewGoAllocator())
 				previous := arrowmem.DefaultAllocator
 				arrowmem.DefaultAllocator = allocator
@@ -634,21 +634,40 @@ func TestLimitResidentSortTransferredArrowOutput(t *testing.T) {
 				}
 				defer stream.Close()
 				out := memory.NewBatch()
-				if ok, err := stream.Next(context.Background(), out); !ok || err != nil {
-					t.Fatalf("Next=(%v,%v)", ok, err)
-				}
-				if !reflect.DeepEqual(out.Int64s["id"].Values, []int64{0, 1, 2}[:min(n, 3)]) {
-					t.Fatal("wrong sorted prefix")
-				}
-				list := out.Opaque["raw"].Value.(*array.List)
-				values := list.ListValues().(*array.Int32)
-				for i, want := range []int32{1, 2, 0}[:min(n, 3)] {
-					lo, hi := list.ValueOffsets(i)
-					if hi-lo != 1 || values.Value(int(lo)) != want {
-						t.Fatal("opaque sorted row changed")
+				var ids []int64
+				var raw []int32
+				for len(ids) < int(min(n, 3)) {
+					if ok, err := stream.Next(context.Background(), out); !ok || err != nil {
+						t.Fatalf("Next=(%v,%v), prefix=%v", ok, err, ids)
 					}
+					if out.Rows == 0 || len(ids)+out.Rows > int(min(n, 3)) {
+						t.Fatal("incorrect prefix batch size", out.Rows)
+					}
+					if out.Opaque["raw"].Owned {
+						t.Fatal("Limit returned owned opaque output")
+					}
+					ids = append(ids, out.Int64s["id"].Values...)
+					list := out.Opaque["raw"].Value.(*array.List)
+					if list.Len() != out.Rows {
+						t.Fatal("opaque row count mismatch")
+					}
+					values := list.ListValues().(*array.Int32)
+					for i := 0; i < out.Rows; i++ {
+						lo, hi := list.ValueOffsets(i)
+						if list.IsNull(i) || hi-lo != 1 {
+							t.Fatal("opaque sorted row shape changed")
+						}
+						raw = append(raw, values.Value(int(lo)))
+					}
+					out.ClearColumns()
 				}
-				out.ClearColumns()
+				if !reflect.DeepEqual(ids, []int64{0, 1, 2}[:min(n, 3)]) {
+					t.Fatal("wrong sorted prefix", ids)
+				}
+				if !reflect.DeepEqual(raw, []int32{1, 2, 0}[:min(n, 3)]) {
+					t.Fatal("opaque sorted row changed", raw)
+				}
+
 				if end != "close" {
 					ctx := context.Background()
 					if end == "cancel" {

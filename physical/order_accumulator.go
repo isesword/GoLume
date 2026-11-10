@@ -13,11 +13,12 @@ import (
 	"unsafe"
 )
 
-// externalSortAccumulator is exclusive to the budgeted external sorter. Its
+// externalSortAccumulator provides typed, budgeted row accumulation. Its
 // sparse object graph has the decoder's metadata model: only hinted maps in
 // use, one descriptor per field, list child descriptors, and separate shallow
 // Struct.Fields arrays and child batches. Schema/name/Children storage is
-// borrowed. No resident/Top-K accumulator or opaque column uses this owner.
+// borrowed. Resident Sort/TopK use the same owner with selected-value dictionary
+// indexes; opaque Arrow storage is handled by a separately charged sidecar.
 //
 // capacityBytes counts current backing capacities, not logical lengths. Before
 // each make, the token covers metadata + current capacities + the entire new
@@ -27,14 +28,15 @@ import (
 // growth. This does NOT imply 3*source-row-size covers late validity, domains,
 // or canonicalized nested columns: actual admission is always checked here.
 type externalSortAccumulator struct {
-	schema        memory.Schema
-	batch         *memory.Batch
-	reservation   *sortWorkspaceReservation
-	metadataBytes int64
-	capacityBytes int64
-	domainBytes   int64
-	finished      bool
-	failed        bool
+	schema               memory.Schema
+	batch                *memory.Batch
+	reservation          *sortWorkspaceReservation
+	metadataBytes        int64
+	capacityBytes        int64
+	domainBytes          int64
+	residentDictionaries []residentDictionaryIndex
+	finished             bool
+	failed               bool
 }
 
 func externalSortAccumulatorMetadataBytes(schema memory.Schema) (int64, error) {
@@ -485,7 +487,13 @@ func (a *externalSortAccumulator) appendFields(ctx context.Context, dst, src *me
 			}
 		case memory.TypeString, memory.TypeBinary:
 			if f.Encoding == memory.EncodingDictionary {
-				if err := a.appendDictionary(ctx, dst.DictStrings[f.Name], src.DictStrings[f.Name], row); err != nil {
+				var err error
+				if a.residentDictionaries != nil {
+					err = a.appendResidentDictionary(ctx, dst.DictStrings[f.Name], src.DictStrings[f.Name], row, parentValid)
+				} else {
+					err = a.appendDictionary(ctx, dst.DictStrings[f.Name], src.DictStrings[f.Name], row)
+				}
+				if err != nil {
 					return err
 				}
 			} else {
@@ -729,32 +737,18 @@ func (a *externalSortAccumulator) finish(ctx context.Context) (err error) {
 	if a.finished {
 		return nil
 	}
-	for _, v := range a.batch.DictStrings {
-		if err := a.initOffsets(ctx, &v.Offsets); err != nil {
-			return err
+	if a.residentDictionaries != nil {
+		for _, index := range a.residentDictionaries {
+			if err := a.finishDictionary(ctx, index.vector); err != nil {
+				return err
+			}
 		}
-		if v.DictionaryDomain != "" {
-			continue
+	} else {
+		for _, v := range a.batch.DictStrings {
+			if err := a.finishDictionary(ctx, v); err != nil {
+				return err
+			}
 		}
-		if err := a.ensure(ctx, 64+externalSortDictionaryFinishScratch); err != nil {
-			return err
-		}
-		h := sha256.New()
-		_, _ = h.Write([]byte("GoLume sorted dictionary v1"))
-		var word [8]byte
-		binary.LittleEndian.PutUint64(word[:], uint64(len(v.Offsets)))
-		_, _ = h.Write(word[:])
-		for _, offset := range v.Offsets {
-			binary.LittleEndian.PutUint32(word[:4], offset)
-			_, _ = h.Write(word[:4])
-		}
-		_, _ = h.Write(v.Data)
-		var sum [sha256.Size]byte
-		digest := h.Sum(sum[:0])
-		var encoded [sha256.Size * 2]byte
-		hex.Encode(encoded[:], digest)
-		v.DictionaryDomain = string(encoded[:])
-		a.domainBytes += int64(len(v.DictionaryDomain))
 	}
 	if err := a.finishOffsets(ctx, a.batch); err != nil {
 		return err
@@ -851,4 +845,33 @@ func (a *externalSortAccumulator) close() {
 	if reservation != nil {
 		reservation.Release()
 	}
+}
+
+func (a *externalSortAccumulator) finishDictionary(ctx context.Context, v *memory.DictionaryStringVector) error {
+	if err := a.initOffsets(ctx, &v.Offsets); err != nil {
+		return err
+	}
+	if v.DictionaryDomain != "" {
+		return nil
+	}
+	if err := a.ensure(ctx, 64+externalSortDictionaryFinishScratch); err != nil {
+		return err
+	}
+	h := sha256.New()
+	_, _ = h.Write([]byte("GoLume sorted dictionary v1"))
+	var word [8]byte
+	binary.LittleEndian.PutUint64(word[:], uint64(len(v.Offsets)))
+	_, _ = h.Write(word[:])
+	for _, offset := range v.Offsets {
+		binary.LittleEndian.PutUint32(word[:4], offset)
+		_, _ = h.Write(word[:4])
+	}
+	_, _ = h.Write(v.Data)
+	var sum [sha256.Size]byte
+	digest := h.Sum(sum[:0])
+	var encoded [sha256.Size * 2]byte
+	hex.Encode(encoded[:], digest)
+	v.DictionaryDomain = string(encoded[:])
+	a.domainBytes += int64(len(v.DictionaryDomain))
+	return nil
 }

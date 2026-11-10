@@ -2,7 +2,6 @@ package physical
 
 import (
 	"context"
-	"errors"
 	"gocolumn/memory"
 	"gocolumn/source"
 	"gocolumn/source/inmemory"
@@ -118,25 +117,15 @@ func TestResidentAndTopKDictionaryWindowAndScope(t *testing.T) {
 			}
 			dst := memory.NewBatch()
 			ok, err := stream.Next(context.Background(), dst)
-			if missing {
-				if !errors.Is(err, errSortMixedDictionaries) || ok {
-					t.Fatal("unbudgeted mixed value must be rejected", top, ok, err)
-				}
-			} else {
-				if err != nil || !ok {
-					t.Fatal(top, ok, err)
-				}
-				d := dst.DictStrings["value"]
-				if string(d.DictionaryValue(d.Indices[0])) != "b" || string(d.DictionaryValue(d.Indices[1])) != "a" {
-					t.Fatal(top, d)
-				}
-				expectedDictionary := first.DictStrings["value"]
-				if top {
-					expectedDictionary = second.DictStrings["value"]
-				}
-				if &d.Data[0] != &expectedDictionary.Data[0] {
-					t.Fatal("shared path copied dictionary without admission")
-				}
+			if err != nil || !ok {
+				t.Fatal(top, ok, err)
+			}
+			d := dst.DictStrings["value"]
+			if string(d.DictionaryValue(d.Indices[0])) != value || string(d.DictionaryValue(d.Indices[1])) != "a" {
+				t.Fatal(top, d)
+			}
+			if &d.Data[0] == &first.DictStrings["value"].Data[0] || &d.Data[0] == &second.DictStrings["value"].Data[0] {
+				t.Fatal("resident dictionary remained borrowed")
 			}
 			if string(first.DictStrings["value"].Data) != "xab-tail" || string(second.DictStrings["value"].Data) != secondData {
 				t.Fatal("source mutated")
@@ -179,7 +168,17 @@ func TestResidentDictionaryGrowthCannotExceedAdmission(t *testing.T) {
 	if err == nil && ok && memory.BatchBytes(dst) > manager.Used() {
 		t.Fatal("unadmitted dictionary amplification", memory.BatchBytes(dst), manager.Used())
 	}
-	if !errors.Is(err, errSortMixedDictionaries) || ok {
-		t.Fatal("resident mixed values require dynamic accounting before support", ok, err)
+	if err != nil || !ok {
+		t.Fatal("resident mixed values should fit after interning", ok, err)
+	}
+	d := dst.DictStrings["value"]
+	if dst.Rows != 2048 || len(d.Data) != 2048 {
+		t.Fatal("dictionary entries were expanded per row", dst.Rows, len(d.Data))
+	}
+	if err := stream.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if manager.Used() != 0 {
+		t.Fatal("reservation leaked", manager.Used())
 	}
 }

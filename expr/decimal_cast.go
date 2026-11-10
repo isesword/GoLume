@@ -117,51 +117,6 @@ func parseDecimal128Text(text []byte, precision, scale int32, check func() error
 	return value, decimalRescaleOK, nil
 }
 
-// decimalCastString distinguishes invalid physical storage from empty syntax.
-// Check only demanded non-NULL rows so a NULL payload is never inspected.
-func decimalCastString(in *scalarRegister, row int) ([]byte, error) {
-	if in.strView != nil {
-		v := in.strView
-		if row < 0 || row >= len(v.Offsets)-1 {
-			return nil, fmt.Errorf("decimal cast string offsets missing at row %d", row)
-		}
-		lo, hi := v.Offsets[row], v.Offsets[row+1]
-		if lo > hi || uint64(hi) > uint64(len(v.Data)) {
-			return nil, fmt.Errorf("decimal cast string offsets invalid at row %d", row)
-		}
-		return v.Data[lo:hi], nil
-	}
-	if in.strDict != nil {
-		v := in.strDict
-		if row < 0 || row >= len(v.Indices) {
-			return nil, fmt.Errorf("decimal cast dictionary index missing at row %d", row)
-		}
-		code := v.Indices[row]
-		if uint64(code)+1 >= uint64(len(v.Offsets)) {
-			return nil, fmt.Errorf("decimal cast dictionary code invalid at row %d", row)
-		}
-		lo, hi := v.Offsets[code], v.Offsets[code+1]
-		if lo > hi || uint64(hi) > uint64(len(v.Data)) {
-			return nil, fmt.Errorf("decimal cast dictionary offsets invalid at row %d", row)
-		}
-		return v.Data[lo:hi], nil
-	}
-	return registerString(in, row)
-}
-
-func invalidateDecimalCastRow(out *scalarRegister, rows, row int) {
-	if out.validity == nil {
-		valid := ensureValidity(out, rows)
-		for i := range valid {
-			valid[i] = ^uint64(0)
-		}
-		if len(valid) > 0 {
-			valid[len(valid)-1] &= memory.TailMask(rows)
-		}
-	}
-	out.validity[row>>6] &^= uint64(1) << uint(row&63)
-}
-
 func decimalCastError(from, to memory.DataType, precision, scale int32, row int, status decimalRescaleStatus) error {
 	reason := "overflows"
 	if status == decimalRescaleInexact {
@@ -193,7 +148,7 @@ func evalDecimalCast(out, in *scalarRegister, from, to memory.DataType, rows int
 				p, s := out.decimalType.DecimalPrecision, out.decimalType.DecimalScale
 				switch {
 				case from == memory.TypeString:
-					text, err := decimalCastString(in, row)
+					text, err := castStringBytes(in, row)
 					if err != nil {
 						return err
 					}
@@ -252,7 +207,7 @@ func evalDecimalCast(out, in *scalarRegister, from, to memory.DataType, rows int
 					}
 					return decimalCastError(from, to, p, s, row, status)
 				}
-				invalidateDecimalCastRow(out, rows, row)
+				invalidateCastRow(out, rows, row)
 				value = memory.Decimal128{}
 			}
 		}

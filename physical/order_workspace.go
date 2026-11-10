@@ -21,7 +21,10 @@ var errSortWorkspaceClosed = errors.New("external sort workspace closed")
 // unused credit remains charged: run metadata must not steal the next merge's
 // required workspace. Close retains credit until the last live token is released.
 type sortWorkspace struct {
-	parent         memory.Manager
+	parent memory.Manager
+	// Resident phases can return all credit together. One node per growth avoids
+	// thousands of 4KiB bookkeeping allocations without weakening admission.
+	bulkCredits    bool
 	mu             sync.Mutex
 	growMu         sync.Mutex
 	capacity, used int64
@@ -80,6 +83,9 @@ func (w *sortWorkspace) ensure(ctx context.Context, bytes int64) error {
 		remaining := delta
 		for remaining > 0 {
 			n := min(remaining, int64(4096))
+			if w.bulkCredits {
+				n = remaining
+			}
 			r, err := w.parent.Reserve(ctx, n+sortWorkspaceCreditOverhead)
 			if err != nil {
 				releaseSortWorkspaceCredits(credits)

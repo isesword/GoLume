@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"container/heap"
 	"context"
-	"errors"
 	"fmt"
 	"gocolumn/join"
 	"gocolumn/memory"
@@ -38,6 +37,7 @@ type SortSourceOptions struct {
 // SortSource globally sorts all input rows. Sort materializes the full input
 // and therefore charges an execution-time memory reservation.
 type SortSource struct {
+	schema    memory.Schema
 	input     source.Source
 	keys      []SortKey
 	manager   memory.Manager
@@ -78,6 +78,7 @@ func NewSortSourceWithOptions(input source.Source, keys []SortKey, manager memor
 		return nil, fmt.Errorf("parallel sort requires executor")
 	}
 	return &SortSource{
+		schema:    residentOrderSchema(input.Schema()),
 		input:     input,
 		keys:      append([]SortKey(nil), keys...),
 		manager:   manager,
@@ -87,8 +88,8 @@ func NewSortSourceWithOptions(input source.Source, keys []SortKey, manager memor
 	}, nil
 }
 
-// Schema preserves the input schema.
-func (s *SortSource) Schema() memory.Schema { return s.input.Schema() }
+// Schema preserves logical fields but does not advertise input dictionary codes.
+func (s *SortSource) Schema() memory.Schema { return s.schema }
 
 // Ordering exposes the globally stable key order established by this source.
 func (s *SortSource) Ordering() []source.OrderingColumn {
@@ -134,60 +135,6 @@ func (s *SortSource) Partitions(ctx context.Context) ([]source.Partition, error)
 		return nil, err
 	}
 	return []source.Partition{{ID: 0, Rows: st.Rows}}, nil
-}
-
-type sortReader struct {
-	owner       *SortSource
-	child       source.BatchStream
-	scratch     *memory.Batch
-	reservation memory.Reservation
-	done        bool
-}
-
-// Close releases child and materialization reservation resources.
-func (r *sortReader) Close() error {
-	if r.reservation != nil {
-		r.reservation.Release()
-		r.reservation = nil
-	}
-	r.scratch.ReleaseOwned()
-	return r.child.Close()
-}
-
-// Next materializes, stably sorts, and gathers the global input once.
-func (r *sortReader) Next(ctx context.Context, dst *memory.Batch) (bool, error) {
-	if r.done {
-		dst.ClearColumns()
-		return false, nil
-	}
-	r.done = true
-	if err := r.reserve(ctx); err != nil {
-		return false, err
-	}
-	full, err := materializeStream(ctx, r.owner.input.Schema(), r.child, r.scratch)
-	if err != nil {
-		return false, err
-	}
-	defer full.ReleaseOwned()
-	binding, err := reserveSortBinding(ctx, r.owner.manager, full.Rows, len(r.owner.keys))
-	if err != nil {
-		return false, err
-	}
-	if binding != nil {
-		defer binding.Release()
-	}
-	cmp, err := newBatchComparator(full, r.owner.input.Schema(), r.owner.keys)
-	if err != nil {
-		return false, err
-	}
-	rows, err := sortRows(ctx, full.Rows, cmp, r.owner.workers, r.owner.executor)
-	if err != nil {
-		return false, err
-	}
-	if err := takeRows(ctx, dst, full, rows); err != nil {
-		return false, err
-	}
-	return dst.Rows != 0, nil
 }
 
 // sortRows returns global input row ordinals in requested order. Each ordinal
@@ -247,7 +194,11 @@ func mergeSortedRuns(runs [][]int, cmp batchComparator) []int {
 		h.runs[i] = rowRun{rows: rows}
 	}
 	heap.Init(&h)
-	out := make([]int, 0)
+	count := 0
+	for _, rows := range runs {
+		count += len(rows)
+	}
+	out := make([]int, 0, count)
 	for h.Len() > 0 {
 		row := h.runs[0].rows[h.runs[0].next]
 		out = append(out, row)
@@ -295,53 +246,15 @@ func (h *rowRunHeap) Pop() any {
 	return run
 }
 
-func (r *sortReader) reserve(ctx context.Context) error {
-	if r.reservation != nil || r.owner.manager == nil {
-		return nil
-	}
-	st, err := r.owner.input.Stats(ctx)
-	if err != nil {
-		return err
-	}
-	bytes := estimateOrderBytes(r.owner.input.Schema(), st.Rows)
-	// Parallel merging retains the sorted-run ordinals and emits one additional
-	// merged ordinal buffer. Charge it explicitly rather than silently widening
-	// the full-materialization memory footprint.
-	if r.owner.usesParallelSort() {
-		if st.Rows > math.MaxInt64/8 || bytes > math.MaxInt64-st.Rows*8 {
-			bytes = math.MaxInt64
-		} else {
-			bytes += st.Rows * 8
-		}
-	}
-	if st.Bytes > bytes {
-		bytes = st.Bytes
-	}
-	res, err := r.owner.manager.Reserve(ctx, bytes)
-	if err != nil {
-		return err
-	}
-	r.reservation = res
-	return nil
-}
-
 func (s *SortSource) usesParallelSort() bool {
 	return s.workers > 1 && s.executor != nil && s.executor.MaxWorkers() > 1
-}
-
-// Dictionary forwards stable dictionary metadata from the input.
-func (s *SortSource) Dictionary(ctx context.Context, column string) (source.Dictionary, error) {
-	dp, ok := s.input.(source.DictionaryProvider)
-	if !ok {
-		return source.Dictionary{}, fmt.Errorf("sort input has no dictionary provider")
-	}
-	return dp.Dictionary(ctx, column)
 }
 
 // TopKSource retains at most K candidates. Replay-stable inputs use a narrow
 // key pass and a payload replay; other inputs retain owned winner snapshots in
 // one pass, charging their actual payload and opaque backing storage.
 type TopKSource struct {
+	schema   memory.Schema
 	input    source.Source
 	keyInput source.Source
 	keys     []SortKey
@@ -393,11 +306,11 @@ func NewTopKSourceWithKeyInput(input, keyInput source.Source, k int, keys []Sort
 	if err := validateSortKeys(keyInput.Schema(), keys); err != nil {
 		return nil, fmt.Errorf("top-k key input: %w", err)
 	}
-	return &TopKSource{input: input, keyInput: keyInput, keys: append([]SortKey(nil), keys...), k: k, manager: manager}, nil
+	return &TopKSource{schema: residentOrderSchema(input.Schema()), input: input, keyInput: keyInput, keys: append([]SortKey(nil), keys...), k: k, manager: manager}, nil
 }
 
-// Schema preserves the input schema.
-func (s *TopKSource) Schema() memory.Schema { return s.input.Schema() }
+// Schema preserves logical fields but does not advertise input dictionary codes.
+func (s *TopKSource) Schema() memory.Schema { return s.schema }
 
 // StreamPlan reports the bounded candidate count and selected payload strategy.
 func (s *TopKSource) StreamPlan() source.StreamPlanNode {
@@ -453,312 +366,17 @@ func (s *TopKSource) NewBatchStream(ctx context.Context, opts source.ReadOptions
 	if !s.canReplay() {
 		return newTopKSnapshotStream(ctx, s, opts)
 	}
-	r := &topKReader{owner: s, scratch: memory.NewBatch(), readOpts: opts}
+	query := memory.QueryBudgetFromContext(ctx)
+	if query != nil {
+		opts.MemoryManager = query.Operator("SourceScan", memory.MemoryWorkspace)
+	}
+	r := &topKReader{owner: s, scratch: memory.NewBatch(), readOpts: opts, query: query}
 	first, err := source.OpenBatchStream(ctx, s.keyInput, opts)
 	if err != nil {
 		return nil, err
 	}
 	r.first = first
 	return r, nil
-}
-
-type topKReader struct {
-	owner         *TopKSource
-	first         source.BatchStream
-	scratch       *memory.Batch
-	reservation   memory.Reservation
-	extra         []memory.Reservation
-	baseBytes     int64
-	reservedBytes int64
-	candidateText int64
-	done          bool
-	readOpts      source.ReadOptions
-}
-
-// Close releases reader-local resources.
-func (r *topKReader) Close() error {
-	if r.reservation != nil {
-		r.reservation.Release()
-		r.reservation = nil
-	}
-	for _, reservation := range r.extra {
-		reservation.Release()
-	}
-	r.extra = nil
-	r.baseBytes = 0
-	r.reservedBytes = 0
-	r.scratch.ReleaseOwned()
-	return r.first.Close()
-}
-
-// Next scans ordering keys, maintains a bounded heap, then replays only the
-// selected rows from winning source batches of a replay-stable input.
-func (r *topKReader) Next(ctx context.Context, dst *memory.Batch) (produced bool, resultErr error) {
-	if r.done || r.owner.k == 0 {
-		r.done = true
-		dst.ClearColumns()
-		return false, nil
-	}
-	r.done = true
-	if err := r.reserve(ctx); err != nil {
-		return false, err
-	}
-	first := r.first
-	h := &candidateHeap{keys: r.owner.keys}
-	heap.Init(h)
-	trackActual := r.tracksActualMemory()
-	var ordinal int64
-	for {
-		ok, err := first.Next(ctx, r.scratch)
-		if err != nil {
-			return false, err
-		}
-		if !ok {
-			break
-		}
-		for row := 0; row < r.scratch.Rows; row++ {
-			if ordinal == math.MaxInt64 {
-				return false, fmt.Errorf("top-k input row ordinal overflows int64")
-			}
-			if h.Len() < r.owner.k {
-				var textBytes int64
-				if trackActual {
-					var keyErr error
-					textBytes, keyErr = sortKeyVariableBytes(r.scratch, r.owner.keyInput.Schema(), r.owner.keys, row)
-					if keyErr != nil {
-						return false, keyErr
-					}
-					if err := r.growReservation(ctx, r.baseBytes+r.candidateText+textBytes); err != nil {
-						return false, fmt.Errorf("top-k candidate key memory: %w", err)
-					}
-				}
-				cand := rowCandidate{cells: make([]sortCell, len(r.owner.keys))}
-				if err := snapshotCandidateInto(&cand, r.scratch, r.owner.keyInput.Schema(), r.owner.keys, row, ordinal); err != nil {
-					return false, err
-				}
-				heap.Push(h, cand)
-				r.candidateText += textBytes
-				ordinal++
-				continue
-			}
-			better, err := batchRowLessCandidate(r.scratch, r.owner.keyInput.Schema(), r.owner.keys, row, ordinal, h.items[0])
-			if err != nil {
-				return false, err
-			}
-			if better {
-				candidateText := r.candidateText
-				if trackActual {
-					textBytes, err := sortKeyVariableBytes(r.scratch, r.owner.keyInput.Schema(), r.owner.keys, row)
-					if err != nil {
-						return false, err
-					}
-					oldTextBytes := candidateVariableBytes(h.items[0])
-					candidateText = r.candidateText - oldTextBytes + textBytes
-					if err := r.growReservation(ctx, r.baseBytes+candidateText); err != nil {
-						return false, fmt.Errorf("top-k candidate key memory: %w", err)
-					}
-				}
-				if err := snapshotCandidateInto(&h.items[0], r.scratch, r.owner.keyInput.Schema(), r.owner.keys, row, ordinal); err != nil {
-					return false, err
-				}
-				r.candidateText = candidateText
-				heap.Fix(h, 0)
-			}
-			ordinal++
-		}
-	}
-	winners := append([]rowCandidate(nil), h.items...)
-	sort.SliceStable(winners, func(i, j int) bool { return candidateLess(winners[i], winners[j], r.owner.keys) })
-	if len(winners) == 0 {
-		dst.ClearColumns()
-		return false, nil
-	}
-	second, err := source.OpenBatchStream(ctx, r.owner.input, r.readOpts)
-	if err != nil {
-		return false, err
-	}
-	defer func() {
-		if closeErr := second.Close(); closeErr != nil {
-			produced = false
-			resultErr = errors.Join(resultErr, closeErr)
-		}
-	}()
-	type selectedRow struct {
-		batch *memory.Batch
-		row   int
-	}
-	selected := make(map[int64]selectedRow, len(winners))
-	ordinals := make([]int64, len(winners))
-	for i, w := range winners {
-		ordinals[i] = w.ordinal
-	}
-	sort.Slice(ordinals, func(i, j int) bool { return ordinals[i] < ordinals[j] })
-	selectedBatches := make([]*memory.Batch, 0, len(winners))
-	defer func() {
-		for _, batch := range selectedBatches {
-			batch.ReleaseOwned()
-		}
-	}()
-	var payloadBytes, replayOrdinal int64
-	nextWinner := 0
-	for {
-		ok, err := second.Next(ctx, r.scratch)
-		if err != nil {
-			return false, err
-		}
-		if !ok {
-			break
-		}
-		if int64(r.scratch.Rows) > math.MaxInt64-replayOrdinal {
-			return false, fmt.Errorf("top-k replay row ordinal overflows int64")
-		}
-		start, end := replayOrdinal, replayOrdinal+int64(r.scratch.Rows)
-		replayOrdinal = end
-		firstWinner := nextWinner
-		for nextWinner < len(ordinals) && ordinals[nextWinner] < end {
-			nextWinner++
-		}
-		if firstWinner == nextWinner {
-			continue
-		}
-		rows := make([]int, nextWinner-firstWinner)
-		for i, winner := range ordinals[firstWinner:nextWinner] {
-			if winner < start {
-				return false, fmt.Errorf("top-k replay passed selected row ordinal %d", winner)
-			}
-			rows[i] = int(winner - start)
-		}
-		if trackActual {
-			for _, row := range rows {
-				bytes, estimateErr := memory.EstimateBatchRangeBytes(r.scratch, row, 1)
-				if estimateErr != nil {
-					return false, estimateErr
-				}
-				if bytes > math.MaxInt64-payloadBytes {
-					return false, fmt.Errorf("top-k payload byte estimate overflows int64")
-				}
-				payloadBytes += bytes
-			}
-			if r.baseBytes > math.MaxInt64-r.candidateText || payloadBytes > (math.MaxInt64-r.baseBytes-r.candidateText)/2 {
-				return false, fmt.Errorf("top-k payload reservation overflows int64")
-			}
-			if err := r.growReservation(ctx, r.baseBytes+r.candidateText+payloadBytes*2); err != nil {
-				return false, fmt.Errorf("top-k winner payload memory: %w", err)
-			}
-		}
-		mini := memory.NewBatch()
-		if err := takeRows(ctx, mini, r.scratch, rows); err != nil {
-			mini.ReleaseOwned()
-			return false, err
-		}
-		selectedBatches = append(selectedBatches, mini)
-		for i, winner := range ordinals[firstWinner:nextWinner] {
-			selected[winner] = selectedRow{batch: mini, row: i}
-		}
-	}
-	if replayOrdinal != ordinal {
-		return false, fmt.Errorf("top-k replay changed row count: keys=%d payload=%d", ordinal, replayOrdinal)
-	}
-	if len(selected) != len(winners) {
-		return false, fmt.Errorf("top-k replay selected %d of %d winner ordinals", len(selected), len(winners))
-	}
-	acc := newBatchAccumulator(r.owner.input.Schema())
-	for _, winner := range winners {
-		row := selected[winner.ordinal]
-		if err := acc.appendRow(row.batch, row.row); err != nil {
-			return false, err
-		}
-	}
-	full, err := acc.finish()
-	if err != nil {
-		return false, err
-	}
-	defer full.ReleaseOwned()
-	dst.ClearColumns()
-	bindAll(dst, full)
-	// Transfer owned opaque bindings from full to dst; dst now owns them.
-	for name, v := range full.Opaque {
-		dst.Opaque[name] = v
-		delete(full.Opaque, name)
-	}
-	dst.Reset(full.Rows)
-	return true, nil
-}
-
-func (r *topKReader) reserve(ctx context.Context) error {
-	if r.reservation != nil || r.owner.manager == nil || r.owner.k <= 0 {
-		return nil
-	}
-	// Charge both the final K-row payload and candidate ordering state. The
-	// estimate is deliberately conservative because strings may copy key bytes.
-	bytes := estimateOrderBytes(r.owner.input.Schema(), int64(r.owner.k))
-	keyWidth := int64(32)
-	for range r.owner.keys {
-		keyWidth += 32
-	}
-	if int64(r.owner.k) <= math.MaxInt64/keyWidth {
-		bytes += int64(r.owner.k) * keyWidth
-	} else {
-		bytes = math.MaxInt64
-	}
-	res, err := r.owner.manager.Reserve(ctx, bytes)
-	if err != nil {
-		return err
-	}
-	r.reservation = res
-	r.baseBytes = res.Bytes()
-	r.reservedBytes = res.Bytes()
-	return nil
-}
-
-func (r *topKReader) growReservation(ctx context.Context, total int64) error {
-	if r.owner.manager == nil || r.owner.manager.Limit() <= 0 || total <= r.reservedBytes {
-		return nil
-	}
-	delta := total - r.reservedBytes
-	reservation, err := r.owner.manager.Reserve(ctx, delta)
-	if err != nil {
-		return err
-	}
-	r.extra = append(r.extra, reservation)
-	r.reservedBytes += delta
-	return nil
-}
-
-func (r *topKReader) tracksActualMemory() bool {
-	return r.owner.manager != nil && r.owner.manager.Limit() > 0
-}
-
-func sortKeyVariableBytes(batch *memory.Batch, schema memory.Schema, keys []SortKey, row int) (int64, error) {
-	var bytes int64
-	for _, key := range keys {
-		cell, err := snapshotCell(batch, schema, key.Column, row)
-		if err != nil {
-			return 0, err
-		}
-		if int64(len(cell.text)) > math.MaxInt64-bytes {
-			return 0, fmt.Errorf("top-k candidate string bytes overflow int64")
-		}
-		bytes += int64(len(cell.text))
-	}
-	return bytes, nil
-}
-
-func candidateVariableBytes(candidate rowCandidate) int64 {
-	var bytes int64
-	for _, cell := range candidate.cells {
-		bytes += int64(len(cell.text))
-	}
-	return bytes
-}
-
-// Dictionary forwards stable dictionary metadata from the input.
-func (s *TopKSource) Dictionary(ctx context.Context, column string) (source.Dictionary, error) {
-	dp, ok := s.input.(source.DictionaryProvider)
-	if !ok {
-		return source.Dictionary{}, fmt.Errorf("top-k input has no dictionary provider")
-	}
-	return dp.Dictionary(ctx, column)
 }
 
 func validateSortKeys(schema memory.Schema, keys []SortKey) error {

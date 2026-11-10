@@ -1,5 +1,7 @@
 # UTF-8 strings and UTC temporal expressions
 
+> Date32 calendar casts now have a separate current contract and a breaking text-format change. See [DATE32_CASTS.md](DATE32_CASTS.md); the historical behavior below is superseded where that document says so.
+
 The lazy API supports Parquet `STRING`/UTF-8 `BYTE_ARRAY`, `DATE`, and UTC
 `TIMESTAMP_MILLIS`, `TIMESTAMP_MICROS`, and `TIMESTAMP_NANOS` columns. Timestamp
 values are normalized to Unix epoch nanoseconds before predicate or projection

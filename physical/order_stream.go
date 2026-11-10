@@ -88,46 +88,6 @@ func (s *SortSource) NewBatchStream(ctx context.Context, opts source.ReadOptions
 	return newExternalSortStream(ctx, s, opts)
 }
 
-type residentSortStream struct {
-	reader *sortReader
-	done   bool
-	closed bool
-}
-
-func newResidentSortStream(ctx context.Context, owner *SortSource, opts source.ReadOptions) (source.BatchStream, error) {
-	child, err := source.OpenBatchStream(ctx, owner.input, opts)
-	if err != nil {
-		return nil, err
-	}
-	return &residentSortStream{reader: &sortReader{owner: owner, child: child, scratch: memory.NewBatch()}}, nil
-}
-
-// Next emits the one resident sorted batch.
-func (s *residentSortStream) Next(ctx context.Context, dst *memory.Batch) (bool, error) {
-	if dst == nil {
-		return false, fmt.Errorf("sort stream destination is nil")
-	}
-	if s.closed {
-		dst.ClearColumns()
-		return false, source.ErrBatchStreamClosed
-	}
-	if s.done {
-		dst.ClearColumns()
-		return false, nil
-	}
-	s.done = true
-	return s.reader.Next(ctx, dst)
-}
-
-// Close releases the resident sort reader.
-func (s *residentSortStream) Close() error {
-	if s == nil || s.closed {
-		return nil
-	}
-	s.closed = true
-	return s.reader.Close()
-}
-
 func newExternalSortStream(ctx context.Context, owner *SortSource, opts source.ReadOptions) (*externalSortStream, error) {
 	if ctx == nil {
 		return nil, fmt.Errorf("external sort context is nil")

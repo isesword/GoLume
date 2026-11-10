@@ -197,30 +197,39 @@ func TestOpaqueArrowSurvivesFilterTopKAndMaterialization(t *testing.T) {
 	if got := frameInt64Column(t, frame, "x"); !equalI64(got, []int64{4, 3}) {
 		t.Fatalf("x=%v", got)
 	}
-	if len(frame.batches()) != 1 {
-		t.Fatalf("batches=%d", len(frame.batches()))
+	var rows [][]int32
+	for batchIndex, batch := range frame.batches() {
+		o := batch.Opaque["nested"]
+		if o == nil || !o.Owned {
+			t.Fatalf("batch %d nested opaque ownership=%+v", batchIndex, o)
+		}
+		arr, ok := o.Value.(*array.List)
+		if !ok {
+			t.Fatalf("batch %d nested type=%T", batchIndex, o.Value)
+		}
+		if arr.Len() != batch.Rows {
+			t.Fatalf("batch %d nested len=%d rows=%d", batchIndex, arr.Len(), batch.Rows)
+		}
+		vals := arr.ListValues().(*array.Int32)
+		for row := 0; row < arr.Len(); row++ {
+			if arr.IsNull(row) {
+				t.Fatalf("batch %d row %d unexpectedly null", batchIndex, row)
+			}
+			lo, hi := arr.ValueOffsets(row)
+			rows = append(rows, append([]int32(nil), vals.Values()[lo:hi]...))
+		}
 	}
-	o := frame.batches()[0].Opaque["nested"]
-	if o == nil || !o.Owned {
-		t.Fatalf("nested opaque ownership=%+v", o)
+	if len(rows) != 2 {
+		t.Fatalf("nested rows=%d", len(rows))
 	}
-	arr, ok := o.Value.(*array.List)
-	if !ok {
-		t.Fatalf("nested type=%T", o.Value)
-	}
-	if arr.Len() != 2 {
-		t.Fatalf("nested len=%d", arr.Len())
-	}
-	vals := arr.ListValues().(*array.Int32).Values()
-	off := arr.Offsets()
-	first := vals[off[0]:off[1]]
-	second := vals[off[1]:off[2]]
+	first, second := rows[0], rows[1]
 	if len(first) != 2 || first[0] != 40 || first[1] != 41 {
 		t.Fatalf("first=%v", first)
 	}
-	if len(second) != 3 || second[0] != 30 || second[2] != 32 {
+	if len(second) != 3 || second[0] != 30 || second[1] != 31 || second[2] != 32 {
 		t.Fatalf("second=%v", second)
 	}
+
 }
 
 func frameInt64Column(t *testing.T, f DataFrame, name string) []int64 {
