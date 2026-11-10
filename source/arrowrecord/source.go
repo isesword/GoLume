@@ -98,9 +98,9 @@ type Source struct {
 	report      source.PushdownReport
 }
 
-// NewSource retains records and constructs an Arrow RecordBatch source. All
-// records must have equal schemas. The source owns one retain on every record
-// until Close is called.
+// NewSource retains record data and constructs an Arrow RecordBatch source.
+// All records must have equal schemas. Retained views are restricted to each
+// record's logical row count and remain owned until Close is called.
 func NewSource(records ...arrow.RecordBatch) (*Source, error) {
 	if len(records) == 0 {
 		return nil, fmt.Errorf("arrowrecord: at least one RecordBatch is required")
@@ -122,8 +122,22 @@ func NewSource(records ...arrow.RecordBatch) (*Source, error) {
 			owner.close()
 			return nil, fmt.Errorf("arrowrecord: record %d schema differs from record 0", i)
 		}
-		rec.Retain()
-		owner.records[i] = rec
+		// Arrow permits columns longer than NumRows. Bind and validate only
+		// the logical record, not hidden payloads or NULLs in column tails.
+		// Keep the bounded record alive so nested and opaque views remain safe.
+		bounded := false
+		for _, col := range rec.Columns() {
+			if int64(col.Len()) > rec.NumRows() {
+				bounded = true
+				break
+			}
+		}
+		if bounded {
+			owner.records[i] = rec.NewSlice(0, rec.NumRows())
+		} else {
+			rec.Retain()
+			owner.records[i] = rec
+		}
 	}
 	bindings := make([]binding, len(schema.Fields()))
 	fields := make([]memory.Field, len(bindings))
@@ -144,7 +158,7 @@ func NewSource(records ...arrow.RecordBatch) (*Source, error) {
 		for ri, rec := range owner.records {
 			arr := rec.Column(bindings[i].index)
 			bindings[i].validities[ri] = validityBitmap(arr)
-			if err := cachePhysicalValues(&bindings[i], ri, arr); err != nil {
+			if err := cachePhysicalValues(&bindings[i], ri, arr, nil); err != nil {
 				owner.close()
 				return nil, fmt.Errorf("arrowrecord: column %q: %w", bindings[i].name, err)
 			}
@@ -381,7 +395,9 @@ func (s *Source) ApplyPushdown(_ context.Context, req source.PushdownRequest) (s
 	return &out, report, nil
 }
 
-func cachePhysicalValues(b *binding, partition int, arr arrow.Array) error {
+// parentValidity controls whether a nested payload is observable. It does not
+// replace the child's own validity, which remains part of the Arrow contract.
+func cachePhysicalValues(b *binding, partition int, arr arrow.Array, parentValidity memory.Bitmap) error {
 	switch a := arr.(type) {
 	case *array.Int8, *array.Int16, *array.Uint8, *array.Uint16, *array.Float32:
 		// Native-width arrays are bound directly by bindTyped; no widened cache
@@ -418,6 +434,9 @@ func cachePhysicalValues(b *binding, partition int, arr arrow.Array) error {
 		}
 		out := make([]int64, len(a.Values()))
 		for i, v := range a.Values() {
+			if a.IsNull(i) || (parentValidity != nil && !memory.IsSet(parentValidity, i)) {
+				continue
+			}
 			ns, err := scaleTimestampToNanos(int64(v), scale)
 			if err != nil {
 				return fmt.Errorf("timestamp row %d: %w", i, err)
@@ -442,6 +461,9 @@ func cachePhysicalValues(b *binding, partition int, arr arrow.Array) error {
 		}
 		out := make([]int64, len(a.Values()))
 		for i, v := range a.Values() {
+			if a.IsNull(i) || (parentValidity != nil && !memory.IsSet(parentValidity, i)) {
+				continue
+			}
 			ns, err := scaleTimestampToNanos(int64(v), scale)
 			if err != nil {
 				return fmt.Errorf("duration row %d: %w", i, err)

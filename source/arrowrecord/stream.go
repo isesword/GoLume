@@ -218,7 +218,7 @@ func arrowStructVector(a *array.Struct, field memory.Field, parentValidity memor
 			i32: make([][]int32, 1), i64: make([][]int64, 1), u32: make([][]uint32, 1),
 			f64: make([][]float64, 1), stringLists: make([]*memory.StringListVector, 1),
 		}
-		if err := cachePhysicalValues(&b, 0, arr); err != nil {
+		if err := cachePhysicalValues(&b, 0, arr, parentValidity); err != nil {
 			return nil, fmt.Errorf("struct child %q: %w", child.Name, err)
 		}
 		switch x := arr.(type) {
