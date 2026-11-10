@@ -104,8 +104,14 @@ func CommonNumericType(a, b memory.DataType) (memory.DataType, error) {
 
 // CanCast reports whether the scalar engine has an explicit implementation for
 // from -> to. String timestamp casts use the documented RFC3339/UTC parser;
-// date and integer temporal casts otherwise use physical epoch values.
+// date and integer temporal casts otherwise use physical epoch values. Native
+// Decimal128 can cast exactly to integers or full-scale text; decimal targets
+// require CastDecimal128 to specify precision and scale.
 func CanCast(from, to memory.DataType) bool {
+	if from == memory.TypeDecimal {
+		return isSignedInteger(to) || unsignedInteger(to) || to == memory.TypeString
+	}
+
 	if from == to {
 		return conditionalScalarType(from) || from == memory.TypeBinary
 	}

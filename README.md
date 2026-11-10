@@ -267,7 +267,9 @@ ratio       : ~47.5x
 [DECIMAL128_RESCALE.md](docs/DECIMAL128_RESCALE.md)。显式
 `DivideDecimal128(left, right, precision, scale)` 支持精确除法；除零、非零余数、
 目标精度溢出均报错，不悄悄舍入，详见 [DECIMAL128_DIVISION.md](docs/DECIMAL128_DIVISION.md)。
-普通 `Div` 与通用 decimal cast 仍不支持。
+显式 `CastDecimal128` / `TryCastDecimal128` 支持整数、字符串与 Decimal128 的精确转换；
+`CastTo` / `TryCastTo` 支持 Decimal128 转整数，`CastTo` 也支持转字符串。详见
+[DECIMAL128_CAST.md](docs/DECIMAL128_CAST.md)。普通 `Div`、浮点与 decimal 之间的转换仍不支持。
 当前算术、rescale 与显式除法使用定宽整数实现，不宣称 Decimal128 SIMD 加速。
 
 ## Opaque Arrow payload

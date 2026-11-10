@@ -1007,8 +1007,9 @@ func (v CoalesceExpr) Alias(name string) NamedExpr { return Named(v, name) }
 // Alias gives this expression a stable projection output name.
 func (v InExpr) Alias(name string) NamedExpr { return Named(v, name) }
 
-// TryCastExpr converts numeric or string input to a numeric target. Invalid
-// syntax and out-of-range values become NULL. Child expression errors are not
+// TryCastExpr converts numeric or string input to a numeric target, or native
+// Decimal128 to an integer target. Invalid syntax, overflow, and inexact
+// decimal conversion become NULL. Child expression errors are not
 // suppressed; unsupported source/target types fail during binding.
 type TryCastExpr struct {
 	Value  Expr
@@ -1021,6 +1022,7 @@ func (TryCastExpr) exprNode() {}
 func (c TryCastExpr) String() string { return fmt.Sprintf("TRY_CAST(%s AS %s)", c.Value, c.Target) }
 
 // TryCastTo converts v to a numeric target, replacing conversion failures with NULL.
+// Native Decimal128 input permits only integer targets and requires exactness.
 func TryCastTo(v Expr, target memory.DataType) TryCastExpr {
 	return TryCastExpr{Value: v, Target: target}
 }

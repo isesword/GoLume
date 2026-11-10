@@ -72,8 +72,10 @@ kernel design and benchmarking before a vectorized fast path is appropriate.
 Explicit exact precision/scale conversion is available through
 [`RescaleDecimal128`](DECIMAL128_RESCALE.md), including scale reduction only
 when it discards no nonzero digits. [`DivideDecimal128`](DECIMAL128_DIVISION.md)
-provides exact division at explicit precision/scale. Ordinary `Div`, generic
-decimal casts, rounding,
+provides exact division at explicit precision/scale.
+[Exact decimal casts](DECIMAL128_CAST.md) support native integer/string
+conversions and explicit decimal target metadata. Ordinary `Div`, float/decimal
+casts, rounding,
 mixed numeric coercion, negative scales, wider decimals, decimal aggregation, and
 conditional branches with differing decimal precision/scale remain outside
 this change. Opaque Decimal128/Decimal256 inputs without supported native

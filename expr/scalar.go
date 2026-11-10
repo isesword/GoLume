@@ -325,6 +325,12 @@ func (c *scalarCompiler) compileBound(bound *BoundExpr) (int, TypeInfo, error) {
 		case TimestampUnitLiteral:
 			in.Code = scalarLiteralI64
 			in.I64, _ = n.Nanoseconds()
+		case Decimal128CastExpr:
+			in.Code = scalarCast
+			if n.Tolerant {
+				in.Code = scalarTryCast
+			}
+			in.SourceType = bound.Children[0].Field.Type
 		case Cast:
 			in.Code = scalarCast
 			in.SourceType = bound.Children[0].Field.Type
@@ -1907,6 +1913,9 @@ func utcCalendarTime(source memory.DataType, value int64) (time.Time, error) {
 }
 
 func evalCast(out, in *scalarRegister, from, to memory.DataType, rows int) error {
+	if to == memory.TypeDecimal || from == memory.TypeDecimal && to != memory.TypeString {
+		return evalDecimalCast(out, in, from, to, rows, false)
+	}
 	if from == memory.TypeBool && to == memory.TypeBool {
 		copyRegisterValidity(out, in, rows)
 		copy(out.Truth, in.Truth)
@@ -2310,6 +2319,9 @@ func registerString(r *scalarRegister, row int) ([]byte, error) {
 }
 
 func appendScalarText(dst []byte, r *scalarRegister, row int) ([]byte, error) {
+	if r.typ == memory.TypeDecimal {
+		return appendDecimal128Text(dst, r.decimal[row], r.decimalType.DecimalScale), nil
+	}
 	switch familyOf(r.typ) {
 	case familyI32, familyI64:
 		v, err := registerInt64(r, row)

@@ -667,6 +667,11 @@ func (s Series) ToAnySlice() ([]any, error) {
 	if s.state == nil {
 		return nil, ErrDataFrameClosed
 	}
+	if s.field.Type == memory.TypeInt8 || s.field.Type == memory.TypeInt16 ||
+		s.field.Type == memory.TypeUint8 || s.field.Type == memory.TypeUint16 ||
+		s.field.Type == memory.TypeUint32 || s.field.Type == memory.TypeFloat32 {
+		return s.nativeNumericAnySlice()
+	}
 	out := make([]any, 0, s.length)
 	switch {
 	case isI32Type(s.field.Type):
@@ -868,6 +873,17 @@ func isU32Type(t memory.DataType) bool {
 
 func seriesRowValid(batch *memory.Batch, field memory.Field, row int) bool {
 	switch {
+	case field.Type == memory.TypeInt8:
+		return batch.Int8s[field.Name].IsValid(row)
+	case field.Type == memory.TypeInt16:
+		return batch.Int16s[field.Name].IsValid(row)
+	case field.Type == memory.TypeUint8:
+		return batch.Uint8s[field.Name].IsValid(row)
+	case field.Type == memory.TypeUint16:
+		return batch.Uint16s[field.Name].IsValid(row)
+	case field.Type == memory.TypeFloat32:
+		return batch.Float32s[field.Name].IsValid(row)
+
 	case field.Type == memory.TypeDecimal && field.DecimalPrecision != 0:
 		return batch.Decimals[field.Name].IsValid(row)
 	case isI32Type(field.Type):
@@ -895,6 +911,37 @@ func seriesRowValid(batch *memory.Batch, field memory.Field, row int) bool {
 
 func structChildValue(batch *memory.Batch, field memory.Field, row int) (any, bool, error) {
 	switch {
+	case field.Type == memory.TypeInt8:
+		v, err := batch.Int8(field.Name)
+		if err != nil {
+			return nil, false, err
+		}
+		return v.Values[row], v.IsValid(row), nil
+	case field.Type == memory.TypeInt16:
+		v, err := batch.Int16(field.Name)
+		if err != nil {
+			return nil, false, err
+		}
+		return v.Values[row], v.IsValid(row), nil
+	case field.Type == memory.TypeUint8:
+		v, err := batch.Uint8(field.Name)
+		if err != nil {
+			return nil, false, err
+		}
+		return v.Values[row], v.IsValid(row), nil
+	case field.Type == memory.TypeUint16:
+		v, err := batch.Uint16(field.Name)
+		if err != nil {
+			return nil, false, err
+		}
+		return v.Values[row], v.IsValid(row), nil
+	case field.Type == memory.TypeFloat32:
+		v, err := batch.Float32(field.Name)
+		if err != nil {
+			return nil, false, err
+		}
+		return v.Values[row], v.IsValid(row), nil
+
 	case isI32Type(field.Type):
 		v, err := batch.Int32(field.Name)
 		if err != nil {
@@ -956,4 +1003,34 @@ func structChildValue(batch *memory.Batch, field memory.Field, row int) (any, bo
 	default:
 		return nil, false, fmt.Errorf("unsupported struct child type %s", field.Type)
 	}
+}
+
+// nativeNumericAnySlice reads native-width vectors rather than the legacy
+// widened physical-family chunk accessors. Hold the owner lock throughout the
+// copy so borrowed batches cannot be released while values are being read.
+func (s Series) nativeNumericAnySlice() ([]any, error) {
+	if s.state == nil {
+		return nil, ErrDataFrameClosed
+	}
+	s.state.mu.RLock()
+	defer s.state.mu.RUnlock()
+	spans, err := s.lockedSpans()
+	if err != nil {
+		return nil, err
+	}
+	out := make([]any, 0, s.length)
+	for _, span := range spans {
+		for row := span.start; row < span.end; row++ {
+			value, valid, err := structChildValue(span.batch, s.field, row)
+			if err != nil {
+				return nil, err
+			}
+			if valid {
+				out = append(out, value)
+			} else {
+				out = append(out, nil)
+			}
+		}
+	}
+	return out, nil
 }

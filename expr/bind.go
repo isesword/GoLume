@@ -154,11 +154,35 @@ func (b *expressionBinder) bindNode(e Expr) (*BoundExpr, error) {
 			return nil, err
 		}
 		bound.Field = computedField(memory.TypeTimestamp, false)
+	case Decimal128CastExpr:
+		if err := bindChildren(n.Value); err != nil {
+			return nil, err
+		}
+		input := bound.Children[0].Field
+		if input.Type == memory.TypeDecimal {
+			if err := input.ValidateDecimal128(); err != nil {
+				return nil, err
+			}
+		} else if !isSignedInteger(input.Type) && !unsignedInteger(input.Type) && input.Type != memory.TypeString {
+			return nil, fmt.Errorf("CAST_DECIMAL128 requires integer, string, or native decimal128 input, got %s", input.Type)
+		}
+		field, err := memory.Decimal128Field("", input.Nullable || n.Tolerant, n.Precision, n.Scale)
+		if err != nil {
+			return nil, err
+		}
+		bound.Field, bound.MayError = field, !n.Tolerant
+		n.Value = bound.Children[0].Expr
+		bound.Expr = n
 	case Cast:
 		if err := bindChildren(n.Value); err != nil {
 			return nil, err
 		}
 		input := bound.Children[0].Field
+		if input.Type == memory.TypeDecimal {
+			if err := input.ValidateDecimal128(); err != nil {
+				return nil, err
+			}
+		}
 		if !CanCast(input.Type, n.Target) {
 			return nil, fmt.Errorf("cannot cast %s to %s", input.Type, n.Target)
 		}
@@ -200,8 +224,13 @@ func (b *expressionBinder) bindNode(e Expr) (*BoundExpr, error) {
 			return nil, err
 		}
 		input := bound.Children[0].Field
-		if !IsNumeric(n.Target) || !(IsNumeric(input.Type) || input.Type == memory.TypeString) {
-			return nil, fmt.Errorf("TRY_CAST requires numeric or string input and numeric target, got %s to %s", input.Type, n.Target)
+		if input.Type == memory.TypeDecimal {
+			if err := input.ValidateDecimal128(); err != nil {
+				return nil, err
+			}
+		}
+		if !(input.Type == memory.TypeDecimal && (isSignedInteger(n.Target) || unsignedInteger(n.Target))) && (!IsNumeric(n.Target) || !(IsNumeric(input.Type) || input.Type == memory.TypeString)) {
+			return nil, fmt.Errorf("TRY_CAST requires numeric/string input and numeric target, or native decimal128 input and integer target, got %s to %s", input.Type, n.Target)
 		}
 		bound.Field = computedField(n.Target, true)
 		bound.Expr = TryCastExpr{Value: bound.Children[0].Expr, Target: n.Target}

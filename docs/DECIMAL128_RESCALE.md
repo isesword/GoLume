@@ -7,8 +7,9 @@ can be named with `.Alias(name)`. The expression node is
 `expr.Decimal128RescaleExpr`.
 
 This complements the existing exact Add/Sub/Mul and cross-scale comparisons.
-The generic `CastTo` API accepts only a `DataType`, not precision/scale, so it
-still rejects decimal conversions rather than guessing target metadata.
+[Exact casts](DECIMAL128_CAST.md) additionally support integers and strings.
+Generic `CastTo` cannot target Decimal128 without precision/scale; use
+`CastDecimal128` for that target, and `CastTo` for decimal-to-integer/string.
 
 ## Contract
 
@@ -73,9 +74,9 @@ support plus independent performance evidence.
 
 [`DivideDecimal128`](DECIMAL128_DIVISION.md) now provides exact division at
 explicit result precision/scale, rejecting nonzero remainders. Ordinary `Div`
-still rejects decimals rather than guessing a target or rounding policy. Mixed numeric casts,
-string conversion, rounding modes, negative scales, and wider decimals also
-remain unsupported. Decimal arithmetic still does not silently reduce scale;
+still rejects decimals rather than guessing a target or rounding policy. Exact integer/string conversions are available through
+[decimal casts](DECIMAL128_CAST.md). Float casts, implicit mixed numeric
+coercion, rounding modes, negative scales, and wider decimals remain unsupported. Decimal arithmetic still does not silently reduce scale;
 callers can explicitly rescale operands first only when the conversion is exact.
 
 ## Test coverage

@@ -15,6 +15,9 @@ var errNumericCast = errors.New("invalid numeric syntax or out-of-range value")
 // buffers (including nullable output) have already been admitted by the scalar
 // workspace. No intermediate widened vector or per-row register is allocated.
 func evalNumericCast(out, in *scalarRegister, from, to memory.DataType, rows int, tolerant bool) error {
+	if from == memory.TypeDecimal || to == memory.TypeDecimal {
+		return evalDecimalCast(out, in, from, to, rows, tolerant)
+	}
 	copyRegisterValidity(out, in, rows)
 	for row := 0; row < rows; row++ {
 		if row&255 == 0 && out.checkContext != nil {

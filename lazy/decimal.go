@@ -83,3 +83,14 @@ func RescaleDecimal128(value expr.Expr, precision, scale int32) expr.Decimal128R
 func DivideDecimal128(left, right expr.Expr, precision, scale int32) expr.Decimal128DivideExpr {
 	return expr.DivideDecimal128(left, right, precision, scale)
 }
+
+// CastDecimal128 converts integer, string, or native decimal input exactly to
+// an explicit Decimal128 type. Overflow and nonzero discarded digits fail.
+func CastDecimal128(value expr.Expr, precision, scale int32) expr.Decimal128CastExpr {
+	return expr.CastDecimal128(value, precision, scale)
+}
+
+// TryCastDecimal128 replaces only decimal conversion failures with NULL.
+func TryCastDecimal128(value expr.Expr, precision, scale int32) expr.Decimal128CastExpr {
+	return expr.TryCastDecimal128(value, precision, scale)
+}

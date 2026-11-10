@@ -48,8 +48,9 @@ func (v Decimal128Literal) String() string {
 // capped at 38 and overflow is checked per demanded non-NULL row. No operation
 // implicitly reduces scale or rounds. RescaleDecimal128 explicitly changes
 // precision/scale and rejects any loss of digits. DivideDecimal128 divides
-// exactly at explicit precision/scale. Ordinary Div, generic casts,
-// mixed numeric operands, and conditional branches with different
+// exactly at explicit precision/scale. CastDecimal128 accepts explicit
+// integer/string conversions; CastTo supports decimal to integer/string.
+// Ordinary Div, implicit mixed numeric operands, and branches with different
 // precision/scale remain unsupported.
 func Decimal128(value memory.Decimal128, precision, scale int32) Decimal128Literal {
 	return Decimal128Literal{Value: value, Precision: precision, Scale: scale}

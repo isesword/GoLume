@@ -317,7 +317,6 @@ func TestParquetDecimal128LazyExpressionRejectsUnsafeCoercions(t *testing.T) {
 		"add_integer":        Col("amount").Add(Lit(1)),
 		"compare_integer":    Col("amount").Eq(Lit(1)),
 		"cast_float":         Cast(Col("amount"), memory.TypeFloat64),
-		"cast_integer":       Cast(Col("amount"), memory.TypeInt64),
 		"cast_to_decimal":    Cast(Col("id"), memory.TypeDecimal),
 		"if_scale":           If(Col("condition"), Col("amount"), Col("other_scale")),
 		"if_precision":       If(Col("condition"), Col("amount"), Col("other_precision")),
