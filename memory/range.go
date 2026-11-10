@@ -130,12 +130,9 @@ func estimateBatchRangeBytes(src *Batch, offset, length int, inheritedNulls bool
 		}
 	}
 	for name, v := range src.Strings {
-		if v == nil || len(v.Offsets) < end+1 {
-			return 0, fmt.Errorf("string column %q offsets are shorter than range", name)
-		}
-		lo, hi := v.Offsets[offset], v.Offsets[end]
-		if lo > hi || int(hi) > len(v.Data) {
-			return 0, fmt.Errorf("string column %q offsets are invalid", name)
+		lo, hi, err := stringRangeBounds(v, offset, length)
+		if err != nil {
+			return 0, fmt.Errorf("string column %q: %w", name, err)
 		}
 		if err := add(int64(length+1)*4 + int64(hi-lo) + validityBytes(v.Validity)); err != nil {
 			return 0, err
@@ -150,23 +147,9 @@ func estimateBatchRangeBytes(src *Batch, offset, length int, inheritedNulls bool
 		}
 	}
 	for name, v := range src.StringLists {
-		if v == nil || v.Values == nil || len(v.Offsets) < end+1 {
-			return 0, fmt.Errorf("list column %q offsets are shorter than range", name)
-		}
-		valueStart, valueEnd := v.Offsets[offset], v.Offsets[end]
-		var dataStart, dataEnd uint32
-		if valueStart == 0 && valueEnd == 0 && len(v.Values.Offsets) == 0 {
-			// A zero-row StringView may have no offsets, including the child
-			// of valid empty/NULL lists. Gathered output still owns its {0}
-			// sentinel, charged by (childLength+1)*4 below.
-		} else {
-			if valueStart > valueEnd || int(valueEnd) >= len(v.Values.Offsets) {
-				return 0, fmt.Errorf("list column %q value offsets are invalid", name)
-			}
-			dataStart, dataEnd = v.Values.Offsets[valueStart], v.Values.Offsets[valueEnd]
-			if dataStart > dataEnd || int(dataEnd) > len(v.Values.Data) {
-				return 0, fmt.Errorf("list column %q string offsets are invalid", name)
-			}
+		valueStart, valueEnd, dataStart, dataEnd, err := stringListRangeBounds(v, offset, length)
+		if err != nil {
+			return 0, fmt.Errorf("list column %q: %w", name, err)
 		}
 		childLength := int64(valueEnd - valueStart)
 		childValidity := int64(0)
@@ -222,7 +205,10 @@ func estimateBatchRangeBytes(src *Batch, offset, length int, inheritedNulls bool
 
 // CloneBatchRange creates an owned copy of the contiguous row range
 // [offset, offset+length). Specialized vectors are copied and opaque Arrow
-// arrays are retained through a zero-copy Arrow slice.
+// arrays are retained through a zero-copy Arrow slice. Empty string vectors,
+// including list children, own a canonical zero offset even when the source
+// represents zero values with no offsets. NULL validity remains distinct from
+// an empty non-NULL value.
 func CloneBatchRange(src *Batch, offset, length int) (*Batch, error) {
 	if src == nil {
 		return nil, fmt.Errorf("cannot clone range from nil batch")
@@ -304,16 +290,13 @@ func CloneBatchRange(src *Batch, offset, length int) (*Batch, error) {
 		dst.Float64s[name] = &Float64Vector{Values: append([]float64(nil), v.Values[offset:end]...), Validity: cloneValidityRange(v.Validity, offset, length), Encoding: v.Encoding}
 	}
 	for name, v := range src.Strings {
-		if v == nil || len(v.Offsets) < end+1 {
-			return fail(name, fmt.Errorf("string offsets shorter than range"))
+		lo, hi, err := stringRangeBounds(v, offset, length)
+		if err != nil {
+			return fail(name, err)
 		}
-		lo, hi := v.Offsets[offset], v.Offsets[end]
-		if lo > hi || int(hi) > len(v.Data) {
-			return fail(name, fmt.Errorf("string range offsets are invalid"))
-		}
-		offsets := make([]uint32, length+1)
-		for i := range offsets {
-			offsets[i] = v.Offsets[offset+i] - lo
+		offsets, err := cloneRangeOffsets(v.Offsets, offset, length, lo)
+		if err != nil {
+			return fail(name, err)
 		}
 		dst.Strings[name] = &StringViewVector{Offsets: offsets, Data: append([]byte(nil), v.Data[lo:hi]...), Validity: cloneValidityRange(v.Validity, offset, length), Encoding: v.Encoding}
 	}
@@ -331,25 +314,18 @@ func CloneBatchRange(src *Batch, offset, length int) (*Batch, error) {
 		}
 	}
 	for name, v := range src.StringLists {
-		if v == nil || v.Values == nil || len(v.Offsets) < end+1 {
-			return fail(name, fmt.Errorf("list offsets shorter than range"))
+		valueStart, valueEnd, dataStart, dataEnd, err := stringListRangeBounds(v, offset, length)
+		if err != nil {
+			return fail(name, err)
 		}
-		valueStart, valueEnd := v.Offsets[offset], v.Offsets[end]
-		if valueStart > valueEnd || int(valueEnd) >= len(v.Values.Offsets) {
-			return fail(name, fmt.Errorf("list value offsets are invalid"))
-		}
-		dataStart, dataEnd := v.Values.Offsets[valueStart], v.Values.Offsets[valueEnd]
-		if dataStart > dataEnd || int(dataEnd) > len(v.Values.Data) {
-			return fail(name, fmt.Errorf("list string data offsets are invalid"))
-		}
-		parentOffsets := make([]uint32, length+1)
-		for i := range parentOffsets {
-			parentOffsets[i] = v.Offsets[offset+i] - valueStart
+		parentOffsets, err := cloneRangeOffsets(v.Offsets, offset, length, valueStart)
+		if err != nil {
+			return fail(name, err)
 		}
 		childLength := int(valueEnd - valueStart)
-		childOffsets := make([]uint32, childLength+1)
-		for i := range childOffsets {
-			childOffsets[i] = v.Values.Offsets[int(valueStart)+i] - dataStart
+		childOffsets, err := cloneRangeOffsets(v.Values.Offsets, int(valueStart), childLength, dataStart)
+		if err != nil {
+			return fail(name, err)
 		}
 		dst.StringLists[name] = &StringListVector{
 			Offsets:  parentOffsets,
@@ -403,6 +379,15 @@ func CloneStructRange(src *StructVector, offset, length int) (*StructVector, err
 	if offset < 0 || length < 0 || offset > src.Rows || length > src.Rows-offset {
 		return nil, fmt.Errorf("struct range offset=%d length=%d out of rows=%d", offset, length, src.Rows)
 	}
+	if length == 0 {
+		// No row append will initialize the children. Preserve their physical
+		// types, dictionary metadata and empty offset sentinels explicitly.
+		children, err := CloneBatchRange(src.Values, offset, 0)
+		if err != nil {
+			return nil, err
+		}
+		return &StructVector{Fields: append([]Field(nil), src.Fields...), Values: children, Encoding: EncodingView}, nil
+	}
 	out := &StructVector{Fields: append([]Field(nil), src.Fields...), Values: NewBatch(), Encoding: EncodingView}
 	for row := offset; row < offset+length; row++ {
 		if err := AppendStructRow(out, src, row, src.IsValid(row)); err != nil {
@@ -424,4 +409,77 @@ func cloneValidityRange(src Bitmap, offset, length int) Bitmap {
 		}
 	}
 	return out
+}
+
+// rangeOffsetBounds checks endpoints without allocation. Cloning checks
+// interior offsets while normalizing them; estimation stays constant-time per column
+// because callers repeatedly probe ranges during byte-bounded splitting.
+// Missing offsets represent only an empty string vector, never a list parent.
+func rangeOffsetBounds(offsets []uint32, offset, length, limit int, emptyString bool) (uint32, uint32, error) {
+	if emptyString && len(offsets) == 0 && offset == 0 && length == 0 {
+		return 0, 0, nil
+	}
+	if offset < 0 || length < 0 || offset >= len(offsets) || length >= len(offsets)-offset {
+		return 0, 0, fmt.Errorf("offsets are shorter than range")
+	}
+	lo, hi := offsets[offset], offsets[offset+length]
+	if lo > hi || uint64(hi) > uint64(limit) {
+		return 0, 0, fmt.Errorf("range offsets exceed bounds")
+	}
+	return lo, hi, nil
+}
+
+func rangeValidityBounds(validity Bitmap, offset, length int) error {
+	if validity != nil && length > 0 && len(validity) < WordsFor(offset+length) {
+		return fmt.Errorf("validity is shorter than range")
+	}
+	return nil
+}
+
+func stringRangeBounds(v *StringViewVector, offset, length int) (uint32, uint32, error) {
+	if v == nil {
+		return 0, 0, fmt.Errorf("string vector is nil")
+	}
+	lo, hi, err := rangeOffsetBounds(v.Offsets, offset, length, len(v.Data), true)
+	if err != nil {
+		return 0, 0, err
+	}
+	if err := rangeValidityBounds(v.Validity, offset, length); err != nil {
+		return 0, 0, err
+	}
+	return lo, hi, nil
+}
+
+func stringListRangeBounds(v *StringListVector, offset, length int) (uint32, uint32, uint32, uint32, error) {
+	if v == nil || v.Values == nil {
+		return 0, 0, 0, 0, fmt.Errorf("list vector or child is nil")
+	}
+	lo, hi, err := rangeOffsetBounds(v.Offsets, offset, length, v.Values.Len(), false)
+	if err != nil {
+		return 0, 0, 0, 0, err
+	}
+	if err := rangeValidityBounds(v.Validity, offset, length); err != nil {
+		return 0, 0, 0, 0, err
+	}
+	dataLo, dataHi, err := stringRangeBounds(v.Values, int(lo), int(hi-lo))
+	return lo, hi, dataLo, dataHi, err
+}
+
+// cloneRangeOffsets validates interiors in the same pass that normalizes them.
+// Endpoints have already been checked by rangeOffsetBounds. No partial offsets
+// are exposed on failure, and no source buffer is mutated.
+func cloneRangeOffsets(src []uint32, offset, length int, base uint32) ([]uint32, error) {
+	out := make([]uint32, length+1)
+	if len(src) != 0 {
+		previous, end := base, src[offset+length]
+		for i := range out {
+			next := src[offset+i]
+			if next < previous || next > end {
+				return nil, fmt.Errorf("range offsets are not monotonic")
+			}
+			out[i] = next - base
+			previous = next
+		}
+	}
+	return out, nil
 }

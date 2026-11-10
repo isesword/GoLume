@@ -6,7 +6,8 @@ import (
 )
 
 // StringViewVector is a pointer-free UTF-8/binary physical representation.
-// Offsets must contain Len()+1 entries. Values are slices of Data and no Go
+// Offsets contain Len()+1 entries, or may be absent for zero rows. Values
+// are slices of Data and no Go
 // string headers are retained in the hot column buffer.
 type StringViewVector struct {
 	Offsets  []uint32

@@ -16,15 +16,6 @@ func TestColumnarRunRangeEstimateCoversNestedPayload(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if rows == 0 {
-				// CloneBatchRange's empty struct has no materialized child vectors;
-				// the estimator still includes dictionary/codec metadata for an
-				// empty range without trying to encode that unrelated sparse clone.
-				if estimate < columnarRunHeader+int64(len(batch.DictStrings["kind"].DictionaryDomain)) {
-					t.Fatal(estimate)
-				}
-				continue
-			}
 			copy, err := CloneBatchRange(batch, start, rows)
 			if err != nil {
 				t.Fatal(err)

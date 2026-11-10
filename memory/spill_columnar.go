@@ -273,7 +273,7 @@ func runFieldSize(batch *Batch, field Field, rows int) (int64, error) {
 		if err != nil {
 			return 0, err
 		}
-		return addRunSizes(parent, 4, int64(len(vector.Offsets))*4, child, 4, int64(len(vector.Values.Offsets))*4, 8, data)
+		return addRunSizes(parent, 4, int64(len(vector.Offsets))*4, child, 4, int64(max(1, len(vector.Values.Offsets)))*4, 8, data)
 	}
 	if field.Type == TypeString || field.Type == TypeBinary {
 		if field.Encoding == EncodingDictionary {
@@ -309,7 +309,7 @@ func runFieldSize(batch *Batch, field Field, rows int) (int64, error) {
 		if err != nil {
 			return 0, err
 		}
-		return addRunSizes(validity, 4, int64(len(vector.Offsets))*4, 8, data)
+		return addRunSizes(validity, 4, int64(max(1, len(vector.Offsets)))*4, 8, data)
 	}
 	validity, width, err := fixedRunField(batch, field, rows)
 	if err != nil {
@@ -342,7 +342,7 @@ func addRunSizes(parts ...int64) (int64, error) {
 
 func normalizedOffsetDataSize(offsets []uint32, data []byte) (int64, error) {
 	if len(offsets) == 0 {
-		return 0, fmt.Errorf("offset vector is empty")
+		return 0, nil
 	}
 	base, end := offsets[0], offsets[len(offsets)-1]
 	if base > end || int(end) > len(data) {
@@ -413,6 +413,9 @@ func validateRunField(batch *Batch, field Field, rows int) error {
 			}
 			if _, err := validitySize(vector.Validity, rows); err != nil {
 				return err
+			}
+			if len(vector.Offsets) == 0 {
+				return fmt.Errorf("dictionary field %q offset vector is empty", field.Name)
 			}
 			if _, err := normalizedOffsetDataSize(vector.Offsets, vector.Data); err != nil {
 				return err
@@ -552,7 +555,7 @@ func encodeRunField(writer *runWriter, batch *Batch, field Field, rows int) erro
 		writer.u32(uint32(len(vector.Offsets)))
 		encodeOffsets(writer, vector.Offsets, 0)
 		encodeValidity(writer, vector.Values.Validity, vector.Values.Len())
-		writer.u32(uint32(len(vector.Values.Offsets)))
+		writer.u32(uint32(max(1, len(vector.Values.Offsets))))
 		encodeNormalizedString(writer, vector.Values.Offsets, vector.Values.Data)
 		return writer.err
 	}
@@ -570,7 +573,7 @@ func encodeRunField(writer *runWriter, batch *Batch, field Field, rows int) erro
 		}
 		vector := batch.Strings[field.Name]
 		encodeValidity(writer, vector.Validity, rows)
-		writer.u32(uint32(len(vector.Offsets)))
+		writer.u32(uint32(max(1, len(vector.Offsets))))
 		encodeNormalizedString(writer, vector.Offsets, vector.Data)
 		return writer.err
 	}
@@ -650,6 +653,13 @@ func encodeOffsets(writer *runWriter, offsets []uint32, base uint32) {
 }
 
 func encodeNormalizedString(writer *runWriter, offsets []uint32, data []byte) {
+	if len(offsets) == 0 {
+		// Legal zero-row strings (including empty list children) omit the
+		// sentinel in memory; the wire format always owns one zero offset.
+		writer.u32(0)
+		writer.u64(0)
+		return
+	}
 	base, end := offsets[0], offsets[len(offsets)-1]
 	encodeOffsets(writer, offsets, base)
 	writer.u64(uint64(end - base))
