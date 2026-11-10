@@ -81,6 +81,9 @@ func renamePredicateColumns(value expr.Expr, names map[string]string) (expr.Expr
 	case expr.Cast:
 		n.Value = rename(n.Value)
 		return n, ok
+	case expr.Decimal128RescaleExpr:
+		n.Value = rename(n.Value)
+		return n, ok
 	case expr.TryCastExpr:
 		n.Value = rename(n.Value)
 		return n, ok

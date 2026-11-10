@@ -69,8 +69,10 @@ operations; this is not a native SIMD decimal kernel and no SIMD speedup is
 claimed. Wider intermediates and checked 128-bit lane carries require separate
 kernel design and benchmarking before a vectorized fast path is appropriate.
 
-Division, explicit decimal cast/rescale APIs, scale reduction/rounding, mixed
-numeric coercion, negative scales, wider decimals, decimal aggregation, and
+Explicit exact precision/scale conversion is available through
+[`RescaleDecimal128`](DECIMAL128_RESCALE.md), including scale reduction only
+when it discards no nonzero digits. Division, generic decimal casts, rounding,
+mixed numeric coercion, negative scales, wider decimals, decimal aggregation, and
 conditional branches with differing decimal precision/scale remain outside
 this change. Opaque Decimal128/Decimal256 inputs without supported native
 metadata remain rejected by arithmetic.

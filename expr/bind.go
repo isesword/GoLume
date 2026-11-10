@@ -165,6 +165,20 @@ func (b *expressionBinder) bindNode(e Expr) (*BoundExpr, error) {
 		bound.Field = computedField(n.Target, input.Nullable)
 		bound.MayError = castMayError(input.Type, n.Target)
 		bound.Expr = Cast{Value: bound.Children[0].Expr, Target: n.Target}
+	case Decimal128RescaleExpr:
+		if err := bindChildren(n.Value); err != nil {
+			return nil, err
+		}
+		input := bound.Children[0].Field
+		if err := input.ValidateDecimal128(); err != nil {
+			return nil, fmt.Errorf("RESCALE_DECIMAL128 requires native decimal128 input: %w", err)
+		}
+		field, err := memory.Decimal128Field("", input.Nullable, n.Precision, n.Scale)
+		if err != nil {
+			return nil, err
+		}
+		bound.Field, bound.MayError = field, true
+		bound.Expr = Decimal128RescaleExpr{Value: bound.Children[0].Expr, Precision: n.Precision, Scale: n.Scale}
 	case TryCastExpr:
 		if err := bindChildren(n.Value); err != nil {
 			return nil, err

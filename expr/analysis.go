@@ -29,6 +29,8 @@ func Columns(e Expr) []string {
 			visit(x.Value)
 		case Cast:
 			visit(x.Value)
+		case Decimal128RescaleExpr:
+			visit(x.Value)
 		case TryCastExpr:
 			visit(x.Value)
 		case Ternary:

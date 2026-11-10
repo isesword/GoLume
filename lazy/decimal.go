@@ -70,3 +70,9 @@ func Decimal128(value memory.Decimal128, precision, scale int32) expr.Decimal128
 func NullDecimal128(precision, scale int32) expr.Decimal128NullLiteral {
 	return expr.NullDecimal128(precision, scale)
 }
+
+// RescaleDecimal128 changes a native decimal's precision/scale exactly. NULLs
+// are preserved; overflow and discarded nonzero digits are execution errors.
+func RescaleDecimal128(value expr.Expr, precision, scale int32) expr.Decimal128RescaleExpr {
+	return expr.RescaleDecimal128(value, precision, scale)
+}

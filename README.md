@@ -262,7 +262,10 @@ ratio       : ~47.5x
 原生 Decimal128 支持 `Add` / `Sub` / `Mul`，保留全部 scale，按有效执行行检查溢出；
 不静默舍入，也不转换为浮点数。结果精度、NULL、guard 和错误顺序的完整契约见
 [DECIMAL128_ARITHMETIC.md](docs/DECIMAL128_ARITHMETIC.md)。
-当前算术使用定宽整数实现，不宣称 Decimal128 SIMD 加速。
+显式 `RescaleDecimal128(value, precision, scale)` 可精确转换 precision/scale；
+降 scale 必须整除，升 scale 与收窄 precision 均检查溢出，详见
+[DECIMAL128_RESCALE.md](docs/DECIMAL128_RESCALE.md)。通用 cast 与除法仍不支持。
+当前算术与 rescale 使用定宽整数实现，不宣称 Decimal128 SIMD 加速。
 
 ## Opaque Arrow payload
 
