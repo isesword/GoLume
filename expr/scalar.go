@@ -38,6 +38,7 @@ const (
 	scalarInSet
 	scalarLiteralDecimal
 	scalarDecimalRescale
+	scalarDecimalDivide
 )
 
 // ProjectionOutput maps one compiled root register to a named output column.
@@ -327,6 +328,8 @@ func (c *scalarCompiler) compileBound(bound *BoundExpr) (int, TypeInfo, error) {
 		case Cast:
 			in.Code = scalarCast
 			in.SourceType = bound.Children[0].Field.Type
+		case Decimal128DivideExpr:
+			in.Code = scalarDecimalDivide
 		case Decimal128RescaleExpr:
 			in.Code = scalarDecimalRescale
 		case TryCastExpr:
@@ -667,6 +670,10 @@ func evaluateInstructionsActive(instructions []instruction, batch *memory.Batch,
 			}
 		case scalarCast:
 			if err := evalCast(r, w.regs[in.A], in.SourceType, in.Type, batch.Rows); err != nil {
+				return err
+			}
+		case scalarDecimalDivide:
+			if err := evalDecimalDivide(r, w.regs[in.A], w.regs[in.B], batch.Rows); err != nil {
 				return err
 			}
 		case scalarDecimalRescale:

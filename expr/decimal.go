@@ -47,7 +47,8 @@ func (v Decimal128Literal) String() string {
 // max(scale); Mul adds scales (at most 38). The inferred result precision is
 // capped at 38 and overflow is checked per demanded non-NULL row. No operation
 // implicitly reduces scale or rounds. RescaleDecimal128 explicitly changes
-// precision/scale and rejects any loss of digits. Division, generic casts,
+// precision/scale and rejects any loss of digits. DivideDecimal128 divides
+// exactly at explicit precision/scale. Ordinary Div, generic casts,
 // mixed numeric operands, and conditional branches with different
 // precision/scale remain unsupported.
 func Decimal128(value memory.Decimal128, precision, scale int32) Decimal128Literal {

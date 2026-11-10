@@ -76,3 +76,10 @@ func NullDecimal128(precision, scale int32) expr.Decimal128NullLiteral {
 func RescaleDecimal128(value expr.Expr, precision, scale int32) expr.Decimal128RescaleExpr {
 	return expr.RescaleDecimal128(value, precision, scale)
 }
+
+// DivideDecimal128 divides two native decimals exactly at the explicit target
+// precision/scale. NULLs propagate; zero divisors, inexact results, and target
+// overflow fail at the first demanded non-NULL row. It never rounds.
+func DivideDecimal128(left, right expr.Expr, precision, scale int32) expr.Decimal128DivideExpr {
+	return expr.DivideDecimal128(left, right, precision, scale)
+}

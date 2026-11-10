@@ -165,6 +165,22 @@ func (b *expressionBinder) bindNode(e Expr) (*BoundExpr, error) {
 		bound.Field = computedField(n.Target, input.Nullable)
 		bound.MayError = castMayError(input.Type, n.Target)
 		bound.Expr = Cast{Value: bound.Children[0].Expr, Target: n.Target}
+	case Decimal128DivideExpr:
+		if err := bindChildren(n.Left, n.Right); err != nil {
+			return nil, err
+		}
+		left, right := bound.Children[0].Field, bound.Children[1].Field
+		for _, field := range []memory.Field{left, right} {
+			if err := field.ValidateDecimal128(); err != nil {
+				return nil, fmt.Errorf("DIVIDE_DECIMAL128 requires two native decimal128 operands: %w", err)
+			}
+		}
+		field, err := memory.Decimal128Field("", left.Nullable || right.Nullable, n.Precision, n.Scale)
+		if err != nil {
+			return nil, err
+		}
+		bound.Field, bound.MayError = field, true
+		bound.Expr = Decimal128DivideExpr{Left: bound.Children[0].Expr, Right: bound.Children[1].Expr, Precision: n.Precision, Scale: n.Scale}
 	case Decimal128RescaleExpr:
 		if err := bindChildren(n.Value); err != nil {
 			return nil, err

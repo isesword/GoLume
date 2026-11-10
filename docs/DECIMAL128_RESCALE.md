@@ -71,9 +71,9 @@ is limb arithmetic, not SIMD. SIMD dispatch is not claimed for decimal rescale;
 vectorization would require checked lane-wide carries and quotient/remainder
 support plus independent performance evidence.
 
-General decimal division remains unsupported: unlike a specified rescale,
-`a / b` needs an explicit result precision/scale and a policy for repeating
-fractions. This change does not invent those rules. Mixed numeric casts,
+[`DivideDecimal128`](DECIMAL128_DIVISION.md) now provides exact division at
+explicit result precision/scale, rejecting nonzero remainders. Ordinary `Div`
+still rejects decimals rather than guessing a target or rounding policy. Mixed numeric casts,
 string conversion, rounding modes, negative scales, and wider decimals also
 remain unsupported. Decimal arithmetic still does not silently reduce scale;
 callers can explicitly rescale operands first only when the conversion is exact.
