@@ -116,14 +116,14 @@ func TestAggregateMetadataRecursiveCancellationCleanup(t *testing.T) {
 			break
 		}
 	}
-	children, err := s.repartitionRuns(ctx, s.partitions[index].Values, 1)
+	children, err := s.repartitionRuns(ctx, &s.partitions[index], 1)
 	if err != nil {
 		t.Fatal(err)
 	}
 	var nested *aggregateRunPartitions
 	for i := range children.runs {
 		if len(children.runs[i].Values) > 0 {
-			nested, err = s.repartitionRuns(ctx, children.runs[i].Values, 2)
+			nested, err = s.repartitionRuns(ctx, &children.runs[i], 2)
 			break
 		}
 	}
@@ -139,7 +139,7 @@ func TestAggregateMetadataRecursiveCancellationCleanup(t *testing.T) {
 	cancel()
 	for i := range nested.runs {
 		if len(nested.runs[i].Values) > 0 {
-			_, err = s.repartitionRuns(cancelled, nested.runs[i].Values, 3)
+			_, err = s.repartitionRuns(cancelled, &nested.runs[i], 3)
 			break
 		}
 	}

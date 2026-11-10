@@ -1148,6 +1148,11 @@ func bitsTrailingZeros64(value uint64) int {
 }
 
 func (s *spillableAggregateStream) aggregateBatch(ctx context.Context, batch *memory.Batch, workspace *aggregatePredicateWorkspace) error {
+	// A sibling may have spilled this table while producing the next batch.
+	// Compact only after that callback has returned and its scratch owners ended.
+	if err := s.compactInputRuns(ctx); err != nil {
+		return err
+	}
 	defer workspace.keys.clear()
 	binding, err := s.query.bindSortedBatch(ctx, batch, workspace)
 	if err != nil {
@@ -1213,6 +1218,11 @@ func (s *spillableAggregateStream) aggregateBatch(ctx context.Context, batch *me
 		if released == 0 {
 			return fmt.Errorf("aggregate cannot release state for row %d: %w", failedRow, errors.Join(memory.ErrBudgetExceeded, pressureErr))
 		}
+		// The completed spill released its table, directory and temporary refs.
+		// Reclaim redundant partial runs before admitting the replacement table.
+		if err := s.compactInputRuns(ctx); err != nil {
+			return err
+		}
 		resume = failedRow
 	}
 	_, err = s.state.RequestSoftSpill(ctx)
@@ -1246,6 +1256,11 @@ func (s *spillableAggregateStream) consumeInput(ctx context.Context) error {
 			break
 		}
 		if err := s.aggregateBatch(ctx, batch, &workspace); err != nil {
+			return errors.Join(err, stream.Close())
+		}
+		// aggregateBatch's borrowed key bindings have ended, and any soft-spill
+		// callback has fully returned. The input batch itself remains borrowed.
+		if err := s.compactInputRuns(ctx); err != nil {
 			return errors.Join(err, stream.Close())
 		}
 	}
