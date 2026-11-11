@@ -653,12 +653,17 @@ func restoreReplacementOrder(node logical.Plan, inSchema memory.Schema, rule str
 	}
 	stable := true
 	last := -1
+	newColumn := false
 	for _, name := range actual {
 		pos, ok := inPositions[name]
 		if !ok {
+			newColumn = true
 			continue
 		}
-		if pos < last {
+		// Original columns must form the leading block, not just remain in
+		// relative order. A pruned replacement may follow a new output even
+		// when all surviving original positions are increasing.
+		if newColumn || pos < last {
 			stable = false
 			break
 		}
