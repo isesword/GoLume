@@ -21,11 +21,18 @@ type Sequence struct {
 }
 
 // ExchangeStats reports stage-level backpressure without row-loop callbacks.
+// In-flight bytes are accounting charges, including legacy Opaque logical bytes,
+// not a complete Arrow-retention or process-memory bound.
 type ExchangeStats struct {
 	CurrentInFlightBytes int64
 	PeakInFlightBytes    int64
 	ProducerBlocked      time.Duration
 	QueueHighWater       int64
+	// LegacyOpaqueItems and LegacyOpaqueBytes are cumulative successfully
+	// published owned items and their legacy Opaque logical charge. This charge
+	// is not a bound on retained Arrow backing or private extension metadata.
+	LegacyOpaqueItems int64
+	LegacyOpaqueBytes int64
 }
 
 // Exchange is a byte-bounded query-owned handoff. Producers acquire byte
@@ -41,10 +48,12 @@ type Exchange struct {
 	closed     chan struct{}
 	closeOnce  sync.Once
 
-	currentBytes atomic.Int64
-	peakBytes    atomic.Int64
-	blockedNanos atomic.Int64
-	queueHigh    atomic.Int64
+	currentBytes      atomic.Int64
+	peakBytes         atomic.Int64
+	blockedNanos      atomic.Int64
+	queueHigh         atomic.Int64
+	legacyOpaqueItems atomic.Int64
+	legacyOpaqueBytes atomic.Int64
 }
 
 // borrowedBatchLease prevents source reuse until every emitted range is consumed.
@@ -56,6 +65,7 @@ type borrowedBatchLease struct {
 }
 
 type exchangeItem struct {
+	shared      *preparedSharedItem
 	borrowed    *borrowedBatchLease
 	sequence    Sequence
 	batch       *memory.Batch
@@ -106,12 +116,28 @@ func (e *Exchange) Stats() ExchangeStats {
 		PeakInFlightBytes:    e.peakBytes.Load(),
 		ProducerBlocked:      time.Duration(e.blockedNanos.Load()),
 		QueueHighWater:       e.queueHigh.Load(),
+		LegacyOpaqueItems:    e.legacyOpaqueItems.Load(),
+		LegacyOpaqueBytes:    e.legacyOpaqueBytes.Load(),
 	}
 }
 
 func (e *Exchange) enqueueRange(ctx context.Context, sequence Sequence, src *memory.Batch, r MorselRange) error {
 	if e == nil {
 		return fmt.Errorf("exchange is nil")
+	}
+	// The producer's range is advisory. Recompute the owned admission model
+	// before acquiring capacity or copying, so a logical/stale Bytes value cannot
+	// under-reserve native maps, metadata, capacity or clone growth overlap.
+	// Opaque remains on its legacy logical estimate and clone path; its private
+	// backing/metadata is outside the native-copy capacity guarantee.
+	estimate, estimateErr := memory.EstimateNativeOwnedBatchRangeBytes(src, r.Offset, r.Rows)
+	if estimateErr != nil {
+		return estimateErr
+	}
+	r.Bytes = estimate.Bytes
+	// Preserve the legacy one-token minimum for zero-payload Opaque items.
+	if r.Bytes == 0 {
+		r.Bytes = 1
 	}
 	if r.Bytes <= 0 {
 		return fmt.Errorf("morsel %v has non-positive byte reservation %d", sequence, r.Bytes)
@@ -179,6 +205,10 @@ func (e *Exchange) enqueueRange(ctx context.Context, sequence Sequence, src *mem
 	item := exchangeItem{sequence: sequence, batch: owned, bytes: r.Bytes, reservation: reservation}
 	select {
 	case e.items <- item:
+		if estimate.OpaquePresent {
+			e.legacyOpaqueItems.Add(1)
+			e.legacyOpaqueBytes.Add(estimate.LegacyOpaqueBytes)
+		}
 		releaseBytes = false
 		releaseGroup = false
 		updateMax(&e.queueHigh, int64(len(e.items)))
@@ -212,6 +242,20 @@ func (e *Exchange) enqueueEnd(ctx context.Context, group uint32, total uint64) e
 }
 
 func (e *Exchange) release(item exchangeItem) {
+	if item.shared != nil {
+		// Remove consumer/pending graph references before acknowledging the lease.
+		if item.batch != nil {
+			item.batch.ClearColumns()
+			*item.batch = memory.Batch{}
+			item.batch = nil
+		}
+		binding := item.shared
+		item.shared = nil
+		binding.release()
+		e.releaseSharedCredit(item.bytes)
+		return
+	}
+
 	if item.borrowed != nil {
 		item.borrowed.once.Do(func() {
 			if item.reservation != nil {

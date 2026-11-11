@@ -72,8 +72,10 @@ func TestFanOutPropagatesBoundedScanOptions(t *testing.T) {
 			recorder := &scanOptionsRecorder{Source: newTrackedIntSource(t, 2, 2), replay: replay}
 			parts, _ := recorder.Partitions(context.Background())
 			manager := memory.NewBudgetManager(1 << 20)
-			opts := pipeline.Options{Workers: 1, TargetMorselBytes: 16, MaxMorselBytes: 32, MaxInFlightBytes: 128, MinMorselRows: 1, MaxMorselRows: 2}
-			streams, err := pipeline.OpenFanOut(context.Background(), recorder, scalarReadOptions(), parts, manager, opts, 2, observer.Nop{})
+			opts := pipeline.Options{Workers: 1, TargetMorselBytes: ownedIntMorselBytes(t, 2), MaxMorselBytes: ownedIntMorselBytes(t, 2), MaxInFlightBytes: 2 * ownedIntMorselBytes(t, 2), MinMorselRows: 1, MaxMorselRows: 2}
+			readOpts := scalarReadOptions()
+			readOpts.BatchBytes = 32 // Source payload limit is independent of owned clone admission.
+			streams, err := pipeline.OpenFanOut(context.Background(), recorder, readOpts, parts, manager, opts, 2, observer.Nop{})
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -21,7 +21,7 @@ func TestBoundedMultiplexerSingleScanStableResultsAndBackpressure(t *testing.T) 
 	manager := memory.NewBudgetManager(1 << 20)
 	collector := &observer.Collector{}
 	opts := pipeline.Options{
-		Workers: 1, TargetMorselBytes: 16, MaxMorselBytes: 32, MaxInFlightBytes: 64,
+		Workers: 1, TargetMorselBytes: ownedIntMorselBytes(t, 2), MaxMorselBytes: ownedIntMorselBytes(t, 2), MaxInFlightBytes: 2 * ownedIntMorselBytes(t, 2),
 		MinMorselRows: 1, MaxMorselRows: 2, Ordering: pipeline.OrderingStable,
 	}
 	streams, err := pipeline.OpenFanOut(context.Background(), tracked, scalarReadOptions(), parts, manager, opts, 2, collector)
@@ -89,7 +89,7 @@ func TestBoundedMultiplexerEarlyBranchCloseDoesNotStopSibling(t *testing.T) {
 	parts, _ := tracked.Partitions(context.Background())
 	manager := memory.NewBudgetManager(1 << 20)
 	opts := pipeline.Options{
-		Workers: 1, TargetMorselBytes: 16, MaxMorselBytes: 32, MaxInFlightBytes: 64,
+		Workers: 1, TargetMorselBytes: ownedIntMorselBytes(t, 2), MaxMorselBytes: ownedIntMorselBytes(t, 2), MaxInFlightBytes: 2 * ownedIntMorselBytes(t, 2),
 		MinMorselRows: 1, MaxMorselRows: 2,
 	}
 	streams, err := pipeline.OpenFanOut(context.Background(), tracked, scalarReadOptions(), parts, manager, opts, 2, observer.Nop{})
@@ -128,7 +128,7 @@ func TestBoundedMultiplexerFaultReachesEveryBranchAndReleases(t *testing.T) {
 	parts, _ := tracked.Partitions(context.Background())
 	manager := memory.NewBudgetManager(1 << 20)
 	opts := pipeline.Options{
-		Workers: 1, TargetMorselBytes: 16, MaxMorselBytes: 32, MaxInFlightBytes: 64,
+		Workers: 1, TargetMorselBytes: ownedIntMorselBytes(t, 2), MaxMorselBytes: ownedIntMorselBytes(t, 2), MaxInFlightBytes: 2 * ownedIntMorselBytes(t, 2),
 		MinMorselRows: 1, MaxMorselRows: 2,
 	}
 	streams, err := pipeline.OpenFanOut(context.Background(), tracked, scalarReadOptions(), parts, manager, opts, 2, observer.Nop{})
@@ -193,4 +193,18 @@ func TestFanOutRescansStableSourceAndRejectsInsufficientBranchBudget(t *testing.
 			t.Fatal(err)
 		}
 	}
+}
+
+// ownedIntMorselBytes keeps these backpressure tests at exactly one admitted
+// two-row owned clone per branch, including its metadata and copy workspace.
+func ownedIntMorselBytes(t *testing.T, rows int) int64 {
+	t.Helper()
+	b := memory.NewBatch()
+	b.Rows = rows
+	b.Int64s["x"] = &memory.Int64Vector{Values: make([]int64, rows)}
+	n, err := memory.EstimateNativeOwnedBatchRangeBytes(b, 0, rows)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return n.Bytes
 }

@@ -430,15 +430,9 @@ func (q *QueryBudget) reserve(ctx context.Context, operator string, class Memory
 		}
 		rootReservation, err := q.engine.reserveRoot(ctx, bytes)
 		if err == nil {
-			usedNow := q.used.Add(bytes)
-			for peak := q.peak.Load(); usedNow > peak && !q.peak.CompareAndSwap(peak, usedNow); peak = q.peak.Load() {
-			}
-			q.classes[class].Add(bytes)
-			if op != nil {
-				op.used.Add(bytes)
-			}
+			reservation := q.creditReservation(rootReservation, op, class, bytes)
 			q.reserveMu.Unlock()
-			return &hierarchicalReservation{bytes: bytes, root: rootReservation, query: q, operator: op, class: class}, nil
+			return reservation, nil
 		}
 		q.reserveMu.Unlock()
 		if !errors.Is(err, ErrBudgetExceeded) || attempt == 1 {
@@ -457,6 +451,18 @@ func (q *QueryBudget) reserve(ctx context.Context, operator string, class Memory
 		}
 	}
 	panic("unreachable query reservation retry")
+}
+
+// creditReservation requires reserveMu and an already admitted root charge.
+func (q *QueryBudget) creditReservation(root Reservation, op *OperatorBudget, class MemoryClass, bytes int64) Reservation {
+	usedNow := q.used.Add(bytes)
+	for peak := q.peak.Load(); usedNow > peak && !q.peak.CompareAndSwap(peak, usedNow); peak = q.peak.Load() {
+	}
+	q.classes[class].Add(bytes)
+	if op != nil {
+		op.used.Add(bytes)
+	}
+	return &hierarchicalReservation{bytes: bytes, root: root, query: q, operator: op, class: class}
 }
 
 func newMemoryResourceError(scope, operator string, class MemoryClass, requested, used, limit int64, cause error) error {

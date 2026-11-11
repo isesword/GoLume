@@ -67,6 +67,7 @@ func OpenFanOut(ctx context.Context, src source.Source, readOpts source.ReadOpti
 		opts: branchOpts, observer: sink, ctx: producerCtx, cancel: producerCancel,
 		started: time.Now(),
 	}
+	mux.sharedImmediate = sharedImmediateManager(producerCtx, manager)
 	mux.active.Store(int32(branches))
 	streams := make([]source.BatchStream, branches)
 	mux.branches = make([]*fanOutBranch, branches)
@@ -88,12 +89,13 @@ func OpenFanOut(ctx context.Context, src source.Source, readOpts source.ReadOpti
 }
 
 type boundedMultiplexer struct {
-	src      source.Source
-	readOpts source.ReadOptions
-	parts    []source.Partition
-	manager  memory.Manager
-	opts     Options
-	observer observer.Observer
+	sharedImmediate memory.ImmediateReservationManager
+	src             source.Source
+	readOpts        source.ReadOptions
+	parts           []source.Partition
+	manager         memory.Manager
+	opts            Options
+	observer        observer.Observer
 
 	ctx      context.Context
 	cancel   context.CancelCauseFunc
@@ -101,14 +103,16 @@ type boundedMultiplexer struct {
 	branches []*fanOutBranch
 	wg       sync.WaitGroup
 
-	errOnce sync.Once
-	errMu   sync.Mutex
-	err     error
-	started time.Time
-	rows    int64
-	bytes   int64
-	morsels int64
-	observe sync.Once
+	errOnce      sync.Once
+	errMu        sync.Mutex
+	err          error
+	started      time.Time
+	rows         int64
+	bytes        int64
+	morsels      int64
+	sharedRanges int64
+	guardRanges  int64
+	observe      sync.Once
 }
 
 func (m *boundedMultiplexer) run() {
@@ -124,7 +128,7 @@ func (m *boundedMultiplexer) run() {
 		m.fail(err)
 		return
 	}
-	sizer, err := NewByteSizer(m.src.Schema(), m.opts)
+	sizer, err := newOwnedByteSizer(m.src.Schema(), m.opts)
 	if err != nil {
 		m.fail(errors.Join(err, stream.Close()))
 		return
@@ -162,21 +166,33 @@ func (m *boundedMultiplexer) run() {
 			return
 		}
 		for _, morsel := range ranges {
-			active := 0
-			for _, branch := range m.branches {
-				branch.sendMu.Lock()
-				if !branch.active.Load() {
+			handled, active, shareErr := m.trySharedRange(batch, morsel, Sequence{Index: index})
+			if shareErr != nil {
+				m.fail(errors.Join(shareErr, stream.Close()))
+				return
+			}
+			if !handled {
+				active = 0
+				for _, branch := range m.branches {
+					branch.sendMu.Lock()
+					if !branch.active.Load() {
+						branch.sendMu.Unlock()
+						continue
+					}
+					active++
+					err := branch.exchange.enqueueRange(branch.ctx, Sequence{Index: index}, batch, morsel)
+					stillActive := branch.active.Load()
 					branch.sendMu.Unlock()
-					continue
+					if err != nil && stillActive {
+						m.fail(errors.Join(err, stream.Close()))
+						return
+					}
 				}
-				active++
-				err := branch.exchange.enqueueRange(branch.ctx, Sequence{Index: index}, batch, morsel)
-				stillActive := branch.active.Load()
-				branch.sendMu.Unlock()
-				if err != nil && stillActive {
-					m.fail(errors.Join(err, stream.Close()))
-					return
-				}
+			}
+			if handled {
+				m.sharedRanges++
+			} else {
+				m.guardRanges++
 			}
 			if active == 0 {
 				_ = stream.Close()
@@ -212,19 +228,28 @@ func (m *boundedMultiplexer) observeOnce() {
 	m.observe.Do(func() {
 		peak := int64(0)
 		blocked := time.Duration(0)
+		var legacyItems, legacyBytes int64
 		for _, branch := range m.branches {
 			stats := branch.exchange.Stats()
 			peak += stats.PeakInFlightBytes
 			blocked += stats.ProducerBlocked
+			legacyItems += stats.LegacyOpaqueItems
+			legacyBytes += stats.LegacyOpaqueBytes
 		}
 		m.observer.Observe(observer.Event{
 			Stage: "multiplexer", Duration: time.Since(m.started), Rows: m.rows, Bytes: m.bytes,
 			Workers: 1,
 			Attributes: map[string]string{
-				"branches":             strconv.Itoa(len(m.branches)),
-				"morsels":              strconv.FormatInt(m.morsels, 10),
-				"peak_in_flight_bytes": strconv.FormatInt(peak, 10),
-				"producer_blocked_ns":  strconv.FormatInt(int64(blocked), 10),
+				"branches":                    strconv.Itoa(len(m.branches)),
+				"shared_native_ranges":        strconv.FormatInt(m.sharedRanges, 10),
+				"guard_clone_ranges":          strconv.FormatInt(m.guardRanges, 10),
+				"inflight_byte_scope":         "per_branch_pinned_charge_not_unique_query_storage",
+				"owned_admission_model":       "native_capacity_plus_legacy_opaque_logical",
+				"legacy_opaque_items":         strconv.FormatInt(legacyItems, 10),
+				"legacy_opaque_logical_bytes": strconv.FormatInt(legacyBytes, 10),
+				"morsels":                     strconv.FormatInt(m.morsels, 10),
+				"peak_in_flight_bytes":        strconv.FormatInt(peak, 10),
+				"producer_blocked_ns":         strconv.FormatInt(int64(blocked), 10),
 			},
 		})
 	})
@@ -299,13 +324,16 @@ func (b *fanOutBranch) bindCurrent(dst *memory.Batch, item exchangeItem) {
 	*dst = *item.batch
 	*item.batch = old
 	item.batch.ClearColumns()
-	item.batch = nil
+	// Keep the caller's original empty maps in the item shell. On release,
+	// restore them and drop the clone's maps with its admission charge.
 	b.current, b.currentDst = item, dst
 }
 
 func (b *fanOutBranch) releaseCurrent() {
 	if b.currentDst != nil {
-		b.currentDst.ClearColumns()
+		owned := *b.currentDst
+		*b.currentDst = *b.current.batch
+		*b.current.batch = owned
 		b.currentDst = nil
 	}
 	if b.current.bytes != 0 || b.current.reservation != nil || b.current.batch != nil {

@@ -11,7 +11,7 @@ func TestExchangeEmptyListCloneAdmissionAndCleanup(t *testing.T) {
 	b := memory.NewBatch()
 	b.Rows = 3
 	b.StringLists["list"] = &memory.StringListVector{Offsets: []uint32{0, 0, 0, 0}, Values: &memory.StringViewVector{}, Validity: memory.Bitmap{0b101}}
-	bytes, err := memory.EstimateBatchRangeBytes(b, 0, 3)
+	bytes, err := nativeOwnedRangeBytes(b, 0, 3)
 	if err != nil {
 		t.Fatal(err)
 	}

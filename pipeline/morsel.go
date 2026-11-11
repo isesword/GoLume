@@ -34,6 +34,8 @@ func (e *MorselTooLargeError) Error() string {
 type ByteSizer struct {
 	opts        Options
 	bytesPerRow float64
+	estimate    func(*memory.Batch, int, int) (int64, error)
+	owned       bool
 }
 
 // NewByteSizer constructs an adaptive byte-first morsel sizer.
@@ -41,7 +43,26 @@ func NewByteSizer(schema memory.Schema, opts Options) (*ByteSizer, error) {
 	if err := opts.Validate(); err != nil {
 		return nil, err
 	}
-	return &ByteSizer{opts: opts, bytesPerRow: float64(EstimateSchemaRowBytes(schema))}, nil
+	return &ByteSizer{opts: opts, bytesPerRow: float64(EstimateSchemaRowBytes(schema)), estimate: memory.EstimateBatchRangeBytes}, nil
+}
+
+// newOwnedByteSizer is reserved for fan-out copies. Public sizing and borrowed
+// partition handoff continue to use logical payload bytes.
+func newOwnedByteSizer(schema memory.Schema, opts Options) (*ByteSizer, error) {
+	s, err := NewByteSizer(schema, opts)
+	if err != nil {
+		return nil, err
+	}
+	s.estimate = nativeOwnedRangeBytes
+	s.owned = true
+	return s, nil
+}
+
+// nativeOwnedRangeBytes combines native copy admission with unchanged legacy
+// Opaque logical accounting. The latter is explicitly not a retained-size bound.
+func nativeOwnedRangeBytes(batch *memory.Batch, offset, rows int) (int64, error) {
+	estimate, err := memory.EstimateNativeOwnedBatchRangeBytes(batch, offset, rows)
+	return estimate.Bytes, err
 }
 
 // ObservedBytesPerRow returns the current schema/history width estimate.
@@ -64,13 +85,24 @@ func (s *ByteSizer) Split(batch *memory.Batch) ([]MorselRange, error) {
 	if batch.Rows == 0 {
 		return nil, nil
 	}
-	fullBytes, err := memory.EstimateBatchRangeBytes(batch, 0, batch.Rows)
+	fullBytes, err := s.estimate(batch, 0, batch.Rows)
 	if err != nil {
 		return nil, err
 	}
 	actualWidth := float64(fullBytes) / float64(batch.Rows)
 	if actualWidth > 0 {
 		s.bytesPerRow = s.bytesPerRow*0.75 + actualWidth*0.25
+	}
+	// The first estimate already validates the entire input. Reuse it only
+	// when the original target/minimum rules prove that one whole-batch range
+	// is the exact result. Never apply this shortcut to public logical sizing.
+	if s.owned && batch.Rows <= s.opts.MaxMorselRows &&
+		(fullBytes <= s.opts.TargetMorselBytes ||
+			(batch.Rows <= s.opts.MinMorselRows && fullBytes <= s.opts.MaxMorselBytes)) {
+		if fullBytes == 0 {
+			fullBytes = 1
+		}
+		return []MorselRange{{Rows: batch.Rows, Bytes: fullBytes}}, nil
 	}
 	ranges := make([]MorselRange, 0, batch.Rows/s.opts.MinMorselRows+1)
 	for offset := 0; offset < batch.Rows; {
@@ -85,7 +117,7 @@ func (s *ByteSizer) Split(batch *memory.Batch) ([]MorselRange, error) {
 		if guessRows > s.opts.MaxMorselRows {
 			guessRows = s.opts.MaxMorselRows
 		}
-		targetEnd, targetBytes, err := largestEndWithin(batch, offset, maxEnd, offset+guessRows, s.opts.TargetMorselBytes)
+		targetEnd, targetBytes, err := s.largestEndWithin(batch, offset, maxEnd, offset+guessRows, s.opts.TargetMorselBytes)
 		if err != nil {
 			return nil, err
 		}
@@ -95,21 +127,21 @@ func (s *ByteSizer) Split(batch *memory.Batch) ([]MorselRange, error) {
 		}
 		end, bytes := targetEnd, targetBytes
 		if end < minEnd {
-			minBytes, err := memory.EstimateBatchRangeBytes(batch, offset, minEnd-offset)
+			minBytes, err := s.estimate(batch, offset, minEnd-offset)
 			if err != nil {
 				return nil, err
 			}
 			if minBytes <= s.opts.MaxMorselBytes {
 				end, bytes = minEnd, minBytes
 			} else {
-				end, bytes, err = largestEndWithin(batch, offset, minEnd, offset+1, s.opts.MaxMorselBytes)
+				end, bytes, err = s.largestEndWithin(batch, offset, minEnd, offset+1, s.opts.MaxMorselBytes)
 				if err != nil {
 					return nil, err
 				}
 			}
 		}
 		if end == offset {
-			one, err := memory.EstimateBatchRangeBytes(batch, offset, 1)
+			one, err := s.estimate(batch, offset, 1)
 			if err != nil {
 				return nil, err
 			}
@@ -127,14 +159,17 @@ func (s *ByteSizer) Split(batch *memory.Batch) ([]MorselRange, error) {
 	return ranges, nil
 }
 
-func largestEndWithin(batch *memory.Batch, offset, maxEnd, guessedEnd int, limit int64) (int, int64, error) {
+func (s *ByteSizer) largestEndWithin(batch *memory.Batch, offset, maxEnd, guessedEnd int, limit int64) (int, int64, error) {
+	if s.owned {
+		return s.largestOwnedEndWithin(batch, offset, maxEnd, guessedEnd, limit)
+	}
 	if guessedEnd < offset+1 {
 		guessedEnd = offset + 1
 	}
 	if guessedEnd > maxEnd {
 		guessedEnd = maxEnd
 	}
-	probeBytes, err := memory.EstimateBatchRangeBytes(batch, offset, guessedEnd-offset)
+	probeBytes, err := s.estimate(batch, offset, guessedEnd-offset)
 	if err != nil {
 		return 0, 0, err
 	}
@@ -148,7 +183,7 @@ func largestEndWithin(batch *memory.Batch, offset, maxEnd, guessedEnd int, limit
 	}
 	for lo <= hi {
 		mid := lo + (hi-lo)/2
-		bytes, err := memory.EstimateBatchRangeBytes(batch, offset, mid-offset)
+		bytes, err := s.estimate(batch, offset, mid-offset)
 		if err != nil {
 			return 0, 0, err
 		}

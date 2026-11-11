@@ -7,9 +7,10 @@ import (
 	"math"
 )
 
-// EstimateBatchRangeBytes returns the bytes retained by an owned clone of the
-// contiguous row range. It performs no allocation and is used to reserve an
-// Exchange slot before CloneBatchRange allocates.
+// EstimateBatchRangeBytes returns the historical logical payload charge for a
+// contiguous row range. It is not a complete owned-allocation bound. Native
+// owned fan-out uses EstimateNativeOwnedBatchRangeBytes; Opaque retains this
+// legacy sizing contract.
 func EstimateBatchRangeBytes(src *Batch, offset, length int) (int64, error) {
 	return estimateBatchRangeBytes(src, offset, length, false)
 }
@@ -17,6 +18,25 @@ func EstimateBatchRangeBytes(src *Batch, offset, length int) (int64, error) {
 // inheritedNulls accounts for validity materialized by canonical struct clone
 // when an ancestor is NULL, even if the original child has no validity buffer.
 func estimateBatchRangeBytes(src *Batch, offset, length int, inheritedNulls bool) (int64, error) {
+	return estimateBatchRangeBytesMode(src, offset, length, inheritedNulls, true)
+}
+
+// includeOpaque=false isolates native logical payload without inspecting Opaque
+// arrays, datatypes, caches or extension implementations.
+func estimateBatchRangeBytesMode(src *Batch, offset, length int, inheritedNulls, includeOpaque bool) (int64, error) {
+	return estimateBatchRangeBytesComponents(src, offset, length, inheritedNulls, includeOpaque, nil)
+}
+
+// legacyOpaque optionally collects only the historical Opaque entry charges.
+// Recursive child totals already contain these entries, so only the entry loop
+// increments the shared accumulator; parents must not add child totals to it.
+func estimateBatchRangeBytesComponents(src *Batch, offset, length int, inheritedNulls, includeOpaque bool, legacyOpaque *int64) (int64, error) {
+	return estimateBatchRangeBytesAccounting(src, offset, length, inheritedNulls, includeOpaque, legacyOpaque, nil, true)
+}
+
+// bulkNative counts only pointer-free native payload copied in one allocation
+// per backing. Non-empty Struct children use row append and never enter it.
+func estimateBatchRangeBytesAccounting(src *Batch, offset, length int, inheritedNulls, includeOpaque bool, legacyOpaque, bulkNative *int64, bulkMode bool) (int64, error) {
 	if src == nil {
 		return 0, fmt.Errorf("cannot estimate range from nil batch")
 	}
@@ -32,6 +52,19 @@ func estimateBatchRangeBytes(src *Batch, offset, length int, inheritedNulls bool
 		total += bytes
 		return nil
 	}
+	addNative := func(bytes int64) error {
+		if err := add(bytes); err != nil {
+			return err
+		}
+		if bulkNative != nil && bulkMode {
+			if *bulkNative > math.MaxInt64-bytes {
+				return fmt.Errorf("batch range byte estimate overflows int64")
+			}
+			*bulkNative += bytes
+		}
+		return nil
+	}
+
 	validityBytes := func(validity Bitmap) int64 {
 		if (validity == nil && !inheritedNulls) || length == 0 {
 			return 0
@@ -42,7 +75,7 @@ func estimateBatchRangeBytes(src *Batch, offset, length int, inheritedNulls bool
 		if v == nil || len(v.Values) < end {
 			return 0, fmt.Errorf("int8 column %q is shorter than range", name)
 		}
-		if err := add(int64(length)*1 + validityBytes(v.Validity)); err != nil {
+		if err := addNative(int64(length)*1 + validityBytes(v.Validity)); err != nil {
 			return 0, err
 		}
 	}
@@ -50,7 +83,7 @@ func estimateBatchRangeBytes(src *Batch, offset, length int, inheritedNulls bool
 		if v == nil || len(v.Values) < end {
 			return 0, fmt.Errorf("int16 column %q is shorter than range", name)
 		}
-		if err := add(int64(length)*2 + validityBytes(v.Validity)); err != nil {
+		if err := addNative(int64(length)*2 + validityBytes(v.Validity)); err != nil {
 			return 0, err
 		}
 	}
@@ -58,7 +91,7 @@ func estimateBatchRangeBytes(src *Batch, offset, length int, inheritedNulls bool
 		if v == nil || len(v.Values) < end {
 			return 0, fmt.Errorf("uint8 column %q is shorter than range", name)
 		}
-		if err := add(int64(length)*1 + validityBytes(v.Validity)); err != nil {
+		if err := addNative(int64(length)*1 + validityBytes(v.Validity)); err != nil {
 			return 0, err
 		}
 	}
@@ -66,7 +99,7 @@ func estimateBatchRangeBytes(src *Batch, offset, length int, inheritedNulls bool
 		if v == nil || len(v.Values) < end {
 			return 0, fmt.Errorf("uint16 column %q is shorter than range", name)
 		}
-		if err := add(int64(length)*2 + validityBytes(v.Validity)); err != nil {
+		if err := addNative(int64(length)*2 + validityBytes(v.Validity)); err != nil {
 			return 0, err
 		}
 	}
@@ -74,7 +107,7 @@ func estimateBatchRangeBytes(src *Batch, offset, length int, inheritedNulls bool
 		if v == nil || len(v.Values) < end {
 			return 0, fmt.Errorf("float32 column %q is shorter than range", name)
 		}
-		if err := add(int64(length)*4 + validityBytes(v.Validity)); err != nil {
+		if err := addNative(int64(length)*4 + validityBytes(v.Validity)); err != nil {
 			return 0, err
 		}
 	}
@@ -82,7 +115,7 @@ func estimateBatchRangeBytes(src *Batch, offset, length int, inheritedNulls bool
 		if v == nil || len(v.Values) < end {
 			return 0, fmt.Errorf("int64 column %q is shorter than range", name)
 		}
-		if err := add(int64(length)*8 + validityBytes(v.Validity)); err != nil {
+		if err := addNative(int64(length)*8 + validityBytes(v.Validity)); err != nil {
 			return 0, err
 		}
 	}
@@ -90,7 +123,7 @@ func estimateBatchRangeBytes(src *Batch, offset, length int, inheritedNulls bool
 		if v == nil || len(v.Values) < end {
 			return 0, fmt.Errorf("int32 column %q is shorter than range", name)
 		}
-		if err := add(int64(length)*4 + validityBytes(v.Validity)); err != nil {
+		if err := addNative(int64(length)*4 + validityBytes(v.Validity)); err != nil {
 			return 0, err
 		}
 	}
@@ -98,7 +131,7 @@ func estimateBatchRangeBytes(src *Batch, offset, length int, inheritedNulls bool
 		if v == nil || len(v.Values) < end {
 			return 0, fmt.Errorf("uint32 column %q is shorter than range", name)
 		}
-		if err := add(int64(length)*4 + validityBytes(v.Validity)); err != nil {
+		if err := addNative(int64(length)*4 + validityBytes(v.Validity)); err != nil {
 			return 0, err
 		}
 	}
@@ -106,7 +139,7 @@ func estimateBatchRangeBytes(src *Batch, offset, length int, inheritedNulls bool
 		if v == nil || len(v.Values) < end {
 			return 0, fmt.Errorf("uint64 column %q is shorter than range", name)
 		}
-		if err := add(int64(length)*8 + validityBytes(v.Validity)); err != nil {
+		if err := addNative(int64(length)*8 + validityBytes(v.Validity)); err != nil {
 			return 0, err
 		}
 	}
@@ -117,7 +150,7 @@ func estimateBatchRangeBytes(src *Batch, offset, length int, inheritedNulls bool
 		if int64(length) > math.MaxInt64/16 {
 			return 0, fmt.Errorf("decimal range byte estimate overflows int64")
 		}
-		if err := add(int64(length)*16 + validityBytes(v.Validity)); err != nil {
+		if err := addNative(int64(length)*16 + validityBytes(v.Validity)); err != nil {
 			return 0, err
 		}
 	}
@@ -125,7 +158,7 @@ func estimateBatchRangeBytes(src *Batch, offset, length int, inheritedNulls bool
 		if v == nil || len(v.Values) < end {
 			return 0, fmt.Errorf("float64 column %q is shorter than range", name)
 		}
-		if err := add(int64(length)*8 + validityBytes(v.Validity)); err != nil {
+		if err := addNative(int64(length)*8 + validityBytes(v.Validity)); err != nil {
 			return 0, err
 		}
 	}
@@ -134,7 +167,7 @@ func estimateBatchRangeBytes(src *Batch, offset, length int, inheritedNulls bool
 		if err != nil {
 			return 0, fmt.Errorf("string column %q: %w", name, err)
 		}
-		if err := add(int64(length+1)*4 + int64(hi-lo) + validityBytes(v.Validity)); err != nil {
+		if err := addNative(int64(length+1)*4 + int64(hi-lo) + validityBytes(v.Validity)); err != nil {
 			return 0, err
 		}
 	}
@@ -142,7 +175,7 @@ func estimateBatchRangeBytes(src *Batch, offset, length int, inheritedNulls bool
 		if v == nil || len(v.Indices) < end {
 			return 0, fmt.Errorf("dictionary column %q is shorter than range", name)
 		}
-		if err := add(int64(length)*4 + validityBytes(v.Validity) + int64(len(v.Offsets))*4 + int64(len(v.Data))); err != nil {
+		if err := addNative(int64(length)*4 + validityBytes(v.Validity) + int64(len(v.Offsets))*4 + int64(len(v.Data))); err != nil {
 			return 0, err
 		}
 	}
@@ -157,7 +190,7 @@ func estimateBatchRangeBytes(src *Batch, offset, length int, inheritedNulls bool
 			childValidity = int64(WordsFor(int(childLength))) * 8
 		}
 		bytes := int64(length+1)*4 + validityBytes(v.Validity) + (childLength+1)*4 + int64(dataEnd-dataStart) + childValidity
-		if err := add(bytes); err != nil {
+		if err := addNative(bytes); err != nil {
 			return 0, err
 		}
 	}
@@ -176,7 +209,7 @@ func estimateBatchRangeBytes(src *Batch, offset, length int, inheritedNulls bool
 				}
 			}
 		}
-		childBytes, err := estimateBatchRangeBytes(v.Values, offset, length, childNulls)
+		childBytes, err := estimateBatchRangeBytesAccounting(v.Values, offset, length, childNulls, includeOpaque, legacyOpaque, bulkNative, bulkMode && length == 0)
 		if err != nil {
 			return 0, fmt.Errorf("struct column %q: %w", name, err)
 		}
@@ -184,20 +217,29 @@ func estimateBatchRangeBytes(src *Batch, offset, length int, inheritedNulls bool
 			return 0, err
 		}
 	}
-	for name, v := range src.Opaque {
-		if v == nil || v.Value == nil || v.Rows < end {
-			return 0, fmt.Errorf("opaque column %q is shorter than range", name)
-		}
-		a, ok := v.Value.(arrow.Array)
-		if !ok {
-			return 0, fmt.Errorf("opaque column %q has no byte sizing contract", name)
-		}
-		size := a.Data().SizeInBytes()
-		if size > math.MaxInt64 {
-			return 0, fmt.Errorf("opaque column %q byte size overflows int64", name)
-		}
-		if err := add(int64(size) + validityBytes(v.Validity)); err != nil {
-			return 0, err
+	if includeOpaque {
+		for name, v := range src.Opaque {
+			if v == nil || v.Value == nil || v.Rows < end {
+				return 0, fmt.Errorf("opaque column %q is shorter than range", name)
+			}
+			a, ok := v.Value.(arrow.Array)
+			if !ok {
+				return 0, fmt.Errorf("opaque column %q has no byte sizing contract", name)
+			}
+			size := a.Data().SizeInBytes()
+			if size > math.MaxInt64 {
+				return 0, fmt.Errorf("opaque column %q byte size overflows int64", name)
+			}
+			charge := int64(size) + validityBytes(v.Validity)
+			if err := add(charge); err != nil {
+				return 0, err
+			}
+			if legacyOpaque != nil {
+				if *legacyOpaque > math.MaxInt64-charge {
+					return 0, fmt.Errorf("batch range byte estimate overflows int64")
+				}
+				*legacyOpaque += charge
+			}
 		}
 	}
 	return total, nil
