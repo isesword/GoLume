@@ -203,6 +203,10 @@ fsync 和原子提交；失败不返回临时路径。
 均保留输入数值类型及原生向量宽度。直接 physical 调用的输出字段必须与输入类型、
 别名及可空约定一致，不再接受错误的宽化表示。见 [窗口极值契约](docs/WINDOW_EXTREMA.md)。
 
+`RollingCount` 按 bool、list<string> 和 struct 的父层有效性计数，结果为非空 int64。
+有效的 false、空列表及子项全 NULL 的 struct 均计为一个值；空窗口返回 0。
+`RollingCountRows` 与 `RollingCount` 均验证窗口帧。见 [滚动计数契约](docs/WINDOW_COUNT.md)。
+
 ## Lazy ordering API
 
 ```go

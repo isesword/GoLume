@@ -160,6 +160,11 @@ func NewWindowSourceWithOptions(input source.Source, partitionBy []string, order
 	}
 	inputSchema := input.Schema()
 	for index, expression := range expressions {
+		if expression.Function == WindowCountRows || expression.Function == WindowCountValues {
+			if err := validateCountWindow(inputSchema, expression, outputFields[index]); err != nil {
+				return nil, err
+			}
+		}
 		if expression.Function == WindowMin || expression.Function == WindowMax {
 			if err := validateExtremaWindow(inputSchema, expression, outputFields[index]); err != nil {
 				return nil, err
@@ -835,6 +840,18 @@ func windowValueValid(batch *memory.Batch, schema memory.Schema, column string, 
 	case memory.TypeUint16:
 		v, err := batch.Uint16(column)
 		return err == nil && v.IsValid(row), err
+	case memory.TypeBool:
+		if v, ok := batch.Uint32s[column]; ok {
+			return v.IsValid(row), nil
+		}
+	case memory.TypeList:
+		if v, ok := batch.StringLists[column]; ok {
+			return v.IsValid(row), nil
+		}
+	case memory.TypeStruct:
+		if v, ok := batch.Structs[column]; ok {
+			return v.IsValid(row), nil
+		}
 	case memory.TypeUint32:
 		v, err := batch.Uint32(column)
 		return err == nil && v.IsValid(row), err
@@ -854,13 +871,14 @@ func windowValueValid(batch *memory.Batch, schema memory.Schema, column string, 
 		}
 		v, err := batch.String(column)
 		return err == nil && v.IsValid(row), err
-	default:
-		v, err := batch.OpaqueColumn(column)
-		if err != nil {
-			return false, err
-		}
-		return v.Validity == nil || memory.IsSet(v.Validity, row), nil
 	}
+	// Source-native nested/boolean columns may still use an opaque binding.
+	// Its bitmap, like the native vectors above, describes the parent row.
+	v, err := batch.OpaqueColumn(column)
+	if err != nil {
+		return false, err
+	}
+	return v.Validity == nil || memory.IsSet(v.Validity, row), nil
 }
 
 func windowInt64(batch *memory.Batch, schema memory.Schema, column string, row int) (int64, bool, error) {

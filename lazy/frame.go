@@ -139,7 +139,10 @@ func RollingCountRows(frame RowsFrame, alias string) WindowExpr {
 	return logical.WindowExpr{Function: logical.WindowCountRows, Frame: frame, Alias: alias}
 }
 
-// RollingCount counts non-NULL values of column in frame.
+// RollingCount counts non-NULL values of column in frame and returns a
+// non-nullable int64. It counts valid false booleans, empty lists, and structs
+// with NULL children; only the parent row validity determines membership.
+// An empty or all-NULL frame returns zero.
 func RollingCount(column string, frame RowsFrame, alias string) WindowExpr {
 	return logical.WindowExpr{Function: logical.WindowCountValues, Column: column, Frame: frame, Alias: alias}
 }

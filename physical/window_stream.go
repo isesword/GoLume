@@ -819,6 +819,11 @@ func estimateWindowOutputBytes(_ memory.Schema, fields []memory.Field, rows int)
 
 func initializeWindowOutputs(batch *memory.Batch, fields []memory.Field, rows int, expressions []WindowExpression) {
 	for index, field := range fields {
+		if expressions[index].Function == WindowCountRows || expressions[index].Function == WindowCountValues {
+			// The old alias may be a borrowed bool, list, or struct binding.
+			// Detach it without releasing or changing the child input.
+			clearWindowOutput(batch, field.Name)
+		}
 		if expressions[index].Function == WindowShift || expressions[index].Function == WindowDiff || isFillWindow(expressions[index].Function) || expressions[index].Function == WindowMin || expressions[index].Function == WindowMax {
 			clearWindowOutput(batch, field.Name)
 			initializeOffsetOutput(batch, field.Name, field.Type, rows)

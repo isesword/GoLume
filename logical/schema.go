@@ -409,6 +409,11 @@ func inferWindowField(schema memory.Schema, window WindowExpr) (memory.Field, er
 		if window.Column != "" {
 			return memory.Field{}, fmt.Errorf("window %q does not accept an input column", window.Alias)
 		}
+		if window.Function == WindowCountRows {
+			if err := validateWindowFrame(window.Frame); err != nil {
+				return memory.Field{}, fmt.Errorf("window count %q: %w", window.Alias, err)
+			}
+		}
 		field.Type = memory.TypeInt64
 		return field, nil
 	case WindowCountValues:
