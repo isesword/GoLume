@@ -892,13 +892,29 @@ type pruningRowGroup struct {
 	*metadata.RowGroupMetaData
 	file  *metadata.FileMetaData
 	index int
+	// Statistics belong to this predicate evaluation, not the immutable Source.
+	// Four entries bound cache storage and retained decoded statistics even for
+	// wide predicates. Nil statistics are cached too; eviction only re-decodes.
+	statistics *pruningStatisticsCache
+}
+
+type pruningStatisticsCache struct {
+	inline [4]pruningColumnStatistics
+	count  int
+	next   int
+}
+
+type pruningColumnStatistics struct {
+	index int
+	stats metadata.TypedStatistics
 }
 
 func rowGroupMayMatch(meta *metadata.FileMetaData, rowGroup int, predicate expr.Expr, bindings map[string]columnBinding) (bool, error) {
 	if predicate == nil {
 		return true, nil
 	}
-	rg := &pruningRowGroup{RowGroupMetaData: meta.RowGroup(rowGroup), file: meta, index: rowGroup}
+	var statistics pruningStatisticsCache
+	rg := &pruningRowGroup{RowGroupMetaData: meta.RowGroup(rowGroup), file: meta, index: rowGroup, statistics: &statistics}
 	truth, err := predicateTruth(rg, predicate, bindings)
 	if err != nil {
 		return false, err
@@ -1100,6 +1116,44 @@ func comparisonLiteral(binding columnBinding, literal expr.Expr) (int64, bool, e
 }
 
 func columnStatistics(rg *pruningRowGroup, binding columnBinding) (metadata.TypedStatistics, error) {
+	if rg == nil {
+		return nil, nil
+	}
+	if rg.statistics == nil {
+		return decodeColumnStatistics(rg, binding)
+	}
+	if stats, ok := rg.statistics.lookup(binding.Index); ok {
+		return stats, nil
+	}
+	stats, err := decodeColumnStatistics(rg, binding)
+	if err != nil {
+		return nil, err
+	}
+	rg.statistics.store(binding.Index, stats)
+	return stats, nil
+}
+
+func (c *pruningStatisticsCache) lookup(index int) (metadata.TypedStatistics, bool) {
+	for i := 0; i < c.count; i++ {
+		if entry := c.inline[i]; entry.index == index {
+			return entry.stats, true
+		}
+	}
+	return nil, false
+}
+
+func (c *pruningStatisticsCache) store(index int, stats metadata.TypedStatistics) {
+	c.inline[c.next] = pruningColumnStatistics{index: index, stats: stats}
+	c.next = (c.next + 1) % len(c.inline)
+	if c.count < len(c.inline) {
+		c.count++
+	}
+}
+
+// decodeColumnStatistics validates raw footer presence/width and Arrow's trust
+// rules before exposing statistics. Caching never turns missing or untrusted
+// metadata into an empty value domain and never crosses a row-group boundary.
+func decodeColumnStatistics(rg *pruningRowGroup, binding columnBinding) (metadata.TypedStatistics, error) {
 	if rg == nil || rg.RowGroupMetaData == nil || rg.file == nil || rg.Schema == nil ||
 		rg.index < 0 || rg.index >= len(rg.file.RowGroups) ||
 		binding.Index < 0 || binding.Index >= rg.Schema.NumColumns() {
