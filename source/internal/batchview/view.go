@@ -1,4 +1,5 @@
-// Package batchview binds bounded zero-copy views of immutable source buffers.
+// Package batchview binds bounded views of immutable source buffers.
+// Packed Arrow Booleans are decoded into native uint32 values per output batch.
 // It does not read or iterate partitions; native sources own those semantics.
 package batchview
 
@@ -11,8 +12,8 @@ import (
 	"gocolumn/source"
 )
 
-// View owns only range metadata and Arrow slice references for one output.
-// Immutable source values and dictionaries remain borrowed, never copied.
+// View owns range metadata, decoded Boolean buffers, and Arrow slice references
+// for one output. Other source values and dictionaries remain borrowed.
 type View struct {
 	reservation memory.Reservation
 	owned       []*memory.OpaqueVector
@@ -34,7 +35,7 @@ func (v *View) Release() {
 }
 
 // Bind fills the next row/byte-bounded range and returns its row count. Byte
-// limits and reservations cover newly allocated validity/offset buffers only;
+// limits and reservations cover decoded Boolean values and new validity/offset buffers;
 // caller-owned immutable data and Arrow buffers are not charged again.
 func (v *View) Bind(ctx context.Context, dst, src *memory.Batch, offset int, opts source.ReadOptions) (int, error) {
 	v.Release()
@@ -45,7 +46,7 @@ func (v *View) Bind(ctx context.Context, dst, src *memory.Batch, offset int, opt
 	rows := min(opts.BatchRows, src.Rows-offset)
 	// Payload and allocation limits are independent. A legal single row may
 	// exceed the soft target, but never the caller's hard payload limit.
-	rows, err := memory.SelectBatchRangeRows(src, offset, rows, opts.BatchPayloadTargetBytes, opts.BatchPayloadBytes)
+	rows, err := selectDecodedRangeRows(src, offset, rows, opts.BatchPayloadTargetBytes, opts.BatchPayloadBytes)
 	if err != nil {
 		return 0, err
 	}
@@ -82,7 +83,7 @@ func (v *View) Bind(ctx context.Context, dst, src *memory.Batch, offset int, opt
 			return 0, err
 		}
 	}
-	if err := v.bind(dst, src, offset, rows); err != nil {
+	if err := v.bind(ctx, dst, src, offset, rows); err != nil {
 		v.Release()
 		dst.ClearColumns()
 		return 0, err
@@ -306,6 +307,16 @@ func scratchBytes(src *memory.Batch, offset, length int) (int64, error) {
 		if v == nil || v.Rows < end {
 			return 0, fmt.Errorf("opaque column %q shorter than source range", name)
 		}
+		if a, ok := packedBoolean(v); ok {
+			if a == nil || a.Len() < end {
+				return 0, fmt.Errorf("Boolean column %q shorter than source range", name)
+			}
+			var err error
+			n, err = addDecodedBooleanBytes(n, length)
+			if err != nil {
+				return 0, err
+			}
+		}
 		if _, ok := v.Value.(arrow.Array); !ok && (offset != 0 || length != src.Rows) {
 			return 0, fmt.Errorf("opaque column %q has no slicing contract", name)
 		}
@@ -317,7 +328,7 @@ func scratchBytes(src *memory.Batch, offset, length int) (int64, error) {
 	return n, nil
 }
 
-func (view *View) bind(dst, src *memory.Batch, offset, length int) error {
+func (view *View) bind(ctx context.Context, dst, src *memory.Batch, offset, length int) error {
 	end := offset + length
 	for name, v := range src.Int8s {
 		dst.Int8s[name] = &memory.Int8Vector{Values: v.Values[offset:end], Validity: validity(v.Validity, offset, length), Encoding: v.Encoding}
@@ -364,12 +375,27 @@ func (view *View) bind(dst, src *memory.Batch, offset, length int) error {
 	}
 	for name, v := range src.Structs {
 		values := memory.NewBatch()
-		if err := view.bind(values, v.Values, offset, length); err != nil {
+		if err := view.bind(ctx, values, v.Values, offset, length); err != nil {
 			return err
 		}
 		dst.Structs[name] = &memory.StructVector{Rows: length, Fields: v.Fields, Values: values, Validity: validity(v.Validity, offset, length), Encoding: v.Encoding}
 	}
 	for name, v := range src.Opaque {
+		if a, ok := packedBoolean(v); ok {
+			values := make([]uint32, length)
+			for row := range values {
+				if row%4096 == 0 {
+					if err := ctx.Err(); err != nil {
+						return err
+					}
+				}
+				if (v.Validity == nil || memory.IsSet(v.Validity, offset+row)) && a.Value(offset+row) {
+					values[row] = 1
+				}
+			}
+			dst.Uint32s[name] = &memory.Uint32Vector{Values: values, Validity: validity(v.Validity, offset, length), Encoding: memory.EncodingPlain}
+			continue
+		}
 		out := &memory.OpaqueVector{Rows: length, Type: v.Type, ArrowType: v.ArrowType, Encoding: v.Encoding, Validity: validity(v.Validity, offset, length), Value: v.Value}
 		if a, ok := v.Value.(arrow.Array); ok && (offset != 0 || length != src.Rows) {
 			out.Value = array.NewSlice(a, int64(offset), int64(end))

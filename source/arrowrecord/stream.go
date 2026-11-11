@@ -93,7 +93,9 @@ func (s *batchStream) Next(ctx context.Context, dst *memory.Batch) (bool, error)
 }
 
 // bindRecord constructs only vector headers over retained source buffers.
-// Row slicing and bounded validity/offset normalization happen in Next.
+// Row slicing, bounded Boolean decoding, and validity/offset normalization
+// happen in Next. Packed Boolean bindings stay internal to batchview; callers
+// receive native uint32 vectors rather than opaque arrays.
 func (s *batchStream) bindRecord(partition int) error {
 	rec := s.owner.records[partition]
 	rows := int(rec.NumRows())

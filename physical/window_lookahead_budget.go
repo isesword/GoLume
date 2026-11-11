@@ -102,7 +102,7 @@ func futureCloneMetadata(batch *memory.Batch, depth int) (int64, error) {
 }
 
 func futureArrowCloneMetadata(data arrow.ArrayData, depth int) (int64, error) {
-	if data == nil || depth > 64 {
+	if residentOpaqueIsNil(data) || depth > 64 {
 		return 0, fmt.Errorf("window lookahead Arrow clone has nil or excessively nested data")
 	}
 	// NewSlice retains buffers but constructs ArrayData/typed array wrappers and
@@ -127,7 +127,7 @@ func futureArrowCloneMetadata(data arrow.ArrayData, depth int) (int64, error) {
 			return 0, err
 		}
 	}
-	if dict := data.Dictionary(); dict != nil {
+	if dict := data.Dictionary(); !residentOpaqueIsNil(dict) {
 		extra, e := futureArrowCloneMetadata(dict, depth+1)
 		if e != nil {
 			return 0, e

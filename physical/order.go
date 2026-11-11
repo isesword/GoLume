@@ -753,7 +753,10 @@ func (a *batchAccumulator) appendRow(src *memory.Batch, row int) error {
 			v, ok := src.Int32s[f.Name]
 			if !ok {
 				if o := src.Opaque[f.Name]; o != nil {
-					return a.appendOpaque(f.Name, o, row)
+					if err := a.appendOpaque(f.Name, o, row); err != nil {
+						return err
+					}
+					continue
 				}
 				return fmt.Errorf("column %q missing", f.Name)
 			}
@@ -768,7 +771,10 @@ func (a *batchAccumulator) appendRow(src *memory.Batch, row int) error {
 			v, ok := src.Int64s[f.Name]
 			if !ok {
 				if o := src.Opaque[f.Name]; o != nil {
-					return a.appendOpaque(f.Name, o, row)
+					if err := a.appendOpaque(f.Name, o, row); err != nil {
+						return err
+					}
+					continue
 				}
 				return fmt.Errorf("column %q missing", f.Name)
 			}
@@ -809,7 +815,10 @@ func (a *batchAccumulator) appendRow(src *memory.Batch, row int) error {
 			v, ok := src.Uint32s[f.Name]
 			if !ok {
 				if o := src.Opaque[f.Name]; o != nil {
-					return a.appendOpaque(f.Name, o, row)
+					if err := a.appendOpaque(f.Name, o, row); err != nil {
+						return err
+					}
+					continue
 				}
 				return fmt.Errorf("column %q missing", f.Name)
 			}
@@ -824,7 +833,10 @@ func (a *batchAccumulator) appendRow(src *memory.Batch, row int) error {
 			v, ok := src.Uint64s[f.Name]
 			if !ok {
 				if o := src.Opaque[f.Name]; o != nil {
-					return a.appendOpaque(f.Name, o, row)
+					if err := a.appendOpaque(f.Name, o, row); err != nil {
+						return err
+					}
+					continue
 				}
 				return fmt.Errorf("column %q missing", f.Name)
 			}
@@ -851,7 +863,10 @@ func (a *batchAccumulator) appendRow(src *memory.Batch, row int) error {
 			v, ok := src.Float64s[f.Name]
 			if !ok {
 				if o := src.Opaque[f.Name]; o != nil {
-					return a.appendOpaque(f.Name, o, row)
+					if err := a.appendOpaque(f.Name, o, row); err != nil {
+						return err
+					}
+					continue
 				}
 				return fmt.Errorf("column %q missing", f.Name)
 			}
@@ -894,7 +909,10 @@ func (a *batchAccumulator) appendRow(src *memory.Batch, row int) error {
 			v := src.Strings[f.Name]
 			if v == nil {
 				if o := src.Opaque[f.Name]; o != nil {
-					return a.appendOpaque(f.Name, o, row)
+					if err := a.appendOpaque(f.Name, o, row); err != nil {
+						return err
+					}
+					continue
 				}
 				return fmt.Errorf("binary column %q missing", f.Name)
 			}
@@ -956,6 +974,17 @@ func (a *batchAccumulator) appendOpaque(name string, v *memory.OpaqueVector, row
 	return nil
 }
 
+// discard releases partially accumulated payloads after a failed materialization.
+func (a *batchAccumulator) discard() {
+	for name, arrays := range a.opaque {
+		for _, arr := range arrays {
+			arr.Release()
+		}
+		delete(a.opaque, name)
+	}
+	a.batch.ReleaseOwned()
+}
+
 func (a *batchAccumulator) finish() (*memory.Batch, error) {
 	for _, v := range a.batch.DictStrings {
 		if a.ownedDictionaries && v.DictionaryDomain == "" {
@@ -963,6 +992,7 @@ func (a *batchAccumulator) finish() (*memory.Batch, error) {
 		}
 	}
 	for name, arrs := range a.opaque {
+		delete(a.opaque, name) // This iteration transfers or releases these slices.
 		if len(arrs) == 0 {
 			continue
 		}
@@ -978,7 +1008,7 @@ func (a *batchAccumulator) finish() (*memory.Batch, error) {
 			arr.Release()
 		}
 		if err != nil {
-			a.batch.ReleaseOwned()
+			a.discard()
 			return nil, err
 		}
 		f, _ := a.schema.Field(name)
@@ -1012,6 +1042,7 @@ func materializeStream(ctx context.Context, schema memory.Schema, stream source.
 	for {
 		ok, err := stream.Next(ctx, scratch)
 		if err != nil {
+			acc.discard()
 			return nil, err
 		}
 		if !ok {
@@ -1019,6 +1050,7 @@ func materializeStream(ctx context.Context, schema memory.Schema, stream source.
 		}
 		for row := 0; row < scratch.Rows; row++ {
 			if err := acc.appendRow(scratch, row); err != nil {
+				acc.discard()
 				return nil, err
 			}
 		}

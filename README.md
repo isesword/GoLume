@@ -450,3 +450,6 @@ GOEXPERIMENT=simd go run ./cmd/lazy-demo \
 - `docs/LAZY_OPTIMIZER.md`
 - `docs/ROADMAP.md`
 - `VALIDATION.md`
+
+Arrow Boolean 的按批解码、内存预算、窗口及错误清理边界见
+[Arrow Boolean stream contract](docs/ARROW_BOOLEAN_STREAM.md)。
