@@ -153,11 +153,15 @@ const (
 	KernelMathBinary
 	// KernelReduction identifies bounded masked reductions.
 	KernelReduction
+	// KernelBitwise identifies type-preserving integer bitwise operations.
+	KernelBitwise
 )
 
 // String returns the stable kernel-family name.
 func (k KernelKind) String() string {
 	switch k {
+	case KernelBitwise:
+		return "bitwise"
 	case KernelReduction:
 		return "reduction"
 	case KernelMathUnary:
@@ -197,6 +201,8 @@ func (id KernelID) Kind() KernelKind { return id.kind }
 // String returns the stable operation-level identifier.
 func (id KernelID) String() string {
 	switch id.kind {
+	case KernelBitwise:
+		return fmt.Sprintf("bitwise-%s-%s", id.typ, BitwiseOp(id.op))
 	case KernelReduction:
 		if id.op == 2 {
 			return fmt.Sprintf("minmax-%s-masked", id.typ)
@@ -341,6 +347,12 @@ var allKernelIDs = buildKernelIDs()
 
 func buildKernelIDs() []KernelID {
 	ids := make([]KernelID, 0, 64)
+	for _, typ := range []memory.DataType{memory.TypeInt32, memory.TypeUint32, memory.TypeInt64, memory.TypeUint64} {
+		for op := BitwiseAnd; op <= BitwiseNot; op++ {
+			id, _ := BitwiseID(typ, op)
+			ids = append(ids, id)
+		}
+	}
 	comparisonTypes := []memory.DataType{memory.TypeInt8, memory.TypeInt16, memory.TypeInt32, memory.TypeInt64, memory.TypeUint8, memory.TypeUint16, memory.TypeUint32, memory.TypeUint64, memory.TypeFloat32, memory.TypeFloat64}
 	for _, typ := range comparisonTypes {
 		for op := CompareGT; op <= CompareEQ; op++ {
@@ -489,6 +501,7 @@ type uint16CompactFunc func(values []uint16, selection memory.Bitmap, out []uint
 type float32CompactFunc func(values []float32, selection memory.Bitmap, out []float32) int
 
 type dispatch struct {
+	bitwise               bitwiseDispatch
 	widen                 widenDispatch
 	minMaxInt32Masked     func([]int32, uint64) (int32, int32)
 	minMaxInt64Masked     func([]int64, uint64) (int64, int64)
@@ -781,6 +794,7 @@ func newScalarSet(mode Mode) Set {
 	installSumScalar(d)
 	installMinMaxScalar(d)
 	installMathScalar(d)
+	installBitwiseScalar(d)
 	installWidenScalar(d)
 	installGeneratedScalar(d)
 	installFloat32Scalar(d)

@@ -53,6 +53,7 @@ inactive inputs to positive zero before native floating operations.
 | Arithmetic | checked integers | none | scalar with existing numerical/overflow semantics |
 | Unary math | Float32/Float64 Abs/Sqrt | portable SIMD, dense and nullable/selected inputs; mask before math, bounded fixed-stack nullable tails | dense nil-mask tails, unavailable native runtime |
 | Other math | integer math, Round/Floor/Ceil/Log/Mod/FloorDiv/Pow | none | typed scalar; no approximate replacements |
+| Integer bitwise | Int32/Uint32/Int64/Uint64 AND/OR/XOR/NOT | portable native SIMD, dense and nullable; expression and kernel.Set entry points | unavailable native runtime, short inputs and tails; other integer widths and shifts unsupported |
 | Boolean | bitmap AND/OR/NOT | none | word scalar |
 | Hash | Hash64 batch | amd64 AVX-512 with native width >=512 | arm64 Auto retains non-SIMD four-way unroll; other cases scalar |
 | Hash | Hash128 batch | none | scalar |
@@ -68,6 +69,11 @@ and a selected vector width of at least 512. AVX-512 hardware alone does not
 permit a wide backend when the runtime selects 128 or 256 bits. There is no
 AVX2 multiplication emulation. Auto's arm64 hash unroll is reported with
 `hardware_simd=false` and `vector_bits=0`, not mislabeled as SIMD.
+
+The integer bitwise expression type, NULL, literal and verification contracts
+are documented in [INTEGER_BITWISE.md](INTEGER_BITWISE.md). New bitwise registry
+entries remain candidates without historical performance-gate approvals; Auto
+follows the native-preferred policy above, not those historical gate states.
 
 ## Correctness and evidence rules
 

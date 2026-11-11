@@ -389,6 +389,9 @@ func (b *expressionBinder) bindNode(e Expr) (*BoundExpr, error) {
 }
 
 func bindBinary(bound *BoundExpr, n Binary) error {
+	if n.Op == OpBitAnd || n.Op == OpBitOr || n.Op == OpBitXor {
+		return bindBitwiseBinary(bound, n)
+	}
 	if _, ok := mathBinaryOp(n.Op); ok {
 		return bindMathBinary(bound, n)
 	}
@@ -460,6 +463,9 @@ func bindBinary(bound *BoundExpr, n Binary) error {
 }
 
 func bindUnary(bound *BoundExpr, n Unary) error {
+	if n.Op == OpBitNot {
+		return bindBitwiseUnary(bound)
+	}
 	if _, ok := mathUnaryOp(n.Op); ok {
 		return bindMathUnary(bound, n)
 	}

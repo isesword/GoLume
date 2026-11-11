@@ -14,6 +14,7 @@ func installSIMD(set *Set, mode Mode) {
 	installMinMaxSIMD(set, mode, vectorBits)
 	installArchSumSIMD(set, mode, vectorBits)
 	installMathSIMD(set, mode, vectorBits)
+	installBitwiseSIMD(set, mode, vectorBits)
 	installCheckedIntegerSIMD(set, mode, vectorBits)
 	installScaleSIMD(set, mode, vectorBits)
 	installGeneratedPortableSIMD(set, mode, vectorBits)

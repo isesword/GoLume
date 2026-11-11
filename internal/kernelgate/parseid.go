@@ -14,6 +14,7 @@ var kernelFamilies = map[string]bool{
 	"reduction":     true,
 	"math-unary":    true,
 	"math-binary":   true,
+	"bitwise":       true,
 	"boolean":       true,
 	"hash":          true,
 	"scale":         true,
@@ -66,6 +67,23 @@ func ParseKernelID(id string) (family, typ, op string, err error) {
 			return "reduction", typ, "sum-masked", nil
 		default:
 			return "", "", "", fmt.Errorf("kernelgate: unsupported masked sum type in %q", id)
+		}
+	}
+	if rest, ok := strings.CutPrefix(id, "bitwise-"); ok {
+		typ, op, ok = cutLast(rest)
+		if !ok {
+			return "", "", "", fmt.Errorf("kernelgate: malformed bitwise id %q", id)
+		}
+		switch typ {
+		case "int32", "uint32", "int64", "uint64":
+		default:
+			return "", "", "", fmt.Errorf("kernelgate: unsupported bitwise type in %q", id)
+		}
+		switch op {
+		case "and", "or", "xor", "not":
+			return "bitwise", typ, op, nil
+		default:
+			return "", "", "", fmt.Errorf("kernelgate: unknown bitwise operation in %q", id)
 		}
 	}
 	if rest, ok := strings.CutPrefix(id, "math-"); ok {

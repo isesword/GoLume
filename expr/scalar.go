@@ -992,6 +992,9 @@ func ensureOffsets(r *scalarRegister, rows int) []uint32 {
 }
 
 func evalBinary(out, a, b *scalarRegister, op Op, result memory.DataType, rows int, kernels kernel.Set) error {
+	if physical, ok := bitwiseOp(op); ok {
+		return evalBitwise(out, a, b, physical, rows, kernels)
+	}
 	if physical, ok := mathBinaryOp(op); ok {
 		return evalMathBinary(out, a, b, physical, rows, kernels)
 	}
@@ -1346,6 +1349,9 @@ func normalizeTimestampUnitLiteral(v TimestampUnitLiteral) (int64, error) {
 }
 
 func evalUnary(out, in *scalarRegister, op Op, source memory.DataType, rows int, kernels kernel.Set) error {
+	if op == OpBitNot {
+		return evalBitwise(out, in, nil, kernel.BitwiseNot, rows, kernels)
+	}
 	if physical, ok := mathUnaryOp(op); ok {
 		return evalMathUnary(out, in, physical, rows, kernels)
 	}

@@ -190,6 +190,134 @@
       "arches": {}
     },
     {
+      "id": "bitwise-int32-and",
+      "family": "bitwise",
+      "type": "int32",
+      "operation": "and",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "bitwise-int32-not",
+      "family": "bitwise",
+      "type": "int32",
+      "operation": "not",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "bitwise-int32-or",
+      "family": "bitwise",
+      "type": "int32",
+      "operation": "or",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "bitwise-int32-xor",
+      "family": "bitwise",
+      "type": "int32",
+      "operation": "xor",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "bitwise-int64-and",
+      "family": "bitwise",
+      "type": "int64",
+      "operation": "and",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "bitwise-int64-not",
+      "family": "bitwise",
+      "type": "int64",
+      "operation": "not",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "bitwise-int64-or",
+      "family": "bitwise",
+      "type": "int64",
+      "operation": "or",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "bitwise-int64-xor",
+      "family": "bitwise",
+      "type": "int64",
+      "operation": "xor",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "bitwise-uint32-and",
+      "family": "bitwise",
+      "type": "uint32",
+      "operation": "and",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "bitwise-uint32-not",
+      "family": "bitwise",
+      "type": "uint32",
+      "operation": "not",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "bitwise-uint32-or",
+      "family": "bitwise",
+      "type": "uint32",
+      "operation": "or",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "bitwise-uint32-xor",
+      "family": "bitwise",
+      "type": "uint32",
+      "operation": "xor",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "bitwise-uint64-and",
+      "family": "bitwise",
+      "type": "uint64",
+      "operation": "and",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "bitwise-uint64-not",
+      "family": "bitwise",
+      "type": "uint64",
+      "operation": "not",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "bitwise-uint64-or",
+      "family": "bitwise",
+      "type": "uint64",
+      "operation": "or",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
+      "id": "bitwise-uint64-xor",
+      "family": "bitwise",
+      "type": "uint64",
+      "operation": "xor",
+      "source": "handwritten",
+      "arches": {}
+    },
+    {
       "id": "boolean-and",
       "family": "boolean",
       "operation": "and",

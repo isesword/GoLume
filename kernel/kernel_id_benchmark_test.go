@@ -215,6 +215,19 @@ func (f *kernelBenchFixture) matchLiteral(op StringMatchOp) []byte {
 func (f *kernelBenchFixture) invoke(set Set, id KernelID, slot int) {
 	out := &f.outputs[slot]
 	switch id.kind {
+	case KernelBitwise:
+		switch id.typ {
+		case memory.TypeInt32:
+			set.BitwiseInt32(f.i32a, f.i32b, out.i32, nil, BitwiseOp(id.op))
+		case memory.TypeUint32:
+			set.BitwiseUint32(f.u32a, f.u32b, out.u32, nil, BitwiseOp(id.op))
+		case memory.TypeInt64:
+			set.BitwiseInt64(f.i64a, f.i64b, out.i64, nil, BitwiseOp(id.op))
+		case memory.TypeUint64:
+			set.BitwiseUint64(f.u64a, f.u64b, out.u64, nil, BitwiseOp(id.op))
+		default:
+			panic("kernel benchmark: unsupported bitwise type")
+		}
 	case KernelMathUnary:
 		switch id.typ {
 		case memory.TypeInt8:

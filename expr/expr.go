@@ -63,6 +63,10 @@ const (
 	OpMod
 	OpFloorDiv
 	OpPow
+	OpBitAnd
+	OpBitOr
+	OpBitXor
+	OpBitNot
 )
 
 // Expr is a logical scalar expression node.
@@ -341,6 +345,14 @@ func (c Cast) String() string { return fmt.Sprintf("CAST(%s AS %s)", c.Value, c.
 // String returns the SQL-like spelling of the operator.
 func (o Op) String() string {
 	switch o {
+	case OpBitAnd:
+		return "BIT_AND"
+	case OpBitOr:
+		return "BIT_OR"
+	case OpBitXor:
+		return "BIT_XOR"
+	case OpBitNot:
+		return "BIT_NOT"
 	case OpAbs:
 		return "ABS"
 	case OpRound:
