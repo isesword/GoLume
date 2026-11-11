@@ -33,10 +33,10 @@ func (v *StructVector) Validate(field Field, rows int) error {
 	if err := field.ValidateStruct(); err != nil {
 		return err
 	}
-	if v == nil || v.Rows != rows || v.Values == nil || v.Values.Rows != rows {
+	if rows < 0 || v == nil || v.Rows != rows || v.Values == nil || v.Values.Rows != rows {
 		return fmt.Errorf("struct %q rows do not match %d", field.Name, rows)
 	}
-	if len(v.Validity) != 0 && len(v.Validity) < WordsFor(rows) {
+	if !structValidityFits(v.Validity, rows) {
 		return fmt.Errorf("struct %q validity is too short", field.Name)
 	}
 	if !field.Nullable && HasNulls(v.Validity, rows) {
@@ -51,25 +51,120 @@ func (v *StructVector) Validate(field Field, rows int) error {
 		}
 	}
 	for _, child := range field.Children {
+		// Validate storage before any validity lookup or row access. A NULL
+		// parent hides child values, not malformed row-aligned buffers.
+		if err := validateStructChildStorage(v.Values, child, rows); err != nil {
+			return fmt.Errorf("struct %q child %q: %w", field.Name, child.Name, err)
+		}
+		var dictionary *DictionaryStringVector
+		if child.Type == TypeString && v.Values.Strings[child.Name] == nil {
+			dictionary = v.Values.DictStrings[child.Name]
+		}
+		var requiredElements *StringListVector
+		if child.Type == TypeList && !child.Children[0].Nullable {
+			requiredElements = v.Values.StringLists[child.Name]
+		}
+		if child.Nullable && dictionary == nil && requiredElements == nil {
+			continue
+		}
 		for row := 0; row < rows; row++ {
 			if !v.IsValid(row) {
 				continue
 			}
-			if !child.Nullable && !batchFieldValid(v.Values, child, row) {
+			valid := batchFieldValid(v.Values, child, row)
+			if !child.Nullable && !valid {
 				return fmt.Errorf("struct %q non-nullable child %q is NULL at row %d", field.Name, child.Name, row)
 			}
-		}
-		if child.Type == TypeList {
-			list, ok := v.Values.StringLists[child.Name]
-			if !ok {
-				return fmt.Errorf("struct %q child %q is missing", field.Name, child.Name)
+			if !valid {
+				continue
 			}
-			if err := list.Validate(rows); err != nil {
+			if dictionary != nil && uint64(dictionary.Indices[row]) >= uint64(dictionary.DictionaryLen()) {
+				return fmt.Errorf("struct %q child %q dictionary code is out of range at row %d", field.Name, child.Name, row)
+			}
+			if requiredElements != nil {
+				start, end, _ := requiredElements.ValueRange(row)
+				for element := start; element < end; element++ {
+					if !requiredElements.Values.IsValid(element) {
+						return fmt.Errorf("struct %q child %q has NULL non-nullable element at row %d element %d", field.Name, child.Name, row, element-start)
+					}
+				}
+			}
+		}
+	}
+	return nil
+}
+
+// structValidityFits distinguishes an absent all-valid bitmap from a present
+// but short bitmap. Division avoids overflowing rows+63 at extreme row counts.
+func structValidityFits(validity Bitmap, rows int) bool {
+	words := rows / 64
+	if rows%64 != 0 {
+		words++
+	}
+	return validity == nil || len(validity) >= words
+}
+
+func validateStructChildStorage(b *Batch, field Field, rows int) error {
+	if !batchHasField(b, field) {
+		return fmt.Errorf("vector is missing or unsupported")
+	}
+	var length int
+	var validity Bitmap
+	switch field.Type {
+	case TypeInt8:
+		v := b.Int8s[field.Name]
+		length, validity = len(v.Values), v.Validity
+	case TypeInt16:
+		v := b.Int16s[field.Name]
+		length, validity = len(v.Values), v.Validity
+	case TypeInt32, TypeDate32, TypeTime32:
+		v := b.Int32s[field.Name]
+		length, validity = len(v.Values), v.Validity
+	case TypeInt64, TypeDate64, TypeTimestamp, TypeTime64, TypeDuration:
+		v := b.Int64s[field.Name]
+		length, validity = len(v.Values), v.Validity
+	case TypeUint8:
+		v := b.Uint8s[field.Name]
+		length, validity = len(v.Values), v.Validity
+	case TypeUint16:
+		v := b.Uint16s[field.Name]
+		length, validity = len(v.Values), v.Validity
+	case TypeUint32, TypeBool:
+		v := b.Uint32s[field.Name]
+		length, validity = len(v.Values), v.Validity
+	case TypeUint64:
+		v := b.Uint64s[field.Name]
+		length, validity = len(v.Values), v.Validity
+	case TypeFloat32:
+		v := b.Float32s[field.Name]
+		length, validity = len(v.Values), v.Validity
+	case TypeFloat64:
+		v := b.Float64s[field.Name]
+		length, validity = len(v.Values), v.Validity
+	case TypeString:
+		if v := b.Strings[field.Name]; v != nil {
+			if err := v.Validate(rows); err != nil {
 				return err
 			}
-		} else if !batchHasField(v.Values, child) {
-			return fmt.Errorf("struct %q child %q is missing", field.Name, child.Name)
+			length, validity = v.Len(), v.Validity
+		} else {
+			v := b.DictStrings[field.Name]
+			// Preserve the runtime dictionary fallback and non-zero-based
+			// offset views. Domain identity is not a storage-shape property.
+			table := StringViewVector{Offsets: v.Offsets, Data: v.Data}
+			if err := table.Validate(v.DictionaryLen()); err != nil {
+				return fmt.Errorf("dictionary: %w", err)
+			}
+			length, validity = len(v.Indices), v.Validity
 		}
+	case TypeList:
+		return b.StringLists[field.Name].Validate(rows)
+	}
+	if length != rows {
+		return fmt.Errorf("rows=%d want=%d", length, rows)
+	}
+	if !structValidityFits(validity, rows) {
+		return fmt.Errorf("validity is too short for %d rows", rows)
 	}
 	return nil
 }
