@@ -294,8 +294,9 @@ func TestJoinGatherEmptySelectionExactCapacities(t *testing.T) {
 	if actual := joinGatherTestOwnedCapacity(dst, false); actual != owned {
 		t.Fatalf("empty cap bytes=%d planned=%d", actual, owned)
 	}
-	if dst.Rows != 0 || len(dst.Structs["record"].Fields) != 4 || len(dst.Structs["record"].Values.Strings) != 0 {
-		t.Fatal("empty selection shape differs from TakeStructRows")
+	nested := dst.Structs["record"]
+	if dst.Rows != 0 || len(nested.Fields) != 4 || nested.Values.Strings["text"] == nil || nested.Values.DictStrings["dict"] == nil || nested.Values.StringLists["list"] == nil || nested.Values.Int8s["number"] == nil || len(nested.Values.Int64s) != 0 {
+		t.Fatal("empty selection lost declared children or copied undeclared children")
 	}
 }
 

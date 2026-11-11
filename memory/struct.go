@@ -74,12 +74,20 @@ func (v *StructVector) Validate(field Field, rows int) error {
 	return nil
 }
 
-// TakeStructRows returns an owned gathered struct vector.
+// TakeStructRows returns an owned gathered struct vector. An empty selection
+// preserves declared child vectors, including owned dictionary tables and
+// canonical empty string/list offsets, without copying unselected row data.
 func TakeStructRows(src *StructVector, rows []int) (*StructVector, error) {
 	if src == nil || src.Values == nil {
 		return nil, fmt.Errorf("cannot take nil struct")
 	}
 	out := &StructVector{Fields: append([]Field(nil), src.Fields...), Values: NewBatch(), Encoding: EncodingView}
+	if len(rows) == 0 {
+		if err := initEmptyStructChildren(out.Values, src); err != nil {
+			return nil, err
+		}
+		return out, nil
+	}
 	for _, row := range rows {
 		if row < 0 || row >= src.Rows {
 			return nil, fmt.Errorf("struct row %d out of range", row)
@@ -89,6 +97,49 @@ func TakeStructRows(src *StructVector, rows []int) (*StructVector, error) {
 		}
 	}
 	return out, nil
+}
+
+// initEmptyStructChildren mirrors AppendStructRow's declared-field selection
+// and physical encodings. Cloning the whole Values batch would also copy
+// undeclared columns and a shadowed dictionary when Strings takes precedence.
+func initEmptyStructChildren(dst *Batch, src *StructVector) error {
+	for _, field := range src.Fields {
+		if !batchHasField(src.Values, field) {
+			return fmt.Errorf("struct child %q type %s is missing or unsupported", field.Name, field.Type)
+		}
+		switch field.Type {
+		case TypeInt8:
+			dst.Int8s[field.Name] = &Int8Vector{Encoding: field.Encoding}
+		case TypeInt16:
+			dst.Int16s[field.Name] = &Int16Vector{Encoding: field.Encoding}
+		case TypeInt32, TypeDate32, TypeTime32:
+			dst.Int32s[field.Name] = &Int32Vector{Encoding: field.Encoding}
+		case TypeInt64, TypeDate64, TypeTimestamp, TypeTime64, TypeDuration:
+			dst.Int64s[field.Name] = &Int64Vector{Encoding: field.Encoding}
+		case TypeUint8:
+			dst.Uint8s[field.Name] = &Uint8Vector{Encoding: field.Encoding}
+		case TypeUint16:
+			dst.Uint16s[field.Name] = &Uint16Vector{Encoding: field.Encoding}
+		case TypeUint32, TypeBool:
+			dst.Uint32s[field.Name] = &Uint32Vector{Encoding: field.Encoding}
+		case TypeUint64:
+			dst.Uint64s[field.Name] = &Uint64Vector{Encoding: field.Encoding}
+		case TypeFloat32:
+			dst.Float32s[field.Name] = &Float32Vector{Encoding: field.Encoding}
+		case TypeFloat64:
+			dst.Float64s[field.Name] = &Float64Vector{Encoding: field.Encoding}
+		case TypeString:
+			if src.Values.Strings[field.Name] != nil {
+				dst.Strings[field.Name] = &StringViewVector{Offsets: []uint32{0}, Encoding: EncodingView}
+			} else {
+				v := src.Values.DictStrings[field.Name]
+				dst.DictStrings[field.Name] = &DictionaryStringVector{Offsets: append([]uint32(nil), v.Offsets...), Data: append([]byte(nil), v.Data...), DictionaryDomain: v.DictionaryDomain, Encoding: v.Encoding}
+			}
+		case TypeList:
+			dst.StringLists[field.Name] = &StringListVector{Offsets: []uint32{0}, Values: &StringViewVector{Offsets: []uint32{0}, Encoding: EncodingView}, Encoding: EncodingView}
+		}
+	}
+	return nil
 }
 
 // AppendStructRow appends one source row or a synthesized NULL parent.

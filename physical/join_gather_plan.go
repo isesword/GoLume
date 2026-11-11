@@ -519,14 +519,12 @@ func joinGatherStructOwned(v *memory.StructVector, rows []int) (int64, int64, er
 }
 
 func joinGatherStructOwnedSelected(v *memory.StructVector, rows joinGatherSelection) (int64, int64, error) {
-	// Match TakeStructRows' empty-selection shape: Fields and an empty Batch.
+	// Even an empty selection owns declared child vectors, offset sentinels,
+	// and dictionary tables. Keep its accounting on the same path as other rows.
 	var owned int64
 	metadata := int64(4096)
 	if err := addJoinGatherProduct(&metadata, uint64(len(v.Fields)), uint64(unsafe.Sizeof(memory.Field{}))); err != nil {
 		return 0, 0, err
-	}
-	if rows.len() == 0 {
-		return owned, metadata, nil
 	}
 	if err := addJoinGatherProduct(&owned, uint64(joinGatherWords(rows.len())), 8); err != nil {
 		return 0, 0, err
@@ -895,9 +893,6 @@ func takeJoinStructRowsBounded(src *memory.StructVector, rows []int) (*memory.St
 	n := len(rows)
 	out := &memory.StructVector{Fields: make([]memory.Field, len(src.Fields)), Values: memory.NewBatch(), Encoding: memory.EncodingView}
 	copy(out.Fields, src.Fields)
-	if n == 0 {
-		return out, nil
-	}
 	out.Validity = make(memory.Bitmap, joinGatherWords(n))
 	for _, field := range src.Fields {
 		switch field.Type {
