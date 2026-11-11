@@ -4,6 +4,7 @@ go 1.27.0
 
 require (
 	github.com/apache/arrow-go/v18 v18.7.0
+	github.com/apache/thrift v0.24.0
 	github.com/rivo/uniseg v0.4.7
 	golang.org/x/perf v0.0.0-20260825160852-19be9d8e6c70
 	golang.org/x/sync v0.22.0
@@ -14,7 +15,6 @@ tool golang.org/x/perf/cmd/benchstat
 require (
 	github.com/aclements/go-moremath v0.0.0-20210112150236-f10218a38794 // indirect
 	github.com/andybalholm/brotli v1.2.2 // indirect
-	github.com/apache/thrift v0.24.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/goccy/go-json v0.10.6 // indirect
 	github.com/google/flatbuffers v25.12.19+incompatible // indirect

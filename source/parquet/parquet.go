@@ -34,17 +34,18 @@ type columnBinding struct {
 // timestamps. Pushdown clones are immutable and safe to prepare independently
 // from the same base source.
 type Source struct {
-	path        string
-	meta        *metadata.FileMetaData
-	baseSchema  memory.Schema
-	schema      memory.Schema
-	allBindings []columnBinding
-	bindings    []columnBinding
-	allParts    []source.Partition
-	parts       []source.Partition
-	fileBytes   int64
-	stats       source.Stats
-	report      source.PushdownReport
+	path          string
+	meta          *metadata.FileMetaData
+	baseSchema    memory.Schema
+	schema        memory.Schema
+	allBindings   []columnBinding
+	bindings      []columnBinding
+	allParts      []source.Partition
+	parts         []source.Partition
+	fileBytes     int64
+	stats         source.Stats
+	report        source.PushdownReport
+	pagePredicate expr.Expr
 }
 
 // PlanIdentity is stable across immutable row-group/projection pushdown clones.
@@ -253,10 +254,12 @@ func (s *Source) Description() string { return "parquet(" + s.path + ")" }
 // Schema returns the logical schema exposed by the current projection.
 func (s *Source) Schema() memory.Schema { return s.schema }
 
-// Stats returns row/partition counts after any row-group pruning.
+// Stats returns row/partition counts after any row-group pruning. Rows is an
+// upper bound when a retained predicate may exclude pages during streaming.
 func (s *Source) Stats(context.Context) (source.Stats, error) { return s.stats, nil }
 
-// Partitions returns independently readable retained row groups.
+// Partitions returns independently readable retained row groups. Their row
+// counts remain bounds when Stats advertises deferred page pruning.
 func (s *Source) Partitions(context.Context) ([]source.Partition, error) {
 	out := make([]source.Partition, len(s.parts))
 	copy(out, s.parts)
@@ -287,6 +290,10 @@ func (s *Source) ApplyPushdown(_ context.Context, req source.PushdownRequest) (s
 		predicateColumns = bound.Columns
 		if bound.MayError {
 			pruningPredicate = nil
+		} else {
+			// Page pruning runs after ApplyPushdown returns. Keep the binder
+			// owned snapshot, not caller-owned operand slices such as IN.
+			pruningPredicate = bound.Expr
 		}
 	}
 	projection := append([]string(nil), req.Projection...)
@@ -377,8 +384,9 @@ func (s *Source) ApplyPushdown(_ context.Context, req source.PushdownRequest) (s
 	out.bindings = bindings
 	out.schema = memory.NewSchema(fields...)
 	out.parts = parts
-	out.stats = source.Stats{Rows: selectedRows, Partitions: len(parts), Bytes: selectedBytes}
+	out.stats = source.Stats{Rows: selectedRows, Partitions: len(parts), Bytes: selectedBytes, RowsUpperBound: pruningPredicate != nil}
 	out.report = report
+	out.pagePredicate = pruningPredicate
 	return &out, report, nil
 }
 
@@ -896,6 +904,15 @@ type pruningRowGroup struct {
 	// Four entries bound cache storage and retained decoded statistics even for
 	// wide predicates. Nil statistics are cached too; eviction only re-decodes.
 	statistics *pruningStatisticsCache
+	page       *pruningPageStatistics
+}
+
+// NumRows is the logical row domain of this statistics evaluation.
+func (rg *pruningRowGroup) NumRows() int64 {
+	if rg.page != nil {
+		return rg.page.rows
+	}
+	return rg.RowGroupMetaData.NumRows()
 }
 
 type pruningStatisticsCache struct {
@@ -1117,6 +1134,12 @@ func comparisonLiteral(binding columnBinding, literal expr.Expr) (int64, bool, e
 
 func columnStatistics(rg *pruningRowGroup, binding columnBinding) (metadata.TypedStatistics, error) {
 	if rg == nil {
+		return nil, nil
+	}
+	if rg.page != nil {
+		if binding.Index == rg.page.column {
+			return rg.page.stats, nil
+		}
 		return nil, nil
 	}
 	if rg.statistics == nil {

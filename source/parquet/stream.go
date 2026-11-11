@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"gocolumn/expr"
 	"gocolumn/memory"
 	"gocolumn/source"
 	"math"
@@ -18,7 +19,8 @@ import (
 // NewBatchStream decodes projected row groups incrementally. BatchRows and
 // BatchBytes bound GoLume's live decoded vector buffers and decode scratch,
 // including allocation overlap and borrowed string-view header arrays.
-// O(columns) stream metadata (including inline single-value lookahead), Go
+// Stream metadata (including inline single-value lookahead, optional page
+// indexes and selected row ranges), Go
 // object overhead, and Arrow page, dictionary,
 // codec and metadata allocations are excluded; this is not an RSS limit. Input
 // chunks use buffered I/O rather than whole-column compressed buffering.
@@ -64,9 +66,15 @@ func (s *Source) NewBatchStreamWithPartitions(ctx context.Context, opts source.R
 	if err != nil {
 		return nil, err
 	}
+	return s.batchStreamFromReader(ctx, opts, parts, r), nil
+}
+
+// batchStreamFromReader takes ownership of an already opened reader. Options
+// must be normalized and validated by the caller.
+func (s *Source) batchStreamFromReader(ctx context.Context, opts source.ReadOptions, parts []source.Partition, r *file.Reader) *batchStream {
 	out := &batchStream{
 		ctx: ctx, r: r, parts: parts, bindings: s.bindings, opts: opts,
-		decode: typedDecoder{kernels: opts.Kernels},
+		decode: typedDecoder{kernels: opts.Kernels}, pagePredicate: s.pagePredicate,
 	}
 	for i, b := range s.bindings {
 		switch b.Type {
@@ -91,7 +99,7 @@ func (s *Source) NewBatchStreamWithPartitions(ctx context.Context, opts source.R
 			out.strings = append(out.strings, streamString{binding: b, column: i})
 		}
 	}
-	return out, nil
+	return out
 }
 
 // streamString owns only bounded headers. Payloads borrow exactly one Arrow
@@ -124,6 +132,12 @@ type batchStream struct {
 	groupOpen              bool
 	groupID                int
 	groupRows              int64
+	pagePredicate          expr.Expr
+	pageRanges             []pageRowRange
+	pageRange              int
+	pageEnd                int64
+	pagePrunedRows         int64
+	anchorPagesPruned      int64
 	payloadRowBytes        int64
 	payloadOffsetBytes     int64
 	payloadValidityColumns int64
@@ -177,7 +191,15 @@ func (s *batchStream) Next(ctx context.Context, dst *memory.Batch) (bool, error)
 		return false, s.fail(err)
 	}
 	groupChanged := false
-	for !s.groupOpen || s.remaining == 0 {
+	for {
+		if s.groupOpen && s.remaining > 0 {
+			if err := s.advancePageRange(ctx); err != nil {
+				return false, s.fail(err)
+			}
+			if s.remaining > 0 {
+				break
+			}
+		}
 		if err := s.closeChunks(); err != nil {
 			return false, s.fail(err)
 		}
@@ -207,6 +229,9 @@ func (s *batchStream) Next(ctx context.Context, dst *memory.Batch) (bool, error)
 	want := s.opts.BatchRows
 	if int64(want) > s.remaining {
 		want = int(s.remaining)
+	}
+	if s.pageRanges != nil && int64(want) > s.pageEnd-(s.groupRows-s.remaining) {
+		want = int(s.pageEnd - (s.groupRows - s.remaining))
 	}
 	var err error
 	want, err = s.limitPayloadRows(want)
@@ -316,6 +341,17 @@ func (s *batchStream) openGroup(ctx context.Context) error {
 	s.groupID, s.groupRows = p.ID, s.remaining
 	if s.remaining < 0 {
 		return fmt.Errorf("row group %d has negative row count", p.ID)
+	}
+	s.pageRanges, s.pageRange, s.pageEnd = nil, 0, 0
+	if plan := planPagePruning(ctx, s.r, p.ID, s.bindings, s.pagePredicate); plan != nil {
+		s.pagePrunedRows += plan.prunedRows
+		s.anchorPagesPruned += plan.prunedPages
+		s.pageRanges = plan.ranges
+		if len(plan.ranges) == 0 {
+			s.remaining = 0
+			s.groupOpen = true
+			return nil
+		}
 	}
 	s.chunks = make([]file.ColumnChunkReader, len(s.bindings))
 	for i, b := range s.bindings {
@@ -981,6 +1017,7 @@ func (s *batchStream) closeChunks() error {
 		}
 	}
 	s.chunks = nil
+	s.pageRanges = nil
 	s.groupOpen = false
 	return err
 }
@@ -1044,6 +1081,8 @@ func (s *batchStream) StreamDiagnostics() map[string]string {
 	return map[string]string{
 		"parquet_batches":                     strconv.FormatInt(s.batches, 10),
 		"parquet_rows":                        strconv.FormatInt(s.rows, 10),
+		"parquet_page_pruned_rows":            strconv.FormatInt(s.pagePrunedRows, 10),
+		"parquet_anchor_pages_pruned":         strconv.FormatInt(s.anchorPagesPruned, 10),
 		"parquet_peak_managed_bytes":          strconv.FormatInt(s.peak, 10),
 		"parquet_max_compressed_page_bytes":   strconv.FormatInt(s.opts.MaxCompressedPageBytes, 10),
 		"parquet_max_uncompressed_page_bytes": strconv.FormatInt(s.opts.MaxUncompressedPageBytes, 10),
