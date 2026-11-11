@@ -10,6 +10,8 @@ import (
 	"sync"
 	"testing"
 
+	arrowmemory "github.com/apache/arrow-go/v18/arrow/memory"
+	arrowparquet "github.com/apache/arrow-go/v18/parquet"
 	"github.com/apache/arrow-go/v18/parquet/metadata"
 	"gocolumn/expr"
 	"gocolumn/kernel"
@@ -32,8 +34,8 @@ func TestPruningStatisticsCacheReusesAndBoundsResults(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				if (first[i] != nil) != hasStats {
-					t.Fatalf("stats=%v column=%d result=%v", hasStats, i, first[i])
+				if err := checkMetadataCacheFixtureStatistics(first[i], hasStats, group, i); err != nil {
+					t.Fatal(err)
 				}
 				got, err := columnStatistics(rg, binding)
 				if err != nil || got != first[i] {
@@ -51,6 +53,9 @@ func TestPruningStatisticsCacheReusesAndBoundsResults(t *testing.T) {
 				if err != nil || got != first[i] {
 					t.Fatalf("retained column %d changed: %v", i, err)
 				}
+				if err := checkMetadataCacheFixtureStatistics(got, hasStats, group, i); err != nil {
+					t.Fatal(err)
+				}
 			}
 			if _, ok := rg.statistics.lookup(0); ok {
 				t.Fatal("oldest column was not evicted")
@@ -62,12 +67,137 @@ func TestPruningStatisticsCacheReusesAndBoundsResults(t *testing.T) {
 			if hasStats && reloaded == first[0] {
 				t.Fatal("evicted statistics were not decoded again")
 			}
-			if !reflect.DeepEqual(reloaded, first[0]) {
-				t.Fatal("eviction changed statistics")
+			// Arrow statistics also own an encoder with pooled scratch buffers.
+			// Its capacity/work history is not part of the statistics contract.
+			// Check both objects against independent fixture values, rather than
+			// DeepEqual on private implementation state (or only on each other).
+			for _, stats := range []metadata.TypedStatistics{first[0], reloaded} {
+				if err := checkMetadataCacheFixtureStatistics(stats, hasStats, group, 0); err != nil {
+					t.Fatalf("after eviction: %v", err)
+				}
 			}
 			if cached, ok := rg.statistics.lookup(0); !ok || cached != reloaded {
 				t.Fatal("reloaded statistics not cached")
 			}
+		}
+	}
+}
+
+// Only public semantic values belong in this oracle. In particular, do not
+// recursively compare Arrow encoders, allocators or their pooled work buffers.
+type metadataCacheStatisticsSnapshot struct {
+	column                                    string
+	physical                                  arrowparquet.Type
+	min, max, values, nulls, distinct         int64
+	hasMinMax, hasNullCount, hasDistinctCount bool
+}
+
+func checkMetadataCacheFixtureStatistics(stats metadata.TypedStatistics, present bool, group, column int) error {
+	if !present {
+		if stats != nil {
+			return fmt.Errorf("group=%d column=%d: unexpected statistics", group, column)
+		}
+		return nil
+	}
+	v, ok := stats.(*metadata.Int64Statistics)
+	if !ok || v == nil {
+		return fmt.Errorf("group=%d column=%d: expected INT64 statistics, got %T", group, column, stats)
+	}
+	if v.Descr() == nil {
+		return fmt.Errorf("group=%d column=%d: missing statistics descriptor", group, column)
+	}
+	got := metadataCacheStatisticsSnapshot{
+		column: v.Descr().Path(), physical: v.Type(),
+		min: v.Min(), max: v.Max(), values: v.NumValues(), nulls: v.NullCount(), distinct: v.DistinctCount(),
+		hasMinMax: v.HasMinMax(), hasNullCount: v.HasNullCount(), hasDistinctCount: v.HasDistinctCount(),
+	}
+	lo := int64(group*10 + column)
+	want := metadataCacheStatisticsSnapshot{
+		column: fmt.Sprintf("c%d", column), physical: arrowparquet.Types.Int64,
+		min: lo, max: lo + 2, values: 3, nulls: 1, distinct: 0,
+		hasMinMax: true, hasNullCount: true, hasDistinctCount: false,
+	}
+	if got != want {
+		return fmt.Errorf("group=%d column=%d: statistics got=%+v want=%+v", group, column, got, want)
+	}
+	return nil
+}
+
+func TestMetadataCacheStatisticsOracleRejectsChangedValues(t *testing.T) {
+	s := metadataCacheFixture(t, 2, 8, true)
+	for _, tc := range []struct {
+		name   string
+		change func(*metadata.Int64Statistics)
+	}{
+		{"min", func(v *metadata.Int64Statistics) { v.Update([]int64{-1}, 0); v.IncNumValues(-1) }},
+		{"max", func(v *metadata.Int64Statistics) { v.Update([]int64{3}, 0); v.IncNumValues(-1) }},
+		{"value_count", func(v *metadata.Int64Statistics) { v.IncNumValues(1) }},
+		{"null_count", func(v *metadata.Int64Statistics) { v.IncNulls(1) }},
+		{"distinct_count", func(v *metadata.Int64Statistics) { v.IncDistinct(1) }},
+		{"distinct_presence", func(v *metadata.Int64Statistics) { v.IncDistinct(0) }},
+		{"missing_bounds", func(v *metadata.Int64Statistics) { v.Reset(); v.IncNumValues(3); v.IncNulls(1) }},
+		{"reset_statistics", func(v *metadata.Int64Statistics) { v.Reset() }},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			stats, err := columnStatistics(metadataCacheGroup(s, 0), s.allBindings[0])
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := checkMetadataCacheFixtureStatistics(stats, true, 0, 0); err != nil {
+				t.Fatal(err)
+			}
+			tc.change(stats.(*metadata.Int64Statistics))
+			if err := checkMetadataCacheFixtureStatistics(stats, true, 0, 0); err == nil {
+				t.Fatal("changed semantic statistics were accepted")
+			}
+		})
+	}
+	stats, err := columnStatistics(metadataCacheGroup(s, 0), s.allBindings[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name          string
+		stats         metadata.TypedStatistics
+		present       bool
+		group, column int
+	}{
+		{"missing", nil, true, 0, 0},
+		{"typed_nil", (*metadata.Int64Statistics)(nil), true, 0, 0},
+		{"wrong_type", &metadata.Float64Statistics{}, true, 0, 0},
+		{"missing_descriptor", &metadata.Int64Statistics{}, true, 0, 0},
+		{"unexpected", stats, false, 0, 0},
+		{"wrong_group", stats, true, 1, 0},
+		{"wrong_column", stats, true, 0, 1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := checkMetadataCacheFixtureStatistics(tc.stats, tc.present, tc.group, tc.column); err == nil {
+				t.Fatal("invalid statistics were accepted")
+			}
+		})
+	}
+}
+
+func TestMetadataCacheStatisticsOracleIgnoresEncoderWorkState(t *testing.T) {
+	s := metadataCacheFixture(t, 1, 1, true)
+	// Distinct allocator implementations and encode histories must not affect
+	// equality of the public statistics. No assertion depends on pool contents.
+	for _, allocator := range []arrowmemory.Allocator{
+		arrowmemory.NewGoAllocator(),
+		arrowmemory.NewCheckedAllocator(arrowmemory.NewGoAllocator()),
+	} {
+		stats := metadata.NewInt64Statistics(s.meta.Schema.Column(0), allocator)
+		stats.Update([]int64{0, 1, 2}, 1)
+		for range 16 {
+			if err := checkMetadataCacheFixtureStatistics(stats, true, 0, 0); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := stats.Encode(); err != nil {
+				t.Fatal(err)
+			}
+		}
+		if err := checkMetadataCacheFixtureStatistics(stats, true, 0, 0); err != nil {
+			t.Fatal(err)
 		}
 	}
 }
