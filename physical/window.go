@@ -234,13 +234,26 @@ func (s *WindowSource) Schema() memory.Schema { return s.output }
 // Replayability forwards the child snapshot contract.
 func (s *WindowSource) Replayability() source.Replayability { return source.ReplayabilityOf(s.input) }
 
-// Ordering is preserved because every strategy restores original input order.
+// Ordering preserves the input's leading keys only while their values remain
+// unchanged. Restoring input row order does not preserve ordering by a column
+// replaced with a window result, nor by any keys following that column.
 func (s *WindowSource) Ordering() []source.OrderingColumn {
 	provider, ok := s.input.(source.OrderingProvider)
 	if !ok {
 		return nil
 	}
-	return append([]source.OrderingColumn(nil), provider.Ordering()...)
+	ordering := provider.Ordering()
+	outputs := make(map[string]struct{}, len(s.outputFields))
+	for _, field := range s.outputFields {
+		outputs[field.Name] = struct{}{}
+	}
+	for index, key := range ordering {
+		if _, replaced := outputs[key.Name]; replaced {
+			ordering = ordering[:index]
+			break
+		}
+	}
+	return append([]source.OrderingColumn(nil), ordering...)
 }
 
 // Stats retains source row statistics; window outputs add only a small fixed
