@@ -55,6 +55,14 @@ func evalJSONDecode(out, input *scalarRegister, fields []memory.Field, rows int)
 		}
 	}
 	result := &memory.StructVector{Fields: ownedFields, Values: memory.NewBatch(), Encoding: memory.EncodingView}
+	if rows == 0 {
+		// With no append, the result still needs schema-complete typed vectors
+		// and offset sentinels. Do not synthesize or decode a row: required
+		// fields and malformed literals have no value to validate on empty input.
+		if err := jsonEmptyChildren(result, out.checkContext); err != nil {
+			return err
+		}
+	}
 	// Keep one row of vector metadata for the whole batch. AppendStructRow owns
 	// the output payload; the scratch row must never retain variable payloads
 	// across rows, which would turn the largest-row scratch allowance into a sum
@@ -510,4 +518,45 @@ func clearJSONRowPayloads(v *memory.StructVector) {
 		list.Values.Offsets = nil
 		list.Values.Validity = nil
 	}
+}
+
+// jsonEmptyChildren initializes the supported physical children without row
+// payloads. It runs only after the output and scratch reservations succeed.
+func jsonEmptyChildren(v *memory.StructVector, checkContext func() error) error {
+	for _, field := range v.Fields {
+		if checkContext != nil {
+			if err := checkContext(); err != nil {
+				return err
+			}
+		}
+		switch field.Type {
+		case memory.TypeInt8:
+			v.Values.Int8s[field.Name] = &memory.Int8Vector{Encoding: field.Encoding}
+		case memory.TypeInt16:
+			v.Values.Int16s[field.Name] = &memory.Int16Vector{Encoding: field.Encoding}
+		case memory.TypeInt32, memory.TypeDate32, memory.TypeTime32:
+			v.Values.Int32s[field.Name] = &memory.Int32Vector{Encoding: field.Encoding}
+		case memory.TypeInt64, memory.TypeDate64, memory.TypeTimestamp, memory.TypeTime64, memory.TypeDuration:
+			v.Values.Int64s[field.Name] = &memory.Int64Vector{Encoding: field.Encoding}
+		case memory.TypeUint8:
+			v.Values.Uint8s[field.Name] = &memory.Uint8Vector{Encoding: field.Encoding}
+		case memory.TypeUint16:
+			v.Values.Uint16s[field.Name] = &memory.Uint16Vector{Encoding: field.Encoding}
+		case memory.TypeUint32, memory.TypeBool:
+			v.Values.Uint32s[field.Name] = &memory.Uint32Vector{Encoding: field.Encoding}
+		case memory.TypeUint64:
+			v.Values.Uint64s[field.Name] = &memory.Uint64Vector{Encoding: field.Encoding}
+		case memory.TypeFloat32:
+			v.Values.Float32s[field.Name] = &memory.Float32Vector{Encoding: field.Encoding}
+		case memory.TypeFloat64:
+			v.Values.Float64s[field.Name] = &memory.Float64Vector{Encoding: field.Encoding}
+		case memory.TypeString:
+			v.Values.Strings[field.Name] = &memory.StringViewVector{Offsets: []uint32{0}, Encoding: memory.EncodingView}
+		case memory.TypeList:
+			v.Values.StringLists[field.Name] = &memory.StringListVector{Offsets: []uint32{0}, Values: &memory.StringViewVector{Offsets: []uint32{0}, Encoding: memory.EncodingView}, Encoding: memory.EncodingView}
+		default:
+			return fmt.Errorf("JSON_DECODE field %q: unsupported type %s", field.Name, field.Type)
+		}
+	}
+	return nil
 }

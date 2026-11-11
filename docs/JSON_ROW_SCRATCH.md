@@ -54,3 +54,19 @@ temporal widths, required and nullable fields, parent NULLs, list validity acros
 64-element boundaries, owned payloads after input mutation, metadata identity,
 variable scratch release, prepared execution across batches, budget rejection,
 all cancellation checkpoints, error order, and atomic result replacement.
+
+## Empty result contract
+
+A zero-row JSON evaluation retains every declared typed child vector. String
+and List<String> children include their required zero offset sentinel, including
+the list's child string vector. This lets the result pass StructVector.Validate
+and feed CloneStructRange and columnar serialization without missing columns.
+No synthetic row is appended and no input JSON is parsed: a required field or a
+malformed constant does not cause a value error when there are no input rows.
+
+Empty child metadata is initialized only after the existing output and scratch
+reservations succeed. Cancellation or admission failure still leaves the prior
+result and its charge intact. Alternating nonempty and empty evaluations does not
+carry prior payloads or row counts into the empty result. The nonempty decoder
+and its allocation behavior are unchanged. This is a schema-correctness fix,
+not a reduction in the admitted memory budget.
