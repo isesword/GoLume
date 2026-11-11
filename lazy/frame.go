@@ -1072,7 +1072,9 @@ type orderKeyPlan struct {
 	hiddenColumns []string
 }
 
-func newOrderKeyPlan(schema memory.Schema, by []logical.SortKey) (orderKeyPlan, error) {
+// reserved schemas own names introduced before hidden keys are removed. They
+// affect name allocation only; expressions still bind against the input schema.
+func newOrderKeyPlan(schema memory.Schema, by []logical.SortKey, reserved ...memory.Schema) (orderKeyPlan, error) {
 	plan := orderKeyPlan{
 		keys:          make([]physical.SortKey, len(by)),
 		keyColumns:    make([]string, 0, len(by)),
@@ -1081,6 +1083,11 @@ func newOrderKeyPlan(schema memory.Schema, by []logical.SortKey) (orderKeyPlan, 
 	used := make(map[string]struct{}, len(schema.Fields)+len(by))
 	for _, field := range schema.Fields {
 		used[field.Name] = struct{}{}
+	}
+	for _, output := range reserved {
+		for _, field := range output.Fields {
+			used[field.Name] = struct{}{}
+		}
 	}
 	keySeen := make(map[string]struct{}, len(by))
 	for i, key := range by {
@@ -1424,7 +1431,13 @@ func lowerSourcePipeline(ctx context.Context, plan logical.Plan, manager memory.
 			}
 			src = profileSource(ctx, src, "filter", "residual filter before window", childID)
 		}
-		order, err := newOrderKeyPlan(src.Schema(), n.Spec.By)
+		// Window results can replace input columns. Hidden keys must remain
+		// privately owned until order.hide, including across the window outputs.
+		outSchema, err := logical.InferSchema(n)
+		if err != nil {
+			return nil, nil, closers, err
+		}
+		order, err := newOrderKeyPlan(src.Schema(), n.Spec.By, outSchema)
 		if err != nil {
 			return nil, nil, closers, err
 		}
@@ -1434,10 +1447,6 @@ func lowerSourcePipeline(ctx context.Context, plan logical.Plan, manager memory.
 		}
 		if keyed != src {
 			keyed = profileSource(ctx, keyed, "projection", "internal expression window keys", profileSourceID(src))
-		}
-		outSchema, err := logical.InferSchema(n)
-		if err != nil {
-			return nil, nil, closers, err
 		}
 		outputFields := make([]memory.Field, len(n.Exprs))
 		for i, window := range n.Exprs {

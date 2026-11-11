@@ -89,10 +89,12 @@ type ordinalSource struct {
 	manager memory.Manager
 }
 
-func newOrdinalSource(input source.Source, manager memory.Manager) *ordinalSource {
+// output includes every input and result name. The ordinal stays private until
+// restoration and removal, so a window result must never take over its name.
+func newOrdinalSource(input source.Source, output memory.Schema, manager memory.Manager) *ordinalSource {
 	column := "__golume_window_ordinal"
 	for suffix := 0; ; suffix++ {
-		if _, exists := input.Schema().Field(column); !exists {
+		if _, exists := output.Field(column); !exists {
 			break
 		}
 		column = fmt.Sprintf("__golume_window_ordinal_%d", suffix+1)
@@ -215,7 +217,7 @@ func newExternalWindowStream(ctx context.Context, owner *WindowSource, opts sour
 	if query == nil || query.Limit() <= 0 || !query.SpillConfigured() {
 		return nil, fmt.Errorf("external window requires finite memory and spill quotas")
 	}
-	ordinal := newOrdinalSource(owner.input, owner.manager)
+	ordinal := newOrdinalSource(owner.input, owner.output, owner.manager)
 	keys := make([]SortKey, 0, len(owner.partitionBy)+len(owner.orderBy))
 	for _, column := range owner.partitionBy {
 		keys = append(keys, SortKey{Column: column})
