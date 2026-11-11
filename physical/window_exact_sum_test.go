@@ -34,7 +34,9 @@ func TestWindowExactStateAdmissionAndRelease(t *testing.T) {
 	if bytes := int64(unsafe.Sizeof(windowExactSum{})); bytes > windowExactSumBytes {
 		t.Fatalf("exact state size=%d admitted=%d", bytes, windowExactSumBytes)
 	}
-	const admitted = 512 + 2*(windowStateCellBytes+windowExactSumBytes)
+	// Two aliases share one exact state; admit pointer slots, key descriptors,
+	// the rounded state descriptor and the fixed accumulator before allocation.
+	const admitted = 512 + 2*8 + 2*8 + 256 + windowRollingStateBytes + windowExactSumBytes
 	for _, limit := range []int64{admitted - 1, admitted, admitted + 4096} {
 		manager := memory.NewBudgetManager(limit)
 		owner := exactBudgetWindow(t, manager)
@@ -51,6 +53,9 @@ func TestWindowExactStateAdmissionAndRelease(t *testing.T) {
 		ordered := stream.(*orderedWindowStream)
 		if manager.Used() != admitted || ordered.baseBytes != admitted {
 			t.Fatalf("used=%d base=%d want=%d", manager.Used(), ordered.baseBytes, admitted)
+		}
+		if ordered.states[0] != ordered.states[1] {
+			t.Fatal("matching Sum/Avg did not share execution state")
 		}
 		for _, state := range ordered.states {
 			if state.exactSum == nil {

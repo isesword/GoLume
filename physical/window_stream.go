@@ -7,6 +7,7 @@ import (
 	"gocolumn/source"
 	"math"
 	"math/big"
+	"unsafe"
 )
 
 const windowStateCellBytes = int64(64)
@@ -354,12 +355,15 @@ type rollingWindowState struct {
 	signedSum   big.Int
 	unsignedSum big.Int
 	exactSum    *windowExactSum
+	exact       bool
+	single      bool
+	exactInput  windowExactInput
 	best        windowNumericCell
 	hasBest     bool
 }
 
-func newRollingWindowState(expression WindowExpression, input, output memory.DataType) (*rollingWindowState, error) {
-	state := &rollingWindowState{expression: expression, inputType: input, outputType: output}
+func describeRollingWindowState(expression WindowExpression, input, output memory.DataType) (rollingWindowState, error) {
+	state := rollingWindowState{expression: expression, inputType: input, outputType: output, exact: usesExactWindowSum(expression.Function, input)}
 	switch expression.Function {
 	case WindowRowNumber, WindowRank, WindowDenseRank, WindowForwardFill:
 		return state, nil
@@ -371,15 +375,31 @@ func newRollingWindowState(expression WindowExpression, input, output memory.Dat
 		state.width = 1
 	case WindowPreceding:
 		if expression.Frame.Start.Offset >= int64(platformMaxInt()) {
-			return nil, fmt.Errorf("window %q preceding offset exceeds platform capacity", expression.Alias)
+			return state, fmt.Errorf("window %q preceding offset exceeds platform capacity", expression.Alias)
 		}
 		state.width = int(expression.Frame.Start.Offset) + 1
 	}
+	state.single = state.exact && !state.unbounded && state.width == 1
 	return state, nil
 }
 
+func newRollingWindowState(expression WindowExpression, input, output memory.DataType) (*rollingWindowState, error) {
+	state, err := describeRollingWindowState(expression, input, output)
+	if err != nil {
+		return nil, err
+	}
+	return &state, nil
+}
+
+// Include scalar state, borrowed-binding descriptors and allocator size-class
+// rounding. Pointer slots are admitted separately, including shared outputs.
+const windowRollingStateBytes = int64((unsafe.Sizeof(rollingWindowState{}) + 63) &^ 63)
+
 func (s *rollingWindowState) initialize() {
-	if usesExactWindowSum(s.expression.Function, s.inputType) {
+	if s.single {
+		return
+	}
+	if s.exact {
 		s.exactSum = new(windowExactSum)
 	}
 	if s.unbounded || s.expression.Function == WindowCountRows || s.width <= 0 {
@@ -418,6 +438,28 @@ func (s *rollingWindowState) advance(cell windowNumericCell) error {
 	}
 	cell.seq = s.position
 	s.position++
+	if s.exact {
+		if s.single {
+			s.best = cell
+			s.validCount = 0
+			if cell.valid {
+				s.validCount = 1
+			}
+			return nil
+		}
+		if !s.unbounded {
+			removed, full := s.queue.push(cell)
+			if full && removed.valid {
+				s.validCount--
+				addExactWindowCell(s.exactSum, s.inputType, removed, -1)
+			}
+		}
+		if cell.valid {
+			s.validCount++
+			addExactWindowCell(s.exactSum, s.inputType, cell, 1)
+		}
+		return nil
+	}
 	if s.expression.Function == WindowShift || s.expression.Function == WindowDiff {
 		s.queue.push(cell)
 		return nil
@@ -532,6 +574,7 @@ type orderedWindowStream struct {
 	output                 memory.Schema
 	child                  source.BatchStream
 	states                 []*rollingWindowState
+	exactOutputs           []*memory.Float64Vector
 	input                  *memory.Batch
 	partitionKeys          []SortKey
 	previousPartition      rowCandidate
@@ -576,44 +619,47 @@ func newOrderedWindowStream(ctx context.Context, owner *WindowSource, input sour
 	stream := &orderedWindowStream{owner: owner, inputSchema: input.Schema(), output: output, child: child, input: memory.NewBatch(), manager: owner.manager}
 	stream.hiddenColumns = hidden
 	stream.preparationReservation = preparation
-	for _, column := range owner.partitionBy {
-		stream.partitionKeys = append(stream.partitionKeys, SortKey{Column: column})
+	// First describe all unique states without allocating their execution
+	// storage. Shared exact outputs own one ring/accumulator, not one per alias.
+	stateBytes, err := futureBudgetAdd(512, int64(len(owner.expressions)), 8)
+	if err == nil && owner.exactPlans != nil {
+		stateBytes, err = futureBudgetAdd(stateBytes, int64(len(owner.expressions)), 8)
 	}
-	var stateBytes int64 = 512
-	for _, expression := range owner.expressions {
+	if err == nil {
+		stateBytes, err = futureBudgetAdd(stateBytes, int64(len(owner.partitionBy)+len(owner.orderBy)), 256)
+	}
+	if err != nil {
+		_ = child.Close()
+		return nil, err
+	}
+	for index, expression := range owner.expressions {
+		if owner.exactPlans != nil && owner.exactPlans[index] != nil && owner.exactPlans[index].leader != index {
+			continue
+		}
 		inputType := memory.TypeInt64
 		if expression.Column != "" {
 			inputType, _ = fieldType(input.Schema(), expression.Column)
 		}
 		outputType, _ := fieldType(output, expression.Alias)
-		state, stateErr := newRollingWindowState(expression, inputType, outputType)
+		state, stateErr := describeRollingWindowState(expression, inputType, outputType)
 		if stateErr != nil {
 			_ = child.Close()
 			return nil, stateErr
 		}
-		stream.states = append(stream.states, state)
-		cells := int64(1)
-		if !state.unbounded && state.width > 0 {
-			cells = int64(state.width)
+		stateBytes, err = futureBudgetAdd(stateBytes, 1, windowRollingStateBytes)
+		if err == nil && !state.single && !state.unbounded && state.width > 0 && expression.Function != WindowCountRows {
+			multiplier := windowStateCellBytes
 			if expression.Function == WindowMin || expression.Function == WindowMax {
-				if cells > math.MaxInt64/2 {
-					_ = child.Close()
-					return nil, fmt.Errorf("window extrema state estimate overflows int64")
-				}
-				cells *= 2
+				multiplier *= 2
 			}
+			stateBytes, err = futureBudgetAdd(stateBytes, int64(state.width), multiplier)
 		}
-		if cells > (math.MaxInt64-stateBytes)/windowStateCellBytes {
+		if err == nil && state.exact && !state.single {
+			stateBytes, err = futureBudgetAdd(stateBytes, 1, windowExactSumBytes)
+		}
+		if err != nil {
 			_ = child.Close()
-			return nil, fmt.Errorf("window retained-state estimate overflows int64")
-		}
-		stateBytes += cells * windowStateCellBytes
-		if usesExactWindowSum(expression.Function, inputType) {
-			if stateBytes > math.MaxInt64-windowExactSumBytes {
-				_ = child.Close()
-				return nil, fmt.Errorf("window exact-sum state estimate overflows int64")
-			}
-			stateBytes += windowExactSumBytes
+			return nil, fmt.Errorf("window retained-state estimate: %w", err)
 		}
 	}
 	if stream.manager != nil {
@@ -625,7 +671,26 @@ func newOrderedWindowStream(ctx context.Context, owner *WindowSource, input sour
 		stream.baseBytes = stream.baseReservation.Bytes()
 		stream.reservedBytes = stream.baseReservation.Bytes()
 	}
-	for _, state := range stream.states {
+	stream.states = make([]*rollingWindowState, len(owner.expressions))
+	if owner.exactPlans != nil {
+		stream.exactOutputs = make([]*memory.Float64Vector, len(owner.expressions))
+	}
+	for _, column := range owner.partitionBy {
+		stream.partitionKeys = append(stream.partitionKeys, SortKey{Column: column})
+	}
+	for index, expression := range owner.expressions {
+		if owner.exactPlans != nil && owner.exactPlans[index] != nil && owner.exactPlans[index].leader != index {
+			stream.states[index] = stream.states[owner.exactPlans[index].leader]
+			continue
+		}
+		inputType := memory.TypeInt64
+		if expression.Column != "" {
+			inputType, _ = fieldType(input.Schema(), expression.Column)
+		}
+		outputType, _ := fieldType(output, expression.Alias)
+		// The same immutable descriptor was validated before admission.
+		state, _ := newRollingWindowState(expression, inputType, outputType)
+		stream.states[index] = state
 		state.initialize()
 	}
 	keepPreparation = true
@@ -668,7 +733,10 @@ func batchRowEqualsCandidate(batch *memory.Batch, schema memory.Schema, keys []S
 
 func (s *orderedWindowStream) resetPartition() {
 	s.rowNumber, s.rank, s.denseRank = 0, 0, 0
-	for _, state := range s.states {
+	for index, state := range s.states {
+		if s.owner.exactPlans != nil && s.owner.exactPlans[index] != nil && s.owner.exactPlans[index].leader != index {
+			continue
+		}
 		state.reset()
 	}
 }
@@ -702,6 +770,24 @@ func (s *orderedWindowStream) Next(ctx context.Context, dst *memory.Batch) (bool
 	bindAll(dst, s.input)
 	dst.Reset(s.input.Rows)
 	initializeWindowOutputs(dst, s.owner.outputFields, s.input.Rows, s.owner.expressions)
+	if s.owner.exactPlans != nil && s.input.Rows != 0 {
+		// Bind only while this Next call owns the current borrowed batch. Clear
+		// all bindings on every return, including cancellation and errors.
+		defer s.clearExactBindings()
+		for index, plan := range s.owner.exactPlans {
+			if plan == nil {
+				continue
+			}
+			if plan.leader == index {
+				binding, bindErr := bindWindowExactInput(s.input, plan.column, plan.inputType)
+				if bindErr != nil {
+					return false, bindErr
+				}
+				s.states[index].exactInput = binding
+			}
+			s.exactOutputs[index] = dst.Float64s[s.owner.expressions[index].Alias]
+		}
+	}
 	for row := 0; row < s.input.Rows; row++ {
 		if row&1023 == 0 {
 			if err := ctx.Err(); err != nil {
@@ -732,7 +818,16 @@ func (s *orderedWindowStream) Next(ctx context.Context, dst *memory.Batch) (bool
 			s.denseRank++
 		}
 		for index, state := range s.states {
-			expression := state.expression
+			expression := s.owner.expressions[index]
+			if s.owner.exactPlans != nil && s.owner.exactPlans[index] != nil {
+				if s.owner.exactPlans[index].leader == index {
+					if err := state.advance(state.exactInput.cell(row)); err != nil {
+						return false, err
+					}
+				}
+				state.writeExact(s.exactOutputs[index], row, expression.Function)
+				continue
+			}
 			switch expression.Function {
 			case WindowRowNumber:
 				setWindowInt64(dst, expression.Alias, row, s.rowNumber, true)
@@ -752,7 +847,6 @@ func (s *orderedWindowStream) Next(ctx context.Context, dst *memory.Batch) (bool
 					return false, outputErr
 				}
 			}
-			_ = index
 		}
 		partitionText, textErr := sortKeyVariableBytes(s.input, s.inputSchema, s.partitionKeys, row)
 		if textErr != nil {
@@ -787,6 +881,15 @@ func (s *orderedWindowStream) Next(ctx context.Context, dst *memory.Batch) (bool
 		clearWindowOutput(dst, name)
 	}
 	return true, nil
+}
+
+func (s *orderedWindowStream) clearExactBindings() {
+	for index, state := range s.states {
+		state.exactInput = windowExactInput{}
+		if s.exactOutputs != nil {
+			s.exactOutputs[index] = nil
+		}
+	}
 }
 
 func estimateWindowOutputBytes(_ memory.Schema, fields []memory.Field, rows int) (int64, error) {
@@ -869,6 +972,10 @@ func setWindowInt64(batch *memory.Batch, name string, row int, value int64, vali
 
 func (s *rollingWindowState) write(batch *memory.Batch, row int) error {
 	expression := s.expression
+	if s.exact {
+		s.writeExact(batch.Float64s[expression.Alias], row, expression.Function)
+		return nil
+	}
 	if expression.Function == WindowForwardFill {
 		setOffsetOutput(batch, expression.Alias, s.outputType, row, s.best)
 		return nil
@@ -931,6 +1038,26 @@ func (s *rollingWindowState) write(batch *memory.Batch, row int) error {
 	return nil
 }
 
+func (s *rollingWindowState) writeExact(vector *memory.Float64Vector, row int, function WindowFunction) {
+	if s.validCount == 0 {
+		return
+	}
+	value := 0.0
+	if s.single {
+		value = singleExactWindowValue(s.best, s.inputType)
+	} else {
+		divisor := int64(1)
+		if function == WindowAvg {
+			divisor = s.validCount
+		}
+		value = s.exactSum.result(divisor)
+	}
+	vector.Values[row] = value
+	if vector.Validity != nil {
+		memory.Set(vector.Validity, row)
+	}
+}
+
 // Close releases rolling state, output reservations, and the child stream.
 func (s *orderedWindowStream) Close() error {
 	if s.closed {
@@ -958,6 +1085,7 @@ func (s *orderedWindowStream) Close() error {
 	s.child = nil
 	s.input = nil
 	s.states = nil
+	s.exactOutputs = nil
 	s.hiddenColumns = nil
 	s.partitionKeys = nil
 	s.inputSchema = memory.Schema{}

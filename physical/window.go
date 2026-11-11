@@ -91,6 +91,7 @@ type WindowSource struct {
 	output       memory.Schema
 	manager      memory.Manager
 	mode         WindowExecutionMode
+	exactPlans   []*windowExactPlan
 }
 
 // WindowExecutionMode selects resident compatibility, ordered bounded state,
@@ -210,6 +211,7 @@ func NewWindowSourceWithOptions(input source.Source, partitionBy []string, order
 		output:       output,
 		manager:      manager,
 		mode:         options.Mode,
+		exactPlans:   planExactWindows(inputSchema, expressions),
 	}, nil
 }
 
@@ -378,10 +380,42 @@ func (r *windowReader) Next(ctx context.Context, dst *memory.Batch) (bool, error
 	if err := takeRows(ctx, dst, full, identity); err != nil {
 		return false, err
 	}
-	for _, window := range r.owner.expressions {
-		clearOwnedWindowOutput(dst, window.Alias)
+	for index, window := range r.owner.expressions {
+		var exact *residentExactWindow
+		if r.owner.exactPlans != nil && r.owner.exactPlans[index] != nil {
+			plan := r.owner.exactPlans[index]
+			if plan.leader != index {
+				continue
+			}
+			metadataBytes, admissionErr := futureBudgetAdd(128, int64(len(plan.indices)), 16)
+			if admissionErr != nil {
+				return false, admissionErr
+			}
+			if r.owner.manager != nil {
+				lease, admissionErr := r.owner.manager.Reserve(ctx, metadataBytes)
+				if admissionErr != nil {
+					return false, fmt.Errorf("resident exact window bindings: %w", admissionErr)
+				}
+				defer lease.Release()
+			}
+			for _, target := range plan.indices {
+				clearOwnedWindowOutput(dst, r.owner.expressions[target].Alias)
+			}
+			exact, err = bindResidentExactWindow(full, dst, plan, r.owner.expressions)
+			if err != nil {
+				return false, err
+			}
+		} else {
+			clearOwnedWindowOutput(dst, window.Alias)
+		}
+		evaluate := func(partition []int) error {
+			if exact != nil {
+				return exact.evaluate(ctx, partition)
+			}
+			return evaluateWindowExpression(ctx, full, r.owner.input.Schema(), dst, partition, r.owner.orderBy, window)
+		}
 		if len(rows) == 0 {
-			if err := evaluateWindowExpression(ctx, full, r.owner.input.Schema(), dst, nil, r.owner.orderBy, window); err != nil {
+			if err := evaluate(nil); err != nil {
 				return false, err
 			}
 			continue
@@ -394,7 +428,7 @@ func (r *windowReader) Next(ctx context.Context, dst *memory.Batch) (bool, error
 			for end < len(rows) && sameRowsByKeys(full, r.owner.input.Schema(), partitionKeys, rows[start], rows[end]) {
 				end++
 			}
-			if err := evaluateWindowExpression(ctx, full, r.owner.input.Schema(), dst, rows[start:end], r.owner.orderBy, window); err != nil {
+			if err := evaluate(rows[start:end]); err != nil {
 				return false, err
 			}
 			start = end
@@ -681,76 +715,18 @@ func evaluateWindowAverage(ctx context.Context, input *memory.Batch, schema memo
 }
 
 func evaluateExactWindowFloat(ctx context.Context, input *memory.Batch, schema memory.Schema, output *memory.Batch, rows []int, window WindowExpression, average bool) error {
-	values, validity := windowNullableF64(output, window.Alias, input.Rows)
-	typ, _ := fieldType(schema, window.Column)
-	var total windowExactSum
-	var count int64
-	update := func(index int, direction int64) error {
-		cell, err := readWindowNumericCell(input, schema, window, rows[index])
-		if err != nil {
-			return err
-		}
-		if cell.valid {
-			switch {
-			case windowSigned(typ):
-				total.addSigned(cell.i64, direction)
-			case windowUnsigned(typ):
-				total.addUnsigned(cell.u64, direction)
-			default:
-				total.addFloat(cell.f64, direction)
-			}
-			count += direction
-		}
-		return nil
+	if average {
+		window.Function = WindowAvg
+	} else {
+		window.Function = WindowSum
 	}
-	// Every supported constant ROWS bound moves monotonically. Reuse the exact
-	// frame state instead of rescanning it, with no retained ring in resident
-	// mode because the input is already materialized. Each input enters and
-	// leaves at most once, including following, empty and disjoint frames.
-	left, right := 0, 0
-	for i, row := range rows {
-		if err := everyWindowRows(ctx, i); err != nil {
-			return err
-		}
-		lo, hi := windowFrameRange(i, len(rows), window.Frame)
-		end := hi + 1
-		if lo >= end {
-			total, count = windowExactSum{}, 0
-			left, right = lo, lo
-			continue
-		}
-		for left < lo && left < right {
-			if err := everyWindowRows(ctx, left); err != nil {
-				return err
-			}
-			if err := update(left, -1); err != nil {
-				return err
-			}
-			left++
-		}
-		if right < lo {
-			left, right = lo, lo
-		}
-		for right < end {
-			if err := everyWindowRows(ctx, right); err != nil {
-				return err
-			}
-			if err := update(right, 1); err != nil {
-				return err
-			}
-			right++
-		}
-		if count != 0 {
-			divisor := int64(1)
-			if average {
-				divisor = count
-			}
-			values[row] = total.result(divisor)
-			memory.Set(validity, row)
-		}
+	expressions := []WindowExpression{window}
+	plans := planExactWindows(schema, expressions)
+	state, err := bindResidentExactWindow(input, output, plans[0], expressions)
+	if err != nil {
+		return err
 	}
-	output.Float64s[window.Alias] = &memory.Float64Vector{Values: values, Validity: validity}
-	return nil
+	return state.evaluate(ctx, rows)
 }
 
 // validateExtremaWindow enforces the logical type contract at the physical API
