@@ -55,6 +55,15 @@ func evalJSONDecode(out, input *scalarRegister, fields []memory.Field, rows int)
 		}
 	}
 	result := &memory.StructVector{Fields: ownedFields, Values: memory.NewBatch(), Encoding: memory.EncodingView}
+	// Keep one row of vector metadata for the whole batch. AppendStructRow owns
+	// the output payload; the scratch row must never retain variable payloads
+	// across rows, which would turn the largest-row scratch allowance into a sum
+	// of per-field high-water marks.
+	var temp *memory.StructVector
+	if rows > 0 {
+		temp = &memory.StructVector{Rows: 1, Fields: ownedFields, Values: memory.NewBatch(), Encoding: memory.EncodingView}
+		temp.Values.Rows = 1
+	}
 	for row := 0; row < rows; row++ {
 		if out.checkContext != nil {
 			if err := out.checkContext(); err != nil {
@@ -84,13 +93,13 @@ func evalJSONDecode(out, input *scalarRegister, fields []memory.Field, rows int)
 				parentValid = false
 			}
 		}
-		temp, err := jsonStructRow(fields, object, parentValid, row, out.checkContext)
-		if err != nil {
+		if err := jsonStructRow(temp, fields, object, parentValid, row, out.checkContext); err != nil {
 			return err
 		}
 		if err := memory.AppendStructRow(result, temp, 0, parentValid); err != nil {
 			return fmt.Errorf("JSON_DECODE at row %d: %w", row, err)
 		}
+		clearJSONRowPayloads(temp)
 	}
 	if out.checkContext != nil {
 		if err := out.checkContext(); err != nil {
@@ -182,20 +191,18 @@ func addJSONAllocation(total *int64, count, size int64) bool {
 	return true
 }
 
-func jsonStructRow(fields []memory.Field, object map[string]json.RawMessage, parentValid bool, row int, checkContext func() error) (*memory.StructVector, error) {
-	v := &memory.StructVector{Rows: 1, Fields: append([]memory.Field(nil), fields...), Values: memory.NewBatch(), Encoding: memory.EncodingView}
-	v.Values.Rows = 1
+func jsonStructRow(v *memory.StructVector, fields []memory.Field, object map[string]json.RawMessage, parentValid bool, row int, checkContext func() error) error {
 	for _, field := range fields {
 		if checkContext != nil {
 			if err := checkContext(); err != nil {
-				return nil, err
+				return err
 			}
 		}
 		raw, present := object[field.Name]
 		isNull := !present || bytes.Equal(bytes.TrimSpace(raw), []byte("null"))
 		valid := parentValid && !isNull
 		if parentValid && isNull && !field.Nullable {
-			return nil, fmt.Errorf("JSON_DECODE at row %d field %q: required value is missing or null", row, field.Name)
+			return fmt.Errorf("JSON_DECODE at row %d field %q: required value is missing or null", row, field.Name)
 		}
 		switch field.Type {
 		case memory.TypeInt8, memory.TypeInt16, memory.TypeInt32, memory.TypeDate32, memory.TypeTime32:
@@ -210,20 +217,34 @@ func jsonStructRow(fields []memory.Field, object map[string]json.RawMessage, par
 					}
 				}
 				if err != nil {
-					return nil, jsonFieldError(row, field.Name, err)
+					return jsonFieldError(row, field.Name, err)
 				}
-			}
-			var validity memory.Bitmap
-			if !valid {
-				validity = memory.EnsureBitmap(nil, 1)
 			}
 			switch field.Type {
 			case memory.TypeInt8:
-				v.Values.Int8s[field.Name] = &memory.Int8Vector{Values: []int8{int8(value)}, Validity: validity, Encoding: field.Encoding}
+				vec := v.Values.Int8s[field.Name]
+				if vec == nil {
+					vec = &memory.Int8Vector{Values: make([]int8, 1), Encoding: field.Encoding}
+					v.Values.Int8s[field.Name] = vec
+				}
+				vec.Values[0] = int8(value)
+				vec.Validity = setJSONRowValidity(vec.Validity, valid)
 			case memory.TypeInt16:
-				v.Values.Int16s[field.Name] = &memory.Int16Vector{Values: []int16{int16(value)}, Validity: validity, Encoding: field.Encoding}
+				vec := v.Values.Int16s[field.Name]
+				if vec == nil {
+					vec = &memory.Int16Vector{Values: make([]int16, 1), Encoding: field.Encoding}
+					v.Values.Int16s[field.Name] = vec
+				}
+				vec.Values[0] = int16(value)
+				vec.Validity = setJSONRowValidity(vec.Validity, valid)
 			default:
-				v.Values.Int32s[field.Name] = &memory.Int32Vector{Values: []int32{int32(value)}, Validity: validity, Encoding: field.Encoding}
+				vec := v.Values.Int32s[field.Name]
+				if vec == nil {
+					vec = &memory.Int32Vector{Values: make([]int32, 1), Encoding: field.Encoding}
+					v.Values.Int32s[field.Name] = vec
+				}
+				vec.Values[0] = int32(value)
+				vec.Validity = setJSONRowValidity(vec.Validity, valid)
 			}
 		case memory.TypeInt64, memory.TypeDate64, memory.TypeTimestamp, memory.TypeTime64, memory.TypeDuration:
 			value := int64(0)
@@ -231,14 +252,16 @@ func jsonStructRow(fields []memory.Field, object map[string]json.RawMessage, par
 			if valid {
 				value, err = jsonSigned(raw)
 				if err != nil {
-					return nil, jsonFieldError(row, field.Name, err)
+					return jsonFieldError(row, field.Name, err)
 				}
 			}
-			vec := &memory.Int64Vector{Values: []int64{value}, Encoding: field.Encoding}
-			if !valid {
-				vec.Validity = memory.EnsureBitmap(nil, 1)
+			vec := v.Values.Int64s[field.Name]
+			if vec == nil {
+				vec = &memory.Int64Vector{Values: make([]int64, 1), Encoding: field.Encoding}
+				v.Values.Int64s[field.Name] = vec
 			}
-			v.Values.Int64s[field.Name] = vec
+			vec.Values[0] = value
+			vec.Validity = setJSONRowValidity(vec.Validity, valid)
 		case memory.TypeUint8, memory.TypeUint16, memory.TypeUint32, memory.TypeBool:
 			value := uint64(0)
 			var err error
@@ -258,20 +281,34 @@ func jsonStructRow(fields []memory.Field, object map[string]json.RawMessage, par
 					}
 				}
 				if err != nil {
-					return nil, jsonFieldError(row, field.Name, err)
+					return jsonFieldError(row, field.Name, err)
 				}
-			}
-			var validity memory.Bitmap
-			if !valid {
-				validity = memory.EnsureBitmap(nil, 1)
 			}
 			switch field.Type {
 			case memory.TypeUint8:
-				v.Values.Uint8s[field.Name] = &memory.Uint8Vector{Values: []uint8{uint8(value)}, Validity: validity, Encoding: field.Encoding}
+				vec := v.Values.Uint8s[field.Name]
+				if vec == nil {
+					vec = &memory.Uint8Vector{Values: make([]uint8, 1), Encoding: field.Encoding}
+					v.Values.Uint8s[field.Name] = vec
+				}
+				vec.Values[0] = uint8(value)
+				vec.Validity = setJSONRowValidity(vec.Validity, valid)
 			case memory.TypeUint16:
-				v.Values.Uint16s[field.Name] = &memory.Uint16Vector{Values: []uint16{uint16(value)}, Validity: validity, Encoding: field.Encoding}
+				vec := v.Values.Uint16s[field.Name]
+				if vec == nil {
+					vec = &memory.Uint16Vector{Values: make([]uint16, 1), Encoding: field.Encoding}
+					v.Values.Uint16s[field.Name] = vec
+				}
+				vec.Values[0] = uint16(value)
+				vec.Validity = setJSONRowValidity(vec.Validity, valid)
 			default:
-				v.Values.Uint32s[field.Name] = &memory.Uint32Vector{Values: []uint32{uint32(value)}, Validity: validity, Encoding: field.Encoding}
+				vec := v.Values.Uint32s[field.Name]
+				if vec == nil {
+					vec = &memory.Uint32Vector{Values: make([]uint32, 1), Encoding: field.Encoding}
+					v.Values.Uint32s[field.Name] = vec
+				}
+				vec.Values[0] = uint32(value)
+				vec.Validity = setJSONRowValidity(vec.Validity, valid)
 			}
 		case memory.TypeUint64:
 			value := uint64(0)
@@ -279,14 +316,16 @@ func jsonStructRow(fields []memory.Field, object map[string]json.RawMessage, par
 			if valid {
 				value, err = jsonUnsigned(raw)
 				if err != nil {
-					return nil, jsonFieldError(row, field.Name, err)
+					return jsonFieldError(row, field.Name, err)
 				}
 			}
-			vec := &memory.Uint64Vector{Values: []uint64{value}, Encoding: field.Encoding}
-			if !valid {
-				vec.Validity = memory.EnsureBitmap(nil, 1)
+			vec := v.Values.Uint64s[field.Name]
+			if vec == nil {
+				vec = &memory.Uint64Vector{Values: make([]uint64, 1), Encoding: field.Encoding}
+				v.Values.Uint64s[field.Name] = vec
 			}
-			v.Values.Uint64s[field.Name] = vec
+			vec.Values[0] = value
+			vec.Validity = setJSONRowValidity(vec.Validity, valid)
 		case memory.TypeFloat32, memory.TypeFloat64:
 			value := float64(0)
 			var err error
@@ -297,23 +336,31 @@ func jsonStructRow(fields []memory.Field, object map[string]json.RawMessage, par
 				}
 				value, err = strconv.ParseFloat(string(raw), bits)
 				if math.IsInf(value, 0) {
-					return nil, jsonFieldError(row, field.Name, fmt.Errorf("value overflows %s", field.Type))
+					return jsonFieldError(row, field.Name, fmt.Errorf("value overflows %s", field.Type))
 				}
 				if err != nil {
-					return nil, jsonFieldError(row, field.Name, fmt.Errorf("expected number"))
+					return jsonFieldError(row, field.Name, fmt.Errorf("expected number"))
 				}
 				if math.IsNaN(value) {
-					return nil, jsonFieldError(row, field.Name, fmt.Errorf("value overflows %s", field.Type))
+					return jsonFieldError(row, field.Name, fmt.Errorf("value overflows %s", field.Type))
 				}
 			}
-			var validity memory.Bitmap
-			if !valid {
-				validity = memory.EnsureBitmap(nil, 1)
-			}
 			if field.Type == memory.TypeFloat32 {
-				v.Values.Float32s[field.Name] = &memory.Float32Vector{Values: []float32{float32(value)}, Validity: validity, Encoding: field.Encoding}
+				vec := v.Values.Float32s[field.Name]
+				if vec == nil {
+					vec = &memory.Float32Vector{Values: make([]float32, 1), Encoding: field.Encoding}
+					v.Values.Float32s[field.Name] = vec
+				}
+				vec.Values[0] = float32(value)
+				vec.Validity = setJSONRowValidity(vec.Validity, valid)
 			} else {
-				v.Values.Float64s[field.Name] = &memory.Float64Vector{Values: []float64{value}, Validity: validity, Encoding: field.Encoding}
+				vec := v.Values.Float64s[field.Name]
+				if vec == nil {
+					vec = &memory.Float64Vector{Values: make([]float64, 1), Encoding: field.Encoding}
+					v.Values.Float64s[field.Name] = vec
+				}
+				vec.Values[0] = value
+				vec.Validity = setJSONRowValidity(vec.Validity, valid)
 			}
 		case memory.TypeString:
 			value := ""
@@ -321,38 +368,44 @@ func jsonStructRow(fields []memory.Field, object map[string]json.RawMessage, par
 			if valid {
 				err = json.Unmarshal(raw, &value)
 				if err != nil {
-					return nil, jsonFieldError(row, field.Name, fmt.Errorf("expected string"))
+					return jsonFieldError(row, field.Name, fmt.Errorf("expected string"))
 				}
 			}
-			vec := &memory.StringViewVector{Offsets: []uint32{0, uint32(len(value))}, Data: []byte(value), Encoding: memory.EncodingView}
-			if !valid {
-				vec.Offsets[1] = 0
-				vec.Data = nil
-				vec.Validity = memory.EnsureBitmap(nil, 1)
+			vec := v.Values.Strings[field.Name]
+			if vec == nil {
+				vec = &memory.StringViewVector{Offsets: make([]uint32, 2), Encoding: memory.EncodingView}
+				v.Values.Strings[field.Name] = vec
 			}
-			v.Values.Strings[field.Name] = vec
+			vec.Offsets[1] = uint32(len(value))
+			vec.Data = []byte(value)
+			vec.Validity = setJSONRowValidity(vec.Validity, valid)
 		case memory.TypeList:
-			list := &memory.StringListVector{Offsets: []uint32{0, 0}, Values: &memory.StringViewVector{Offsets: []uint32{0}, Encoding: memory.EncodingView}, Encoding: memory.EncodingView}
-			if !valid {
-				list.Validity = memory.EnsureBitmap(nil, 1)
-			} else {
+			list := v.Values.StringLists[field.Name]
+			if list == nil {
+				list = &memory.StringListVector{Offsets: make([]uint32, 2), Values: &memory.StringViewVector{Encoding: memory.EncodingView}, Encoding: memory.EncodingView}
+				v.Values.StringLists[field.Name] = list
+			}
+			list.Offsets[1] = 0
+			list.Values.Offsets = []uint32{0}
+			list.Validity = setJSONRowValidity(list.Validity, valid)
+			if valid {
 				var elements []json.RawMessage
 				if err := json.Unmarshal(raw, &elements); err != nil {
-					return nil, jsonFieldError(row, field.Name, fmt.Errorf("expected string array"))
+					return jsonFieldError(row, field.Name, fmt.Errorf("expected string array"))
 				}
 				if uint64(len(elements)) > math.MaxUint32 {
-					return nil, jsonFieldError(row, field.Name, fmt.Errorf("element count overflows uint32 offsets"))
+					return jsonFieldError(row, field.Name, fmt.Errorf("element count overflows uint32 offsets"))
 				}
 				list.Offsets[1] = uint32(len(elements))
 				for index, element := range elements {
 					if index%256 == 0 && checkContext != nil {
 						if err := checkContext(); err != nil {
-							return nil, err
+							return err
 						}
 					}
 					null := bytes.Equal(bytes.TrimSpace(element), []byte("null"))
 					if null && !field.Children[0].Nullable {
-						return nil, fmt.Errorf("JSON_DECODE at row %d field %q[%d]: null element is not allowed", row, field.Name, index)
+						return fmt.Errorf("JSON_DECODE at row %d field %q[%d]: null element is not allowed", row, field.Name, index)
 					}
 					if null {
 						if list.Values.Validity == nil {
@@ -366,24 +419,23 @@ func jsonStructRow(fields []memory.Field, object map[string]json.RawMessage, par
 					}
 					var value string
 					if err := json.Unmarshal(element, &value); err != nil {
-						return nil, fmt.Errorf("JSON_DECODE at row %d field %q[%d]: expected string", row, field.Name, index)
+						return fmt.Errorf("JSON_DECODE at row %d field %q[%d]: expected string", row, field.Name, index)
 					}
 					if list.Values.Validity != nil {
 						memory.Set(list.Values.Validity, index)
 					}
 					if uint64(len(list.Values.Data))+uint64(len(value)) > math.MaxUint32 {
-						return nil, fmt.Errorf("JSON_DECODE at row %d field %q[%d]: string bytes overflow uint32 offsets", row, field.Name, index)
+						return fmt.Errorf("JSON_DECODE at row %d field %q[%d]: string bytes overflow uint32 offsets", row, field.Name, index)
 					}
 					list.Values.Data = append(list.Values.Data, value...)
 					list.Values.Offsets = append(list.Values.Offsets, uint32(len(list.Values.Data)))
 				}
 			}
-			v.Values.StringLists[field.Name] = list
 		default:
-			return nil, jsonFieldError(row, field.Name, fmt.Errorf("unsupported type %s", field.Type))
+			return jsonFieldError(row, field.Name, fmt.Errorf("unsupported type %s", field.Type))
 		}
 	}
-	return v, nil
+	return nil
 }
 
 func signed32Range(typ memory.DataType) (int64, int64) {
@@ -432,4 +484,30 @@ func jsonUnsigned(raw []byte) (uint64, error) {
 }
 func jsonFieldError(row int, name string, err error) error {
 	return fmt.Errorf("JSON_DECODE at row %d field %q: %w", row, name, err)
+}
+
+// Allocate validity on the first NULL only, then reuse the one-row bitmap.
+func setJSONRowValidity(bits memory.Bitmap, valid bool) memory.Bitmap {
+	if bits == nil {
+		if valid {
+			return nil
+		}
+		bits = make(memory.Bitmap, 1)
+	}
+	bits[0] = 0
+	if valid {
+		bits[0] = 1
+	}
+	return bits
+}
+
+func clearJSONRowPayloads(v *memory.StructVector) {
+	for _, vec := range v.Values.Strings {
+		vec.Data = nil
+	}
+	for _, list := range v.Values.StringLists {
+		list.Values.Data = nil
+		list.Values.Offsets = nil
+		list.Values.Validity = nil
+	}
 }
