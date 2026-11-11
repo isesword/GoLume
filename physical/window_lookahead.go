@@ -54,12 +54,36 @@ func (s *futureWindowSource) NewBatchStream(ctx context.Context, opts source.Rea
 		return nil, err
 	}
 	st := &futureWindowStream{owner: s, child: child, scratch: memory.NewBatch()}
-	bytes := int64(2048) + int64(len(s.expressions))*16
+	bytes := int64(2048) + int64(len(s.expressions))*1024
+	// Describe and admit rings before allocating their backing storage.
+	st.finiteRows = make([]*finiteRowsState, len(s.expressions))
+	for index, e := range s.expressions {
+		if !needsFiniteRowsWindow(e) {
+			continue
+		}
+		typ, _ := fieldType(s.input.Schema(), e.Column)
+		state, stateBytes, stateErr := newFiniteRowsState(e, typ, s.fields[index].Type, s.partitionBy)
+		if stateErr != nil {
+			child.Close()
+			return nil, stateErr
+		}
+		bytes, stateErr = futureBudgetAdd(bytes, stateBytes, 1)
+		if stateErr != nil {
+			child.Close()
+			return nil, stateErr
+		}
+		st.finiteRows[index] = state
+	}
 	if s.manager != nil {
 		st.base, err = s.manager.Reserve(ctx, bytes)
 		if err != nil {
 			child.Close()
 			return nil, err
+		}
+	}
+	for _, state := range st.finiteRows {
+		if state != nil {
+			state.initialize(s.partitionBy)
 		}
 	}
 	st.cursors = make([]*futureWindowBatch, len(s.expressions))
@@ -80,6 +104,7 @@ type futureWindowStream struct {
 	head, tail, current *futureWindowBatch
 	cursors             []*futureWindowBatch
 	fillPositions       []int64
+	finiteRows          []*finiteRowsState
 	base, output        memory.Reservation
 	end                 int64
 	done, closed        bool
@@ -221,6 +246,12 @@ func (s *futureWindowStream) Next(ctx context.Context, dst *memory.Batch) (ok bo
 		name := s.owner.names[i]
 		typ := s.owner.fields[i].Type
 		initializeOffsetOutput(node.batch, name, typ, node.batch.Rows)
+		if needsFiniteRowsWindow(e) {
+			if err = s.finiteRowsBatch(ctx, node, i); err != nil {
+				return false, err
+			}
+			continue
+		}
 		if e.Function == WindowBackwardFill {
 			if err = s.fillBackwardBatch(ctx, node, i); err != nil {
 				return false, err
@@ -289,6 +320,12 @@ func (s *futureWindowStream) Close() error {
 	s.head, s.tail = nil, nil
 	s.cursors = nil
 	s.fillPositions = nil
+	for _, state := range s.finiteRows {
+		if state != nil {
+			state.close()
+		}
+	}
+	s.finiteRows = nil
 	s.scratch.ReleaseOwned()
 	if s.base != nil {
 		s.base.Release()
@@ -315,6 +352,7 @@ func prepareFutureWindow(owner *WindowSource, input source.Source) (*WindowSourc
 	fields := append([]memory.Field(nil), input.Schema().Fields...)
 	copied := *owner
 	copied.expressions = append([]WindowExpression(nil), owner.expressions...)
+	copied.outputFields = append([]memory.Field(nil), owner.outputFields...)
 	future := &futureWindowSource{input: input, partitionBy: owner.partitionBy, manager: owner.manager}
 	names := make(map[string]bool, len(fields)+len(owner.outputFields))
 	for _, f := range fields {
@@ -334,12 +372,28 @@ func prepareFutureWindow(owner *WindowSource, input source.Source) (*WindowSourc
 		names[name] = true
 		typ, _ := fieldType(input.Schema(), e.Column)
 		field := memory.Field{Name: name, Type: offsetOutputType(typ, e.Function), Nullable: true, Encoding: memory.EncodingPlain}
+		if needsFiniteRowsWindow(e) {
+			field = owner.outputFields[index]
+			field.Name = name
+			// The private zero-offset shift owns a validity bitmap even for
+			// Count. Charge it in both stages; the public output schema stays
+			// non-nullable and every count result is explicitly valid.
+			field.Nullable = true
+			copied.outputFields[index].Nullable = true
+		}
 		fields = append(fields, field)
 		future.fields = append(future.fields, field)
 		future.names = append(future.names, name)
 		future.expressions = append(future.expressions, e)
-		if e.Frame.Start.Offset > future.maxLead {
-			future.maxLead = e.Frame.Start.Offset
+		lead := e.Frame.Start.Offset
+		if needsFiniteRowsWindow(e) {
+			lead = 0
+			if e.Frame.End.Kind == WindowFollowing {
+				lead = e.Frame.End.Offset
+			}
+		}
+		if lead > future.maxLead {
+			future.maxLead = lead
 		}
 		copied.expressions[index] = WindowExpression{Function: WindowShift, Column: name, Alias: e.Alias, Frame: WindowFrame{Start: WindowBound{Kind: WindowCurrentRow}, End: WindowBound{Kind: WindowCurrentRow}}}
 	}

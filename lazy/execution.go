@@ -220,6 +220,14 @@ func logicalWindowBoundedCapable(expressions []logical.WindowExpr) bool {
 		case logical.WindowRowNumber, logical.WindowRank, logical.WindowDenseRank:
 			continue
 		}
+		if expression.Function == logical.WindowCountRows || expression.Function == logical.WindowCountValues || expression.Function == logical.WindowMin || expression.Function == logical.WindowMax {
+			finite := func(b logical.RowBound) bool {
+				return b.Kind == logical.RowPreceding || b.Kind == logical.RowCurrent || b.Kind == logical.RowFollowing
+			}
+			if finite(expression.Frame.Start) && finite(expression.Frame.End) {
+				continue
+			}
+		}
 		if expression.Frame.End.Kind != logical.RowCurrent {
 			return false
 		}

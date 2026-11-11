@@ -34,12 +34,13 @@ and FOLLOWING offsets equal CURRENT ROW; finite offsets retain their full
 preceding/following frames and clips them to the partition, including empty
 frames. Existing unbounded sentinel semantics are preserved.
 
-Ordered and external-sort execution still require aggregate frames ending at
-CURRENT ROW and starting at CURRENT ROW, N PRECEDING, or UNBOUNDED PRECEDING.
-Finite retained state is subject to platform capacity and memory budgets.
-External-sort execution requires its existing finite memory and spill quotas.
-This change neither broadens bounded FOLLOWING support nor changes the
-resident algorithm's time complexity.
+Ordered and external-sort execution support all valid combinations of finite
+PRECEDING, CURRENT ROW, and FOLLOWING bounds. Existing UNBOUNDED PRECEDING to
+CURRENT ROW frames remain supported. Finite retained state is subject to
+platform capacity and memory budgets; impossible capacities fail even on empty
+input. External-sort execution requires its existing finite memory and spill
+quotas. See [finite ROWS execution](WINDOW_BOUNDED_ROWS.md) for retention and
+clipping details. The resident algorithm's time complexity is unchanged.
 
 ## Aliases and ownership
 

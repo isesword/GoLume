@@ -324,17 +324,23 @@ func TestBoundedOrderedWindowNeedsNoSpill(t *testing.T) {
 	}
 }
 
-func TestBoundedWindowFollowingRejectedDuringPrepare(t *testing.T) {
+func TestBoundedWindowUnsupportedFollowingRejectedDuringPrepare(t *testing.T) {
 	session := boundedJoinSession(t, 64<<10)
 	defer session.Close()
-	query := session.FromSource(externalSortSemanticSource(t)).WithWindows(
-		NewWindow(nil, OrderBy(Asc("id"))),
-		RollingCountRows(RowsBetween(CurrentRow, Following(1)), "count"),
-	)
-	_, err := query.Prepare(context.Background())
-	var unsupported *engine.UnsupportedBoundedPlanError
-	if !errors.As(err, &unsupported) || unsupported.Operator != "Window" {
-		t.Fatalf("err=%v want bounded Window capability error", err)
+	for _, expression := range []WindowExpr{
+		RollingSum("id", RowsBetween(CurrentRow, Following(1)), "sum"),
+		RollingAvg("id", RowsBetween(CurrentRow, Following(1)), "avg"),
+		RollingCountRows(RowsBetween(UnboundedPreceding, Following(1)), "count"),
+		RollingMin("id", RowsBetween(CurrentRow, UnboundedFollowing), "min"),
+	} {
+		query := session.FromSource(externalSortSemanticSource(t)).WithWindows(
+			NewWindow(nil, OrderBy(Asc("id"))), expression,
+		)
+		_, err := query.Prepare(context.Background())
+		var unsupported *engine.UnsupportedBoundedPlanError
+		if !errors.As(err, &unsupported) || unsupported.Operator != "Window" {
+			t.Fatalf("err=%v want bounded Window capability error", err)
+		}
 	}
 }
 

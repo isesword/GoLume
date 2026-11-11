@@ -11,11 +11,8 @@ import (
 
 const windowStateCellBytes = int64(64)
 
-// validateBoundedWindowExpressions defines the first complete bounded ROWS
-// slice. Ranking functions are constant-state. Aggregates support frames that
-// end at CURRENT ROW and start at CURRENT ROW, N PRECEDING, or UNBOUNDED
-// PRECEDING. FOLLOWING needs look-ahead and remains an explicit capability
-// error instead of silently retaining an unbounded partition.
+// validateBoundedWindowExpressions admits finite Count/Min/Max frames, plus
+// the existing trailing aggregates and ranking/offset/fill operations.
 func validateBoundedWindowExpressions(expressions []WindowExpression) error {
 	for _, expression := range expressions {
 		switch expression.Function {
@@ -25,6 +22,9 @@ func validateBoundedWindowExpressions(expressions []WindowExpression) error {
 			if expression.Frame.Start != expression.Frame.End || (expression.Frame.Start.Kind != WindowCurrentRow && expression.Frame.Start.Kind != WindowPreceding && expression.Frame.Start.Kind != WindowFollowing) || expression.Frame.Start.Offset < 0 {
 				return fmt.Errorf("bounded offset window %q requires a finite offset", expression.Alias)
 			}
+			continue
+		}
+		if finiteRowsAggregate(expression) {
 			continue
 		}
 		if expression.Frame.End.Kind != WindowCurrentRow {

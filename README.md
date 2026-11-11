@@ -207,6 +207,11 @@ fsync 和原子提交；失败不返回临时路径。
 有效的 false、空列表及子项全 NULL 的 struct 均计为一个值；空窗口返回 0。
 `RollingCountRows` 与 `RollingCount` 均验证窗口帧。见 [滚动计数契约](docs/WINDOW_COUNT.md)。
 
+`RollingCountRows`、`RollingCount`、`RollingMin` 和 `RollingMax` 的 bounded
+执行现支持两端均有限的 PRECEDING / CURRENT ROW / FOLLOWING 组合，包括纯过去、
+跨当前行和纯未来窗口。结果按分区裁剪；有限环状态、前瞻批次及输出均受内存预算约束。
+Sum/Avg 和无界 FOLLOWING 不在本次扩展范围。见 [有限 ROWS 窗口](docs/WINDOW_BOUNDED_ROWS.md)。
+
 ## Lazy ordering API
 
 ```go

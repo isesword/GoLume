@@ -27,8 +27,9 @@ can have an empty ROWS frame.
   positive and negative zero. NaN payload preservation is not a public
   guarantee.
 - Resident execution supports the existing ROWS frames. Bounded execution
-  still supports CURRENT ROW, finite PRECEDING, and UNBOUNDED PRECEDING starts
-  with a CURRENT ROW end. No frame capability is added here.
+  additionally supports all valid combinations of finite PRECEDING, CURRENT
+  ROW, and FOLLOWING endpoints. Existing UNBOUNDED PRECEDING to CURRENT ROW
+  frames are preserved. See [finite ROWS execution](WINDOW_BOUNDED_ROWS.md).
 
 ## Storage and lifetime
 

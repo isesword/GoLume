@@ -9,7 +9,7 @@ import (
 func isFillWindow(f WindowFunction) bool { return f == WindowForwardFill || f == WindowBackwardFill }
 
 func needsFutureWindow(e WindowExpression) bool {
-	return e.Function == WindowBackwardFill || ((e.Function == WindowShift || e.Function == WindowDiff) && e.Frame.Start.Kind == WindowFollowing)
+	return needsFiniteRowsWindow(e) || e.Function == WindowBackwardFill || ((e.Function == WindowShift || e.Function == WindowDiff) && e.Frame.Start.Kind == WindowFollowing)
 }
 
 func validateFillWindow(schema memory.Schema, e WindowExpression, output memory.Field) error {
