@@ -109,6 +109,28 @@ first-overflow rows. Int64 scale has dedicated factor `0`, `1`, and `-1` paths
 and precomputed legal bounds for other factors. Float64 preserves IEEE NaN,
 infinity, and signed-zero behavior.
 
+## Operation-level reduction benchmarks
+
+`BenchmarkKernelID` executes every registered SUM and MIN/MAX reduction using
+one 64-row dense mask per invocation, reported as `64 rows/op`. Other families
+retain their 65,536-row fixture. Integer inputs are 0 through 63; floating-point
+inputs are 1 through 64. SUM preserves narrow-to-Int64 widening and native-width
+wrapping; MIN/MAX retains both return values, including exact floating-point
+bits. An independent row-by-row oracle checks both scalar and forced-SIMD
+outputs before timing, in addition to the cross-backend equality check.
+
+The earlier unified benchmark omitted the reduction dispatch branch. Its
+`sum-*-masked` and `minmax-*-masked` samples measured no kernel work and are
+invalid performance evidence. Do not compare those samples with corrected
+results or infer a regression from their lower timings. Dedicated masked SUM
+and MIN/MAX benchmarks are separate and were not affected by this omission.
+
+This repair changes test/benchmark code only. It grants no new statistical
+approval and does not change production dispatch. The dense 64-row workload
+does not establish performance for sparse masks, other sizes, or full queries.
+Use the dedicated family benchmarks for broader shapes and report the build,
+CPU, runtime SIMD width, and actual workload with fresh measurements.
+
 ## Historical performance evidence
 
 The following records describe earlier versions and the former measured-only

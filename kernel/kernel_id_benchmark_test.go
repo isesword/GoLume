@@ -13,19 +13,20 @@ import (
 // sets into two slots and requires identical results before any timing
 // sample is accepted.
 type kernelBenchOutput struct {
-	bitmap   memory.Bitmap
-	validity memory.Bitmap
-	i8       []int8
-	i16      []int16
-	i32      []int32
-	i64      []int64
-	u8       []uint8
-	u16      []uint16
-	u32      []uint32
-	u64      []uint64
-	f32      []float32
-	f64      []float64
-	count    int
+	bitmap    memory.Bitmap
+	validity  memory.Bitmap
+	i8        []int8
+	i16       []int16
+	i32       []int32
+	i64       []int64
+	u8        []uint8
+	u16       []uint16
+	u32       []uint32
+	u64       []uint64
+	f32       []float32
+	f64       []float64
+	count     int
+	reduction [2]uint64
 }
 
 func newKernelBenchOutput(rows int) kernelBenchOutput {
@@ -59,10 +60,14 @@ func (o *kernelBenchOutput) clear() {
 	clear(o.f32)
 	clear(o.f64)
 	o.count = 0
+	o.reduction = [2]uint64{}
 }
 
 // diff reports the first difference between two output snapshots.
 func (o kernelBenchOutput) diff(other kernelBenchOutput) error {
+	if o.reduction != other.reduction {
+		return fmt.Errorf("reduction result bits %x != %x", o.reduction, other.reduction)
+	}
 	if o.count != other.count {
 		return fmt.Errorf("returned count %d != %d", o.count, other.count)
 	}
@@ -113,6 +118,7 @@ func (o kernelBenchOutput) diff(other kernelBenchOutput) error {
 // mixed ASCII/Unicode string layout of BenchmarkStringMatchKernel.
 type kernelBenchFixture struct {
 	rows                           int
+	reductionMask                  uint64
 	i8a, i8b                       []int8
 	i16a, i16b                     []int16
 	i32a, i32b                     []int32
@@ -135,7 +141,7 @@ type kernelBenchFixture struct {
 }
 
 func newKernelBenchFixture(rows int) *kernelBenchFixture {
-	f := &kernelBenchFixture{rows: rows}
+	f := &kernelBenchFixture{rows: rows, reductionMask: ^uint64(0)}
 	f.i8a, f.i8b = make([]int8, rows), make([]int8, rows)
 	f.i16a, f.i16b = make([]int16, rows), make([]int16, rows)
 	f.i32a, f.i32b = make([]int32, rows), make([]int32, rows)
@@ -215,6 +221,8 @@ func (f *kernelBenchFixture) matchLiteral(op StringMatchOp) []byte {
 func (f *kernelBenchFixture) invoke(set Set, id KernelID, slot int) {
 	out := &f.outputs[slot]
 	switch id.kind {
+	case KernelReduction:
+		f.invokeReduction(set, id, out)
 	case KernelBitwise:
 		switch id.typ {
 		case memory.TypeInt32:
@@ -359,6 +367,8 @@ func (f *kernelBenchFixture) invoke(set Set, id KernelID, slot int) {
 		case memory.TypeFloat64:
 			out.count = set.CompactFloat64(f.f64a, f.selection, out.f64)
 		}
+	default:
+		panic(fmt.Sprintf("kernel benchmark: unsupported kind %v", id.kind))
 	}
 }
 
@@ -368,7 +378,9 @@ func (f *kernelBenchFixture) invoke(set Set, id KernelID, slot int) {
 //
 // Every kernel first goes through a correctness self-check: the scalar and
 // forced-SIMD sets must produce byte-identical outputs, otherwise the
-// benchmark fails and no timing sample is recorded.
+// benchmark fails and no timing sample is recorded. Reductions additionally
+// match an independent oracle. Their bounded API consumes one 64-row dense
+// block per invocation, not the 1<<16-row fixture used by other families.
 func BenchmarkKernelID(b *testing.B) {
 	const rows = 1 << 16
 	fixture := newKernelBenchFixture(rows)
@@ -380,6 +392,13 @@ func BenchmarkKernelID(b *testing.B) {
 		fixture.outputs[1].clear()
 		fixture.invoke(scalarSet, id, 0)
 		fixture.invoke(simdSet, id, 1)
+		if id.kind == KernelReduction {
+			for slot := range fixture.outputs {
+				if err := fixture.checkReduction(id, slot); err != nil {
+					b.Fatalf("kernel %s, slot %d: %v", id, slot, err)
+				}
+			}
+		}
 		if err := fixture.outputs[0].diff(fixture.outputs[1]); err != nil {
 			b.Fatalf("kernel %s: scalar and SIMD results differ: %v", id, err)
 		}
@@ -395,6 +414,9 @@ func BenchmarkKernelID(b *testing.B) {
 				set := New(choice.mode)
 				b.Run(choice.name, func(b *testing.B) {
 					b.ReportAllocs()
+					if id.kind == KernelReduction {
+						b.ReportMetric(64, "rows/op")
+					}
 					for iteration := 0; iteration < b.N; iteration++ {
 						fixture.invoke(set, id, 0)
 					}
