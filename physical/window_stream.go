@@ -353,10 +353,7 @@ type rollingWindowState struct {
 	validCount  int64
 	signedSum   big.Int
 	unsignedSum big.Int
-	finiteSum   float64
-	nanCount    int64
-	posInf      int64
-	negInf      int64
+	exactSum    *windowExactSum
 	best        windowNumericCell
 	hasBest     bool
 }
@@ -382,6 +379,9 @@ func newRollingWindowState(expression WindowExpression, input, output memory.Dat
 }
 
 func (s *rollingWindowState) initialize() {
+	if usesExactWindowSum(s.expression.Function, s.inputType) {
+		s.exactSum = new(windowExactSum)
+	}
 	if s.unbounded || s.expression.Function == WindowCountRows || s.width <= 0 {
 		return
 	}
@@ -400,8 +400,9 @@ func (s *rollingWindowState) reset() {
 	s.validCount = 0
 	s.signedSum.SetInt64(0)
 	s.unsignedSum.SetInt64(0)
-	s.finiteSum = 0
-	s.nanCount, s.posInf, s.negInf = 0, 0, 0
+	if s.exactSum != nil {
+		*s.exactSum = windowExactSum{}
+	}
 	s.best, s.hasBest = windowNumericCell{}, false
 }
 
@@ -411,6 +412,9 @@ func (s *rollingWindowState) advance(cell windowNumericCell) error {
 			s.best = cell
 		}
 		return nil
+	}
+	if s.position == math.MaxInt64 {
+		return fmt.Errorf("window partition row count exceeds int64")
 	}
 	cell.seq = s.position
 	s.position++
@@ -499,36 +503,14 @@ func (s *rollingWindowState) addSum(cell windowNumericCell, direction int64) {
 }
 
 func (s *rollingWindowState) addFloat(cell windowNumericCell, direction int64) {
-	value := cell.f64
-	if windowSigned(s.inputType) {
-		value = float64(cell.i64)
-	}
-	if windowUnsigned(s.inputType) {
-		value = float64(cell.u64)
-	}
 	switch {
-	case math.IsNaN(value):
-		s.nanCount += direction
-	case math.IsInf(value, 1):
-		s.posInf += direction
-	case math.IsInf(value, -1):
-		s.negInf += direction
+	case windowSigned(s.inputType):
+		s.exactSum.addSigned(cell.i64, direction)
+	case windowUnsigned(s.inputType):
+		s.exactSum.addUnsigned(cell.u64, direction)
 	default:
-		s.finiteSum += float64(direction) * value
+		s.exactSum.addFloat(cell.f64, direction)
 	}
-}
-
-func (s *rollingWindowState) floatTotal() float64 {
-	if s.nanCount > 0 || s.posInf > 0 && s.negInf > 0 {
-		return math.NaN()
-	}
-	if s.posInf > 0 {
-		return math.Inf(1)
-	}
-	if s.negInf > 0 {
-		return math.Inf(-1)
-	}
-	return s.finiteSum
 }
 
 func windowCellBetter(value, best windowNumericCell, typ memory.DataType, minimum bool) bool {
@@ -626,6 +608,13 @@ func newOrderedWindowStream(ctx context.Context, owner *WindowSource, input sour
 			return nil, fmt.Errorf("window retained-state estimate overflows int64")
 		}
 		stateBytes += cells * windowStateCellBytes
+		if usesExactWindowSum(expression.Function, inputType) {
+			if stateBytes > math.MaxInt64-windowExactSumBytes {
+				_ = child.Close()
+				return nil, fmt.Errorf("window exact-sum state estimate overflows int64")
+			}
+			stateBytes += windowExactSumBytes
+		}
 	}
 	if stream.manager != nil {
 		stream.baseReservation, err = stream.manager.Reserve(ctx, stateBytes)
@@ -927,12 +916,12 @@ func (s *rollingWindowState) write(batch *memory.Batch, row int) error {
 			memory.Set(vector.Validity, row)
 		default:
 			vector := batch.Float64s[expression.Alias]
-			vector.Values[row] = s.floatTotal()
+			vector.Values[row] = s.exactSum.result(1)
 			memory.Set(vector.Validity, row)
 		}
 	case WindowAvg:
 		vector := batch.Float64s[expression.Alias]
-		vector.Values[row] = s.floatTotal() / float64(s.validCount)
+		vector.Values[row] = s.exactSum.result(s.validCount)
 		memory.Set(vector.Validity, row)
 	case WindowMin, WindowMax:
 		if s.hasBest {

@@ -670,56 +670,82 @@ func evaluateWindowSum(ctx context.Context, input *memory.Batch, schema memory.S
 		output.Uint64s[window.Alias] = &memory.Uint64Vector{Values: values, Validity: validity}
 		return nil
 	case windowFloat(typ):
-		values, validity := windowNullableF64(output, window.Alias, input.Rows)
-		for i, row := range rows {
-			if err := everyWindowRows(ctx, i); err != nil {
-				return err
-			}
-			lo, hi := windowFrameRange(i, len(rows), window.Frame)
-			total := 0.0
-			found := false
-			for j := lo; j <= hi; j++ {
-				value, ok, err := windowFloat64(input, schema, window.Column, rows[j])
-				if err != nil {
-					return err
-				}
-				if ok {
-					total += value
-					found = true
-				}
-			}
-			if found {
-				values[row] = total
-				memory.Set(validity, row)
-			}
-		}
-		output.Float64s[window.Alias] = &memory.Float64Vector{Values: values, Validity: validity}
-		return nil
+		return evaluateExactWindowFloat(ctx, input, schema, output, rows, window, false)
 	default:
 		return fmt.Errorf("window sum column %q type %s is not numeric", window.Column, typ)
 	}
 }
 
 func evaluateWindowAverage(ctx context.Context, input *memory.Batch, schema memory.Schema, output *memory.Batch, rows []int, window WindowExpression) error {
+	return evaluateExactWindowFloat(ctx, input, schema, output, rows, window, true)
+}
+
+func evaluateExactWindowFloat(ctx context.Context, input *memory.Batch, schema memory.Schema, output *memory.Batch, rows []int, window WindowExpression, average bool) error {
 	values, validity := windowNullableF64(output, window.Alias, input.Rows)
+	typ, _ := fieldType(schema, window.Column)
+	var total windowExactSum
+	var count int64
+	update := func(index int, direction int64) error {
+		cell, err := readWindowNumericCell(input, schema, window, rows[index])
+		if err != nil {
+			return err
+		}
+		if cell.valid {
+			switch {
+			case windowSigned(typ):
+				total.addSigned(cell.i64, direction)
+			case windowUnsigned(typ):
+				total.addUnsigned(cell.u64, direction)
+			default:
+				total.addFloat(cell.f64, direction)
+			}
+			count += direction
+		}
+		return nil
+	}
+	// Every supported constant ROWS bound moves monotonically. Reuse the exact
+	// frame state instead of rescanning it, with no retained ring in resident
+	// mode because the input is already materialized. Each input enters and
+	// leaves at most once, including following, empty and disjoint frames.
+	left, right := 0, 0
 	for i, row := range rows {
 		if err := everyWindowRows(ctx, i); err != nil {
 			return err
 		}
 		lo, hi := windowFrameRange(i, len(rows), window.Frame)
-		total, count := 0.0, int64(0)
-		for j := lo; j <= hi; j++ {
-			value, ok, err := windowNumericFloat(input, schema, window.Column, rows[j])
-			if err != nil {
+		end := hi + 1
+		if lo >= end {
+			total, count = windowExactSum{}, 0
+			left, right = lo, lo
+			continue
+		}
+		for left < lo && left < right {
+			if err := everyWindowRows(ctx, left); err != nil {
 				return err
 			}
-			if ok {
-				total += value
-				count++
+			if err := update(left, -1); err != nil {
+				return err
 			}
+			left++
+		}
+		if right < lo {
+			left, right = lo, lo
+		}
+		for right < end {
+			if err := everyWindowRows(ctx, right); err != nil {
+				return err
+			}
+			if err := update(right, 1); err != nil {
+				return err
+			}
+			right++
 		}
 		if count != 0 {
-			values[row] = total / float64(count)
+			divisor := int64(1)
+			if average {
+				divisor = count
+			}
+			values[row] = total.result(divisor)
 			memory.Set(validity, row)
 		}
 	}
