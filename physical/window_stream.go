@@ -819,7 +819,7 @@ func estimateWindowOutputBytes(_ memory.Schema, fields []memory.Field, rows int)
 
 func initializeWindowOutputs(batch *memory.Batch, fields []memory.Field, rows int, expressions []WindowExpression) {
 	for index, field := range fields {
-		if expressions[index].Function == WindowShift || expressions[index].Function == WindowDiff || isFillWindow(expressions[index].Function) {
+		if expressions[index].Function == WindowShift || expressions[index].Function == WindowDiff || isFillWindow(expressions[index].Function) || expressions[index].Function == WindowMin || expressions[index].Function == WindowMax {
 			clearWindowOutput(batch, field.Name)
 			initializeOffsetOutput(batch, field.Name, field.Type, rows)
 			continue
@@ -930,34 +930,8 @@ func (s *rollingWindowState) write(batch *memory.Batch, row int) error {
 		vector.Values[row] = s.floatTotal() / float64(s.validCount)
 		memory.Set(vector.Validity, row)
 	case WindowMin, WindowMax:
-		if !s.hasBest {
-			return nil
-		}
-		switch {
-		case windowSigned(s.inputType):
-			if s.outputType == memory.TypeInt64 {
-				vector := batch.Int64s[expression.Alias]
-				vector.Values[row] = s.best.i64
-				memory.Set(vector.Validity, row)
-			} else {
-				vector := batch.Int32s[expression.Alias]
-				vector.Values[row] = int32(s.best.i64)
-				memory.Set(vector.Validity, row)
-			}
-		case windowUnsigned(s.inputType):
-			if s.outputType == memory.TypeUint64 {
-				vector := batch.Uint64s[expression.Alias]
-				vector.Values[row] = s.best.u64
-				memory.Set(vector.Validity, row)
-			} else {
-				vector := batch.Uint32s[expression.Alias]
-				vector.Values[row] = uint32(s.best.u64)
-				memory.Set(vector.Validity, row)
-			}
-		default:
-			vector := batch.Float64s[expression.Alias]
-			vector.Values[row] = s.best.f64
-			memory.Set(vector.Validity, row)
+		if s.hasBest {
+			setOffsetOutput(batch, expression.Alias, s.outputType, row, s.best)
 		}
 	}
 	return nil

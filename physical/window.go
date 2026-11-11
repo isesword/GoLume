@@ -160,6 +160,11 @@ func NewWindowSourceWithOptions(input source.Source, partitionBy []string, order
 	}
 	inputSchema := input.Schema()
 	for index, expression := range expressions {
+		if expression.Function == WindowMin || expression.Function == WindowMax {
+			if err := validateExtremaWindow(inputSchema, expression, outputFields[index]); err != nil {
+				return nil, err
+			}
+		}
 		if isFillWindow(expression.Function) {
 			if err := validateFillWindow(inputSchema, expression, outputFields[index]); err != nil {
 				return nil, err
@@ -369,7 +374,7 @@ func (r *windowReader) Next(ctx context.Context, dst *memory.Batch) (bool, error
 		return false, err
 	}
 	for _, window := range r.owner.expressions {
-		clearWindowOutput(dst, window.Alias)
+		clearOwnedWindowOutput(dst, window.Alias)
 		if len(rows) == 0 {
 			if err := evaluateWindowExpression(ctx, full, r.owner.input.Schema(), dst, nil, r.owner.orderBy, window); err != nil {
 				return false, err
@@ -493,25 +498,11 @@ func windowNullableI64(batch *memory.Batch, name string, rows int) ([]int64, mem
 	return make([]int64, rows), memory.EnsureBitmap(nil, rows)
 }
 
-func windowNullableI32(batch *memory.Batch, name string, rows int) ([]int32, memory.Bitmap) {
-	if existing, ok := batch.Int32s[name]; ok && len(existing.Values) == rows {
-		return existing.Values, preserveWindowValidity(existing.Validity, rows)
-	}
-	return make([]int32, rows), memory.EnsureBitmap(nil, rows)
-}
-
 func windowNullableU64(batch *memory.Batch, name string, rows int) ([]uint64, memory.Bitmap) {
 	if existing, ok := batch.Uint64s[name]; ok && len(existing.Values) == rows {
 		return existing.Values, preserveWindowValidity(existing.Validity, rows)
 	}
 	return make([]uint64, rows), memory.EnsureBitmap(nil, rows)
-}
-
-func windowNullableU32(batch *memory.Batch, name string, rows int) ([]uint32, memory.Bitmap) {
-	if existing, ok := batch.Uint32s[name]; ok && len(existing.Values) == rows {
-		return existing.Values, preserveWindowValidity(existing.Validity, rows)
-	}
-	return make([]uint32, rows), memory.EnsureBitmap(nil, rows)
 }
 
 func windowNullableF64(batch *memory.Batch, name string, rows int) ([]float64, memory.Bitmap) {
@@ -538,20 +529,26 @@ func everyWindowRows(ctx context.Context, i int) error {
 	return nil
 }
 
+// clearWindowOutput detaches an alias without releasing its payload. Ordered
+// and look-ahead outputs may still borrow the original vector from the child.
 func clearWindowOutput(batch *memory.Batch, name string) {
-	delete(batch.Int8s, name)
-	delete(batch.Int16s, name)
-	delete(batch.Uint8s, name)
-	delete(batch.Uint16s, name)
-	delete(batch.Float32s, name)
-	delete(batch.Int64s, name)
-	delete(batch.Int32s, name)
-	delete(batch.Uint32s, name)
-	delete(batch.Uint64s, name)
-	delete(batch.Float64s, name)
-	delete(batch.Strings, name)
-	delete(batch.DictStrings, name)
-	delete(batch.Opaque, name)
+	removeColumn(batch, name)
+}
+
+// clearOwnedWindowOutput is only for resident takeRows results, whose payloads
+// are independent of the input. Release replaced Arrow arrays before dropping
+// their last owned binding; never use this for a shallow borrowed batch.
+func clearOwnedWindowOutput(batch *memory.Batch, name string) {
+	if vector := batch.Opaque[name]; vector != nil && vector.Owned && vector.Value != nil {
+		if releaser, ok := vector.Value.(interface{ Release() }); ok {
+			releaser.Release()
+		}
+		vector.Owned = false
+	}
+	if vector := batch.Structs[name]; vector != nil && vector.Values != nil {
+		vector.Values.ReleaseOwned()
+	}
+	removeColumn(batch, name)
 }
 
 func windowFrameRange(position, size int, frame WindowFrame) (int, int) {
@@ -725,122 +722,46 @@ func evaluateWindowAverage(ctx context.Context, input *memory.Batch, schema memo
 	return nil
 }
 
-func evaluateWindowMinMax(ctx context.Context, input *memory.Batch, schema memory.Schema, output *memory.Batch, rows []int, window WindowExpression, typ memory.DataType) error {
-	switch {
-	case windowSigned(typ):
-		var values []int64
-		var validity memory.Bitmap
-		var narrow []int32
-		if typ == memory.TypeInt64 {
-			values, validity = windowNullableI64(output, window.Alias, input.Rows)
-		} else {
-			narrow, validity = windowNullableI32(output, window.Alias, input.Rows)
-			values = make([]int64, input.Rows)
-			for i := range narrow {
-				values[i] = int64(narrow[i])
-			}
-		}
-		for i, row := range rows {
-			if err := everyWindowRows(ctx, i); err != nil {
-				return err
-			}
-			lo, hi := windowFrameRange(i, len(rows), window.Frame)
-			var best int64
-			found := false
-			for j := lo; j <= hi; j++ {
-				value, ok, err := windowInt64(input, schema, window.Column, rows[j])
-				if err != nil {
-					return err
-				}
-				if ok && (!found || windowPickInt(value, best, window.Function == WindowMin)) {
-					best, found = value, true
-				}
-			}
-			if found {
-				values[row] = best
-				memory.Set(validity, row)
-			}
-		}
-		if typ == memory.TypeInt64 {
-			output.Int64s[window.Alias] = &memory.Int64Vector{Values: values, Validity: validity}
-			return nil
-		}
-		for i := range values {
-			narrow[i] = int32(values[i])
-		}
-		output.Int32s[window.Alias] = &memory.Int32Vector{Values: narrow, Validity: validity}
-		return nil
-	case windowUnsigned(typ):
-		var values []uint64
-		var validity memory.Bitmap
-		var narrow []uint32
-		if typ == memory.TypeUint64 {
-			values, validity = windowNullableU64(output, window.Alias, input.Rows)
-		} else {
-			narrow, validity = windowNullableU32(output, window.Alias, input.Rows)
-			values = make([]uint64, input.Rows)
-			for i := range narrow {
-				values[i] = uint64(narrow[i])
-			}
-		}
-		for i, row := range rows {
-			if err := everyWindowRows(ctx, i); err != nil {
-				return err
-			}
-			lo, hi := windowFrameRange(i, len(rows), window.Frame)
-			var best uint64
-			found := false
-			for j := lo; j <= hi; j++ {
-				value, ok, err := windowUint64(input, schema, window.Column, rows[j])
-				if err != nil {
-					return err
-				}
-				if ok && (!found || windowPickUint(value, best, window.Function == WindowMin)) {
-					best, found = value, true
-				}
-			}
-			if found {
-				values[row] = best
-				memory.Set(validity, row)
-			}
-		}
-		if typ == memory.TypeUint64 {
-			output.Uint64s[window.Alias] = &memory.Uint64Vector{Values: values, Validity: validity}
-			return nil
-		}
-		for i := range values {
-			narrow[i] = uint32(values[i])
-		}
-		output.Uint32s[window.Alias] = &memory.Uint32Vector{Values: narrow, Validity: validity}
-		return nil
-	case windowFloat(typ):
-		values, validity := windowNullableF64(output, window.Alias, input.Rows)
-		for i, row := range rows {
-			if err := everyWindowRows(ctx, i); err != nil {
-				return err
-			}
-			lo, hi := windowFrameRange(i, len(rows), window.Frame)
-			var best float64
-			found := false
-			for j := lo; j <= hi; j++ {
-				value, ok, err := windowFloat64(input, schema, window.Column, rows[j])
-				if err != nil {
-					return err
-				}
-				if ok && (!found || windowPickFloat(value, best, window.Function == WindowMin)) {
-					best, found = value, true
-				}
-			}
-			if found {
-				values[row] = best
-				memory.Set(validity, row)
-			}
-		}
-		output.Float64s[window.Alias] = &memory.Float64Vector{Values: values, Validity: validity}
-		return nil
-	default:
-		return fmt.Errorf("window min/max column %q type %s is not numeric", window.Column, typ)
+// validateExtremaWindow enforces the logical type contract at the physical API
+// boundary too. Extrema preserve the input width and may produce NULL for an
+// empty frame even when the input column is non-nullable.
+func validateExtremaWindow(schema memory.Schema, expression WindowExpression, output memory.Field) error {
+	field, ok := schema.Field(expression.Column)
+	if !ok {
+		return fmt.Errorf("window min/max column %q not found", expression.Column)
 	}
+	if !windowSigned(field.Type) && !windowUnsigned(field.Type) && !windowFloat(field.Type) {
+		return fmt.Errorf("window min/max column %q type %s is not numeric", expression.Column, field.Type)
+	}
+	if output.Name != expression.Alias || output.Type != field.Type || !output.Nullable {
+		return fmt.Errorf("window min/max output field disagrees with expression")
+	}
+	return nil
+}
+
+func evaluateWindowMinMax(ctx context.Context, input *memory.Batch, schema memory.Schema, output *memory.Batch, rows []int, window WindowExpression, typ memory.DataType) error {
+	// The alias was detached from the input before evaluating the expression.
+	// Reuse this owned native-width output across partitions without clearing
+	// the results already written for other partitions.
+	initializeOffsetOutput(output, window.Alias, typ, input.Rows)
+	for i, row := range rows {
+		if err := everyWindowRows(ctx, i); err != nil {
+			return err
+		}
+		lo, hi := windowFrameRange(i, len(rows), window.Frame)
+		best := windowNumericCell{}
+		for j := lo; j <= hi; j++ {
+			value, err := readWindowNumericCell(input, schema, window, rows[j])
+			if err != nil {
+				return err
+			}
+			if value.valid && (!best.valid || windowCellBetter(value, best, typ, window.Function == WindowMin)) {
+				best = value
+			}
+		}
+		setOffsetOutput(output, window.Alias, typ, row, best)
+	}
+	return nil
 }
 
 func windowPickInt(value, best int64, min bool) bool {

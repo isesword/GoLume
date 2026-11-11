@@ -197,6 +197,12 @@ fsync 和原子提交；失败不返回临时路径。
 未核验 GitHub Actions，不表示原始 fixture 或旧 W4 门槛已通过。该历史结果不覆盖
 第二阶段统一表达式变更；第二阶段本地完整验收另见上面的表达式验收记录。
 
+## Rolling Min/Max 结果类型
+
+`RollingMin` / `RollingMax` 在 resident、ordered-state 和 external-sort 三条路径
+均保留输入数值类型及原生向量宽度。直接 physical 调用的输出字段必须与输入类型、
+别名及可空约定一致，不再接受错误的宽化表示。见 [窗口极值契约](docs/WINDOW_EXTREMA.md)。
+
 ## Lazy ordering API
 
 ```go
