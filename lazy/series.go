@@ -33,6 +33,8 @@ func (s Series) Len() int64 {
 }
 
 // NullCount returns the number of NULL rows, or zero after owner closure.
+// Opaque columns use their current GoLume parent-row validity bitmap; their
+// source-native payload is not inspected.
 func (s Series) NullCount() int64 {
 	if s.state == nil {
 		return 0
@@ -905,6 +907,9 @@ func seriesRowValid(batch *memory.Batch, field memory.Field, row int) bool {
 		return batch.StringLists[field.Name].IsValid(row)
 	case field.Type == memory.TypeStruct:
 		return batch.Structs[field.Name].IsValid(row)
+	}
+	if v := batch.Opaque[field.Name]; v != nil {
+		return v.Validity == nil || memory.IsSet(v.Validity, row)
 	}
 	return false
 }
