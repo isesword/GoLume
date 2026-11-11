@@ -610,16 +610,26 @@ func pushProjection(plan logical.Plan, required map[string]struct{}, rules *[]st
 
 	case *logical.Scan:
 		out := cloneScan(n)
-		base := n.Source.Schema()
-		if required == nil {
-			out.Projection = schemaNames(base)
+		// A scan's projection is its output contract, not a disposable hint:
+		// a previous pass may have removed the Projection that established it.
+		// Narrow that contract in its existing order, never the source schema.
+		available, err := logical.InferSchema(n)
+		if err != nil {
+			return nil, err
+		}
+		if len(required) == 0 {
+			// nil demands every output. An empty non-nil set only demands
+			// cardinality (for example COUNT(*) or a literal projection), but
+			// Scan uses an empty projection to mean all source columns. Keep
+			// its current output rather than resurrecting excluded columns.
+			out.Projection = schemaNames(available)
 		} else {
-			out.Projection = orderedRequired(base, required)
+			out.Projection = orderedRequired(available, required)
 			if len(out.Projection) != len(required) {
 				return nil, fmt.Errorf("projection pushdown references columns not present in scan")
 			}
 		}
-		if !equalStrings(out.Projection, schemaNames(base)) {
+		if !equalStrings(out.Projection, schemaNames(n.Source.Schema())) {
 			*rules = append(*rules, "projection-pushdown")
 		}
 		return out, nil

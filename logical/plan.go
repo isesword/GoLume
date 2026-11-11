@@ -12,10 +12,12 @@ type Plan interface {
 	planNode()
 }
 
-// Scan reads rows from a columnar source. Projection and PushedPredicate are
-// optimizer annotations; Sources still evaluate residual row-level predicates
-// in the execution layer unless they explicitly guarantee full predicate
-// execution.
+// Scan reads rows from a columnar source. A non-empty Projection defines its
+// ordered output columns; an empty Projection exposes the entire source schema.
+// Optimizer passes may narrow this output but must not widen or reorder it.
+// PushedPredicate is an optimizer annotation; sources still evaluate residual
+// row-level predicates in the execution layer unless they explicitly guarantee
+// full predicate execution.
 type Scan struct {
 	Source          source.Source
 	Projection      []string
