@@ -194,6 +194,20 @@ func estimateBatchRangeBytesAccounting(src *Batch, offset, length int, inherited
 			return 0, err
 		}
 	}
+	for name, v := range src.Int64Lists {
+		lo, hi, err := int64ListRangeBounds(v, offset, length)
+		if err != nil {
+			return 0, fmt.Errorf("list %q: %w", name, err)
+		}
+		childLength := int(hi - lo)
+		childValidity := int64(0)
+		if v.Values.Validity != nil && childLength > 0 {
+			childValidity = int64(WordsFor(childLength)) * 8
+		}
+		if err := addNative(int64(length+1)*4 + validityBytes(v.Validity) + int64(childLength)*8 + childValidity); err != nil {
+			return 0, err
+		}
+	}
 	for name, v := range src.Structs {
 		if v == nil || v.Values == nil || v.Rows < end {
 			return 0, fmt.Errorf("struct column %q is shorter than range", name)
@@ -381,6 +395,18 @@ func CloneBatchRange(src *Batch, offset, length int) (*Batch, error) {
 			},
 		}
 	}
+	for name, v := range src.Int64Lists {
+		lo, hi, err := int64ListRangeBounds(v, offset, length)
+		if err != nil {
+			return fail(name, err)
+		}
+		offsets, err := cloneRangeOffsets(v.Offsets, offset, length, lo)
+		if err != nil {
+			return fail(name, err)
+		}
+		dst.Int64Lists[name] = &Int64ListVector{Offsets: offsets, Validity: cloneValidityRange(v.Validity, offset, length), Encoding: v.Encoding, Values: &Int64Vector{Values: append([]int64(nil), v.Values.Values[lo:hi]...), Validity: cloneValidityRange(v.Values.Validity, int(lo), int(hi-lo)), Encoding: v.Values.Encoding}}
+	}
+
 	for name, v := range src.Structs {
 		cloned, err := CloneStructRange(v, offset, length)
 		if err != nil {

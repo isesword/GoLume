@@ -173,6 +173,13 @@ func bindTyped(dst *memory.Batch, b binding, arr arrow.Array, partition int, val
 			Encoding:         memory.EncodingDictionary,
 		}
 	case *array.List:
+		if b.field.Type == memory.TypeList && len(b.field.Children) == 1 && b.field.Children[0].Type == memory.TypeInt64 {
+			if partition < 0 || partition >= len(b.int64Lists) || b.int64Lists[partition] == nil {
+				return false, nil
+			}
+			dst.Int64Lists[b.name] = b.int64Lists[partition]
+			return true, nil
+		}
 		if b.field.Type != memory.TypeList || partition < 0 || partition >= len(b.stringLists) || b.stringLists[partition] == nil {
 			return false, nil
 		}
@@ -218,7 +225,8 @@ func arrowStructVector(a *array.Struct, field memory.Field, parentValidity memor
 			name: child.Name, field: child,
 			validities: []memory.Bitmap{validity}, offsets: make([][]uint32, 1),
 			i32: make([][]int32, 1), i64: make([][]int64, 1), u32: make([][]uint32, 1),
-			f64: make([][]float64, 1), stringLists: make([]*memory.StringListVector, 1),
+			int64Lists: make([]*memory.Int64ListVector, 1),
+			f64:        make([][]float64, 1), stringLists: make([]*memory.StringListVector, 1),
 		}
 		if err := cachePhysicalValues(&b, 0, arr, parentValidity); err != nil {
 			return nil, fmt.Errorf("struct child %q: %w", child.Name, err)
@@ -227,6 +235,14 @@ func arrowStructVector(a *array.Struct, field memory.Field, parentValidity memor
 		case *array.String:
 			b.offsets[0] = offsets32(x.ValueOffsets())
 		case *array.List:
+			if child.Children[0].Type == memory.TypeInt64 {
+				list, err := arrowInt64ListVector(x, validity)
+				if err != nil {
+					return nil, fmt.Errorf("struct child %q: %w", child.Name, err)
+				}
+				b.int64Lists[0] = list
+				break
+			}
 			list, err := arrowStringListVector(x, validity)
 			if err != nil {
 				return nil, fmt.Errorf("struct child %q: %w", child.Name, err)

@@ -1493,6 +1493,9 @@ func bindDecodedBatch(dst *memory.Batch, decoded *memory.Batch) {
 	if dst.DictStrings == nil {
 		dst.DictStrings = original.DictStrings
 	}
+	if dst.Int64Lists == nil {
+		dst.Int64Lists = original.Int64Lists
+	}
 	if dst.StringLists == nil {
 		dst.StringLists = original.StringLists
 	}

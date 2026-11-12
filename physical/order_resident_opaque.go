@@ -351,7 +351,7 @@ func residentUsesOpaque(field memory.Field, b *memory.Batch) bool {
 		}
 		return b.Strings[name] == nil && b.DictStrings[name] == nil
 	case memory.TypeList:
-		return b.StringLists[name] == nil
+		return b.StringLists[name] == nil && b.Int64Lists[name] == nil
 	case memory.TypeStruct:
 		return b.Structs[name] == nil
 	default:

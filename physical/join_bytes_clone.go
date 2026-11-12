@@ -80,6 +80,15 @@ func cloneByteJoinBatch(src *memory.Batch) (*memory.Batch, error) {
 		}
 		dst.StringLists[k] = x
 	}
+	for k, v := range src.Int64Lists {
+		x := &memory.Int64ListVector{
+			Offsets:  copyByteJoinSlice(v.Offsets),
+			Validity: copyByteJoinSlice(v.Validity),
+			Encoding: v.Encoding,
+			Values:   &memory.Int64Vector{Values: copyByteJoinSlice(v.Values.Values), Validity: copyByteJoinSlice(v.Values.Validity), Encoding: v.Values.Encoding},
+		}
+		dst.Int64Lists[k] = x
+	}
 	for k, v := range src.Structs {
 		values, err := cloneByteJoinBatch(v.Values)
 		if err != nil {

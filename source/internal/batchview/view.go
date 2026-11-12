@@ -270,6 +270,24 @@ func scratchBytes(src *memory.Batch, offset, length int) (int64, error) {
 		}
 		n += validityBytes(v.Validity, offset, length)
 	}
+	for name, v := range src.Int64Lists {
+		if v == nil || v.Values == nil || len(v.Offsets) < end+1 {
+			return 0, fmt.Errorf("list column %q shorter than source range", name)
+		}
+		lo, hi := v.Offsets[offset], v.Offsets[end]
+		if lo > hi || uint64(hi) > uint64(v.Values.Len()) || v.Validity != nil && len(v.Validity) < memory.WordsFor(end) || v.Values.Validity != nil && len(v.Values.Validity) < memory.WordsFor(int(hi)) {
+			return 0, fmt.Errorf("list column %q invalid offsets or validity", name)
+		}
+		for row := offset; row < end; row++ {
+			if v.Offsets[row] > v.Offsets[row+1] {
+				return 0, fmt.Errorf("list column %q decreasing offsets", name)
+			}
+		}
+		n += validityBytes(v.Validity, offset, length) + validityBytes(v.Values.Validity, int(lo), int(hi-lo))
+		if lo != 0 {
+			n += int64(length+1) * 4
+		}
+	}
 	for name, v := range src.StringLists {
 		if v == nil || v.Values == nil || len(v.Offsets) < end+1 {
 			return 0, fmt.Errorf("list column %q shorter than source range", name)
@@ -368,6 +386,10 @@ func (view *View) bind(ctx context.Context, dst, src *memory.Batch, offset, leng
 	}
 	for name, v := range src.DictStrings {
 		dst.DictStrings[name] = &memory.DictionaryStringVector{Indices: v.Indices[offset:end], Validity: validity(v.Validity, offset, length), Offsets: v.Offsets, Data: v.Data, Encoding: v.Encoding, DictionaryDomain: v.DictionaryDomain}
+	}
+	for name, v := range src.Int64Lists {
+		lo, hi := v.Offsets[offset], v.Offsets[end]
+		dst.Int64Lists[name] = &memory.Int64ListVector{Offsets: offsets(v.Offsets, offset, length), Values: &memory.Int64Vector{Values: v.Values.Values[lo:hi], Validity: validity(v.Values.Validity, int(lo), int(hi-lo)), Encoding: v.Values.Encoding}, Validity: validity(v.Validity, offset, length), Encoding: v.Encoding}
 	}
 	for name, v := range src.StringLists {
 		lo, hi := v.Offsets[offset], v.Offsets[end]

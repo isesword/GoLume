@@ -197,6 +197,9 @@ func compactLayoutParents(src, dst *memory.Batch, rows []int, allocate, bounded 
 	if len(src.DictStrings) != len(dst.DictStrings) {
 		fits = false
 	}
+	if len(src.Int64Lists) != len(dst.Int64Lists) {
+		fits = false
+	}
 	if len(src.StringLists) != len(dst.StringLists) {
 		fits = false
 	}
@@ -697,6 +700,48 @@ func compactLayoutParents(src, dst *memory.Batch, rows []int, allocate, bounded 
 			out.Validity = bits
 			out.Values.Validity = childBits
 			dst.StringLists[name] = out
+		}
+	}
+	for name, v := range src.Int64Lists {
+		children, err := compactInt64ListSize(v, rows, parents)
+		if err != nil {
+			return 0, false, err
+		}
+		if v.Validity != nil && len(v.Validity) < memory.WordsFor(src.Rows) || v.Values.Validity != nil && len(v.Values.Validity) < memory.WordsFor(len(v.Values.Values)) {
+			return 0, false, fmt.Errorf("short compact list validity")
+		}
+		out := dst.Int64Lists[name]
+		if out == nil || out.Values == nil {
+			fits = false
+			if allocate {
+				out = &memory.Int64ListVector{Values: &memory.Int64Vector{}}
+			}
+		}
+		var old, childOld memory.Bitmap
+		if out != nil && out.Values != nil {
+			old = out.Validity
+			childOld = out.Values.Validity
+		}
+		bits, err := validity(v.Validity, old, n, true)
+		if err != nil {
+			return 0, false, err
+		}
+		childBits, err := validity(v.Values.Validity, childOld, children, false)
+		if err != nil {
+			return 0, false, err
+		}
+		if out == nil || out.Values == nil || cap(out.Offsets) < n+1 || cap(out.Values.Values) < children {
+			fits = false
+		}
+		if err := add(int64(n+1)*4 + int64(children)*8); err != nil {
+			return 0, false, err
+		}
+		if allocate {
+			out.Offsets = make([]uint32, n+1)
+			out.Values.Values = make([]int64, children)
+			out.Validity = bits
+			out.Values.Validity = childBits
+			dst.Int64Lists[name] = out
 		}
 	}
 	for name, v := range src.Structs {

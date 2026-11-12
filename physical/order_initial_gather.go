@@ -151,12 +151,12 @@ func externalSortInitialGatherRounded(n int64) (int64, error) {
 	return n &^ 15, err
 }
 
-func externalSortInitialGatherCounts(b *memory.Batch) [15]int {
-	return [15]int{len(b.Int8s), len(b.Int16s), len(b.Int32s), len(b.Int64s), len(b.Uint8s), len(b.Uint16s), len(b.Uint32s), len(b.Uint64s), len(b.Float32s), len(b.Float64s), len(b.Decimals), len(b.Strings), len(b.DictStrings), len(b.StringLists), len(b.Structs)}
+func externalSortInitialGatherCounts(b *memory.Batch) [16]int {
+	return [16]int{len(b.Int8s), len(b.Int16s), len(b.Int32s), len(b.Int64s), len(b.Uint8s), len(b.Uint16s), len(b.Uint32s), len(b.Uint64s), len(b.Float32s), len(b.Float64s), len(b.Decimals), len(b.Strings), len(b.DictStrings), len(b.StringLists), len(b.Structs), len(b.Int64Lists)}
 }
 
-func externalSortInitialGatherChildCounts(v *memory.StructVector, rows int) [15]int {
-	var counts [15]int
+func externalSortInitialGatherChildCounts(v *memory.StructVector, rows int) [16]int {
+	var counts [16]int
 	if rows == 0 {
 		return counts
 	}
@@ -173,8 +173,8 @@ func externalSortInitialGatherChildCounts(v *memory.StructVector, rows int) [15]
 	return counts
 }
 
-func externalSortInitialGatherMapMetadata(counts [15]int) (int64, error) {
-	sizes := [15]uintptr{unsafe.Sizeof(memory.Int8Vector{}), unsafe.Sizeof(memory.Int16Vector{}), unsafe.Sizeof(memory.Int32Vector{}), unsafe.Sizeof(memory.Int64Vector{}), unsafe.Sizeof(memory.Uint8Vector{}), unsafe.Sizeof(memory.Uint16Vector{}), unsafe.Sizeof(memory.Uint32Vector{}), unsafe.Sizeof(memory.Uint64Vector{}), unsafe.Sizeof(memory.Float32Vector{}), unsafe.Sizeof(memory.Float64Vector{}), unsafe.Sizeof(memory.Decimal128Vector{}), unsafe.Sizeof(memory.StringViewVector{}), unsafe.Sizeof(memory.DictionaryStringVector{}), unsafe.Sizeof(memory.StringListVector{}), unsafe.Sizeof(memory.StructVector{})}
+func externalSortInitialGatherMapMetadata(counts [16]int) (int64, error) {
+	sizes := [16]uintptr{unsafe.Sizeof(memory.Int8Vector{}), unsafe.Sizeof(memory.Int16Vector{}), unsafe.Sizeof(memory.Int32Vector{}), unsafe.Sizeof(memory.Int64Vector{}), unsafe.Sizeof(memory.Uint8Vector{}), unsafe.Sizeof(memory.Uint16Vector{}), unsafe.Sizeof(memory.Uint32Vector{}), unsafe.Sizeof(memory.Uint64Vector{}), unsafe.Sizeof(memory.Float32Vector{}), unsafe.Sizeof(memory.Float64Vector{}), unsafe.Sizeof(memory.Decimal128Vector{}), unsafe.Sizeof(memory.StringViewVector{}), unsafe.Sizeof(memory.DictionaryStringVector{}), unsafe.Sizeof(memory.StringListVector{}), unsafe.Sizeof(memory.StructVector{}), unsafe.Sizeof(memory.Int64ListVector{})}
 	total := externalSortInitialGatherBatchBytes
 	for kind, count := range counts {
 		if count == 0 {
@@ -184,8 +184,12 @@ func externalSortInitialGatherMapMetadata(counts [15]int) (int64, error) {
 		if err != nil {
 			return 0, err
 		}
-		if kind == 13 {
-			child, err := externalSortInitialGatherRounded(int64(unsafe.Sizeof(memory.StringViewVector{})))
+		if kind == 13 || kind == 15 {
+			childSize := unsafe.Sizeof(memory.StringViewVector{})
+			if kind == 15 {
+				childSize = unsafe.Sizeof(memory.Int64Vector{})
+			}
+			child, err := externalSortInitialGatherRounded(int64(childSize))
 			if err != nil {
 				return 0, err
 			}
@@ -261,8 +265,23 @@ func externalSortInitialGatherBitmapBytes(batch *memory.Batch, rows joinGatherSe
 		}
 		return add(v.Values.Validity, elements)
 	}
+	int64List := func(v *memory.Int64ListVector, parent *memory.StructVector) error {
+		elements, err := joinGatherInt64ListSizeSelected(v, rows, parent)
+		if err != nil {
+			return err
+		}
+		if err := add(v.Validity, rows.len()); err != nil {
+			return err
+		}
+		return add(v.Values.Validity, elements)
+	}
 	for _, v := range batch.StringLists {
 		if err := list(v, nil); err != nil {
+			return 0, err
+		}
+	}
+	for _, v := range batch.Int64Lists {
+		if err := int64List(v, nil); err != nil {
 			return 0, err
 		}
 	}
@@ -300,7 +319,11 @@ func externalSortInitialGatherBitmapBytes(batch *memory.Batch, rows joinGatherSe
 					validity = v.Values.DictStrings[f.Name].Validity
 				}
 			case memory.TypeList:
-				if err := list(v.Values.StringLists[f.Name], v); err != nil {
+				if len(f.Children) == 1 && f.Children[0].Type == memory.TypeInt64 {
+					if err := int64List(v.Values.Int64Lists[f.Name], v); err != nil {
+						return 0, err
+					}
+				} else if err := list(v.Values.StringLists[f.Name], v); err != nil {
 					return 0, err
 				}
 				continue
@@ -409,7 +432,7 @@ func (a *externalSortInitialGather) close() {
 	}
 }
 
-func newExternalSortInitialGatherBatch(counts [15]int) *memory.Batch {
+func newExternalSortInitialGatherBatch(counts [16]int) *memory.Batch {
 	b := &memory.Batch{}
 	if n := counts[0]; n > 0 {
 		b.Int8s = make(map[string]*memory.Int8Vector, n)
@@ -455,6 +478,9 @@ func newExternalSortInitialGatherBatch(counts [15]int) *memory.Batch {
 	}
 	if n := counts[14]; n > 0 {
 		b.Structs = make(map[string]*memory.StructVector, n)
+	}
+	if n := counts[15]; n > 0 {
+		b.Int64Lists = make(map[string]*memory.Int64ListVector, n)
 	}
 	return b
 }
@@ -615,6 +641,22 @@ func takeExternalSortInitialRows(ctx context.Context, dst, src *memory.Batch, ro
 			}
 		}
 	}
+	for name, v := range src.Int64Lists {
+		elements, err := joinGatherInt64ListSize(v, rows, nil)
+		if err != nil {
+			return err
+		}
+		out := plannedJoinInt64List(n, elements)
+		dst.Int64Lists[name] = out
+		for _, row := range rows {
+			if err := ctx.Err(); err != nil {
+				return err
+			}
+			if err := memory.AppendInt64ListRow(out, v, row); err != nil {
+				return err
+			}
+		}
+	}
 	if err := ctx.Err(); err != nil {
 		return err
 	}
@@ -677,11 +719,19 @@ func fillExternalSortInitialStruct(ctx context.Context, out, src *memory.StructV
 				out.Values.DictStrings[field.Name] = dictionary
 			}
 		case memory.TypeList:
-			elements, bytes, err := joinGatherListSize(src.Values.StringLists[field.Name], rows, src)
-			if err != nil {
-				return err
+			if len(field.Children) == 1 && field.Children[0].Type == memory.TypeInt64 {
+				elements, err := joinGatherInt64ListSize(src.Values.Int64Lists[field.Name], rows, src)
+				if err != nil {
+					return err
+				}
+				out.Values.Int64Lists[field.Name] = plannedJoinInt64List(n, elements)
+			} else {
+				elements, bytes, err := joinGatherListSize(src.Values.StringLists[field.Name], rows, src)
+				if err != nil {
+					return err
+				}
+				out.Values.StringLists[field.Name] = plannedJoinList(n, elements, bytes)
 			}
-			out.Values.StringLists[field.Name] = plannedJoinList(n, elements, bytes)
 		default:
 			return fmt.Errorf("unsupported bounded join gather struct child")
 		}

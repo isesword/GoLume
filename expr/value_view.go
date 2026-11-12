@@ -28,6 +28,9 @@ func (w *evaluationState) exportBorrowedValue(index, rows int) (ScalarValue, err
 		case r.strDict != nil:
 			source.DictStrings["v"] = r.strDict
 			source.Rows = r.strDict.Len()
+		case r.intList != nil:
+			source.Int64Lists["v"] = r.intList
+			source.Rows = r.intList.Len()
 		case r.strList != nil:
 			source.StringLists["v"] = r.strList
 			source.Rows = r.strList.Len()
@@ -54,7 +57,7 @@ func (w *evaluationState) exportBorrowedValue(index, rows int) (ScalarValue, err
 		owned.exportBatch, owned.exportReservation = view, lease
 	}
 	view := owned.exportBatch
-	result := ScalarValue{Type: r.typ, String: view.Strings["v"], DictionaryString: view.DictStrings["v"], StringList: view.StringLists["v"], Struct: view.Structs["v"], Opaque: view.Opaque["v"]}
+	result := ScalarValue{Type: r.typ, String: view.Strings["v"], DictionaryString: view.DictStrings["v"], StringList: view.StringLists["v"], Int64List: view.Int64Lists["v"], Struct: view.Structs["v"], Opaque: view.Opaque["v"]}
 	if result.Opaque != nil {
 		header := *result.Opaque
 		header.Owned = false
@@ -111,6 +114,12 @@ func ownedBatchCapacityBytes(b *memory.Batch) int64 {
 	}
 	for _, v := range b.DictStrings {
 		n += int64(cap(v.Indices)+cap(v.Offsets))*4 + int64(cap(v.Data)) + int64(cap(v.Validity))*8
+	}
+	for _, v := range b.Int64Lists {
+		n += int64(cap(v.Offsets))*4 + int64(cap(v.Validity))*8
+		if v.Values != nil {
+			n += int64(cap(v.Values.Values)+cap(v.Values.Validity)) * 8
+		}
 	}
 	for _, v := range b.StringLists {
 		n += int64(cap(v.Offsets))*4 + int64(cap(v.Validity))*8

@@ -321,6 +321,11 @@ func joinGatherPayloadMode(batch *memory.Batch, parent *joinGatherAncestor, allo
 			return 0, err
 		}
 	}
+	for _, v := range batch.Int64Lists {
+		if err := joinGatherInt64ListPayload(&total, v, batch.Rows); err != nil {
+			return 0, err
+		}
+	}
 	for _, v := range batch.Structs {
 		if v == nil || v.Values == nil || v.Rows != batch.Rows || v.Values.Rows != batch.Rows {
 			return 0, fmt.Errorf("join gather malformed struct vector")
@@ -383,7 +388,11 @@ func joinGatherCheckChild(batch *memory.Batch, field memory.Field) error {
 	case memory.TypeString:
 		present = batch.Strings[field.Name] != nil || batch.DictStrings[field.Name] != nil
 	case memory.TypeList:
-		present = batch.StringLists[field.Name] != nil
+		if len(field.Children) == 1 && field.Children[0].Type == memory.TypeInt64 {
+			present = batch.Int64Lists[field.Name] != nil
+		} else {
+			present = batch.StringLists[field.Name] != nil
+		}
 	default:
 		return fmt.Errorf("unsupported bounded join gather struct child %q type %s", field.Name, field.Type)
 	}
@@ -580,6 +589,12 @@ func joinGatherStructOwnedSelected(v *memory.StructVector, rows joinGatherSelect
 			if err := addJoinEstimate(&metadata, 512); err != nil {
 				return 0, 0, err
 			}
+			if len(field.Children) == 1 && field.Children[0].Type == memory.TypeInt64 {
+				if err := joinGatherInt64ListOwnedSelected(&owned, v.Values.Int64Lists[field.Name], rows, v); err != nil {
+					return 0, 0, err
+				}
+				break
+			}
 			if err := joinGatherListOwnedSelected(&owned, v.Values.StringLists[field.Name], rows, v); err != nil {
 				return 0, 0, err
 			}
@@ -736,6 +751,14 @@ func planJoinGatherSelected(batch *memory.Batch, rows joinGatherSelection) (int6
 			return 0, 0, err
 		}
 	}
+	for _, v := range batch.Int64Lists {
+		if err := addJoinEstimate(&metadata, 1024); err != nil {
+			return 0, 0, err
+		}
+		if err := joinGatherInt64ListOwnedSelected(&owned, v, rows, nil); err != nil {
+			return 0, 0, err
+		}
+	}
 	for _, v := range batch.Structs {
 		if err := addJoinEstimate(&metadata, 512); err != nil {
 			return 0, 0, err
@@ -878,6 +901,19 @@ func takeJoinRowsBounded(ctx context.Context, dst, src *memory.Batch, rows []int
 		}
 		dst.StringLists[name] = out
 	}
+	for name, v := range src.Int64Lists {
+		elements, err := joinGatherInt64ListSize(v, rows, nil)
+		if err != nil {
+			return err
+		}
+		out := plannedJoinInt64List(n, elements)
+		for _, row := range rows {
+			if err := memory.AppendInt64ListRow(out, v, row); err != nil {
+				return err
+			}
+		}
+		dst.Int64Lists[name] = out
+	}
 	for name, v := range src.Structs {
 		out, err := takeJoinStructRowsBounded(v, rows)
 		if err != nil {
@@ -931,6 +967,14 @@ func takeJoinStructRowsBounded(src *memory.StructVector, rows []int) (*memory.St
 				out.Values.DictStrings[field.Name] = dictionary
 			}
 		case memory.TypeList:
+			if len(field.Children) == 1 && field.Children[0].Type == memory.TypeInt64 {
+				elements, err := joinGatherInt64ListSize(src.Values.Int64Lists[field.Name], rows, src)
+				if err != nil {
+					return nil, err
+				}
+				out.Values.Int64Lists[field.Name] = plannedJoinInt64List(n, elements)
+				break
+			}
 			elements, bytes, err := joinGatherListSize(src.Values.StringLists[field.Name], rows, src)
 			if err != nil {
 				return nil, err

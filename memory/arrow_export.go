@@ -73,7 +73,7 @@ func arrowDataType(field Field) (arrow.DataType, error) {
 	case TypeDuration:
 		return &arrow.DurationType{Unit: arrow.Nanosecond}, nil
 	case TypeList:
-		if err := field.ValidateListString(); err != nil {
+		if err := field.ValidateList(); err != nil {
 			return nil, err
 		}
 		child, err := arrowField(field.Children[0])
@@ -126,15 +126,18 @@ func ArrowRecordRange(allocator arrowmem.Allocator, schema Schema, batch *Batch,
 	if err != nil {
 		return nil, err
 	}
-	builder := array.NewRecordBuilder(allocator, arrowSchema)
-	defer builder.Release()
 	for _, field := range schema.Fields {
+		if err := validateArrowInt64ListStorage(batch, field, batch.Rows); err != nil {
+			return nil, fmt.Errorf("arrow field %q: %w", field.Name, err)
+		}
 		if field.Type == TypeDecimal {
 			if err := batch.Decimals[field.Name].ValidateField(field, batch.Rows); err != nil {
 				return nil, err
 			}
 		}
 	}
+	builder := array.NewRecordBuilder(allocator, arrowSchema)
+	defer builder.Release()
 	for row := offset; row < offset+length; row++ {
 		for column, field := range schema.Fields {
 			if err := appendArrowValue(builder.Field(column), batch, field, row); err != nil {
@@ -212,6 +215,27 @@ func appendArrowValue(builder array.Builder, batch *Batch, field Field, row int)
 	case TypeBinary:
 		builder.(*array.BinaryBuilder).Append(batch.Strings[field.Name].ValueBytes(row))
 	case TypeList:
+		if field.Children[0].Type == TypeInt64 {
+			list := batch.Int64Lists[field.Name]
+			start, end, ok := list.ValueRange(row)
+			if !ok {
+				return fmt.Errorf("valid list row has no value range")
+			}
+			listBuilder := builder.(*array.ListBuilder)
+			listBuilder.Append(true)
+			values := listBuilder.ValueBuilder().(*array.Int64Builder)
+			for index := start; index < end; index++ {
+				if !list.Values.IsValid(index) {
+					if !field.Children[0].Nullable {
+						return fmt.Errorf("non-nullable list child contains NULL")
+					}
+					values.AppendNull()
+					continue
+				}
+				values.Append(list.Values.Values[index])
+			}
+			return nil
+		}
 		list := batch.StringLists[field.Name]
 		start, end, ok := list.ValueRange(row)
 		if !ok {
@@ -329,6 +353,13 @@ func batchValueValid(batch *Batch, field Field, row int) (bool, error) {
 		}
 		return value.IsValid(row), nil
 	case TypeList:
+		if field.Children[0].Type == TypeInt64 {
+			value, ok := batch.Int64Lists[field.Name]
+			if !ok {
+				return false, fmt.Errorf("list vector is missing")
+			}
+			return value.IsValid(row), nil
+		}
 		value, ok := batch.StringLists[field.Name]
 		if !ok {
 			return false, fmt.Errorf("list vector is missing")
@@ -353,4 +384,20 @@ func batchStringBytes(batch *Batch, field Field, row int) ([]byte, error) {
 		return value.DictionaryValue(value.Indices[row]), nil
 	}
 	return nil, fmt.Errorf("string vector is missing")
+}
+
+// Validate native integer-list storage once per export, before row validity can
+// hide malformed payloads. Even an empty exported range must have valid storage.
+func validateArrowInt64ListStorage(batch *Batch, field Field, rows int) error {
+	if field.Type == TypeList && field.Children[0].Type == TypeInt64 {
+		return batch.Int64Lists[field.Name].Validate(rows)
+	}
+	if field.Type == TypeStruct {
+		for _, child := range field.Children {
+			if child.Type == TypeList && child.Children[0].Type == TypeInt64 {
+				return batch.Structs[field.Name].Validate(field, rows)
+			}
+		}
+	}
+	return nil
 }

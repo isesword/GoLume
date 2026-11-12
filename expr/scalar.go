@@ -81,6 +81,7 @@ type scalarRegister struct {
 	strView *memory.StringViewVector
 	strDict *memory.DictionaryStringVector
 	strList *memory.StringListVector
+	intList *memory.Int64ListVector
 	strct   *memory.StructVector
 	offsets []uint32
 	data    []byte
@@ -408,6 +409,7 @@ type ScalarValue struct {
 	String           *memory.StringViewVector
 	DictionaryString *memory.DictionaryStringVector
 	StringList       *memory.StringListVector
+	Int64List        *memory.Int64ListVector
 	Struct           *memory.StructVector
 }
 
@@ -455,6 +457,7 @@ func scalarValue(r *scalarRegister, rows int) ScalarValue {
 		}
 	case familyListString:
 		v.StringList = r.strList
+		v.Int64List = r.intList
 	case familyInvalid:
 		if r.opaque != nil {
 			v.Opaque = r.opaque
@@ -810,6 +813,11 @@ func bindScalarColumn(r *scalarRegister, batch *memory.Batch, name string, typ m
 		}
 		return fmt.Errorf("string column %q not present in batch", name)
 	case familyListString:
+		if v := batch.Int64Lists[name]; v != nil {
+			r.intList, r.strList, r.validity = v, nil, v.Validity
+			return nil
+		}
+		r.intList = nil
 		v, err := batch.StringList(name)
 		if err != nil {
 			return err

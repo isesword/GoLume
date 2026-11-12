@@ -43,7 +43,7 @@ func futureCloneMetadata(batch *memory.Batch, depth int) (int64, error) {
 	}
 	// Batch, fifteen map headers, retained queue node and allocator slack.
 	total := int64(4096)
-	counts := [...]int{len(batch.Int8s), len(batch.Int16s), len(batch.Int32s), len(batch.Int64s), len(batch.Uint8s), len(batch.Uint16s), len(batch.Uint32s), len(batch.Uint64s), len(batch.Float32s), len(batch.Float64s), len(batch.Strings), len(batch.DictStrings), len(batch.StringLists), len(batch.Structs), len(batch.Opaque)}
+	counts := [...]int{len(batch.Int8s), len(batch.Int16s), len(batch.Int32s), len(batch.Int64s), len(batch.Uint8s), len(batch.Uint16s), len(batch.Uint32s), len(batch.Uint64s), len(batch.Float32s), len(batch.Float64s), len(batch.Strings), len(batch.DictStrings), len(batch.StringLists), len(batch.Int64Lists), len(batch.Structs), len(batch.Opaque)}
 	var err error
 	for _, count := range counts {
 		// Covers vector descriptor, map slots with growth overlap, and small backing
@@ -56,6 +56,15 @@ func futureCloneMetadata(batch *memory.Batch, depth int) (int64, error) {
 	for _, list := range batch.StringLists {
 		if list == nil || list.Values == nil {
 			return 0, fmt.Errorf("window lookahead clone has nil list child")
+		}
+		total, err = futureBudgetAdd(total, 1, 512)
+		if err != nil {
+			return 0, err
+		}
+	}
+	for _, list := range batch.Int64Lists {
+		if list == nil || list.Values == nil {
+			return 0, fmt.Errorf("window lookahead clone has nil int64 list child")
 		}
 		total, err = futureBudgetAdd(total, 1, 512)
 		if err != nil {

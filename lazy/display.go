@@ -325,6 +325,21 @@ func displayBatchValue(batch *memory.Batch, field memory.Field, row int) (string
 		}
 		return displayString(string(value)), nil
 	case field.Type == memory.TypeList:
+		if v := batch.Int64Lists[field.Name]; v != nil {
+			start, end, ok := v.ValueRange(row)
+			if !ok {
+				return "NULL", nil
+			}
+			items := make([]string, 0, end-start)
+			for i := start; i < end; i++ {
+				if !v.Values.IsValid(i) {
+					items = append(items, "NULL")
+				} else {
+					items = append(items, fmt.Sprint(v.Values.Values[i]))
+				}
+			}
+			return "[" + strings.Join(items, ", ") + "]", nil
+		}
 		v, e := batch.StringList(field.Name)
 		if e != nil {
 			return "", e

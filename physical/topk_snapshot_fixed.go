@@ -9,7 +9,7 @@ import (
 // width. Snapshots pre-admit one validity word per column even when their first
 // row is all-valid, so a later NULL never needs an uncharged buffer expansion.
 func topKFixedColumns(b *memory.Batch) (int, bool) {
-	if len(b.Strings)+len(b.DictStrings)+len(b.StringLists)+len(b.Structs)+len(b.Opaque) != 0 {
+	if len(b.Strings)+len(b.DictStrings)+len(b.StringLists)+len(b.Int64Lists)+len(b.Structs)+len(b.Opaque) != 0 {
 		return 0, false
 	}
 	return len(b.Int8s) + len(b.Int16s) + len(b.Int32s) + len(b.Int64s) + len(b.Uint8s) + len(b.Uint16s) + len(b.Uint32s) + len(b.Uint64s) + len(b.Float32s) + len(b.Float64s), true

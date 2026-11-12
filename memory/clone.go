@@ -67,6 +67,12 @@ func CloneBatch(src *Batch) (*Batch, error) {
 			},
 		}
 	}
+	for k, v := range src.Int64Lists {
+		if err := v.Validate(src.Rows); err != nil {
+			return nil, err
+		}
+		dst.Int64Lists[k] = &Int64ListVector{Offsets: append([]uint32(nil), v.Offsets...), Validity: append(Bitmap(nil), v.Validity...), Encoding: v.Encoding, Values: &Int64Vector{Values: append([]int64(nil), v.Values.Values...), Validity: append(Bitmap(nil), v.Values.Validity...), Encoding: v.Values.Encoding}}
+	}
 	for k, v := range src.Structs {
 		rows := make([]int, v.Rows)
 		for i := range rows {

@@ -534,6 +534,8 @@ func bindScalarValue(dst *memory.Batch, name string, v expr.ScalarValue) error {
 		dst.DictStrings[name] = v.DictionaryString
 	case v.String != nil:
 		dst.Strings[name] = v.String
+	case v.Int64List != nil:
+		dst.Int64Lists[name] = v.Int64List
 	case v.StringList != nil:
 		dst.StringLists[name] = v.StringList
 	case v.Struct != nil:
@@ -586,6 +588,9 @@ func bindAll(dst, src *memory.Batch) {
 	}
 	for k, v := range src.DictStrings {
 		dst.DictStrings[k] = v
+	}
+	for k, v := range src.Int64Lists {
+		dst.Int64Lists[k] = v
 	}
 	for k, v := range src.StringLists {
 		dst.StringLists[k] = v
@@ -652,6 +657,10 @@ func bindNamed(dst *memory.Batch, out string, src *memory.Batch, in string) erro
 		dst.DictStrings[out] = v
 		return nil
 	}
+	if v, ok := src.Int64Lists[in]; ok {
+		dst.Int64Lists[out] = v
+		return nil
+	}
 	if v, ok := src.StringLists[in]; ok {
 		dst.StringLists[out] = v
 		return nil
@@ -693,6 +702,7 @@ func removeColumn(dst *memory.Batch, name string) {
 	delete(dst.Decimals, name)
 	delete(dst.Strings, name)
 	delete(dst.DictStrings, name)
+	delete(dst.Int64Lists, name)
 	delete(dst.StringLists, name)
 	delete(dst.Structs, name)
 	delete(dst.Opaque, name)

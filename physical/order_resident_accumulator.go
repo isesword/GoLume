@@ -389,7 +389,7 @@ func residentAccumulatorMetadata(fields []memory.Field, src *memory.Batch, depth
 	if src == nil || depth > 1 {
 		return 0, 0, fmt.Errorf("resident struct nesting is unsupported")
 	}
-	counts := [15]int{}
+	counts := [16]int{}
 	var extra int64
 	dictionaries := 0
 	for i, f := range fields {
@@ -428,8 +428,13 @@ func residentAccumulatorMetadata(fields []memory.Field, src *memory.Batch, depth
 				n, err = sortWorkspaceSize(n, int64(len(v.Fields))*int64(unsafe.Sizeof(memory.Field{})))
 			}
 		case memory.TypeList:
-			err = f.ValidateListString()
-			n = int64(unsafe.Sizeof(memory.StringViewVector{}))
+			if len(f.Children) == 1 && f.Children[0].Type == memory.TypeInt64 {
+				err = f.ValidateListInt64()
+				n = int64(unsafe.Sizeof(memory.Int64Vector{}))
+			} else {
+				err = f.ValidateListString()
+				n = int64(unsafe.Sizeof(memory.StringViewVector{}))
+			}
 		}
 		if err != nil {
 			return 0, 0, err

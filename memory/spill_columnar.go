@@ -252,6 +252,21 @@ func runFieldSize(batch *Batch, field Field, rows int) (int64, error) {
 		}
 		return size, nil
 	}
+	if field.Type == TypeList && len(field.Children) == 1 && field.Children[0].Type == TypeInt64 {
+		v := batch.Int64Lists[field.Name]
+		if err := v.Validate(rows); err != nil {
+			return 0, err
+		}
+		parent, err := validitySize(v.Validity, rows)
+		if err != nil {
+			return 0, err
+		}
+		child, err := validitySize(v.Values.Validity, v.Values.Len())
+		if err != nil {
+			return 0, err
+		}
+		return addRunSizes(parent, 4, int64(len(v.Offsets))*4, child, int64(v.Values.Len())*8)
+	}
 	if field.Type == TypeList {
 		vector := batch.StringLists[field.Name]
 		if vector == nil {
@@ -375,8 +390,34 @@ func validateRunField(batch *Batch, field Field, rows int) error {
 		}
 		return nil
 	case TypeList:
-		if err := field.ValidateListString(); err != nil {
+		if err := field.ValidateList(); err != nil {
 			return err
+		}
+		if field.Children[0].Type == TypeInt64 {
+			vector := batch.Int64Lists[field.Name]
+			if vector == nil {
+				return fmt.Errorf("list field %q is missing", field.Name)
+			}
+			if err := vector.Validate(rows); err != nil {
+				return err
+			}
+			if !field.Nullable && HasNulls(vector.Validity, rows) {
+				return fmt.Errorf("non-nullable list field %q contains NULL", field.Name)
+			}
+			if !field.Children[0].Nullable {
+				for row := 0; row < rows; row++ {
+					start, end, ok := vector.ValueRange(row)
+					if !ok {
+						continue
+					}
+					for child := start; child < end; child++ {
+						if !vector.Values.IsValid(child) {
+							return fmt.Errorf("list field %q non-nullable element is NULL at row %d element %d", field.Name, row, child-start)
+						}
+					}
+				}
+			}
+			return nil
 		}
 		vector := batch.StringLists[field.Name]
 		if vector == nil {
@@ -549,6 +590,17 @@ func encodeRunField(writer *runWriter, batch *Batch, field Field, rows int) erro
 		}
 		return writer.err
 	}
+	if field.Type == TypeList && len(field.Children) == 1 && field.Children[0].Type == TypeInt64 {
+		v := batch.Int64Lists[field.Name]
+		encodeValidity(writer, v.Validity, rows)
+		writer.u32(uint32(len(v.Offsets)))
+		encodeOffsets(writer, v.Offsets, 0)
+		encodeValidity(writer, v.Values.Validity, v.Values.Len())
+		for _, value := range v.Values.Values {
+			writer.u64(uint64(value))
+		}
+		return writer.err
+	}
 	if field.Type == TypeList {
 		vector := batch.StringLists[field.Name]
 		encodeValidity(writer, vector.Validity, rows)
@@ -678,6 +730,30 @@ func decodeRunField(reader *runReader, batch *Batch, field Field, rows int) erro
 			if err := decodeRunField(reader, vector.Values, child, rows); err != nil {
 				return err
 			}
+		}
+		return reader.err
+	}
+	if field.Type == TypeList && len(field.Children) == 1 && field.Children[0].Type == TypeInt64 {
+		v := &Int64ListVector{Encoding: field.Encoding, Values: &Int64Vector{}}
+		batch.Int64Lists[field.Name] = v
+		v.Validity = decodeValidity(reader, rows)
+		v.Offsets = reader.offsets(reader.u32(), rows+1)
+		childRows := 0
+		if len(v.Offsets) != 0 {
+			last := v.Offsets[len(v.Offsets)-1]
+			if uint64(last) >= uint64(math.MaxInt) {
+				reader.fail("list child row count exceeds addressable memory")
+			} else {
+				childRows = int(last)
+			}
+		}
+		v.Values.Validity = decodeValidity(reader, childRows)
+		if !reader.requireArray(childRows, 8, "list int64 values exceed remaining payload") {
+			return reader.err
+		}
+		v.Values.Values = make([]int64, childRows)
+		for i := range v.Values.Values {
+			v.Values.Values[i] = int64(reader.u64())
 		}
 		return reader.err
 	}

@@ -286,6 +286,48 @@ func compactSelectedParents(ctx context.Context, dst, src *memory.Batch, rows []
 		out.Encoding, out.Values.Encoding = memory.EncodingView, memory.EncodingView
 		dst.StringLists[name] = out
 	}
+	for name, v := range src.Int64Lists {
+		children, err := compactInt64ListSize(v, rows, parents)
+		if err != nil {
+			return err
+		}
+		out := dst.Int64Lists[name]
+		if out == nil {
+			out = &memory.Int64ListVector{Values: &memory.Int64Vector{}}
+		}
+		out.Offsets = ensureU32Slice(out.Offsets, n+1)
+		out.Offsets[0] = 0
+		if cap(out.Values.Values) < children {
+			out.Values.Values = make([]int64, children)
+		} else {
+			out.Values.Values = out.Values.Values[:children]
+		}
+		if v.Values.Validity != nil {
+			out.Values.Validity = memory.EnsureBitmap(out.Values.Validity, children)
+		} else {
+			out.Values.Validity = compactAllValid(out.Values.Validity, children)
+		}
+		child := 0
+		for i, row := range rows {
+			if rowValid(v.Validity, row) && parents.valid(row) {
+				for j := int(v.Offsets[row]); j < int(v.Offsets[row+1]); j++ {
+					out.Values.Values[child] = 0
+					if rowValid(v.Values.Validity, j) {
+						out.Values.Values[child] = v.Values.Values[j]
+					}
+					if v.Values.Validity != nil && memory.IsSet(v.Values.Validity, j) {
+						memory.Set(out.Values.Validity, child)
+					}
+					child++
+				}
+			}
+			out.Offsets[i+1] = uint32(child)
+		}
+		out.Validity = compactValidityParents(out.Validity, v.Validity, rows, parents)
+		out.Encoding = memory.EncodingView
+		out.Values.Encoding = memory.EncodingPlain
+		dst.Int64Lists[name] = out
+	}
 	for name, v := range src.Structs {
 		out := dst.Structs[name]
 		if out == nil {

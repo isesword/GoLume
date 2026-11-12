@@ -201,7 +201,7 @@ func topKSnapshotHeaders(batch *memory.Batch) (int64, error) {
 	columns := len(batch.Int8s) + len(batch.Int16s) + len(batch.Int32s) + len(batch.Int64s) +
 		len(batch.Uint8s) + len(batch.Uint16s) + len(batch.Uint32s) + len(batch.Uint64s) +
 		len(batch.Float32s) + len(batch.Float64s) + len(batch.Strings) + len(batch.DictStrings) +
-		len(batch.StringLists) + len(batch.Structs) + len(batch.Opaque)
+		len(batch.StringLists) + len(batch.Int64Lists) + len(batch.Structs) + len(batch.Opaque)
 	if int64(columns) > (math.MaxInt64-2048)/512 {
 		return 0, fmt.Errorf("top-k snapshot metadata overflows int64")
 	}

@@ -80,6 +80,16 @@ func countJoinVariable(s *JoinSource, left *memory.Batch, binding joinOutputBind
 			continue
 		}
 		if field.Type == memory.TypeList {
+			if len(field.Children) == 1 && field.Children[0].Type == memory.TypeInt64 {
+				n, err := joinGatherInt64ListSize(src.Int64Lists[name], []int{row}, nil)
+				if err != nil {
+					return 0, 0, err
+				}
+				if err := addJoinEstimate(&elements, int64(n)); err != nil {
+					return 0, 0, err
+				}
+				continue
+			}
 			v, err := src.StringList(name)
 			if err != nil {
 				return 0, 0, err
@@ -148,7 +158,11 @@ func initializeJoinMaterialization(dst *memory.Batch, s *JoinSource, left *memor
 			if err != nil {
 				return err
 			}
-			dst.StringLists[binding.out] = plannedJoinList(rows, elements, bytes)
+			if len(field.Children) == 1 && field.Children[0].Type == memory.TypeInt64 {
+				dst.Int64Lists[binding.out] = plannedJoinInt64List(rows, elements)
+			} else {
+				dst.StringLists[binding.out] = plannedJoinList(rows, elements, bytes)
+			}
 		case memory.TypeStruct:
 			v := &memory.StructVector{Fields: field.Children, Values: memory.NewBatch(), Validity: make(memory.Bitmap, memory.WordsFor(rows)), Encoding: memory.EncodingView}
 			dst.Structs[binding.out] = v
@@ -187,7 +201,11 @@ func initializeJoinMaterialization(dst *memory.Batch, s *JoinSource, left *memor
 					if child.Type == memory.TypeString {
 						v.Values.Strings[child.Name] = plannedJoinString(rows, bytes)
 					} else {
-						v.Values.StringLists[child.Name] = plannedJoinList(rows, elements, bytes)
+						if len(child.Children) == 1 && child.Children[0].Type == memory.TypeInt64 {
+							v.Values.Int64Lists[child.Name] = plannedJoinInt64List(rows, elements)
+						} else {
+							v.Values.StringLists[child.Name] = plannedJoinList(rows, elements, bytes)
+						}
 					}
 				default:
 					return fmt.Errorf("unsupported bounded join struct child %q", child.Name)

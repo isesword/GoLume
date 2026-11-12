@@ -86,6 +86,9 @@ func aggregateColumnInfo(b *memory.Batch, name string, typ memory.DataType, need
 			return len(v.Indices), v.Validity, nil
 		}
 	case memory.TypeList:
+		if v := b.Int64Lists[name]; v != nil {
+			return v.Len(), v.Validity, nil
+		}
 		if v := b.StringLists[name]; v != nil {
 			return v.Len(), v.Validity, nil
 		}

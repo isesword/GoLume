@@ -20,6 +20,21 @@ func joinValidityEstimate(rows int) int64 {
 }
 
 func estimateJoinListRows(s *JoinSource, left *memory.Batch, binding joinOutputBinding, pairs []join.Pair, child bool) (int64, error) {
+	if len(binding.field.Children) == 1 && binding.field.Children[0].Type == memory.TypeInt64 {
+		var childField *memory.Field
+		if child {
+			childField = &binding.field
+		}
+		elements, _, err := countJoinVariable(s, left, binding, pairs, childField)
+		if err != nil {
+			return 0, err
+		}
+		total := int64(len(pairs)+1)*4 + joinValidityEstimate(len(pairs))
+		if err := addJoinEstimate(&total, int64(elements)*8+joinValidityEstimate(elements)); err != nil {
+			return 0, err
+		}
+		return total, nil
+	}
 	var children, data int64
 	for _, pair := range pairs {
 		src, row, ok := joinSourceRow(s, left, binding, pair)
@@ -268,6 +283,15 @@ func cloneBatch(src *memory.Batch) (*memory.Batch, error) {
 			Values:   &memory.StringViewVector{Offsets: append([]uint32(nil), v.Values.Offsets...), Data: append([]byte(nil), v.Values.Data...), Validity: append(memory.Bitmap(nil), v.Values.Validity...), Encoding: v.Values.Encoding},
 		}
 		dst.StringLists[k] = x
+	}
+	for k, v := range src.Int64Lists {
+		x := &memory.Int64ListVector{
+			Offsets:  append([]uint32(nil), v.Offsets...),
+			Validity: append(memory.Bitmap(nil), v.Validity...),
+			Encoding: v.Encoding,
+			Values:   &memory.Int64Vector{Values: append([]int64(nil), v.Values.Values...), Validity: append(memory.Bitmap(nil), v.Values.Validity...), Encoding: v.Values.Encoding},
+		}
+		dst.Int64Lists[k] = x
 	}
 	for k, v := range src.Structs {
 		rows := make([]int, v.Rows)
@@ -523,6 +547,26 @@ func materializeJoinBatchMode(dst *memory.Batch, s *JoinSource, left *memory.Bat
 			}
 			dst.Strings[b.out] = out
 		case memory.TypeList:
+			if len(b.field.Children) == 1 && b.field.Children[0].Type == memory.TypeInt64 {
+				out := dst.Int64Lists[b.out]
+				if !bounded {
+					out = plannedJoinInt64List(n, 0)
+				}
+				for _, p := range pairs {
+					src, row, ok := joinSourceRow(s, left, b, p)
+					if !ok {
+						if err := memory.AppendNullInt64List(out); err != nil {
+							return err
+						}
+						continue
+					}
+					if err := memory.AppendInt64ListRow(out, src.Int64Lists[b.in], row); err != nil {
+						return err
+					}
+				}
+				dst.Int64Lists[b.out] = out
+				break
+			}
 			out := dst.StringLists[b.out]
 			if !bounded {
 				out = resetStringList(out)
@@ -578,6 +622,13 @@ func materializeJoinBatchMode(dst *memory.Batch, s *JoinSource, left *memory.Bat
 						case memory.TypeString:
 							template.Values.Strings[child.Name] = &memory.StringViewVector{Offsets: []uint32{0, 0}, Validity: memory.EnsureBitmap(nil, 1), Encoding: memory.EncodingView}
 						case memory.TypeList:
+							if len(child.Children) == 1 && child.Children[0].Type == memory.TypeInt64 {
+								template.Values.Int64Lists[child.Name] = plannedJoinInt64List(1, 0)
+								if err := memory.AppendNullInt64List(template.Values.Int64Lists[child.Name]); err != nil {
+									return err
+								}
+								continue
+							}
 							template.Values.StringLists[child.Name] = &memory.StringListVector{Offsets: []uint32{0, 0}, Validity: memory.EnsureBitmap(nil, 1), Values: &memory.StringViewVector{Offsets: []uint32{0}, Encoding: memory.EncodingView}, Encoding: memory.EncodingView}
 						}
 					}

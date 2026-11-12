@@ -45,6 +45,7 @@ const (
 	decodeStringMap
 	decodeDictionaryMap
 	decodeListMap
+	decodeInt64ListMap
 	decodeStructMap
 	decodeOpaqueMap // Classified explicitly, but not supported by this codec.
 	decodeMapCount
@@ -114,6 +115,9 @@ func columnarDecodeFieldMap(field Field) (columnarDecodeMap, uintptr) {
 		}
 		return decodeStringMap, unsafe.Sizeof(StringViewVector{})
 	case TypeList:
+		if len(field.Children) == 1 && field.Children[0].Type == TypeInt64 {
+			return decodeInt64ListMap, unsafe.Sizeof(Int64ListVector{})
+		}
 		return decodeListMap, unsafe.Sizeof(StringListVector{})
 	case TypeStruct:
 		return decodeStructMap, unsafe.Sizeof(StructVector{})
@@ -166,11 +170,15 @@ func columnarDecodeBatchBytes(fields []Field, structChildren bool) (int64, error
 				}
 			}
 		case TypeList:
-			if err = field.ValidateListString(); err == nil {
+			if err = field.ValidateList(); err == nil {
 				if len(field.Children[0].Children) != 0 {
 					return 0, fmt.Errorf("list field %q has nested string child", field.Name)
 				}
-				extra, err = columnarDecodeRounded(int64(unsafe.Sizeof(StringViewVector{})))
+				if field.Children[0].Type == TypeInt64 {
+					extra, err = columnarDecodeRounded(int64(unsafe.Sizeof(Int64Vector{})))
+				} else {
+					extra, err = columnarDecodeRounded(int64(unsafe.Sizeof(StringViewVector{})))
+				}
 			}
 		default:
 			if len(field.Children) != 0 {
@@ -282,6 +290,9 @@ func newColumnarDecodeBatch(fields []Field, rows int) *Batch {
 	if n := counts[decodeDictionaryMap]; n != 0 {
 		batch.DictStrings = make(map[string]*DictionaryStringVector, n)
 	}
+	if n := counts[decodeInt64ListMap]; n != 0 {
+		batch.Int64Lists = make(map[string]*Int64ListVector, n)
+	}
 	if n := counts[decodeListMap]; n != 0 {
 		batch.StringLists = make(map[string]*StringListVector, n)
 	}
@@ -362,6 +373,14 @@ func destroyColumnarDecodedBatch(batch *Batch) {
 			*vector = StructVector{}
 		}
 	}
+	for _, vector := range batch.Int64Lists {
+		if vector != nil {
+			if vector.Values != nil {
+				*vector.Values = Int64Vector{}
+			}
+			*vector = Int64ListVector{}
+		}
+	}
 	for _, vector := range batch.StringLists {
 		if vector != nil {
 			if vector.Values != nil {
@@ -383,6 +402,7 @@ func destroyColumnarDecodedBatch(batch *Batch) {
 	clearColumnarDecodedVectors(batch.Decimals)
 	clearColumnarDecodedVectors(batch.Strings)
 	clearColumnarDecodedVectors(batch.DictStrings)
+	clear(batch.Int64Lists)
 	clear(batch.StringLists)
 	clear(batch.Structs)
 	// Opaque is never constructed by this codec.

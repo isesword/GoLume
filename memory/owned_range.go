@@ -136,7 +136,7 @@ func ownedRangeMetadata(b *Batch, offset, length int, state *nativeOwnedEstimate
 	if state.nativeOnly && len(b.Opaque) != 0 {
 		return 0, errNativeSharedOpaque
 	}
-	hasNative := len(b.Int8s)+len(b.Int16s)+len(b.Int32s)+len(b.Int64s)+len(b.Uint8s)+len(b.Uint16s)+len(b.Uint32s)+len(b.Uint64s)+len(b.Float32s)+len(b.Float64s)+len(b.Decimals)+len(b.Strings)+len(b.DictStrings)+len(b.StringLists)+len(b.Structs) > 0
+	hasNative := len(b.Int8s)+len(b.Int16s)+len(b.Int32s)+len(b.Int64s)+len(b.Uint8s)+len(b.Uint16s)+len(b.Uint32s)+len(b.Uint64s)+len(b.Float32s)+len(b.Float64s)+len(b.Decimals)+len(b.Strings)+len(b.DictStrings)+len(b.StringLists)+len(b.Int64Lists)+len(b.Structs) > 0
 	if len(b.Opaque) > 0 {
 		state.opaquePresent = true
 	}
@@ -294,6 +294,26 @@ func ownedRangeMetadata(b *Batch, offset, length int, state *nativeOwnedEstimate
 		}
 		if !bulkMode {
 			if err := ownedRangeOffsets(v.Values.Offsets, int(lo), int(hi-lo)); err != nil {
+				return 0, err
+			}
+		}
+	}
+	for name, v := range b.Int64Lists {
+		if v == nil || v.Values == nil {
+			return 0, fmt.Errorf("owned clone list %q has nil child", name)
+		}
+		if err := entry(name, v.Validity); err != nil {
+			return 0, err
+		}
+		if err := add(1, 1024); err != nil {
+			return 0, err
+		}
+		_, _, err := int64ListRangeBounds(v, offset, length)
+		if err != nil {
+			return 0, err
+		}
+		if !bulkMode {
+			if err := ownedRangeOffsets(v.Offsets, offset, length); err != nil {
 				return 0, err
 			}
 		}

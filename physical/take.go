@@ -151,6 +151,15 @@ func takeRows(ctx context.Context, dst, src *gomemory.Batch, rows []int) error {
 		}
 		dst.StringLists[name] = out
 	}
+	for name, v := range src.Int64Lists {
+		out := &gomemory.Int64ListVector{Offsets: []uint32{0}, Values: &gomemory.Int64Vector{Encoding: gomemory.EncodingPlain}, Encoding: gomemory.EncodingView}
+		for _, row := range rows {
+			if err := gomemory.AppendInt64ListRow(out, v, row); err != nil {
+				return fmt.Errorf("take list<int64> column %q: %w", name, err)
+			}
+		}
+		dst.Int64Lists[name] = out
+	}
 	for name, v := range src.Structs {
 		out, err := gomemory.TakeStructRows(v, rows)
 		if err != nil {

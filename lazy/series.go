@@ -784,6 +784,34 @@ func (s Series) ToAnySlice() ([]any, error) {
 				}
 			}
 		}
+	case s.field.Type == memory.TypeList && len(s.field.Children) == 1 && s.field.Children[0].Type == memory.TypeInt64:
+		chunks, e := s.Int64ListChunks()
+		if e != nil {
+			return nil, e
+		}
+		for _, c := range chunks {
+			for i := 0; i < c.Len(); i++ {
+				v, ok, e := c.Value(i)
+				if e != nil {
+					return nil, e
+				}
+				if !ok {
+					out = append(out, nil)
+					continue
+				}
+				items := make([]any, v.Len())
+				for j := range items {
+					x, valid, e := v.Element(j)
+					if e != nil {
+						return nil, e
+					}
+					if valid {
+						items[j] = x
+					}
+				}
+				out = append(out, items)
+			}
+		}
 	case s.field.Type == memory.TypeList:
 		chunks, e := s.StringListChunks()
 		if e != nil {
@@ -904,6 +932,9 @@ func seriesRowValid(batch *memory.Batch, field memory.Field, row int) bool {
 		}
 		return batch.DictStrings[field.Name].IsValid(row)
 	case field.Type == memory.TypeList:
+		if v := batch.Int64Lists[field.Name]; v != nil {
+			return v.IsValid(row)
+		}
 		return batch.StringLists[field.Name].IsValid(row)
 	case field.Type == memory.TypeStruct:
 		return batch.Structs[field.Name].IsValid(row)
@@ -990,6 +1021,19 @@ func structChildValue(batch *memory.Batch, field memory.Field, row int) (any, bo
 		}
 		return string(v.DictionaryValue(v.Indices[row])), true, nil
 	case field.Type == memory.TypeList:
+		if v := batch.Int64Lists[field.Name]; v != nil {
+			start, end, ok := v.ValueRange(row)
+			if !ok {
+				return nil, false, nil
+			}
+			out := make([]any, end-start)
+			for i := start; i < end; i++ {
+				if v.Values.IsValid(i) {
+					out[i-start] = v.Values.Values[i]
+				}
+			}
+			return out, true, nil
+		}
 		v, err := batch.StringList(field.Name)
 		if err != nil {
 			return nil, false, err

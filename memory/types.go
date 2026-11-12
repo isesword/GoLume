@@ -196,6 +196,17 @@ func ListStringField(name string, nullable, elementNullable bool) Field {
 	}
 }
 
+// ListInt64Field constructs the native list<int64> schema contract.
+func ListInt64Field(name string, nullable, elementNullable bool) Field {
+	return Field{
+		Name:     name,
+		Type:     TypeList,
+		Nullable: nullable,
+		Encoding: EncodingView,
+		Children: []Field{{Name: "item", Type: TypeInt64, Nullable: elementNullable, Encoding: EncodingPlain}},
+	}
+}
+
 // StructField constructs the bounded Phase 2.21 struct schema contract.
 func StructField(name string, nullable bool, children ...Field) Field {
 	return Field{Name: name, Type: TypeStruct, Nullable: nullable, Encoding: EncodingView, Children: append([]Field(nil), children...)}
@@ -219,7 +230,7 @@ func (f Field) ValidateStruct() error {
 		}
 		seen[child.Name] = struct{}{}
 		if child.Type == TypeList {
-			if err := child.ValidateListString(); err != nil {
+			if err := child.ValidateList(); err != nil {
 				return fmt.Errorf("struct field %q: %w", f.Name, err)
 			}
 			continue
@@ -249,6 +260,29 @@ func (f Field) ValidateListString() error {
 		return fmt.Errorf("list field %q requires string child %q, got %q:%s", f.Name, "item", child.Name, child.Type)
 	}
 	return nil
+}
+
+// ValidateListInt64 validates that f is the supported list<int64> shape.
+func (f Field) ValidateListInt64() error {
+	if f.Type != TypeList {
+		return fmt.Errorf("field %q: expected list, got %s", f.Name, f.Type)
+	}
+	if len(f.Children) != 1 {
+		return fmt.Errorf("list field %q requires exactly one child, got %d", f.Name, len(f.Children))
+	}
+	child := f.Children[0]
+	if child.Name != "item" || child.Type != TypeInt64 {
+		return fmt.Errorf("list field %q requires int64 child %q, got %q:%s", f.Name, "item", child.Name, child.Type)
+	}
+	return nil
+}
+
+// ValidateList validates a supported specialized list field.
+func (f Field) ValidateList() error {
+	if len(f.Children) == 1 && f.Children[0].Type == TypeInt64 {
+		return f.ValidateListInt64()
+	}
+	return f.ValidateListString()
 }
 
 func cloneField(f Field) Field {

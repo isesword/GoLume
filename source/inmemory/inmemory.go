@@ -37,7 +37,7 @@ func New(schema memory.Schema, batches ...*memory.Batch) (*Source, error) {
 		case memory.TypeStruct:
 			err = field.ValidateStruct()
 		case memory.TypeList:
-			err = field.ValidateListString()
+			err = field.ValidateList()
 		}
 		if err != nil {
 			return nil, err
@@ -67,8 +67,24 @@ func New(schema memory.Schema, batches ...*memory.Batch) (*Source, error) {
 			if field.Type != memory.TypeList {
 				continue
 			}
-			if err := field.ValidateListString(); err != nil {
+			if err := field.ValidateList(); err != nil {
 				return nil, err
+			}
+			if field.Children[0].Type == memory.TypeInt64 {
+				v, ok := b.Int64Lists[field.Name]
+				if !ok {
+					return nil, fmt.Errorf("batch %d list<int64> column %q is missing", i, field.Name)
+				}
+				if err := v.Validate(b.Rows); err != nil {
+					return nil, fmt.Errorf("batch %d column %q: %w", i, field.Name, err)
+				}
+				if !field.Nullable && memory.HasNulls(v.Validity, b.Rows) {
+					return nil, fmt.Errorf("batch %d non-nullable list<int64> column %q contains NULL", i, field.Name)
+				}
+				if !field.Children[0].Nullable && memory.HasNulls(v.Values.Validity, v.Values.Len()) {
+					return nil, fmt.Errorf("batch %d list<int64> column %q has NULL in non-nullable child", i, field.Name)
+				}
+				continue
 			}
 			v, ok := b.StringLists[field.Name]
 			if !ok {
@@ -343,6 +359,10 @@ func (s *batchStream) bindProjection(src *memory.Batch) error {
 			dst.DictStrings[name] = v
 			continue
 		}
+		if v, ok := src.Int64Lists[name]; ok {
+			dst.Int64Lists[name] = v
+			continue
+		}
 		if v, ok := src.StringLists[name]; ok {
 			dst.StringLists[name] = v
 			continue
@@ -382,6 +402,7 @@ func (s *batchStream) clearProjection() {
 	clear(s.projected.Strings)
 	clear(s.projected.DictStrings)
 	clear(s.projected.StringLists)
+	clear(s.projected.Int64Lists)
 	clear(s.projected.Structs)
 	clear(s.projected.Opaque)
 	s.projected.Rows = 0

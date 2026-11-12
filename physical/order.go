@@ -925,6 +925,21 @@ func (a *batchAccumulator) appendRow(src *memory.Batch, row int) error {
 			out.Validity = appendOneValidity(out.Validity, v.Validity, row, len(out.Offsets)-2)
 			a.batch.Strings[f.Name] = out
 		case memory.TypeList:
+			if len(f.Children) == 1 && f.Children[0].Type == memory.TypeInt64 {
+				v := src.Int64Lists[f.Name]
+				if v == nil {
+					return fmt.Errorf("list<int64> column %q missing", f.Name)
+				}
+				out := a.batch.Int64Lists[f.Name]
+				if out == nil {
+					out = &memory.Int64ListVector{Offsets: []uint32{0}, Values: &memory.Int64Vector{Encoding: memory.EncodingPlain}, Encoding: memory.EncodingView}
+				}
+				if err := memory.AppendInt64ListRow(out, v, row); err != nil {
+					return fmt.Errorf("append list<int64> column %q: %w", f.Name, err)
+				}
+				a.batch.Int64Lists[f.Name] = out
+				continue
+			}
 			v := src.StringLists[f.Name]
 			if v == nil {
 				return fmt.Errorf("list<string> column %q missing", f.Name)

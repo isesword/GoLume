@@ -105,6 +105,9 @@ func externalSortAccumulatorKind(field memory.Field) int {
 		}
 		return 11
 	case memory.TypeList:
+		if len(field.Children) == 1 && field.Children[0].Type == memory.TypeInt64 {
+			return 15
+		}
 		return 13
 	case memory.TypeStruct:
 		return 14
@@ -114,7 +117,7 @@ func externalSortAccumulatorKind(field memory.Field) int {
 }
 
 func newExternalSortAccumulatorBatch(fields []memory.Field) *memory.Batch {
-	var counts [15]int
+	var counts [16]int
 	for _, field := range fields {
 		counts[externalSortAccumulatorKind(field)]++
 	}
@@ -164,6 +167,9 @@ func newExternalSortAccumulatorBatch(fields []memory.Field) *memory.Batch {
 	if n := counts[14]; n > 0 {
 		b.Structs = make(map[string]*memory.StructVector, n)
 	}
+	if n := counts[15]; n > 0 {
+		b.Int64Lists = make(map[string]*memory.Int64ListVector, n)
+	}
 	for _, f := range fields {
 		switch f.Type {
 		case memory.TypeInt8:
@@ -195,7 +201,11 @@ func newExternalSortAccumulatorBatch(fields []memory.Field) *memory.Batch {
 				b.Strings[f.Name] = &memory.StringViewVector{Encoding: memory.EncodingView}
 			}
 		case memory.TypeList:
-			b.StringLists[f.Name] = &memory.StringListVector{Values: &memory.StringViewVector{Encoding: memory.EncodingView}, Encoding: memory.EncodingView}
+			if externalSortAccumulatorKind(f) == 15 {
+				b.Int64Lists[f.Name] = &memory.Int64ListVector{Values: &memory.Int64Vector{Encoding: memory.EncodingPlain}, Encoding: memory.EncodingView}
+			} else {
+				b.StringLists[f.Name] = &memory.StringListVector{Values: &memory.StringViewVector{Encoding: memory.EncodingView}, Encoding: memory.EncodingView}
+			}
 		case memory.TypeStruct:
 			fields := make([]memory.Field, len(f.Children))
 			copy(fields, f.Children) // Own only the outer array, never the names/Children.
@@ -502,6 +512,12 @@ func (a *externalSortAccumulator) appendFields(ctx context.Context, dst, src *me
 				}
 			}
 		case memory.TypeList:
+			if externalSortAccumulatorKind(f) == 15 {
+				if err := a.appendInt64List(ctx, dst.Int64Lists[f.Name], src.Int64Lists[f.Name], row, parentValid); err != nil {
+					return err
+				}
+				continue
+			}
 			if err := a.appendList(ctx, dst.StringLists[f.Name], src.StringLists[f.Name], row, parentValid); err != nil {
 				return err
 			}
@@ -611,6 +627,48 @@ func (a *externalSortAccumulator) appendList(ctx context.Context, dst, src *memo
 		}
 		for child := int(start); child < int(end); child++ {
 			if err := a.appendString(ctx, dst.Values, src.Values, child, true, true); err != nil {
+				return err
+			}
+		}
+	}
+	return externalSortAppendValue(ctx, a, &dst.Offsets, uint32(dst.Values.Len()))
+}
+
+// appendInt64List grows every owned buffer through the accumulator reservation.
+// NULL parents omit hidden children; NULL elements are canonicalized to zero.
+func (a *externalSortAccumulator) appendInt64List(ctx context.Context, dst, src *memory.Int64ListVector, row int, parentValid bool) error {
+	if dst == nil || dst.Values == nil || src == nil || src.Values == nil || row < 0 || row >= src.Len() {
+		return fmt.Errorf("external sort int64 list row missing or out of range")
+	}
+	valid, err := externalSortValidity(src.Validity, row)
+	if err != nil {
+		return err
+	}
+	start, end := src.Offsets[row], src.Offsets[row+1]
+	if start > end || uint64(end) > uint64(src.Values.Len()) {
+		return fmt.Errorf("external sort int64 list offsets out of range")
+	}
+	if src.Values.Validity != nil && uint64(len(src.Values.Validity)) < (uint64(end)+63)/64 {
+		return fmt.Errorf("external sort int64 list child validity out of range")
+	}
+	valid = valid && parentValid
+	if valid && uint64(dst.Values.Len())+uint64(end-start) > math.MaxUint32 {
+		return memory.ErrBudgetExceeded
+	}
+	if err := a.initOffsets(ctx, &dst.Offsets); err != nil {
+		return err
+	}
+	if err := a.appendValidity(ctx, &dst.Validity, valid, false, dst.Len()); err != nil {
+		return err
+	}
+	if valid {
+		for child := int(start); child < int(end); child++ {
+			if child%4096 == 0 {
+				if err := ctx.Err(); err != nil {
+					return err
+				}
+			}
+			if err := externalSortAppendScalar(ctx, a, &dst.Values.Values, &dst.Values.Validity, src.Values.Values, src.Values.Validity, child, true, true); err != nil {
 				return err
 			}
 		}
@@ -770,6 +828,11 @@ func (a *externalSortAccumulator) finishOffsets(ctx context.Context, b *memory.B
 			return err
 		}
 	}
+	for _, v := range b.Int64Lists {
+		if err := a.initOffsets(ctx, &v.Offsets); err != nil {
+			return err
+		}
+	}
 	for _, v := range b.StringLists {
 		if err := a.initOffsets(ctx, &v.Offsets); err != nil {
 			return err
@@ -807,6 +870,14 @@ func destroyExternalSortAccumulatorBatch(b *memory.Batch) {
 			*v = memory.StructVector{}
 		}
 	}
+	for _, v := range b.Int64Lists {
+		if v != nil {
+			if v.Values != nil {
+				*v.Values = memory.Int64Vector{}
+			}
+			*v = memory.Int64ListVector{}
+		}
+	}
 	for _, v := range b.StringLists {
 		if v != nil {
 			if v.Values != nil {
@@ -828,6 +899,7 @@ func destroyExternalSortAccumulatorBatch(b *memory.Batch) {
 	clearExternalSortAccumulatorVectors(b.Decimals)
 	clearExternalSortAccumulatorVectors(b.Strings)
 	clearExternalSortAccumulatorVectors(b.DictStrings)
+	clear(b.Int64Lists)
 	clear(b.StringLists)
 	clear(b.Structs)
 	*b = memory.Batch{}

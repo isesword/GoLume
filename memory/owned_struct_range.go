@@ -269,6 +269,44 @@ func nativeStructAppendEstimate(src *StructVector, offset, length int, inherited
 				}
 			}
 		case TypeList:
+			if len(field.Children) == 1 && field.Children[0].Type == TypeInt64 {
+				v := src.Values.Int64Lists[field.Name]
+				if v == nil {
+					n, err := ownedRangeAdd(int64(WordsFor(length))*8, int64(length)+1, 4)
+					if err != nil {
+						return 0, 0, err
+					}
+					if err = add(n); err != nil {
+						return 0, 0, err
+					}
+					if err = missing(2048); err != nil {
+						return 0, 0, err
+					}
+					continue
+				}
+				lo, hi, err := int64ListRangeBounds(v, offset, length)
+				if err != nil {
+					return 0, 0, err
+				}
+				n, err := ownedRangeAdd(validity(v.Validity), int64(length)+1, 4)
+				if err != nil {
+					return 0, 0, err
+				}
+				n, err = ownedRangeAdd(n, int64(hi-lo), 8)
+				if err != nil {
+					return 0, 0, err
+				}
+				if v.Values.Validity != nil && hi > lo {
+					n, err = ownedRangeAdd(n, int64(WordsFor(int(hi-lo))), 8)
+					if err != nil {
+						return 0, 0, err
+					}
+				}
+				if err = add(n); err != nil {
+					return 0, 0, err
+				}
+				continue
+			}
 			v := src.Values.StringLists[field.Name]
 			if v == nil {
 				n, err := ownedRangeAdd(int64(WordsFor(length))*8+4, int64(length)+1, 4)

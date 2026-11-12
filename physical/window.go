@@ -847,6 +847,9 @@ func windowValueValid(batch *memory.Batch, schema memory.Schema, column string, 
 			return v.IsValid(row), nil
 		}
 	case memory.TypeList:
+		if v := batch.Int64Lists[column]; v != nil {
+			return v.IsValid(row), nil
+		}
 		if v, ok := batch.StringLists[column]; ok {
 			return v.IsValid(row), nil
 		}

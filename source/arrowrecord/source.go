@@ -80,6 +80,7 @@ type binding struct {
 	u32         [][]uint32
 	f64         [][]float64
 	stringLists []*memory.StringListVector
+	int64Lists  []*memory.Int64ListVector
 	structs     []*memory.StructVector
 }
 
@@ -154,6 +155,7 @@ func NewSource(records ...arrow.RecordBatch) (*Source, error) {
 		bindings[i].u32 = make([][]uint32, len(owner.records))
 		bindings[i].f64 = make([][]float64, len(owner.records))
 		bindings[i].stringLists = make([]*memory.StringListVector, len(owner.records))
+		bindings[i].int64Lists = make([]*memory.Int64ListVector, len(owner.records))
 		bindings[i].structs = make([]*memory.StructVector, len(owner.records))
 		for ri, rec := range owner.records {
 			arr := rec.Column(bindings[i].index)
@@ -169,6 +171,22 @@ func NewSource(records ...arrow.RecordBatch) (*Source, error) {
 				bindings[i].offsets[ri] = offsets32(a.ValueOffsets())
 			case *array.List:
 				if bindings[i].field.Type == memory.TypeList {
+					if bindings[i].field.Children[0].Type == memory.TypeInt64 {
+						v, err := arrowInt64ListVector(a, bindings[i].validities[ri])
+						if err == nil && !bindings[i].field.Nullable && memory.HasNulls(v.Validity, v.Len()) {
+							err = fmt.Errorf("non-nullable list<int64> contains NULL")
+						}
+						if err == nil && !bindings[i].field.Children[0].Nullable && memory.HasNulls(v.Values.Validity, v.Values.Len()) {
+							err = fmt.Errorf("list<int64> has NULL in non-nullable child")
+						}
+						if err != nil {
+							owner.close()
+							return nil, fmt.Errorf("arrowrecord: column %q: %w", bindings[i].name, err)
+						}
+						bindings[i].int64Lists[ri] = v
+						continue
+					}
+
 					v, err := arrowStringListVector(a, bindings[i].validities[ri])
 					if err != nil {
 						owner.close()
@@ -562,14 +580,15 @@ func memoryField(f arrow.Field) memory.Field {
 		out.Type = memory.TypeDuration
 	case arrow.LIST:
 		list, ok := dt.(*arrow.ListType)
-		if !ok || list.Elem().ID() != arrow.STRING {
+		if !ok || (list.Elem().ID() != arrow.STRING && list.Elem().ID() != arrow.INT64) {
 			out.Type = memory.TypeArrow
 			break
 		}
 		out.Type = memory.TypeList
 		out.Encoding = memory.EncodingView
 		elem := list.ElemField()
-		out.Children = []memory.Field{{Name: "item", Type: memory.TypeString, Nullable: elem.Nullable, Encoding: memory.EncodingView, ArrowType: elem.Type.String()}}
+		out.Children = []memory.Field{memoryField(elem)}
+		out.Children[0].Name = "item"
 	case arrow.STRUCT:
 		structType, ok := dt.(*arrow.StructType)
 		if !ok {

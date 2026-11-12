@@ -184,6 +184,18 @@ func BorrowNativeWholeBatch(src *Batch) (*Batch, error) {
 		}
 		dst.StringLists[k] = &h
 	}
+	for k, v := range src.Int64Lists {
+		if v == nil {
+			dst.Int64Lists[k] = nil
+			continue
+		}
+		h := *v
+		if v.Values != nil {
+			child := *v.Values
+			h.Values = &child
+		}
+		dst.Int64Lists[k] = &h
+	}
 	for k, v := range src.Structs {
 		if v == nil {
 			dst.Structs[k] = nil

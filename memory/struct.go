@@ -46,7 +46,7 @@ func (v *StructVector) Validate(field Field, rows int) error {
 		return fmt.Errorf("struct %q child schema does not match", field.Name)
 	}
 	for i := range field.Children {
-		if v.Fields[i].Name != field.Children[i].Name || v.Fields[i].Type != field.Children[i].Type {
+		if v.Fields[i].Name != field.Children[i].Name || v.Fields[i].Type != field.Children[i].Type || !sameListChildContract(v.Fields[i], field.Children[i]) {
 			return fmt.Errorf("struct %q child schema does not match at index %d", field.Name, i)
 		}
 	}
@@ -60,11 +60,15 @@ func (v *StructVector) Validate(field Field, rows int) error {
 		if child.Type == TypeString && v.Values.Strings[child.Name] == nil {
 			dictionary = v.Values.DictStrings[child.Name]
 		}
+		var requiredInt64 *Int64ListVector
+		if child.Type == TypeList && child.Children[0].Type == TypeInt64 && !child.Children[0].Nullable {
+			requiredInt64 = v.Values.Int64Lists[child.Name]
+		}
 		var requiredElements *StringListVector
-		if child.Type == TypeList && !child.Children[0].Nullable {
+		if child.Type == TypeList && child.Children[0].Type == TypeString && !child.Children[0].Nullable {
 			requiredElements = v.Values.StringLists[child.Name]
 		}
-		if child.Nullable && dictionary == nil && requiredElements == nil {
+		if child.Nullable && dictionary == nil && requiredElements == nil && requiredInt64 == nil {
 			continue
 		}
 		for row := 0; row < rows; row++ {
@@ -80,6 +84,14 @@ func (v *StructVector) Validate(field Field, rows int) error {
 			}
 			if dictionary != nil && uint64(dictionary.Indices[row]) >= uint64(dictionary.DictionaryLen()) {
 				return fmt.Errorf("struct %q child %q dictionary code is out of range at row %d", field.Name, child.Name, row)
+			}
+			if requiredInt64 != nil {
+				start, end, _ := requiredInt64.ValueRange(row)
+				for element := start; element < end; element++ {
+					if !requiredInt64.Values.IsValid(element) {
+						return fmt.Errorf("struct %q child %q has NULL non-nullable element", field.Name, child.Name)
+					}
+				}
 			}
 			if requiredElements != nil {
 				start, end, _ := requiredElements.ValueRange(row)
@@ -158,6 +170,9 @@ func validateStructChildStorage(b *Batch, field Field, rows int) error {
 			length, validity = len(v.Indices), v.Validity
 		}
 	case TypeList:
+		if len(field.Children) == 1 && field.Children[0].Type == TypeInt64 {
+			return b.Int64Lists[field.Name].Validate(rows)
+		}
 		return b.StringLists[field.Name].Validate(rows)
 	}
 	if length != rows {
@@ -231,6 +246,10 @@ func initEmptyStructChildren(dst *Batch, src *StructVector) error {
 				dst.DictStrings[field.Name] = &DictionaryStringVector{Offsets: append([]uint32(nil), v.Offsets...), Data: append([]byte(nil), v.Data...), DictionaryDomain: v.DictionaryDomain, Encoding: v.Encoding}
 			}
 		case TypeList:
+			if len(field.Children) == 1 && field.Children[0].Type == TypeInt64 {
+				dst.Int64Lists[field.Name] = &Int64ListVector{Offsets: []uint32{0}, Values: &Int64Vector{Encoding: EncodingPlain}, Encoding: EncodingView}
+				continue
+			}
 			dst.StringLists[field.Name] = &StringListVector{Offsets: []uint32{0}, Values: &StringViewVector{Offsets: []uint32{0}, Encoding: EncodingView}, Encoding: EncodingView}
 		}
 	}
@@ -419,6 +438,24 @@ func AppendStructRow(dst, src *StructVector, row int, parentValid bool) error {
 			out.Validity = appendValidity(out.Validity, valid, dstRow)
 			dst.Values.Strings[field.Name] = out
 		case TypeList:
+			if len(field.Children) == 1 && field.Children[0].Type == TypeInt64 {
+				v := src.Values.Int64Lists[field.Name]
+				out := dst.Values.Int64Lists[field.Name]
+				if out == nil {
+					out = &Int64ListVector{}
+				}
+				var err error
+				if valid {
+					err = AppendInt64ListRow(out, v, row)
+				} else {
+					err = AppendNullInt64List(out)
+				}
+				if err != nil {
+					return err
+				}
+				dst.Values.Int64Lists[field.Name] = out
+				continue
+			}
 			v := src.Values.StringLists[field.Name]
 			out := dst.Values.StringLists[field.Name]
 			if out == nil {
@@ -470,6 +507,9 @@ func batchHasField(b *Batch, f Field) bool {
 	case TypeString:
 		return b.Strings[f.Name] != nil || b.DictStrings[f.Name] != nil
 	case TypeList:
+		if len(f.Children) == 1 && f.Children[0].Type == TypeInt64 {
+			return b.Int64Lists[f.Name] != nil
+		}
 		return b.StringLists[f.Name] != nil
 	}
 	return false
@@ -514,8 +554,24 @@ func batchFieldValid(b *Batch, f Field, row int) bool {
 		v := b.DictStrings[f.Name]
 		return v != nil && v.IsValid(row)
 	case TypeList:
+		if len(f.Children) == 1 && f.Children[0].Type == TypeInt64 {
+			v := b.Int64Lists[f.Name]
+			return v != nil && v.IsValid(row)
+		}
 		v := b.StringLists[f.Name]
 		return v != nil && v.IsValid(row)
 	}
 	return false
+}
+
+// sameListChildContract keeps the runtime child binding and requested schema
+// on the same physical list path. Scalar handling retains its existing rules.
+func sameListChildContract(a, b Field) bool {
+	if a.Type != TypeList || b.Type != TypeList {
+		return true
+	}
+	if a.ValidateList() != nil || b.ValidateList() != nil {
+		return false
+	}
+	return a.Nullable == b.Nullable && a.Children[0].Type == b.Children[0].Type && a.Children[0].Nullable == b.Children[0].Nullable
 }

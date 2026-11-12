@@ -135,6 +135,29 @@ func TestOpenFileRejectsRawByteArrayAndNonUTCTimestamp(t *testing.T) {
 	}
 }
 
+// Native Parquet remains flat-only; a repeated int64 is never mislabeled as a
+// scalar or a native list. The caller may choose an Arrow-backed reader instead.
+func TestOpenFileRejectsRepeatedInt64(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "repeated-int64.parquet")
+	root, err := schema.NewGroupNode("schema", arrowparquet.Repetitions.Required, schema.FieldList{
+		schema.NewInt64Node("nums", arrowparquet.Repetitions.Repeated, -1),
+	}, -1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	f, err := os.Create(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	w := file.NewParquetWriter(f, root)
+	if err := w.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := OpenFile(path); err == nil {
+		t.Fatal("repeated int64 accepted by flat native reader")
+	}
+}
+
 func TestReaderRejectsInvalidUTF8AndTimestampOverflow(t *testing.T) {
 	for _, tt := range []struct {
 		name  string

@@ -388,6 +388,12 @@ func jsonStructRow(v *memory.StructVector, fields []memory.Field, object map[str
 			vec.Data = []byte(value)
 			vec.Validity = setJSONRowValidity(vec.Validity, valid)
 		case memory.TypeList:
+			if len(field.Children) == 1 && field.Children[0].Type == memory.TypeInt64 {
+				if err := decodeJSONInt64List(v.Values, field, raw, valid, row, checkContext); err != nil {
+					return err
+				}
+				continue
+			}
 			list := v.Values.StringLists[field.Name]
 			if list == nil {
 				list = &memory.StringListVector{Offsets: make([]uint32, 2), Values: &memory.StringViewVector{Encoding: memory.EncodingView}, Encoding: memory.EncodingView}
@@ -513,6 +519,10 @@ func clearJSONRowPayloads(v *memory.StructVector) {
 	for _, vec := range v.Values.Strings {
 		vec.Data = nil
 	}
+	for _, list := range v.Values.Int64Lists {
+		list.Values.Values = nil
+		list.Values.Validity = nil
+	}
 	for _, list := range v.Values.StringLists {
 		list.Values.Data = nil
 		list.Values.Offsets = nil
@@ -553,6 +563,10 @@ func jsonEmptyChildren(v *memory.StructVector, checkContext func() error) error 
 		case memory.TypeString:
 			v.Values.Strings[field.Name] = &memory.StringViewVector{Offsets: []uint32{0}, Encoding: memory.EncodingView}
 		case memory.TypeList:
+			if len(field.Children) == 1 && field.Children[0].Type == memory.TypeInt64 {
+				v.Values.Int64Lists[field.Name] = &memory.Int64ListVector{Offsets: []uint32{0}, Values: &memory.Int64Vector{Encoding: memory.EncodingPlain}, Encoding: memory.EncodingView}
+				continue
+			}
 			v.Values.StringLists[field.Name] = &memory.StringListVector{Offsets: []uint32{0}, Values: &memory.StringViewVector{Offsets: []uint32{0}, Encoding: memory.EncodingView}, Encoding: memory.EncodingView}
 		default:
 			return fmt.Errorf("JSON_DECODE field %q: unsupported type %s", field.Name, field.Type)

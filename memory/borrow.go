@@ -62,6 +62,10 @@ func BorrowBatchRange(src *Batch, offset, length int) (*Batch, error) {
 		lo, hi := v.Offsets[offset], v.Offsets[end]
 		dst.StringLists[name] = &StringListVector{Offsets: borrowOffsets(v.Offsets, offset, length), Values: borrowStringRange(v.Values, int(lo), int(hi-lo)), Validity: borrowValidityRange(v.Validity, offset, length), Encoding: v.Encoding}
 	}
+	for name, v := range src.Int64Lists {
+		lo, hi := v.Offsets[offset], v.Offsets[end]
+		dst.Int64Lists[name] = &Int64ListVector{Offsets: borrowOffsets(v.Offsets, offset, length), Validity: borrowValidityRange(v.Validity, offset, length), Encoding: v.Encoding, Values: &Int64Vector{Values: v.Values.Values[lo:hi], Validity: borrowValidityRange(v.Values.Validity, int(lo), int(hi-lo)), Encoding: v.Values.Encoding}}
+	}
 	for name, v := range src.Structs {
 		children, err := BorrowBatchRange(v.Values, offset, length)
 		if err != nil {
@@ -241,6 +245,24 @@ func BorrowedRangeMetadataBytes(src *Batch, offset, length int) (int64, error) {
 			if lo&63 != 0 {
 				total += int64(WordsFor(hi-lo)) * 8
 			}
+		}
+	}
+	for _, v := range src.Int64Lists {
+		lo, hi, err := int64ListRangeBounds(v, offset, length)
+		if err != nil {
+			return 0, err
+		}
+		if err := ownedRangeOffsets(v.Offsets, offset, length); err != nil {
+			return 0, err
+		}
+		if err := add(v.Validity); err != nil {
+			return 0, err
+		}
+		if lo != 0 {
+			total += int64(length+1) * 4
+		}
+		if v.Values.Validity != nil && hi > lo && lo%64 != 0 {
+			total += int64(WordsFor(int(hi-lo))) * 8
 		}
 	}
 	for _, v := range src.Opaque {

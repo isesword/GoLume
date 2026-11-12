@@ -80,8 +80,49 @@ func selectionRunFieldSize(batch *Batch, field Field, rows []int, parent *Struct
 		}
 		return size, nil
 	case TypeList:
-		if err := field.ValidateListString(); err != nil {
+		if err := field.ValidateList(); err != nil {
 			return 0, err
+		}
+		if field.Children[0].Type == TypeInt64 {
+			v := batch.Int64Lists[field.Name]
+			if err := v.Validate(batch.Rows); err != nil {
+				return 0, err
+			}
+			if err := validateSelectionNulls(v.Validity, field, rows, parent); err != nil {
+				return 0, err
+			}
+			var children int64
+			for _, row := range rows {
+				if parent != nil && !parent.IsValid(row) || !v.IsValid(row) {
+					continue
+				}
+				start, end, _ := v.ValueRange(row) // Validate checked physical offsets.
+				children, err = addRunSizes(children, int64(end-start))
+				if err != nil {
+					return 0, err
+				}
+				// Bound child cardinality before multiplying the fixed-width payload.
+				if _, err := selectionOffsetBytes(children); err != nil {
+					return 0, err
+				}
+				for child := start; child < end; child++ {
+					if !v.Values.IsValid(child) {
+						if !field.Children[0].Nullable {
+							return 0, fmt.Errorf("non-nullable list element is NULL at row %d", row)
+						}
+						continue
+					}
+				}
+			}
+			parentOffsets, err := selectionOffsetBytes(int64(len(rows)))
+			if err != nil {
+				return 0, err
+			}
+			childValidity, err := selectionValidityBytes(children)
+			if err != nil {
+				return 0, err
+			}
+			return addRunSizes(validityBytes, parentOffsets, childValidity, children*8)
 		}
 		v := batch.StringLists[field.Name]
 		if err := v.Validate(batch.Rows); err != nil {
@@ -275,8 +316,14 @@ func validateSelectionStruct(v *StructVector, field Field, rows int) error {
 		}
 		switch child.Type {
 		case TypeList:
-			if err := child.ValidateListString(); err != nil {
+			if err := child.ValidateList(); err != nil {
 				return err
+			}
+			if err := v.Fields[i].ValidateList(); err != nil {
+				return err
+			}
+			if child.Children[0].Type != v.Fields[i].Children[0].Type {
+				return fmt.Errorf("struct list child type mismatch")
 			}
 		case TypeString:
 			if child.Encoding == EncodingDictionary {

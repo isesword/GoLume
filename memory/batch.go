@@ -20,6 +20,7 @@ type Batch struct {
 	Strings     map[string]*StringViewVector
 	DictStrings map[string]*DictionaryStringVector
 	StringLists map[string]*StringListVector
+	Int64Lists  map[string]*Int64ListVector
 	Structs     map[string]*StructVector
 	Opaque      map[string]*OpaqueVector
 }
@@ -41,6 +42,7 @@ func NewBatch() *Batch {
 		Strings:     make(map[string]*StringViewVector),
 		DictStrings: make(map[string]*DictionaryStringVector),
 		StringLists: make(map[string]*StringListVector),
+		Int64Lists:  make(map[string]*Int64ListVector),
 		Structs:     make(map[string]*StructVector),
 		Opaque:      make(map[string]*OpaqueVector),
 	}
@@ -90,6 +92,7 @@ func (b *Batch) ClearColumns() {
 	clear(b.Strings)
 	clear(b.DictStrings)
 	clear(b.StringLists)
+	clear(b.Int64Lists)
 	clear(b.Structs)
 	clear(b.Opaque)
 	b.Rows = 0
@@ -227,6 +230,15 @@ func (b *Batch) OpaqueColumn(name string) (*OpaqueVector, error) {
 	v, ok := b.Opaque[name]
 	if !ok {
 		return nil, fmt.Errorf("opaque column %q not present in batch", name)
+	}
+	return v, nil
+}
+
+// Int64List returns the named native List<Int64> vector.
+func (b *Batch) Int64List(name string) (*Int64ListVector, error) {
+	v, ok := b.Int64Lists[name]
+	if !ok {
+		return nil, fmt.Errorf("int64 list column %q is absent", name)
 	}
 	return v, nil
 }

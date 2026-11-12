@@ -11,6 +11,10 @@ import (
 func validateBoundColumn(batch *memory.Batch, name string, typ memory.DataType) error {
 	switch typ {
 	case memory.TypeList:
+		if v := batch.Int64Lists[name]; v != nil {
+			_, err := predicateColumnValidity(name, batch.Rows, v.Len(), v.Validity)
+			return err
+		}
 		v, err := batch.StringList(name)
 		if err != nil {
 			return err
@@ -307,7 +311,7 @@ func (w *evaluationState) outputValue(index, rows int) (ScalarValue, error) {
 	if r.constant {
 		return w.materializeLiteral(index, rows)
 	}
-	if w.program[index].Code == scalarColumn && (r.strView != nil || r.strDict != nil || r.strList != nil || r.strct != nil || r.opaque != nil) {
+	if w.program[index].Code == scalarColumn && (r.strView != nil || r.strDict != nil || r.strList != nil || r.intList != nil || r.strct != nil || r.opaque != nil) {
 		return w.exportBorrowedValue(index, rows)
 	}
 	if r.typ == memory.TypeBool && w.program[index].Code != scalarColumn {
