@@ -20,7 +20,8 @@ import (
 // BatchBytes bound GoLume's live decoded vector buffers and decode scratch,
 // including allocation overlap and borrowed string-view header arrays.
 // Stream metadata (including inline single-value lookahead, optional page
-// indexes and selected row ranges), Go
+// indexes, Bloom filters and temporary Bloom range validation, and selected
+// row ranges), Go
 // object overhead, and Arrow page, dictionary,
 // codec and metadata allocations are excluded; this is not an RSS limit. Input
 // chunks use buffered I/O rather than whole-column compressed buffering.
@@ -133,6 +134,8 @@ type batchStream struct {
 	groupID                int
 	groupRows              int64
 	pagePredicate          expr.Expr
+	bloomRanges            bloomRangeValidation
+	disableBloomPruning    bool // test-only control; retains all other pruning and decoding
 	pageRanges             []pageRowRange
 	pageRange              int
 	pageEnd                int64
@@ -343,6 +346,17 @@ func (s *batchStream) openGroup(ctx context.Context) error {
 		return fmt.Errorf("row group %d has negative row count", p.ID)
 	}
 	s.pageRanges, s.pageRange, s.pageEnd = nil, 0, 0
+	if !s.disableBloomPruning {
+		excluded := bloomGroupExcludedCached(ctx, s.r, p.ID, s.bindings, s.pagePredicate, &s.bloomRanges)
+		if err := s.checkContext(ctx); err != nil {
+			return err
+		}
+		if excluded {
+			s.remaining = 0
+			s.groupOpen = true
+			return nil
+		}
+	}
 	if plan := planPagePruning(ctx, s.r, p.ID, s.bindings, s.pagePredicate); plan != nil {
 		s.pagePrunedRows += plan.prunedRows
 		s.anchorPagesPruned += plan.prunedPages
