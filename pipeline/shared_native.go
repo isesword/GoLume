@@ -55,9 +55,11 @@ func sharedImmediateManager(ctx context.Context, manager memory.Manager) memory.
 	if q := memory.QueryBudgetFromContext(ctx); q != nil {
 		return q.Operator("PipelineExchange", memory.MemoryInFlightBatch)
 	}
-	// Only built-in managers are enabled in this experiment. A custom wrapper
-	// may inherit the new method accidentally while overriding Reserve.
+	// Custom managers require an explicit adapter. Structural interface
+	// matching alone could bypass an overriding Reserve via an inherited method.
 	switch m := manager.(type) {
+	case *memory.NativeSharingManager:
+		return m
 	case *memory.BudgetManager:
 		return m
 	case *memory.EngineBudget:
