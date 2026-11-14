@@ -491,8 +491,21 @@ func pushProjection(plan logical.Plan, required map[string]struct{}, rules *[]st
 		if err != nil {
 			return nil, err
 		}
-		if len(kept) == 0 && n.IncludeInput {
+		// ExprProjection is row-preserving. If no computed output is
+		// demanded, eliminate its original computations rather than
+		// constructing an invalid empty expression list (SelectExprs too).
+		// All original expressions were bound above; only runtime work for
+		// dead outputs is omitted, as with ordinary expression pruning.
+		if len(kept) == 0 {
 			*rules = append(*rules, "expression-projection-elimination")
+			if !n.IncludeInput {
+				// Preserve SelectExprs' schema boundary: cardinality-only
+				// scans may retain columns that consumers must not observe.
+				// Zero-output physical projections are not supported. Keep a
+				// safe row-count carrier, never an original dead expression.
+				name, _ := n.Exprs[0].Name()
+				return &logical.ExprProjection{Input: child, Exprs: []expr.NamedExpr{expr.Named(expr.I64(0), name)}}, nil
+			}
 			return child, nil
 		}
 		if len(kept) != len(n.Exprs) {
