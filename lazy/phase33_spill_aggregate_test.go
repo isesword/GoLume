@@ -76,7 +76,9 @@ func TestBoundedAggregateSpillsAndMatchesResidentResults(t *testing.T) {
 
 	spillDir := t.TempDir()
 	opts := engine.DefaultOptions()
-	opts.MemoryLimitBytes = 256 << 10
+	// Collect now admits retained native maps/descriptors and growth capacity,
+	// not only logical values; keep the original spill soft threshold.
+	opts.MemoryLimitBytes = 512 << 10
 	opts.QueryMemorySoftLimitBytes = 96 << 10
 	opts.Spill = engine.SpillOptions{Directory: spillDir, MaxBytes: 32 << 20}
 	opts.ExecutionPolicy = engine.ExecutionBounded

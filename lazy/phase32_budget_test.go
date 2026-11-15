@@ -20,7 +20,7 @@ func TestPhase32CollectUsesQueryOutputBudgetUntilDataFrameClose(t *testing.T) {
 		t.Fatal(err)
 	}
 	opts := engine.DefaultOptions()
-	opts.MemoryLimitBytes = 1024
+	opts.MemoryLimitBytes = 16 << 10
 	session := NewSession(opts)
 	defer session.Close()
 
@@ -28,8 +28,13 @@ func TestPhase32CollectUsesQueryOutputBudgetUntilDataFrameClose(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if used := session.Engine().Memory().Used(); used != 32 {
-		t.Fatalf("materialized output reservation=%d want=32", used)
+	want, err := memory.EstimateCollectBatchBytes(batch)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want += collectEntryAllowance
+	if used := session.Engine().Memory().Used(); used != want {
+		t.Fatalf("materialized output reservation=%d want=%d", used, want)
 	}
 	if err := df.Close(); err != nil {
 		t.Fatal(err)
@@ -57,7 +62,7 @@ func TestPhase32CollectBudgetFailureReportsTypedOutputHint(t *testing.T) {
 	if !errors.Is(err, memory.ErrBudgetExceeded) || !errors.As(err, &resourceErr) {
 		t.Fatalf("collect error=%T %v", err, err)
 	}
-	if resourceErr.Operator != "Collect" || resourceErr.Class != memory.MemoryOutput || resourceErr.RequestedBytes != 32 || resourceErr.Hint == "" {
+	if resourceErr.Operator != "Collect" || resourceErr.Class != memory.MemoryOutput || resourceErr.RequestedBytes <= 32 || resourceErr.Hint == "" {
 		t.Fatalf("resource error=%+v", resourceErr)
 	}
 	if used := session.Engine().Memory().Used(); used != 0 {

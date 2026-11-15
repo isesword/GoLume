@@ -155,15 +155,20 @@ func TestDataFrameMaterializationHonorsAndReleasesBudget(t *testing.T) {
 	}
 	_ = small.Close()
 	ok := engine.DefaultOptions()
-	ok.MemoryLimitBytes = 1024
+	ok.MemoryLimitBytes = 16 << 10
 	session := NewSession(ok)
 	defer session.Close()
 	df, err := session.FromSource(src).Collect(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if used := session.engine.Memory().Used(); used != 32 {
-		t.Fatalf("reserved=%d want=32", used)
+	want, estimateErr := memory.EstimateCollectBatchBytes(batch)
+	if estimateErr != nil {
+		t.Fatal(estimateErr)
+	}
+	want += collectEntryAllowance
+	if used := session.engine.Memory().Used(); used != want {
+		t.Fatalf("reserved=%d want=%d", used, want)
 	}
 	if err := df.Close(); err != nil {
 		t.Fatal(err)

@@ -489,8 +489,12 @@ func TestLazyExecutionHonorsBorrowedQueryBudget(t *testing.T) {
 	for _, operation := range []string{"Analyze", "Collect", "CollectBatches", "SinkBatches"} {
 		for _, outcome := range []string{"success", "budget", "next-error", "close-error"} {
 			t.Run(operation+"/"+outcome, func(t *testing.T) {
-				root := memory.NewEngineBudget(256)
-				budget, err := root.BeginQuery(memory.BudgetOptions{HardLimitBytes: 64})
+				limit := int64(64)
+				if operation == "Collect" && outcome != "budget" {
+					limit = 32 << 10
+				}
+				root := memory.NewEngineBudget(limit * 4)
+				budget, err := root.BeginQuery(memory.BudgetOptions{HardLimitBytes: limit})
 				if err != nil {
 					t.Fatal(err)
 				}

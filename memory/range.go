@@ -266,6 +266,10 @@ func estimateBatchRangeBytesAccounting(src *Batch, offset, length int, inherited
 // represents zero values with no offsets. NULL validity remains distinct from
 // an empty non-NULL value.
 func CloneBatchRange(src *Batch, offset, length int) (*Batch, error) {
+	return cloneBatchRange(src, offset, length, false)
+}
+
+func cloneBatchRange(src *Batch, offset, length int, collect bool) (*Batch, error) {
 	if src == nil {
 		return nil, fmt.Errorf("cannot clone range from nil batch")
 	}
@@ -408,17 +412,26 @@ func CloneBatchRange(src *Batch, offset, length int) (*Batch, error) {
 	}
 
 	for name, v := range src.Structs {
-		cloned, err := CloneStructRange(v, offset, length)
+		var cloned *StructVector
+		var err error
+		if collect && length == 0 {
+			cloned, err = TakeStructRows(v, nil)
+		} else {
+			cloned, err = CloneStructRange(v, offset, length)
+		}
 		if err != nil {
 			return fail(name, err)
 		}
 		dst.Structs[name] = cloned
 	}
 	for name, v := range src.Opaque {
+		if collect && v == nil {
+			continue
+		}
 		if v == nil || v.Value == nil || v.Rows < end {
 			return fail(name, fmt.Errorf("opaque vector shorter than range"))
 		}
-		if a, ok := v.Value.(arrow.Array); ok {
+		if a, ok := v.Value.(arrow.Array); ok && !collect {
 			sliced := array.NewSlice(a, int64(offset), int64(end))
 			dst.Opaque[name] = &OpaqueVector{Rows: length, Type: v.Type, ArrowType: v.ArrowType, Encoding: v.Encoding, Validity: cloneValidityRange(v.Validity, offset, length), Value: sliced, Owned: true}
 			continue
@@ -471,6 +484,11 @@ func cloneValidityRange(src Bitmap, offset, length int) Bitmap {
 		return nil
 	}
 	out := make(Bitmap, WordsFor(length))
+	if offset&63 == 0 {
+		copy(out, src[offset>>6:])
+		out[len(out)-1] &= TailMask(length)
+		return out
+	}
 	for row := 0; row < length; row++ {
 		if IsSet(src, offset+row) {
 			Set(out, row)

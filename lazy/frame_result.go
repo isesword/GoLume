@@ -274,13 +274,17 @@ func (p *PreparedDataFrame) Execute(ctx context.Context) (frame DataFrame, resul
 		if !ok {
 			break
 		}
-		reservation, err := outputManager.Reserve(ctx, memory.BatchBytes(scratch))
+		admission, err := collectBatchAdmission(scratch)
+		var reservation memory.Reservation
+		if err == nil {
+			reservation, err = outputManager.Reserve(ctx, admission)
+		}
 		if err != nil {
 			closeErr := stream.Close()
 			_ = out.Close()
 			return DataFrame{}, errors.Join(err, closeErr)
 		}
-		owned, err := memory.CloneBatch(scratch)
+		owned, err := memory.CloneCollectBatch(scratch)
 		if err != nil {
 			reservation.Release()
 			closeErr := stream.Close()

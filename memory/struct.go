@@ -241,7 +241,9 @@ func initEmptyStructChildren(dst *Batch, src *StructVector) error {
 		case TypeString:
 			if src.Values.Strings[field.Name] != nil {
 				dst.Strings[field.Name] = &StringViewVector{Offsets: []uint32{0}, Encoding: EncodingView}
-			} else {
+			} else if dst.DictStrings[field.Name] == nil {
+				// Repeated declared fields share one empty runtime binding. Avoid
+				// recopying a potentially large dictionary and overlapping buffers.
 				v := src.Values.DictStrings[field.Name]
 				dst.DictStrings[field.Name] = &DictionaryStringVector{Offsets: append([]uint32(nil), v.Offsets...), Data: append([]byte(nil), v.Data...), DictionaryDomain: v.DictionaryDomain, Encoding: v.Encoding}
 			}

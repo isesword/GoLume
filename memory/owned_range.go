@@ -71,7 +71,7 @@ func nativeOwnedRangeFromMetadata(src *Batch, offset, length int, state nativeOw
 	// Public logical sizing and the local native-only Struct comparison retain
 	// their original behavior by passing a nil component accumulator.
 	var opaque, bulk int64
-	logical, err := estimateBatchRangeBytesAccounting(src, offset, length, false, true, &opaque, &bulk, true)
+	logical, err := estimateBatchRangeBytesAccounting(src, offset, length, false, !state.collect, &opaque, &bulk, true)
 	if err != nil {
 		return NativeOwnedRangeEstimate{}, err
 	}
@@ -103,6 +103,13 @@ func nativeOwnedRangeFromMetadata(src *Batch, offset, length int, state nativeOw
 	total, err := ownedRangeAdd(native, opaque, 1)
 	if err != nil {
 		return NativeOwnedRangeEstimate{}, err
+	}
+	if state.collect {
+		total, err = ownedRangeAdd(total, state.collectOpaqueValidity, 1)
+		if err != nil {
+			return NativeOwnedRangeEstimate{}, err
+		}
+		opaque = state.collectOpaqueValidity
 	}
 	return NativeOwnedRangeEstimate{Bytes: total, NativeBytes: native, LegacyOpaqueBytes: opaque, OpaquePresent: state.opaquePresent}, nil
 }
@@ -139,6 +146,17 @@ func ownedRangeMetadata(b *Batch, offset, length int, state *nativeOwnedEstimate
 	hasNative := len(b.Int8s)+len(b.Int16s)+len(b.Int32s)+len(b.Int64s)+len(b.Uint8s)+len(b.Uint16s)+len(b.Uint32s)+len(b.Uint64s)+len(b.Float32s)+len(b.Float64s)+len(b.Decimals)+len(b.Strings)+len(b.DictStrings)+len(b.StringLists)+len(b.Int64Lists)+len(b.Structs) > 0
 	if len(b.Opaque) > 0 {
 		state.opaquePresent = true
+		if state.collect {
+			for _, v := range b.Opaque {
+				if v != nil {
+					var err error
+					state.collectOpaqueValidity, err = ownedRangeAdd(state.collectOpaqueValidity, int64(len(v.Validity)), 8)
+					if err != nil {
+						return 0, err
+					}
+				}
+			}
+		}
 	}
 	if offset < 0 || length < 0 || offset > b.Rows || length > b.Rows-offset || ((hasNative || forceContainer) && length > math.MaxInt64/16) {
 		return 0, fmt.Errorf("owned clone range offset=%d length=%d out of rows=%d or byte range", offset, length, b.Rows)
@@ -147,13 +165,20 @@ func ownedRangeMetadata(b *Batch, offset, length int, state *nativeOwnedEstimate
 	total := int64(0)
 	if hasNative || forceContainer || len(b.Opaque) == 0 {
 		total = 4096
+		if state.collect {
+			total = collectContainerAdmission
+		}
 	}
 	add := func(n, scale int64) error { var err error; total, err = ownedRangeAdd(total, n, scale); return err }
 	entry := func(name string, validity Bitmap) error {
 		if err := rangeValidityBounds(validity, offset, length); err != nil {
 			return err
 		}
-		if err := add(1, 1024); err != nil {
+		entryBytes := int64(1024)
+		if state.collect {
+			entryBytes = collectVectorAdmission
+		}
+		if err := add(1, entryBytes); err != nil {
 			return err
 		}
 		return add(int64(len(name)), 1)
@@ -280,7 +305,11 @@ func ownedRangeMetadata(b *Batch, offset, length int, state *nativeOwnedEstimate
 		if err := entry(name, v.Validity); err != nil {
 			return 0, err
 		}
-		if err := add(1, 1024); err != nil {
+		entryBytes := int64(1024)
+		if state.collect {
+			entryBytes = collectVectorAdmission
+		}
+		if err := add(1, entryBytes); err != nil {
 			return 0, err
 		}
 		lo, hi, _, _, err := stringListRangeBounds(v, offset, length)
@@ -305,7 +334,11 @@ func ownedRangeMetadata(b *Batch, offset, length int, state *nativeOwnedEstimate
 		if err := entry(name, v.Validity); err != nil {
 			return 0, err
 		}
-		if err := add(1, 1024); err != nil {
+		entryBytes := int64(1024)
+		if state.collect {
+			entryBytes = collectVectorAdmission
+		}
+		if err := add(1, entryBytes); err != nil {
 			return 0, err
 		}
 		_, _, err := int64ListRangeBounds(v, offset, length)
@@ -425,7 +458,9 @@ func ownedRangeFields(fields []Field) (int64, error) {
 }
 
 type nativeOwnedEstimateState struct {
-	nativeOnly         bool
-	opaquePresent      bool
-	nativePayloadExtra int64
+	collect               bool
+	collectOpaqueValidity int64
+	nativeOnly            bool
+	opaquePresent         bool
+	nativePayloadExtra    int64
 }
