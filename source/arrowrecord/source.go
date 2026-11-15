@@ -427,9 +427,29 @@ func cachePhysicalValues(b *binding, partition int, arr arrow.Array, parentValid
 		}
 		b.i32[partition] = out
 	case *array.Time32:
+		typ, ok := a.DataType().(*arrow.Time32Type)
+		if !ok {
+			return fmt.Errorf("time32 array has invalid data type %T", a.DataType())
+		}
+		var scale int64
+		switch typ.Unit {
+		case arrow.Second:
+			scale = 1000
+		case arrow.Millisecond:
+			scale = 1
+		default:
+			return fmt.Errorf("time32 unit %s is not supported; use seconds or milliseconds", typ.Unit)
+		}
 		out := make([]int32, len(a.Values()))
-		for i, v := range a.Values() {
-			out[i] = int32(v)
+		for i := range a.Values() {
+			if a.IsNull(i) || (parentValidity != nil && !memory.IsSet(parentValidity, i)) {
+				continue
+			}
+			v := a.Values()[i]
+			if int64(v) > math.MaxInt32/scale || int64(v) < math.MinInt32/scale {
+				return fmt.Errorf("time32 row %d: millisecond normalization overflows", i)
+			}
+			out[i] = int32(int64(v) * scale)
 		}
 		b.i32[partition] = out
 	case *array.Date64:
@@ -463,9 +483,29 @@ func cachePhysicalValues(b *binding, partition int, arr arrow.Array, parentValid
 		}
 		b.i64[partition] = out
 	case *array.Time64:
+		typ, ok := a.DataType().(*arrow.Time64Type)
+		if !ok {
+			return fmt.Errorf("time64 array has invalid data type %T", a.DataType())
+		}
+		var scale int64
+		switch typ.Unit {
+		case arrow.Microsecond:
+			scale = 1000
+		case arrow.Nanosecond:
+			scale = 1
+		default:
+			return fmt.Errorf("time64 unit %s is not supported; use microseconds or nanoseconds", typ.Unit)
+		}
 		out := make([]int64, len(a.Values()))
-		for i, v := range a.Values() {
-			out[i] = int64(v)
+		for i := range a.Values() {
+			if a.IsNull(i) || (parentValidity != nil && !memory.IsSet(parentValidity, i)) {
+				continue
+			}
+			ns, err := scaleTimestampToNanos(int64(a.Values()[i]), scale)
+			if err != nil {
+				return fmt.Errorf("time64 row %d: %w", i, err)
+			}
+			out[i] = ns
 		}
 		b.i64[partition] = out
 	case *array.Duration:
@@ -518,6 +558,9 @@ func scaleTimestampToNanos(value, scale int64) (int64, error) {
 	return value * scale, nil
 }
 
+// memoryField preserves ArrowType as source provenance. Native temporal
+// payloads use canonical units (time32 milliseconds, time64/timestamp/duration
+// nanoseconds); Arrow export derives those units from Type, not ArrowType.
 func memoryField(f arrow.Field) memory.Field {
 	out := memory.Field{Name: f.Name, Nullable: f.Nullable, Encoding: memory.EncodingPlain, ArrowType: f.Type.String()}
 	dt := f.Type
