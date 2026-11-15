@@ -478,6 +478,14 @@ func bindUnary(bound *BoundExpr, n Unary) error {
 		bound.Field = computedField(memory.TypeBool, input.Nullable)
 	case OpIsNull, OpIsNotNull:
 		bound.Field = computedField(memory.TypeBool, false)
+	case OpListLength:
+		if err := input.ValidateList(); err != nil {
+			return fmt.Errorf("LIST_LENGTH requires native List<String> or List<Int64>: %w", err)
+		}
+		if len(input.Children[0].Children) != 0 {
+			return fmt.Errorf("LIST_LENGTH does not support nested list children")
+		}
+		bound.Field = computedField(memory.TypeInt64, input.Nullable)
 	case OpLength, OpByteLength, OpTrim, OpTrimStart, OpTrimEnd, OpLower, OpUpper:
 		if input.Type != memory.TypeString {
 			return fmt.Errorf("%s requires string input, got %s", n.Op, input.Type)

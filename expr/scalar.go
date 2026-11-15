@@ -346,6 +346,9 @@ func (c *scalarCompiler) compileBound(bound *BoundExpr) (int, TypeInfo, error) {
 			in.Code = scalarUnary
 			in.Op = n.Op
 			in.SourceType = bound.Children[0].Field.Type
+			if n.Op == OpListLength {
+				in.SourceType = bound.Children[0].Field.Children[0].Type
+			}
 			if n.Op == OpNot || n.Op == OpIsNull || n.Op == OpIsNotNull {
 				in.Code = scalarBoolean
 			}
@@ -1357,6 +1360,9 @@ func normalizeTimestampUnitLiteral(v TimestampUnitLiteral) (int64, error) {
 }
 
 func evalUnary(out, in *scalarRegister, op Op, source memory.DataType, rows int, kernels kernel.Set) error {
+	if op == OpListLength {
+		return evalListLength(out, in, source, rows)
+	}
 	if op == OpBitNot {
 		return evalBitwise(out, in, nil, kernel.BitwiseNot, rows, kernels)
 	}

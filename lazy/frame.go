@@ -277,6 +277,10 @@ func EndsWith(value, suffix expr.Expr) expr.Binary { return expr.EndsWith(value,
 // RegexMatch constructs a compiled regular-expression predicate.
 func RegexMatch(value, pattern expr.Expr) expr.Binary { return expr.RegexMatch(value, pattern) }
 
+// ListLength counts elements in a native List<String> or List<Int64>.
+// NULL parents produce NULL; empty lists produce zero; NULL children count.
+func ListLength(value expr.Expr) expr.Unary { return expr.ListLength(value) }
+
 // Length constructs a UTF-8 character-count projection expression.
 func Length(value expr.Expr) expr.Unary { return expr.Length(value) }
 

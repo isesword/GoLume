@@ -67,6 +67,7 @@ const (
 	OpBitOr
 	OpBitXor
 	OpBitNot
+	OpListLength
 )
 
 // Expr is a logical scalar expression node.
@@ -408,6 +409,8 @@ func (o Op) String() string {
 		return "STARTS_WITH"
 	case OpEndsWith:
 		return "ENDS_WITH"
+	case OpListLength:
+		return "LIST_LENGTH"
 	case OpLength:
 		return "LENGTH"
 	case OpYear:
@@ -586,6 +589,10 @@ func StartsWith(value, prefix Expr) Binary {
 
 // EndsWith constructs a case-sensitive UTF-8 suffix predicate.
 func EndsWith(value, suffix Expr) Binary { return Binary{Op: OpEndsWith, Left: value, Right: suffix} }
+
+// ListLength counts elements in a native List<String> or List<Int64>.
+// NULL parents produce NULL; empty lists produce zero; NULL children count.
+func ListLength(value Expr) Unary { return Unary{Op: OpListLength, Value: value} }
 
 // Length constructs a UTF-8 character-count projection expression.
 func Length(value Expr) Unary { return Unary{Op: OpLength, Value: value} }
