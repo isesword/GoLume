@@ -84,14 +84,39 @@ func renamePredicateColumns(value expr.Expr, names map[string]string) (expr.Expr
 	case expr.Cast:
 		n.Value = rename(n.Value)
 		return n, ok
+	case expr.Decimal128DivideRoundExpr:
+		n.Left, n.Right = rename(n.Left), rename(n.Right)
+		return n, ok
 	case expr.Decimal128DivideExpr:
 		n.Left, n.Right = rename(n.Left), rename(n.Right)
+		return n, ok
+	case expr.Decimal128RoundExpr:
+		n.Value = rename(n.Value)
 		return n, ok
 	case expr.Decimal128RescaleExpr:
 		n.Value = rename(n.Value)
 		return n, ok
 	case expr.TryCastExpr:
 		n.Value = rename(n.Value)
+		return n, ok
+	case expr.StructFromExpr:
+		fields := make([]expr.NamedExpr, len(n.Fields))
+		for i, field := range n.Fields {
+			// Output field identity is independent of input column renaming,
+			// including names originally inferred from bare columns.
+			name, err := field.Name()
+			if err != nil {
+				return nil, false
+			}
+			fields[i] = expr.Named(rename(field.Expr), name)
+		}
+		n.Fields = fields
+		return n, ok
+	case expr.StructGetExpr:
+		n.Value = rename(n.Value)
+		return n, ok
+	case expr.ListGetExpr:
+		n.Value, n.Index = rename(n.Value), rename(n.Index)
 		return n, ok
 	case expr.YMDDateExpr:
 		n.Year, n.Month, n.Day = rename(n.Year), rename(n.Month), rename(n.Day)

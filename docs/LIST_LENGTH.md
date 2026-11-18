@@ -1,7 +1,9 @@
 # Native list element count
 
 `expr.ListLength(value)` and `lazy.ListLength(value)` return an Int64 element
-count for the existing native `List<String>` and `List<Int64>` representations.
+count for native `List<String>` and `List<Int64>`, the bounded flat Struct-item
+profile, and checked two-level Int64/String Lists (see LIST_STRUCT.md and
+NESTED_LIST.md). The outer count includes NULL inner List slots.
 They do not change the string-only Unicode semantics of `Length`, or byte-count
 semantics of `ByteLength`.
 
@@ -9,7 +11,7 @@ semantics of `ByteLength`.
 - A valid empty list yields zero.
 - NULL child elements count as elements.
 - Child string byte lengths do not affect the element count.
-- Other list child types, recursively nested children, opaque Arrow inputs and
+- Shapes outside those explicit profiles, opaque Arrow inputs and
   non-list inputs are rejected during binding.
 
 ```go

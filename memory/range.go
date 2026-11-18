@@ -37,6 +37,12 @@ func estimateBatchRangeBytesComponents(src *Batch, offset, length int, inherited
 // bulkNative counts only pointer-free native payload copied in one allocation
 // per backing. Non-empty Struct children use row append and never enter it.
 func estimateBatchRangeBytesAccounting(src *Batch, offset, length int, inheritedNulls, includeOpaque bool, legacyOpaque, bulkNative *int64, bulkMode bool) (int64, error) {
+	return estimateBatchRangeBytesAccountingCheck(src, offset, length, inheritedNulls, includeOpaque, legacyOpaque, bulkNative, bulkMode, nil)
+}
+func estimateBatchRangeBytesAccountingCheck(src *Batch, offset, length int, inheritedNulls, includeOpaque bool, legacyOpaque, bulkNative *int64, bulkMode bool, check func() error) (int64, error) {
+	if err := recursiveCheck(check); err != nil {
+		return 0, err
+	}
 	if src == nil {
 		return 0, fmt.Errorf("cannot estimate range from nil batch")
 	}
@@ -208,6 +214,42 @@ func estimateBatchRangeBytesAccounting(src *Batch, offset, length int, inherited
 			return 0, err
 		}
 	}
+	for _, v := range src.Arrays {
+		n, err := estimateArrayRangeBytes(v, offset, length, 0, check)
+		if err != nil {
+			return 0, err
+		}
+		if err = add(n); err != nil {
+			return 0, err
+		}
+	}
+	for name, v := range src.StructLists {
+		if v == nil || v.Values == nil || v.Values.Values == nil || len(v.Offsets) < end+1 {
+			return 0, fmt.Errorf("StructList %q shorter than range", name)
+		}
+		lo, hi := v.Offsets[offset], v.Offsets[end]
+		if lo > hi || uint64(hi) > uint64(v.Values.Rows) {
+			return 0, fmt.Errorf("invalid StructList range")
+		}
+		for i := offset; i < end; i++ {
+			if v.Offsets[i] > v.Offsets[i+1] {
+				return 0, fmt.Errorf("decreasing StructList offsets")
+			}
+		}
+		if len(v.Values.Values.Structs)+len(v.Values.Values.StructLists) != 0 {
+			return 0, fmt.Errorf("StructList item must be flat")
+		}
+		child, err := estimateBatchRangeBytesAccountingCheck(v.Values.Values, int(lo), int(hi-lo), true, includeOpaque, legacyOpaque, nil, false, check)
+		if err != nil {
+			return 0, err
+		}
+		if err = add(child); err != nil {
+			return 0, err
+		}
+		if err = add(int64(length+1)*4 + int64(WordsFor(length)+WordsFor(int(hi-lo)))*8); err != nil {
+			return 0, err
+		}
+	}
 	for name, v := range src.Structs {
 		if v == nil || v.Values == nil || v.Rows < end {
 			return 0, fmt.Errorf("struct column %q is shorter than range", name)
@@ -223,7 +265,7 @@ func estimateBatchRangeBytesAccounting(src *Batch, offset, length int, inherited
 				}
 			}
 		}
-		childBytes, err := estimateBatchRangeBytesAccounting(v.Values, offset, length, childNulls, includeOpaque, legacyOpaque, bulkNative, bulkMode && length == 0)
+		childBytes, err := estimateBatchRangeBytesAccountingCheck(v.Values, offset, length, childNulls, includeOpaque, legacyOpaque, bulkNative, bulkMode && length == 0, check)
 		if err != nil {
 			return 0, fmt.Errorf("struct column %q: %w", name, err)
 		}
@@ -270,6 +312,12 @@ func CloneBatchRange(src *Batch, offset, length int) (*Batch, error) {
 }
 
 func cloneBatchRange(src *Batch, offset, length int, collect bool) (*Batch, error) {
+	if BatchHasArrays(src) {
+		return nil, fmt.Errorf("array-node clone requires explicit owned profile")
+	}
+	if BatchHasStructLists(src) {
+		return nil, fmt.Errorf("StructList clone requires explicit owned profile")
+	}
 	if src == nil {
 		return nil, fmt.Errorf("cannot clone range from nil batch")
 	}
@@ -568,4 +616,10 @@ func cloneRangeOffsets(src []uint32, offset, length int, base uint32) ([]uint32,
 		}
 	}
 	return out, nil
+}
+
+// EstimateBatchRangeBytesWithCheck adds cancellation checkpoints to array-axis
+// payload sizing while retaining the historical logical payload charge.
+func EstimateBatchRangeBytesWithCheck(src *Batch, offset, length int, check func() error) (int64, error) {
+	return estimateBatchRangeBytesAccountingCheck(src, offset, length, false, true, nil, nil, true, check)
 }

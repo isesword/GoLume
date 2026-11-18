@@ -58,6 +58,12 @@ type NativeOwnedRangeEstimate struct {
 // is not part of the retained clone allocation charge. Opaque keeps its existing behavior, including descriptor and
 // validity allocation/retention, without any new owned-allocation guarantee.
 func EstimateNativeOwnedBatchRangeBytes(src *Batch, offset, length int) (NativeOwnedRangeEstimate, error) {
+	if BatchHasArrays(src) {
+		return NativeOwnedRangeEstimate{}, fmt.Errorf("array fan-out requires explicit owned profile")
+	}
+	if BatchHasStructLists(src) {
+		return NativeOwnedRangeEstimate{}, fmt.Errorf("StructList fan-out requires explicit owned profile")
+	}
 	state := nativeOwnedEstimateState{}
 	metadata, err := ownedRangeMetadata(src, offset, length, &state, false, false, true, true)
 	if err != nil {

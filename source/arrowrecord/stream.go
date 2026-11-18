@@ -121,6 +121,13 @@ var _ source.PreparedBatchStreamProvider = (*Source)(nil)
 
 func bindTyped(dst *memory.Batch, b binding, arr arrow.Array, partition int, validity memory.Bitmap) (bool, error) {
 	switch a := arr.(type) {
+	case *array.Decimal128:
+		if b.field.DecimalPrecision == 0 {
+			return false, nil
+		}
+		// Metadata and valid coefficients were checked at construction. The
+		// retained Arrow record is immutable; only vector headers are per-stream.
+		dst.Decimals[b.name] = &memory.Decimal128Vector{Values: a.Values(), Validity: validity, Precision: b.field.DecimalPrecision, Scale: b.field.DecimalScale}
 	case *array.Int8:
 		dst.Int8s[b.name] = &memory.Int8Vector{Values: a.Values(), Validity: validity, Encoding: b.field.Encoding}
 	case *array.Int16:
@@ -173,6 +180,20 @@ func bindTyped(dst *memory.Batch, b binding, arr arrow.Array, partition int, val
 			Encoding:         memory.EncodingDictionary,
 		}
 	case *array.List:
+		if memory.IsNestedList(b.field) {
+			if partition < 0 || partition >= len(b.arrays) || b.arrays[partition] == nil {
+				return false, fmt.Errorf("missing native array node")
+			}
+			dst.Arrays[b.name] = b.arrays[partition]
+			return true, nil
+		}
+		if memory.IsStructList(b.field) {
+			if partition < 0 || partition >= len(b.structLists) || b.structLists[partition] == nil {
+				return false, fmt.Errorf("missing native StructList")
+			}
+			dst.StructLists[b.name] = b.structLists[partition]
+			return true, nil
+		}
 		if b.field.Type == memory.TypeList && len(b.field.Children) == 1 && b.field.Children[0].Type == memory.TypeInt64 {
 			if partition < 0 || partition >= len(b.int64Lists) || b.int64Lists[partition] == nil {
 				return false, nil
@@ -196,6 +217,23 @@ func bindTyped(dst *memory.Batch, b binding, arr arrow.Array, partition int, val
 }
 
 func arrowStructVector(a *array.Struct, field memory.Field, parentValidity memory.Bitmap) (*memory.StructVector, error) {
+	return arrowStructVectorOption(a, field, parentValidity, false)
+}
+
+func arrowStructVectorOption(a *array.Struct, field memory.Field, parentValidity memory.Bitmap, recursive bool) (*memory.StructVector, error) {
+	if recursive {
+		if err := field.ValidateRecursiveStruct(); err != nil {
+			return nil, err
+		}
+		v, err := arrowRecursiveStructVector(a, field, parentValidity, nil)
+		if err != nil {
+			return nil, err
+		}
+		if err = v.ValidateRecursiveWithContext(field, a.Len(), nil); err != nil {
+			return nil, err
+		}
+		return v, nil
+	}
 	if err := field.ValidateStruct(); err != nil {
 		return nil, err
 	}
@@ -206,6 +244,9 @@ func arrowStructVector(a *array.Struct, field memory.Field, parentValidity memor
 	values.Rows = a.Len()
 	for i, child := range field.Children {
 		arr := a.Field(i)
+		if nilArrayValue(arr) {
+			return nil, fmt.Errorf("nil native Struct child %q", child.Name)
+		}
 		validity := validityBitmap(arr)
 		if child.Type == memory.TypeBool {
 			bools, ok := arr.(*array.Boolean)
@@ -356,4 +397,143 @@ func dictionaryIndices(d *array.Dictionary) ([]uint32, error) {
 		return nil, fmt.Errorf("arrowrecord: unsupported dictionary index type %s", idx.DataType())
 	}
 	return out, nil
+}
+
+func arrowRecursiveStructVector(a *array.Struct, field memory.Field, parentValidity, ancestor memory.Bitmap) (*memory.StructVector, error) {
+	if len(field.Children) != a.NumField() {
+		return nil, fmt.Errorf("struct child count %d does not match schema %d", a.NumField(), len(field.Children))
+	}
+	effective := parentValidity
+	if ancestor != nil {
+		effective = make(memory.Bitmap, memory.WordsFor(a.Len()))
+		for row := 0; row < a.Len(); row++ {
+			if memory.IsSet(ancestor, row) && (parentValidity == nil || memory.IsSet(parentValidity, row)) {
+				memory.Set(effective, row)
+			}
+		}
+	}
+	values := memory.NewBatch()
+	values.Rows = a.Len()
+	for i, child := range field.Children {
+		arr := a.Field(i)
+		validity := validityBitmap(arr)
+		if memory.IsNestedList(child) {
+			v, err := arrowArrayNodeDomain(arr, child, 0, effective)
+			if err != nil {
+				return nil, err
+			}
+			values.Arrays[child.Name] = v
+			continue
+		}
+		if memory.IsStructList(child) {
+			x, ok := arr.(*array.List)
+			if !ok || x == nil {
+				return nil, fmt.Errorf("invalid StructList array")
+			}
+			v, err := arrowStructListVector(x, child, validity, effective)
+			if err != nil {
+				return nil, err
+			}
+			values.StructLists[child.Name] = v
+			continue
+		}
+		if child.Type == memory.TypeStruct {
+			x, ok := arr.(*array.Struct)
+			if !ok || x == nil {
+				return nil, fmt.Errorf("invalid recursive Struct child %q", child.Name)
+			}
+			v, err := arrowRecursiveStructVector(x, child, validity, effective)
+			if err != nil {
+				return nil, err
+			}
+			values.Structs[child.Name] = v
+			continue
+		}
+		if d, ok := arr.(*array.Dictionary); ok && child.Type == memory.TypeString {
+			table, ok := d.Dictionary().(*array.String)
+			if !ok || table == nil {
+				return nil, fmt.Errorf("recursive Struct dictionary requires String values")
+			}
+			raw := memory.StringViewVector{Offsets: offsets32(table.ValueOffsets()), Data: table.ValueBytes()}
+			if err := raw.Validate(table.Len()); err != nil {
+				return nil, err
+			}
+			// NULL dictionary values are valid Arrow, but this explicit native
+			// subset does not yet merge table validity with index validity.
+			if table.NullN() > 0 {
+				return nil, fmt.Errorf("recursive Struct String dictionary with NULL table entries is unsupported")
+			}
+			if d.Indices().Len() != a.Len() {
+				return nil, fmt.Errorf("recursive dictionary index length mismatch")
+			}
+			out := &memory.StringViewVector{Offsets: make([]uint32, a.Len()+1), Validity: validity, Encoding: memory.EncodingView}
+			for row := 0; row < a.Len(); row++ {
+				if (effective == nil || memory.IsSet(effective, row)) && (validity == nil || memory.IsSet(validity, row)) {
+					code := d.GetValueIndex(row)
+					if code < 0 || code >= table.Len() {
+						return nil, fmt.Errorf("recursive dictionary code out of range")
+					}
+					data := raw.ValueBytes(code)
+					if uint64(len(out.Data))+uint64(len(data)) > uint64(^uint32(0)) {
+						return nil, fmt.Errorf("recursive dictionary expansion exceeds uint32")
+					}
+					out.Data = append(out.Data, data...)
+				}
+				out.Offsets[row+1] = uint32(len(out.Data))
+			}
+			values.Strings[child.Name] = out
+			continue
+		}
+		if child.Type == memory.TypeBool {
+			bools, ok := arr.(*array.Boolean)
+			if !ok {
+				return nil, fmt.Errorf("struct child %q is %T, want boolean", child.Name, arr)
+			}
+			out := make([]uint32, bools.Len())
+			for row := range out {
+				if bools.Value(row) {
+					out[row] = 1
+				}
+			}
+			values.Uint32s[child.Name] = &memory.Uint32Vector{Values: out, Validity: validity, Encoding: child.Encoding}
+			continue
+		}
+		b := binding{
+			name: child.Name, field: child,
+			validities: []memory.Bitmap{validity}, offsets: make([][]uint32, 1),
+			i32: make([][]int32, 1), i64: make([][]int64, 1), u32: make([][]uint32, 1),
+			int64Lists: make([]*memory.Int64ListVector, 1),
+			f64:        make([][]float64, 1), stringLists: make([]*memory.StringListVector, 1),
+		}
+		if err := cachePhysicalValues(&b, 0, arr, effective); err != nil {
+			return nil, fmt.Errorf("struct child %q: %w", child.Name, err)
+		}
+		switch x := arr.(type) {
+		case *array.String:
+			b.offsets[0] = offsets32(x.ValueOffsets())
+		case *array.List:
+			if child.Children[0].Type == memory.TypeInt64 {
+				list, err := arrowInt64ListVector(x, validity)
+				if err != nil {
+					return nil, fmt.Errorf("struct child %q: %w", child.Name, err)
+				}
+				b.int64Lists[0] = list
+				break
+			}
+			list, err := arrowStringListVector(x, validity)
+			if err != nil {
+				return nil, fmt.Errorf("struct child %q: %w", child.Name, err)
+			}
+			b.stringLists[0] = list
+		}
+		bound, err := bindTyped(values, b, arr, 0, validity)
+		if err != nil {
+			return nil, fmt.Errorf("struct child %q: %w", child.Name, err)
+		}
+		if !bound {
+			return nil, fmt.Errorf("struct child %q Arrow type %s is unsupported", child.Name, arr.DataType())
+		}
+	}
+	v := &memory.StructVector{Rows: a.Len(), Fields: append([]memory.Field(nil), field.Children...), Values: values, Validity: parentValidity, Encoding: memory.EncodingView}
+	return v, nil
 }

@@ -73,7 +73,7 @@ func arrowDataType(field Field) (arrow.DataType, error) {
 	case TypeDuration:
 		return &arrow.DurationType{Unit: arrow.Nanosecond}, nil
 	case TypeList:
-		if err := field.ValidateList(); err != nil {
+		if err := field.ValidateArrayContainers(); err != nil {
 			return nil, err
 		}
 		child, err := arrowField(field.Children[0])
@@ -82,7 +82,7 @@ func arrowDataType(field Field) (arrow.DataType, error) {
 		}
 		return arrow.ListOfField(child), nil
 	case TypeStruct:
-		if err := field.ValidateStruct(); err != nil {
+		if err := field.ValidateArrayContainers(); err != nil {
 			return nil, err
 		}
 		children := make([]arrow.Field, len(field.Children))
@@ -121,6 +121,28 @@ func ArrowRecordRange(allocator arrowmem.Allocator, schema Schema, batch *Batch,
 	}
 	if offset < 0 || length < 0 || offset > batch.Rows || length > batch.Rows-offset {
 		return nil, fmt.Errorf("arrow record range [%d,%d) outside %d rows", offset, offset+length, batch.Rows)
+	}
+	if schema.HasNestedLists() {
+		if err := ValidateNestedListsBatch(batch, schema, nil); err != nil {
+			return nil, err
+		}
+		for _, f := range schema.Fields {
+			if err := validateArrayArrowLimits(batch, f, offset, length, [MaxStructDepth]Bitmap{}, 0); err != nil {
+				return nil, err
+			}
+		}
+	}
+	if schema.HasStructLists() && !schema.HasNestedLists() {
+		if err := ValidateStructListsBatch(batch, schema, nil); err != nil {
+			return nil, err
+		}
+	}
+	if schema.HasStructLists() {
+		for _, f := range schema.Fields {
+			if err := validateStructListArrowLimits(batch, f, offset, length, [MaxStructDepth]Bitmap{}, 0); err != nil {
+				return nil, err
+			}
+		}
 	}
 	arrowSchema, err := ArrowSchema(schema)
 	if err != nil {
@@ -222,6 +244,32 @@ func appendArrowValue(builder array.Builder, batch *Batch, field Field, row int)
 		}
 		builder.(*array.BinaryBuilder).Append(value)
 	case TypeList:
+		if IsNestedList(field) {
+			return appendArrowArrayNode(builder, batch.Arrays[field.Name], row)
+		}
+		if IsStructList(field) {
+			v := batch.StructLists[field.Name]
+			lo, hi, ok := v.ValueRange(row)
+			if !ok {
+				return fmt.Errorf("invalid StructList row")
+			}
+			lb := builder.(*array.ListBuilder)
+			lb.Append(true)
+			sb := lb.ValueBuilder().(*array.StructBuilder)
+			for e := lo; e < hi; e++ {
+				if !v.Values.IsValid(e) {
+					sb.AppendNull()
+					continue
+				}
+				sb.Append(true)
+				for j, c := range field.Children[0].Children {
+					if err := appendArrowValue(sb.FieldBuilder(j), v.Values.Values, c, e); err != nil {
+						return err
+					}
+				}
+			}
+			return nil
+		}
 		if field.Children[0].Type == TypeInt64 {
 			list := batch.Int64Lists[field.Name]
 			start, end, ok := list.ValueRange(row)
@@ -371,6 +419,20 @@ func batchValueValid(batch *Batch, field Field, row int) (bool, error) {
 		}
 		return false, fmt.Errorf("binary vector is missing")
 	case TypeList:
+		if IsNestedList(field) {
+			v := batch.Arrays[field.Name]
+			if v == nil {
+				return false, fmt.Errorf("missing array node")
+			}
+			return v.IsValid(row), nil
+		}
+		if IsStructList(field) {
+			v := batch.StructLists[field.Name]
+			if v == nil {
+				return false, fmt.Errorf("missing StructList")
+			}
+			return v.IsValid(row), nil
+		}
 		if field.Children[0].Type == TypeInt64 {
 			value, ok := batch.Int64Lists[field.Name]
 			if !ok {
@@ -407,6 +469,26 @@ func batchStringBytes(batch *Batch, field Field, row int) ([]byte, error) {
 // Validate native integer-list storage once per export, before row validity can
 // hide malformed payloads. Even an empty exported range must have valid storage.
 func validateArrowInt64ListStorage(batch *Batch, field Field, rows int) error {
+	if fieldHasNestedLists(field, 0) {
+		if IsNestedList(field) {
+			return batch.Arrays[field.Name].ValidateWithContext(field, rows, NestedListParentDomain{}, nil)
+		}
+		return batch.Structs[field.Name].ValidateArrayContainersWithContext(field, rows, nil)
+	}
+	if fieldHasStructLists(field, 0) {
+		if IsStructList(field) {
+			return batch.StructLists[field.Name].ValidateWithContext(field, rows, StructListParentDomain{}, nil)
+		}
+		return batch.Structs[field.Name].ValidateStructListsWithContext(field, rows, nil)
+	}
+	if field.Type == TypeStruct {
+		for _, child := range field.Children {
+			if child.Type == TypeStruct {
+				return batch.Structs[field.Name].ValidateRecursiveWithContext(field, rows, nil)
+			}
+		}
+	}
+
 	if field.Type == TypeList && field.Children[0].Type == TypeInt64 {
 		return batch.Int64Lists[field.Name].Validate(rows)
 	}

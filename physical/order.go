@@ -57,7 +57,11 @@ func NewSortSource(input source.Source, keys []SortKey, manager memory.Manager) 
 // then merged by the original global ordinal to preserve stable ordering.
 func NewSortSourceWithOptions(input source.Source, keys []SortKey, manager memory.Manager, opts SortSourceOptions) (source.Source, error) {
 	if input != nil {
-		if err := rejectNativeDecimalExecution(input.Schema()); err != nil {
+		if opts.Spillable {
+			if err := rejectSortDecimalExecution(input.Schema(), true); err != nil {
+				return nil, err
+			}
+		} else if err := validateResidentDecimalSchema(input.Schema()); err != nil {
 			return nil, err
 		}
 	}
@@ -68,7 +72,7 @@ func NewSortSourceWithOptions(input source.Source, keys []SortKey, manager memor
 	if len(keys) == 0 {
 		return nil, fmt.Errorf("sort requires at least one key")
 	}
-	if err := validateSortKeys(input.Schema(), keys); err != nil {
+	if err := validateResidentSortKeys(input.Schema(), keys); err != nil {
 		return nil, err
 	}
 	if opts.Workers < 0 {
@@ -277,13 +281,14 @@ func NewTopKSourceWithManager(input source.Source, k int, keys []SortKey, manage
 // promise stable replay, only input is scanned and winner payloads are retained
 // as budget-admitted snapshots; keyInput is not opened.
 func NewTopKSourceWithKeyInput(input, keyInput source.Source, k int, keys []SortKey, manager memory.Manager) (source.Source, error) {
+	// TopK owns existing checked container payloads in both execution strategies.
 	if input != nil {
-		if err := rejectNativeDecimalExecution(input.Schema()); err != nil {
+		if err := rejectSortDecimalExecution(input.Schema(), true); err != nil {
 			return nil, err
 		}
 	}
 	if keyInput != nil {
-		if err := rejectNativeDecimalExecution(keyInput.Schema()); err != nil {
+		if err := rejectSortDecimalExecution(keyInput.Schema(), true); err != nil {
 			return nil, err
 		}
 	}
@@ -364,6 +369,9 @@ func (s *TopKSource) NewBatchStream(ctx context.Context, opts source.ReadOptions
 		return nil, err
 	}
 	if !s.canReplay() {
+		if residentExtendedSchema(s.input.Schema().Fields) {
+			return newTopKContainerSnapshotStream(ctx, s, opts)
+		}
 		return newTopKSnapshotStream(ctx, s, opts)
 	}
 	query := memory.QueryBudgetFromContext(ctx)
@@ -371,6 +379,9 @@ func (s *TopKSource) NewBatchStream(ctx context.Context, opts source.ReadOptions
 		opts.MemoryManager = query.Operator("SourceScan", memory.MemoryWorkspace)
 	}
 	r := &topKReader{owner: s, scratch: memory.NewBatch(), readOpts: opts, query: query}
+	if s.k == 0 && residentExtendedSchema(s.input.Schema().Fields) {
+		return r, nil
+	}
 	first, err := source.OpenBatchStream(ctx, s.keyInput, opts)
 	if err != nil {
 		return nil, err

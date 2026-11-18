@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"sync"
 
@@ -148,14 +149,33 @@ type recordSinkWriter interface {
 
 type sinkWriterFactory func(io.Writer, *arrow.Schema, arrowmem.Allocator) (recordSinkWriter, error)
 
+// nilSinkWriter recognizes typed nil implementations at the factory boundary.
+// It does not call methods or recover panics from a nonnil encoder.
+func nilSinkWriter(writer recordSinkWriter) bool {
+	if writer == nil {
+		return true
+	}
+	value := reflect.ValueOf(writer)
+	switch value.Kind() {
+	case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Pointer, reflect.Slice:
+		return value.IsNil()
+	default:
+		return false
+	}
+}
+
 // sinkWriteOnly deliberately hides Close from native encoders. The sink owns
 // fsync and close ordering so a format writer cannot close the staging file
 // before it has been durably flushed.
 type sinkWriteOnly struct{ io.Writer }
 
 // SinkParquet streams the optimized physical plan into an atomically committed
-// Parquet file or sharded directory.
+// Parquet file or sharded directory. A directory-sync error after a successful
+// rename may report an error even though the new target is already published.
 func (f LazyFrame) SinkParquet(ctx context.Context, path string, opts ParquetSinkOptions) (SinkResult, error) {
+	if _, err := f.Schema(); err != nil {
+		return SinkResult{}, err
+	}
 	normalized, err := opts.normalize()
 	if err != nil {
 		return SinkResult{}, err
@@ -284,6 +304,7 @@ func (t *atomicSinkTarget) commit() error {
 }
 
 type sinkPart struct {
+	allocator *sinkBudgetAllocator
 	file      *os.File
 	writer    recordSinkWriter
 	stagePath string
@@ -304,6 +325,7 @@ type sinkBudgetAllocator struct {
 	mu           sync.Mutex
 	reservations map[*byte]memory.Reservation
 	closed       bool
+	firstErr     error // sticky for this terminal-on-failure sink, including cleanup
 }
 
 func newSinkBudgetAllocator(ctx context.Context, operator *memory.OperatorBudget) *sinkBudgetAllocator {
@@ -318,6 +340,7 @@ func (a *sinkBudgetAllocator) Allocate(size int) []byte {
 	// Arrow's Go allocator retains up to 64 extra bytes for alignment.
 	reservation, err := a.operator.Reserve(a.ctx, int64(size)+64)
 	if err != nil {
+		a.recordFailure(err)
 		panic(sinkAllocationPanic{err: err})
 	}
 	var buffer []byte
@@ -370,6 +393,36 @@ func (a *sinkBudgetAllocator) Free(buffer []byte) {
 	}
 }
 
+// recordFailure preserves the allocator's actual first failure when a native
+// encoder recovers our private panic and converts it to an unrelated error.
+func (a *sinkBudgetAllocator) recordFailure(err error) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.firstErr == nil {
+		a.firstErr = err
+	}
+}
+
+func (a *sinkBudgetAllocator) failure() error {
+	if a == nil {
+		return nil
+	}
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.firstErr
+}
+
+// callBudgetedNativeSink always executes cleanup calls despite a prior failure.
+// A recorded failure is terminal and is never reset for another encoder call.
+// Unknown panics still escape through callNativeSink unchanged.
+func callBudgetedNativeSink(a *sinkBudgetAllocator, fn func() error) error {
+	err := callNativeSink(fn)
+	if failure := a.failure(); failure != nil {
+		return errors.Join(err, failure)
+	}
+	return err
+}
+
 func sinkAllocationKey(buffer []byte) *byte {
 	if cap(buffer) == 0 {
 		return nil
@@ -416,7 +469,7 @@ func (p *sinkPart) close() error {
 	}
 	var out error
 	if p.writer != nil {
-		out = errors.Join(out, callNativeSink(p.writer.Close))
+		out = errors.Join(out, callBudgetedNativeSink(p.allocator, p.writer.Close))
 		p.writer = nil
 	}
 	if p.file != nil {
@@ -473,16 +526,33 @@ func (f LazyFrame) sinkFiles(ctx context.Context, path, extension string, option
 			return openErr
 		}
 		var writer recordSinkWriter
-		writerErr := callNativeSink(func() error {
+		writerErr := callBudgetedNativeSink(allocator, func() error {
 			var factoryErr error
 			writer, factoryErr = factory(sinkWriteOnly{Writer: file}, arrowSchema, allocator)
 			return factoryErr
 		})
-		if writerErr != nil {
-			_ = file.Close()
-			return writerErr
+		if nilSinkWriter(writer) {
+			writer = nil
+			if writerErr == nil {
+				writerErr = fmt.Errorf("native sink factory returned nil writer")
+			}
 		}
-		current = &sinkPart{file: file, writer: writer, stagePath: stagePath, finalPath: finalPath}
+		if writerErr != nil {
+			// A factory can return a writer after swallowing an allocator panic.
+			// It is not in parts yet, so its cleanup belongs to this branch.
+			cleanupErr := func() (closeErr error) {
+				defer func() { closeErr = errors.Join(closeErr, file.Close()) }()
+				if writer != nil {
+					closeErr = callBudgetedNativeSink(allocator, writer.Close)
+				}
+				return closeErr
+			}()
+			if cleanupErr == nil {
+				return writerErr
+			}
+			return errors.Join(writerErr, cleanupErr)
+		}
+		current = &sinkPart{allocator: allocator, file: file, writer: writer, stagePath: stagePath, finalPath: finalPath}
 		parts = append(parts, current)
 		return nil
 	}
@@ -551,6 +621,11 @@ func (f LazyFrame) sinkFiles(ctx context.Context, path, extension string, option
 		result.Files = append(result.Files, part.finalPath)
 		result.Bytes += info.Size()
 	}
+	// Cancellation observed before publication aborts the staging target.
+	// Once commit renames it, a later directory-sync error is post-publication.
+	if err := ctx.Err(); err != nil {
+		return SinkResult{}, err
+	}
 	if err := target.commit(); err != nil {
 		return SinkResult{}, err
 	}
@@ -606,7 +681,11 @@ func chooseSinkRange(batch *memory.Batch, offset int, part *sinkPart, options Si
 }
 
 func writeSinkRange(allocator arrowmem.Allocator, part *sinkPart, schema memory.Schema, batch *memory.Batch, offset, rows int) error {
-	return callNativeSink(func() error {
+	budgeted := part.allocator
+	if budgeted == nil {
+		budgeted, _ = allocator.(*sinkBudgetAllocator)
+	}
+	return callBudgetedNativeSink(budgeted, func() error {
 		record, err := memory.ArrowRecordRange(allocator, schema, batch, offset, rows)
 		if err != nil {
 			return err

@@ -18,12 +18,26 @@ import (
 // has no bitmap (a NULL struct parent can introduce child NULLs).
 //
 // Source shapes are checked, but nullability applies only to selected values
-// whose parents are valid. Unsupported opaque and recursive nested types fail.
+// whose full ancestor chain is valid. Opaque and unsupported nested List shapes
+// fail; supported shapes include primitive items, the flat fourteen-type Struct
+// item profile, and checked two-level Int64/String arrays.
 // An empty selection is sized as a fully materialized zero-row codec batch;
 // callers must still materialize empty struct child vectors before encoding.
 func EstimateColumnarRunSelectionBytes(schema Schema, batch *Batch, rows []int) (int64, error) {
+	if err := checkColumnarStructDepth(schema.Fields, 0); err != nil {
+		return 0, err
+	}
 	if batch == nil || batch.Rows < 0 || batch.Rows > math.MaxInt-63 {
 		return 0, fmt.Errorf("columnar selection requires a valid source row count")
+	}
+	if schema.HasNestedLists() {
+		if err := checkArrayBatchGraph(batch, schema.Fields, 0, nil); err != nil {
+			return 0, err
+		}
+	} else if schema.HasStructLists() {
+		if err := checkStructListsGraph(batch, schema.Fields, 0, nil); err != nil {
+			return 0, err
+		}
 	}
 	if _, err := columnarRunMetadataLength(uint64(len(schema.Fields))); err != nil {
 		return 0, err
@@ -38,7 +52,7 @@ func EstimateColumnarRunSelectionBytes(schema Schema, batch *Batch, rows []int) 
 	}
 	size := int64(columnarRunHeader)
 	for _, field := range schema.Fields {
-		fieldSize, err := selectionRunFieldSize(batch, field, rows, nil)
+		fieldSize, err := selectionRunFieldSize(batch, field, rows, columnarSelectionDomain{})
 		if err != nil {
 			return 0, fmt.Errorf("columnar selection field %q: %w", field.Name, err)
 		}
@@ -53,7 +67,21 @@ func EstimateColumnarRunSelectionBytes(schema Schema, batch *Batch, rows []int) 
 	return size, nil
 }
 
-func selectionRunFieldSize(batch *Batch, field Field, rows []int, parent *StructVector) (int64, error) {
+func selectionRunFieldSize(batch *Batch, field Field, rows []int, parent columnarSelectionDomain) (int64, error) {
+	if err := recursiveCheck(parent.check); err != nil {
+		return 0, err
+	}
+	if IsNestedList(field) {
+		return selectionArrayRunSize(batch, field, rows, parent)
+	}
+	if IsStructList(field) {
+		return selectionStructListRunSize(batch, field, rows, parent)
+	}
+	if parent.check != nil && field.Type != TypeStruct {
+		if err := validateStructChildStorageContext(batch, field, batch.Rows, parent.check); err != nil {
+			return 0, err
+		}
+	}
 	validityBytes, err := selectionValidityBytes(int64(len(rows)))
 	if err != nil {
 		return 0, err
@@ -61,15 +89,21 @@ func selectionRunFieldSize(batch *Batch, field Field, rows []int, parent *Struct
 	switch field.Type {
 	case TypeStruct:
 		v := batch.Structs[field.Name]
-		if err := validateSelectionStruct(v, field, batch.Rows); err != nil {
+		if err := validateSelectionStructContext(v, field, batch.Rows, parent.check); err != nil {
 			return 0, err
 		}
-		if err := validateSelectionNulls(v.Validity, field, rows, nil); err != nil {
+		if err := validateSelectionNulls(v.Validity, field, rows, parent); err != nil {
 			return 0, err
 		}
 		size := validityBytes
+		domain := parent
+		if domain.count >= MaxStructDepth {
+			return 0, fmt.Errorf("columnar selection depth exceeded")
+		}
+		domain.vectors[domain.count] = v
+		domain.count++
 		for _, child := range field.Children {
-			childBytes, err := selectionRunFieldSize(v.Values, child, rows, v)
+			childBytes, err := selectionRunFieldSize(v.Values, child, rows, domain)
 			if err != nil {
 				return 0, err
 			}
@@ -85,15 +119,20 @@ func selectionRunFieldSize(batch *Batch, field Field, rows []int, parent *Struct
 		}
 		if field.Children[0].Type == TypeInt64 {
 			v := batch.Int64Lists[field.Name]
-			if err := v.Validate(batch.Rows); err != nil {
-				return 0, err
+			if parent.check == nil {
+				if err := v.Validate(batch.Rows); err != nil {
+					return 0, err
+				}
 			}
 			if err := validateSelectionNulls(v.Validity, field, rows, parent); err != nil {
 				return 0, err
 			}
 			var children int64
 			for _, row := range rows {
-				if parent != nil && !parent.IsValid(row) || !v.IsValid(row) {
+				if err := recursiveCheck(parent.check); err != nil {
+					return 0, err
+				}
+				if parent.count != 0 && !parent.IsValid(row) || !v.IsValid(row) {
 					continue
 				}
 				start, end, _ := v.ValueRange(row) // Validate checked physical offsets.
@@ -106,6 +145,9 @@ func selectionRunFieldSize(batch *Batch, field Field, rows []int, parent *Struct
 					return 0, err
 				}
 				for child := start; child < end; child++ {
+					if err := recursiveCheck(parent.check); err != nil {
+						return 0, err
+					}
 					if !v.Values.IsValid(child) {
 						if !field.Children[0].Nullable {
 							return 0, fmt.Errorf("non-nullable list element is NULL at row %d", row)
@@ -125,15 +167,20 @@ func selectionRunFieldSize(batch *Batch, field Field, rows []int, parent *Struct
 			return addRunSizes(validityBytes, parentOffsets, childValidity, children*8)
 		}
 		v := batch.StringLists[field.Name]
-		if err := v.Validate(batch.Rows); err != nil {
-			return 0, err
+		if parent.check == nil {
+			if err := v.Validate(batch.Rows); err != nil {
+				return 0, err
+			}
 		}
 		if err := validateSelectionNulls(v.Validity, field, rows, parent); err != nil {
 			return 0, err
 		}
 		var children, data int64
 		for _, row := range rows {
-			if parent != nil && !parent.IsValid(row) || !v.IsValid(row) {
+			if err := recursiveCheck(parent.check); err != nil {
+				return 0, err
+			}
+			if parent.count != 0 && !parent.IsValid(row) || !v.IsValid(row) {
 				continue
 			}
 			start, end, _ := v.ValueRange(row) // Validate checked physical offsets.
@@ -146,6 +193,9 @@ func selectionRunFieldSize(batch *Batch, field Field, rows []int, parent *Struct
 				return 0, err
 			}
 			for child := start; child < end; child++ {
+				if err := recursiveCheck(parent.check); err != nil {
+					return 0, err
+				}
 				if !v.Values.IsValid(child) {
 					if !field.Children[0].Nullable {
 						return 0, fmt.Errorf("non-nullable list element is NULL at row %d", row)
@@ -177,8 +227,10 @@ func selectionRunFieldSize(batch *Batch, field Field, rows []int, parent *Struct
 			if v == nil {
 				return 0, fmt.Errorf("dictionary vector is missing")
 			}
-			if err := v.Validate(batch.Rows); err != nil {
-				return 0, err
+			if parent.check == nil {
+				if err := v.Validate(batch.Rows); err != nil {
+					return 0, err
+				}
 			}
 			if _, err := validitySize(v.Validity, batch.Rows); err != nil {
 				return 0, err
@@ -204,6 +256,9 @@ func selectionRunFieldSize(batch *Batch, field Field, rows []int, parent *Struct
 				return 0, err
 			}
 			for _, row := range rows {
+				if err := recursiveCheck(parent.check); err != nil {
+					return 0, err
+				}
 				if v.IsValid(row) && uint64(v.Indices[row]) >= uint64(v.DictionaryLen()) {
 					return 0, fmt.Errorf("dictionary row %d index exceeds cardinality", row)
 				}
@@ -218,8 +273,10 @@ func selectionRunFieldSize(batch *Batch, field Field, rows []int, parent *Struct
 		if v == nil {
 			return 0, fmt.Errorf("string vector is missing")
 		}
-		if err := v.Validate(batch.Rows); err != nil {
-			return 0, err
+		if parent.check == nil {
+			if err := v.Validate(batch.Rows); err != nil {
+				return 0, err
+			}
 		}
 		if _, err := validitySize(v.Validity, batch.Rows); err != nil {
 			return 0, err
@@ -229,9 +286,12 @@ func selectionRunFieldSize(batch *Batch, field Field, rows []int, parent *Struct
 		}
 		var data int64
 		for _, row := range rows {
+			if err := recursiveCheck(parent.check); err != nil {
+				return 0, err
+			}
 			// takeRows copies even NULL string payloads. AppendStructRow instead
 			// canonicalizes child NULLs and inherited parent NULLs to empty spans.
-			if parent != nil && (!parent.IsValid(row) || !v.IsValid(row)) {
+			if parent.count != 0 && (!parent.IsValid(row) || !v.IsValid(row)) {
 				continue
 			}
 			data, err = selectionAddData(data, v.Offsets[row+1]-v.Offsets[row])
@@ -284,12 +344,15 @@ func selectionRunFieldSize(batch *Batch, field Field, rows []int, parent *Struct
 	}
 }
 
-func validateSelectionNulls(validity Bitmap, field Field, rows []int, parent *StructVector) error {
+func validateSelectionNulls(validity Bitmap, field Field, rows []int, parent columnarSelectionDomain) error {
 	if field.Nullable || validity == nil {
 		return nil
 	}
 	for _, row := range rows {
-		if (parent == nil || parent.IsValid(row)) && !IsSet(validity, row) {
+		if err := recursiveCheck(parent.check); err != nil {
+			return err
+		}
+		if (parent.count == 0 || parent.IsValid(row)) && !IsSet(validity, row) {
 			return fmt.Errorf("non-nullable field %q contains selected NULL at row %d", field.Name, row)
 		}
 	}
@@ -297,6 +360,10 @@ func validateSelectionNulls(validity Bitmap, field Field, rows []int, parent *St
 }
 
 func validateSelectionStruct(v *StructVector, field Field, rows int) error {
+	return validateSelectionStructContext(v, field, rows, nil)
+}
+
+func validateSelectionStructContext(v *StructVector, field Field, rows int, check func() error) error {
 	// Match ValidateStruct's bounded schema without its map allocation and
 	// without applying child nullability to unselected source rows.
 	if len(field.Children) == 0 || v == nil || v.Values == nil || v.Rows != rows || v.Values.Rows != rows || len(v.Fields) != len(field.Children) {
@@ -306,16 +373,56 @@ func validateSelectionStruct(v *StructVector, field Field, rows int) error {
 		return err
 	}
 	for i, child := range field.Children {
+		if err := recursiveCheck(check); err != nil {
+			return err
+		}
 		if child.Name == "" || child.Name != v.Fields[i].Name || child.Type != v.Fields[i].Type {
 			return fmt.Errorf("struct child schema mismatch at index %d", i)
 		}
 		for j := 0; j < i; j++ {
+			if err := recursiveCheck(check); err != nil {
+				return err
+			}
 			if field.Children[j].Name == child.Name {
 				return fmt.Errorf("duplicate struct child %q", child.Name)
 			}
 		}
 		switch child.Type {
+		case TypeStruct:
+			equal, err := recursiveFieldEqual(child, v.Fields[i], 0, check)
+			if err != nil {
+				return err
+			}
+			if !equal {
+				return fmt.Errorf("recursive Struct child metadata mismatch")
+			}
 		case TypeList:
+			if IsNestedList(child) {
+				equal, err := recursiveFieldEqual(child, v.Fields[i], 0, check)
+				if err != nil {
+					return err
+				}
+				if !equal {
+					return fmt.Errorf("array metadata mismatch")
+				}
+				if err := child.ValidateNestedList(); err != nil {
+					return err
+				}
+				continue
+			}
+			if IsStructList(child) {
+				equal, err := recursiveFieldEqual(child, v.Fields[i], 0, check)
+				if err != nil {
+					return err
+				}
+				if !equal {
+					return fmt.Errorf("StructList metadata mismatch")
+				}
+				if err := checkListStructField(child, check); err != nil {
+					return err
+				}
+				continue
+			}
 			if err := child.ValidateList(); err != nil {
 				return err
 			}
@@ -368,4 +475,22 @@ func selectionAddData(total int64, bytes uint32) (int64, error) {
 		return 0, fmt.Errorf("columnar selection string data exceeds uint32")
 	}
 	return total + int64(bytes), nil
+}
+
+// A stack-backed chain preserves the selected value domain without allocating
+// row-sized effective bitmaps. Schema preflight bounds it to MaxStructDepth.
+type columnarSelectionDomain struct {
+	vectors [MaxStructDepth]*StructVector
+	count   int
+	check   func() error
+}
+
+// IsValid reports the conjunction of all ancestor presence bits.
+func (d columnarSelectionDomain) IsValid(row int) bool {
+	for i := 0; i < d.count; i++ {
+		if !d.vectors[i].IsValid(row) {
+			return false
+		}
+	}
+	return true
 }

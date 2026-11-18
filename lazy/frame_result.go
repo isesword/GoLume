@@ -274,6 +274,25 @@ func (p *PreparedDataFrame) Execute(ctx context.Context) (frame DataFrame, resul
 		if !ok {
 			break
 		}
+		if p.schema.HasRecursiveStruct() || p.schema.HasStructLists() || p.schema.HasNestedLists() {
+			clone := memory.CloneCollectBatchRecursive
+			if p.schema.HasStructLists() {
+				clone = memory.CloneCollectBatchStructLists
+			}
+			if p.schema.HasNestedLists() {
+				clone = memory.CloneCollectBatchNestedLists
+			}
+			owned, reservation, copyErr := clone(ctx, outputManager, scratch, p.schema)
+			if copyErr != nil {
+				closeErr := stream.Close()
+				_ = out.Close()
+				return DataFrame{}, errors.Join(copyErr, closeErr)
+			}
+			out.state.batches = append(out.state.batches, owned)
+			out.state.reservations = append(out.state.reservations, reservation)
+			out.state.rows += int64(owned.Rows)
+			continue
+		}
 		admission, err := collectBatchAdmission(scratch)
 		var reservation memory.Reservation
 		if err == nil {

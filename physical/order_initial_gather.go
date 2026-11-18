@@ -21,10 +21,15 @@ type externalSortInitialGather struct {
 	indices          []int
 	comparator       batchComparator
 	displacedOrdinal *memory.Uint64Vector
+	recursiveOwners  []*memory.OwnedRecursiveStruct
+	structListOwners []*memory.OwnedStructList
+	arrayOwners      []*memory.OwnedNestedList
 }
 
 type externalSortInitialGatherPlan struct {
 	gatherBytes, encodeBytes, rangeBytes int64
+	recursiveBytes                       int64
+	structLists                          bool
 	capacityBytes, metadataBytes         int64
 	start, end                           int
 	source                               *memory.Batch
@@ -59,8 +64,10 @@ func planExternalSortInitialGather(schema memory.Schema, batch *memory.Batch, st
 	if err := externalSortInitialGatherRange(batch, start, end, keyCount, ordinalBase); err != nil {
 		return externalSortInitialGatherPlan{}, err
 	}
-	if err := validateExternalSortInitialGather(batch); err != nil {
-		return externalSortInitialGatherPlan{}, err
+	if !schema.HasStructLists() && !schema.HasNestedLists() {
+		if err := validateExternalSortInitialGather(batch); err != nil {
+			return externalSortInitialGatherPlan{}, err
+		}
 	}
 	return planExternalSortInitialGatherValidated(schema, batch, start, end, keyCount, ordinalBase)
 }
@@ -69,11 +76,33 @@ func planExternalSortInitialGather(schema memory.Schema, batch *memory.Batch, st
 // and must not change. Reusing that validation avoids rescanning every dictionary
 // code in the complete input for every small initial run.
 func planExternalSortInitialGatherValidated(schema memory.Schema, batch *memory.Batch, start, end, keyCount int, ordinalBase uint64) (externalSortInitialGatherPlan, error) {
+	return planExternalSortInitialGatherValidatedContext(context.Background(), schema, batch, start, end, keyCount, ordinalBase)
+}
+
+func planExternalSortInitialGatherValidatedContext(ctx context.Context, schema memory.Schema, batch *memory.Batch, start, end, keyCount int, ordinalBase uint64) (externalSortInitialGatherPlan, error) {
+	if schema.HasStructLists() || schema.HasNestedLists() {
+		return planStructListInitialGather(ctx, schema, batch, start, end, keyCount, ordinalBase)
+	}
 	var p externalSortInitialGatherPlan
 	if err := externalSortInitialGatherRange(batch, start, end, keyCount, ordinalBase); err != nil {
 		return p, err
 	}
 	selection := joinGatherSelection{start: start, count: end - start}
+	var recursiveBytes int64
+	for _, v := range batch.Structs {
+		if !externalSortRecursiveVector(v) {
+			continue
+		}
+		f := memory.Field{Name: "recursive", Type: memory.TypeStruct, Nullable: true, Children: v.Fields}
+		charge, err := memory.EstimateRecursiveStructTakeRangeBytes(ctx, v, f, start, end-start)
+		if err != nil {
+			return p, err
+		}
+		recursiveBytes, err = sortWorkspaceSize(recursiveBytes, charge)
+		if err != nil {
+			return p, err
+		}
+	}
 	owned, _, err := planJoinGatherSelected(batch, selection)
 	if err != nil {
 		return p, err
@@ -92,7 +121,7 @@ func planExternalSortInitialGatherValidated(schema memory.Schema, batch *memory.
 	if err := addJoinGatherProduct(&rowArrays, uint64(selection.len()), uint64(unsafe.Sizeof(int(0)))+8); err != nil {
 		return p, err
 	}
-	actual, err := sortWorkspaceSize(owned, metadata, rowArrays, bindings)
+	actual, err := sortWorkspaceSize(owned, metadata, rowArrays, bindings, recursiveBytes)
 	if err != nil {
 		return p, err
 	}
@@ -122,7 +151,7 @@ func planExternalSortInitialGatherValidated(schema memory.Schema, batch *memory.
 	if err != nil {
 		return p, err
 	}
-	p = externalSortInitialGatherPlan{gatherBytes: max(actual, legacy), encodeBytes: encoded, rangeBytes: rangeBytes,
+	p = externalSortInitialGatherPlan{recursiveBytes: recursiveBytes, gatherBytes: max(actual, legacy), encodeBytes: encoded, rangeBytes: rangeBytes,
 		capacityBytes: owned + rowArrays, metadataBytes: metadata + bindings, start: start, end: end, source: batch, keyCount: keyCount}
 	return p, nil
 }
@@ -286,6 +315,16 @@ func externalSortInitialGatherBitmapBytes(batch *memory.Batch, rows joinGatherSe
 		}
 	}
 	for _, v := range batch.Structs {
+		if externalSortRecursiveVector(v) {
+			n, e := externalSortRecursiveBitmapBytes(v, rows)
+			if e != nil {
+				return 0, e
+			}
+			if e = addJoinEstimate(&total, n); e != nil {
+				return 0, e
+			}
+			continue
+		}
 		if err := add(v.Validity, rows.len()); err != nil {
 			return 0, err
 		}
@@ -354,7 +393,7 @@ func newExternalSortInitialGather(ctx context.Context, manager memory.Manager, s
 	if _, exists := schema.Field(ordinal); exists {
 		return nil, fmt.Errorf("external sort ordinal %q collides with input schema", ordinal)
 	}
-	reservation, err := manager.Reserve(ctx, plan.gatherBytes)
+	reservation, err := manager.Reserve(ctx, plan.gatherBytes-plan.recursiveBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -386,8 +425,31 @@ func newExternalSortInitialGather(ctx context.Context, manager memory.Manager, s
 	counts := externalSortInitialGatherCounts(src)
 	counts[7]++
 	owner.batch = newExternalSortInitialGatherBatch(counts)
-	if err = takeExternalSortInitialRows(ctx, owner.batch, src, owner.indices); err != nil {
+	flat := *src
+	if plan.structLists {
+		flat.Structs = nil
+		flat.StructLists = nil
+		flat.Arrays = nil
+	}
+	if err = takeExternalSortInitialRows(ctx, owner.batch, &flat, owner.indices); err != nil {
 		return nil, err
+	}
+	if plan.structLists {
+		if err = owner.copyStructListRoots(ctx, manager, schema, src); err != nil {
+			return nil, err
+		}
+	}
+	for name, v := range src.Structs {
+		if plan.structLists || !externalSortRecursiveVector(v) {
+			continue
+		}
+		f := memory.Field{Name: name, Type: memory.TypeStruct, Nullable: true, Children: v.Fields}
+		copied, e := memory.TakeRecursiveStructRowsOwned(ctx, manager, v, f, owner.indices)
+		if e != nil {
+			return nil, e
+		}
+		owner.recursiveOwners = append(owner.recursiveOwners, copied)
+		owner.batch.Structs[name] = copied.Vector
 	}
 	owner.displacedOrdinal = owner.batch.Uint64s[ordinal]
 	stable := &memory.Uint64Vector{}
@@ -418,6 +480,15 @@ func (a *externalSortInitialGather) Less(i, j int) bool {
 func (a *externalSortInitialGather) close() {
 	if a == nil {
 		return
+	}
+	for _, o := range a.arrayOwners {
+		o.Close()
+	}
+	for _, o := range a.structListOwners {
+		o.Close()
+	}
+	for _, o := range a.recursiveOwners {
+		o.Close()
 	}
 	destroyExternalSortAccumulatorBatch(a.batch)
 	if a.displacedOrdinal != nil {
@@ -661,6 +732,9 @@ func takeExternalSortInitialRows(ctx context.Context, dst, src *memory.Batch, ro
 		return err
 	}
 	for name, v := range src.Structs {
+		if externalSortRecursiveVector(v) {
+			continue
+		}
 		out := &memory.StructVector{}
 		dst.Structs[name] = out
 		if err := fillExternalSortInitialStruct(ctx, out, v, rows); err != nil {
@@ -745,4 +819,51 @@ func fillExternalSortInitialStruct(ctx context.Context, out, src *memory.StructV
 		}
 	}
 	return nil
+}
+
+// Recursive roots use the explicit owned selected-copy path; shallow roots keep
+// the original exact-capacity gather and its unchanged budget contract.
+func externalSortRecursiveVector(v *memory.StructVector) bool {
+	if v == nil {
+		return false
+	}
+	for _, f := range v.Fields {
+		if f.Type == memory.TypeStruct {
+			return true
+		}
+	}
+	return false
+}
+
+func externalSortRecursiveBitmapBytes(v *memory.StructVector, rows joinGatherSelection) (int64, error) {
+	total := int64(joinGatherWords(rows.len())) * 8
+	for _, f := range v.Fields {
+		var n int64
+		if f.Type == memory.TypeStruct {
+			var e error
+			n, e = externalSortRecursiveBitmapBytes(v.Values.Structs[f.Name], rows)
+			if e != nil {
+				return 0, e
+			}
+		} else {
+			n = int64(joinGatherWords(rows.len())) * 8
+			if f.Type == memory.TypeList {
+				var elements int
+				var e error
+				if f.Children[0].Type == memory.TypeInt64 {
+					elements, e = joinGatherInt64ListSizeSelected(v.Values.Int64Lists[f.Name], rows, v)
+				} else {
+					elements, _, e = joinGatherListSizeSelected(v.Values.StringLists[f.Name], rows, v)
+				}
+				if e != nil {
+					return 0, e
+				}
+				n += int64(joinGatherWords(elements)) * 8
+			}
+		}
+		if e := addJoinEstimate(&total, n); e != nil {
+			return 0, e
+		}
+	}
+	return total, nil
 }

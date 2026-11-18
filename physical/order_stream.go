@@ -245,7 +245,7 @@ func (s *externalSortStream) restoreSegment(ctx context.Context, ref sortSegment
 }
 
 func (s *externalSortStream) makeInitialRun(ctx context.Context, batch *memory.Batch, start, end int, ordinalBase uint64) (externalSortRun, error) {
-	if err := validateExternalSortInitialGather(batch); err != nil {
+	if err := validateSortInitialInput(ctx, s.owner.input.Schema(), batch); err != nil {
 		return externalSortRun{}, err
 	}
 	return s.makeInitialRunValidated(ctx, batch, start, end, ordinalBase)
@@ -254,7 +254,7 @@ func (s *externalSortStream) makeInitialRun(ctx context.Context, batch *memory.B
 // Input bindings are immutable from their one-time bounded validation until
 // every initial gather has closed, before the child is advanced or closed.
 func (s *externalSortStream) makeInitialRunValidated(ctx context.Context, batch *memory.Batch, start, end int, ordinalBase uint64) (externalSortRun, error) {
-	plan, err := planExternalSortInitialGatherValidated(s.owner.input.Schema(), batch, start, end, len(s.owner.keys), ordinalBase)
+	plan, err := planExternalSortInitialGatherValidatedContext(ctx, s.owner.input.Schema(), batch, start, end, len(s.owner.keys), ordinalBase)
 	if err != nil {
 		return externalSortRun{}, err
 	}
@@ -398,7 +398,7 @@ func (s *externalSortStream) generateRuns(ctx context.Context) (result spillmeta
 		}
 		// Validate the complete runtime graph before the recursive range
 		// estimator below, including bindings not present in the schema.
-		if err := validateExternalSortInitialGather(batch); err != nil {
+		if err := validateSortInitialInput(ctx, s.owner.input.Schema(), batch); err != nil {
 			return result, errors.Join(err, closeInput())
 		}
 		if uint64(batch.Rows) > math.MaxUint64-ordinalBase {

@@ -172,6 +172,11 @@ func (r *topKReader) collect(ctx context.Context) (resultErr error) {
 		if !ok {
 			break
 		}
+		if residentExtendedSchema(r.owner.keyInput.Schema().Fields) {
+			if err := validateResidentExtendedInput(ctx, r.owner.keyInput.Schema(), r.scratch, r.workspace); err != nil {
+				return err
+			}
+		}
 		for row := 0; row < r.scratch.Rows; row++ {
 			if err := ctx.Err(); err != nil {
 				return err
@@ -313,6 +318,11 @@ func (r *topKReader) collect(ctx context.Context) (resultErr error) {
 		}
 		if !ok {
 			break
+		}
+		if residentExtendedSchema(r.owner.input.Schema().Fields) {
+			if err := validateResidentExtendedInput(ctx, r.owner.input.Schema(), r.scratch, r.workspace); err != nil {
+				return err
+			}
 		}
 		if int64(r.scratch.Rows) > math.MaxInt64-replayOrdinal {
 			return fmt.Errorf("top-k replay row ordinal overflows int64")

@@ -112,7 +112,7 @@ func decimalDivideValue(a memory.Decimal128, as int32, b memory.Decimal128, bs, 
 }
 
 // decimalDivideMagnitude is a little-endian unsigned 384-bit integer. It is
-// private to exact division; it adds no per-register or per-row heap storage.
+// private to decimal division; it adds no per-register or per-row heap storage.
 type decimalDivideMagnitude [6]uint64
 
 func (v *decimalDivideMagnitude) scaleUp(digits int32) {

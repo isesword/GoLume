@@ -6,6 +6,12 @@ import "fmt"
 // are deep-copied. Opaque source-native values that expose Arrow-style
 // Retain/Release semantics are retained and marked owned by the returned batch.
 func CloneBatch(src *Batch) (*Batch, error) {
+	if BatchHasArrays(src) {
+		return nil, fmt.Errorf("array-node clone requires explicit owned profile")
+	}
+	if BatchHasStructLists(src) {
+		return nil, fmt.Errorf("StructList clone requires explicit owned profile")
+	}
 	if src == nil {
 		return nil, fmt.Errorf("cannot clone nil batch")
 	}

@@ -43,6 +43,9 @@ func (s *Source) NewBatchStream(ctx context.Context, opts source.ReadOptions) (s
 // NewBatchStreamWithPartitions borrows the immutable prepared partition slice
 // and preserves its exact order and subset. It does not re-list partitions.
 func (s *Source) NewBatchStreamWithPartitions(ctx context.Context, opts source.ReadOptions, parts []source.Partition) (source.BatchStream, error) {
+	if s != nil && s.nativeForest {
+		return s.newNestedListStream(ctx, opts, parts)
+	}
 	if s == nil || ctx == nil {
 		return nil, fmt.Errorf("parquet stream requires a source and context")
 	}

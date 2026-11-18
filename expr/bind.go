@@ -110,6 +110,21 @@ func (b *expressionBinder) bindNode(e Expr) (*BoundExpr, error) {
 				return nil, err
 			}
 		}
+		if memory.IsNestedList(field) {
+			if err := validateExpressionContainers(field); err != nil {
+				return nil, err
+			}
+		}
+		if memory.IsStructList(field) {
+			if err := field.ValidateListStruct(); err != nil {
+				return nil, err
+			}
+		}
+		if field.Type == memory.TypeStruct {
+			if err := validateExpressionContainers(field); err != nil {
+				return nil, err
+			}
+		}
 		bound.Field = cloneBoundField(field)
 		bound.Columns = []string{n.Name}
 	case Int64Literal:
@@ -189,6 +204,25 @@ func (b *expressionBinder) bindNode(e Expr) (*BoundExpr, error) {
 		bound.Field = computedField(n.Target, input.Nullable)
 		bound.MayError = castMayError(input.Type, n.Target)
 		bound.Expr = Cast{Value: bound.Children[0].Expr, Target: n.Target}
+	case Decimal128DivideRoundExpr:
+		if err := bindChildren(n.Left, n.Right); err != nil {
+			return nil, err
+		}
+		left, right := bound.Children[0].Field, bound.Children[1].Field
+		for _, input := range []memory.Field{left, right} {
+			if err := input.ValidateDecimal128(); err != nil {
+				return nil, fmt.Errorf("DIVIDE_ROUND_DECIMAL128 requires two native decimal128 operands: %w", err)
+			}
+		}
+		field, err := memory.Decimal128Field("", left.Nullable || right.Nullable, n.Precision, n.Scale)
+		if err != nil {
+			return nil, err
+		}
+		if !validDecimalRoundingMode(n.Mode) {
+			return nil, fmt.Errorf("DIVIDE_ROUND_DECIMAL128 requires an explicit valid rounding mode, got %d", n.Mode)
+		}
+		bound.Field, bound.MayError = field, true
+		bound.Expr = Decimal128DivideRoundExpr{Left: bound.Children[0].Expr, Right: bound.Children[1].Expr, Precision: n.Precision, Scale: n.Scale, Mode: n.Mode}
 	case Decimal128DivideExpr:
 		if err := bindChildren(n.Left, n.Right); err != nil {
 			return nil, err
@@ -205,6 +239,23 @@ func (b *expressionBinder) bindNode(e Expr) (*BoundExpr, error) {
 		}
 		bound.Field, bound.MayError = field, true
 		bound.Expr = Decimal128DivideExpr{Left: bound.Children[0].Expr, Right: bound.Children[1].Expr, Precision: n.Precision, Scale: n.Scale}
+	case Decimal128RoundExpr:
+		if err := bindChildren(n.Value); err != nil {
+			return nil, err
+		}
+		input := bound.Children[0].Field
+		if err := input.ValidateDecimal128(); err != nil {
+			return nil, fmt.Errorf("ROUND_DECIMAL128 requires native decimal128 input: %w", err)
+		}
+		field, err := memory.Decimal128Field("", input.Nullable, n.Precision, n.Scale)
+		if err != nil {
+			return nil, err
+		}
+		if !validDecimalRoundingMode(n.Mode) {
+			return nil, fmt.Errorf("ROUND_DECIMAL128 requires an explicit valid rounding mode, got %d", n.Mode)
+		}
+		bound.Field, bound.MayError = field, true
+		bound.Expr = Decimal128RoundExpr{Value: bound.Children[0].Expr, Precision: n.Precision, Scale: n.Scale, Mode: n.Mode}
 	case Decimal128RescaleExpr:
 		if err := bindChildren(n.Value); err != nil {
 			return nil, err
@@ -234,6 +285,41 @@ func (b *expressionBinder) bindNode(e Expr) (*BoundExpr, error) {
 		}
 		bound.Field = computedField(n.Target, true)
 		bound.Expr = TryCastExpr{Value: bound.Children[0].Expr, Target: n.Target}
+	case StructFromExpr:
+		if len(n.Fields) == 0 {
+			return nil, fmt.Errorf("STRUCT_FROM requires at least one field")
+		}
+		values := make([]Expr, len(n.Fields))
+		for i, field := range n.Fields {
+			values[i] = field.Expr
+		}
+		if err := bindChildren(values...); err != nil {
+			return nil, err
+		}
+		if err := bindStructFrom(bound, n); err != nil {
+			return nil, err
+		}
+		fields := make([]NamedExpr, len(n.Fields))
+		for i := range fields {
+			fields[i] = Named(bound.Children[i].Expr, bound.Field.Children[i].Name)
+		}
+		bound.Expr = StructFromExpr{Fields: fields}
+	case StructGetExpr:
+		if err := bindChildren(n.Value); err != nil {
+			return nil, err
+		}
+		if err := bindStructGet(bound, n); err != nil {
+			return nil, err
+		}
+		bound.Expr = StructGetExpr{Value: bound.Children[0].Expr, FieldName: n.FieldName}
+	case ListGetExpr:
+		if err := bindChildren(n.Value, n.Index); err != nil {
+			return nil, err
+		}
+		if err := bindListGet(bound); err != nil {
+			return nil, err
+		}
+		bound.Expr = ListGetExpr{Value: bound.Children[0].Expr, Index: bound.Children[1].Expr}
 	case YMDDateExpr:
 		if err := bindChildren(n.Year, n.Month, n.Day); err != nil {
 			return nil, err
@@ -549,10 +635,13 @@ func bindUnary(bound *BoundExpr, n Unary) error {
 	case OpIsNull, OpIsNotNull:
 		bound.Field = computedField(memory.TypeBool, false)
 	case OpListLength:
-		if err := input.ValidateList(); err != nil {
+		if input.Type != memory.TypeList {
+			return fmt.Errorf("LIST_LENGTH requires native List")
+		}
+		if err := validateExpressionContainers(input); err != nil {
 			return fmt.Errorf("LIST_LENGTH requires native List<String> or List<Int64>: %w", err)
 		}
-		if len(input.Children[0].Children) != 0 {
+		if len(input.Children[0].Children) != 0 && !memory.IsStructList(input) && !memory.IsNestedList(input) {
 			return fmt.Errorf("LIST_LENGTH does not support nested list children")
 		}
 		bound.Field = computedField(memory.TypeInt64, input.Nullable)

@@ -128,6 +128,15 @@ func bindSortKey(batch *memory.Batch, schema memory.Schema, key SortKey) (boundS
 			return boundSortKey{}, err
 		}
 		bound = bindSortNumbers(vector.Values, vector.Validity)
+	case memory.TypeDecimal:
+		if err := field.ValidateDecimal128(); err != nil {
+			return boundSortKey{}, err
+		}
+		vector := batch.Decimals[key.Column]
+		if vector == nil {
+			return boundSortKey{}, fmt.Errorf("Decimal key %q missing", key.Column)
+		}
+		bound = bindResidentDecimalKey(vector)
 	case memory.TypeString, memory.TypeBinary:
 		if field.Encoding == memory.EncodingDictionary {
 			vector, err := batch.DictionaryString(key.Column)

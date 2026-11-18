@@ -12,16 +12,30 @@ import (
 // compactWorkspace accounts backing buffers, following BatchBytes' convention
 // of excluding Go map/vector headers. Immutable dictionary payloads and struct
 // schemas remain borrowed from the input, never released by this workspace.
-// Any growth replaces the complete output, keeping the old token live until
+// Flat growth replaces the complete output, keeping the old token live until
 // allocation and compaction succeed. Reuse keeps its original capacity charge.
+// Extended nested outputs are borrowed until the next compact call; that call
+// releases the prior extended owner before preparing a replacement. The input
+// must be a distinct upstream batch, never this workspace's output.
 type compactWorkspace struct {
-	batch   *memory.Batch
-	lease   memory.Reservation
-	manager memory.Manager
-	bounded bool
+	extended *compactExtendedOwner
+	batch    *memory.Batch
+	lease    memory.Reservation
+	manager  memory.Manager
+	bounded  bool
 }
 
 func (w *compactWorkspace) compact(ctx context.Context, src *memory.Batch, rows []int, selection memory.Bitmap, kernels kernel.Set) (*memory.Batch, error) {
+	if src == w.batch && src != nil {
+		return nil, fmt.Errorf("filter compaction input aliases output")
+	}
+	w.clearExtended()
+	if memory.BatchHasStructLists(src) || memory.BatchHasArrays(src) {
+		return w.compactExtended(ctx, src, rows, selection, kernels)
+	}
+	return w.compactFlat(ctx, src, rows, selection, kernels)
+}
+func (w *compactWorkspace) compactFlat(ctx context.Context, src *memory.Batch, rows []int, selection memory.Bitmap, kernels kernel.Set) (*memory.Batch, error) {
 	bytes, fits, err := compactLayout(src, w.batch, rows, false, w.bounded)
 	if err != nil {
 		return nil, err
@@ -59,6 +73,7 @@ func (w *compactWorkspace) compact(ctx context.Context, src *memory.Batch, rows 
 }
 
 func (w *compactWorkspace) release() {
+	w.clearExtended()
 	if w.batch != nil {
 		w.batch.ClearColumns()
 	}

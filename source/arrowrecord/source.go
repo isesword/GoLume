@@ -82,6 +82,8 @@ type binding struct {
 	stringLists []*memory.StringListVector
 	int64Lists  []*memory.Int64ListVector
 	structs     []*memory.StructVector
+	structLists []*memory.StructListVector
+	arrays      []*memory.ArrayNode
 }
 
 // Source exposes retained Arrow RecordBatches as independent source
@@ -89,20 +91,31 @@ type binding struct {
 // source; Close should therefore be called only on the source returned by
 // NewSource after all prepared queries using its clones have been closed.
 type Source struct {
-	owner       *recordOwner
-	baseSchema  memory.Schema
-	schema      memory.Schema
-	allBindings []binding
-	bindings    []binding
-	allParts    []source.Partition
-	parts       []source.Partition
-	report      source.PushdownReport
+	nativeRecursive bool
+	owner           *recordOwner
+	baseSchema      memory.Schema
+	schema          memory.Schema
+	allBindings     []binding
+	bindings        []binding
+	allParts        []source.Partition
+	parts           []source.Partition
+	report          source.PushdownReport
 }
 
 // NewSource retains record data and constructs an Arrow RecordBatch source.
 // All records must have equal schemas. Retained views are restricted to each
 // record's logical row count and remain owned until Close is called.
 func NewSource(records ...arrow.RecordBatch) (*Source, error) {
+	return newSource(Options{}, records...)
+}
+
+// NewSourceWithOptions retains records with explicit per-source conversion options.
+// Zero options preserve NewSource's legacy opaque Decimal behavior.
+func NewSourceWithOptions(options Options, records ...arrow.RecordBatch) (*Source, error) {
+	return newSource(options, records...)
+}
+
+func newSource(options Options, records ...arrow.RecordBatch) (*Source, error) {
 	if len(records) == 0 {
 		return nil, fmt.Errorf("arrowrecord: at least one RecordBatch is required")
 	}
@@ -112,6 +125,13 @@ func NewSource(records ...arrow.RecordBatch) (*Source, error) {
 	schema := records[0].Schema()
 	if schema == nil {
 		return nil, fmt.Errorf("arrowrecord: nil schema")
+	}
+	if options.NativeRecursiveStruct && !options.NativeStructList && !options.NativeNested {
+		for _, f := range schema.Fields() {
+			if err := checkRecursiveArrowType(f.Type, 0); err != nil {
+				return nil, err
+			}
+		}
 	}
 	owner := &recordOwner{records: make([]arrow.RecordBatch, len(records)), stats: make(map[int]map[string]int64Stats)}
 	for i, rec := range records {
@@ -127,10 +147,26 @@ func NewSource(records ...arrow.RecordBatch) (*Source, error) {
 		// the logical record, not hidden payloads or NULLs in column tails.
 		// Keep the bounded record alive so nested and opaque views remain safe.
 		bounded := false
-		for _, col := range rec.Columns() {
+		for column, col := range rec.Columns() {
+			if options.NativeNested && nilArrayValue(col) {
+				owner.close()
+				return nil, fmt.Errorf("arrowrecord: nil native array column %d", column)
+			}
+			// Check selected native arrays before asking for their length;
+			// an interface can contain a typed-nil Arrow array.
+			if options.NativeDecimal128 && column < len(schema.Fields()) {
+				if _, selected := schema.Field(column).Type.(*arrow.Decimal128Type); selected {
+					if a, ok := col.(*array.Decimal128); !ok || a == nil {
+						owner.close()
+						return nil, fmt.Errorf("arrowrecord: record %d column %q has nil or incompatible native Decimal128 array %T", i, schema.Field(column).Name, col)
+					}
+				}
+			}
 			if int64(col.Len()) > rec.NumRows() {
 				bounded = true
-				break
+				if !options.NativeDecimal128 {
+					break
+				}
 			}
 		}
 		if bounded {
@@ -143,7 +179,11 @@ func NewSource(records ...arrow.RecordBatch) (*Source, error) {
 	bindings := make([]binding, len(schema.Fields()))
 	fields := make([]memory.Field, len(bindings))
 	for i, f := range schema.Fields() {
-		mf := memoryField(f)
+		mf, err := sourceMemoryField(f, options)
+		if err != nil {
+			owner.close()
+			return nil, err
+		}
 		bindings[i] = binding{name: f.Name, index: i, field: mf}
 		fields[i] = mf
 	}
@@ -157,9 +197,23 @@ func NewSource(records ...arrow.RecordBatch) (*Source, error) {
 		bindings[i].stringLists = make([]*memory.StringListVector, len(owner.records))
 		bindings[i].int64Lists = make([]*memory.Int64ListVector, len(owner.records))
 		bindings[i].structs = make([]*memory.StructVector, len(owner.records))
+		bindings[i].structLists = make([]*memory.StructListVector, len(owner.records))
+		bindings[i].arrays = make([]*memory.ArrayNode, len(owner.records))
 		for ri, rec := range owner.records {
 			arr := rec.Column(bindings[i].index)
+			if bindings[i].field.DecimalPrecision != 0 {
+				if a, ok := arr.(*array.Decimal128); !ok || a == nil {
+					owner.close()
+					return nil, fmt.Errorf("arrowrecord: record %d column %q has nil or incompatible native Decimal128 array %T", ri, bindings[i].name, arr)
+				}
+			}
 			bindings[i].validities[ri] = validityBitmap(arr)
+			if bindings[i].field.DecimalPrecision != 0 {
+				if _, err := nativeDecimalVector(arr, bindings[i].field, bindings[i].validities[ri], int(rec.NumRows())); err != nil {
+					owner.close()
+					return nil, fmt.Errorf("arrowrecord: record %d column %q: %w", ri, bindings[i].name, err)
+				}
+			}
 			if err := cachePhysicalValues(&bindings[i], ri, arr, nil); err != nil {
 				owner.close()
 				return nil, fmt.Errorf("arrowrecord: column %q: %w", bindings[i].name, err)
@@ -170,6 +224,30 @@ func NewSource(records ...arrow.RecordBatch) (*Source, error) {
 			case *array.Binary:
 				bindings[i].offsets[ri] = offsets32(a.ValueOffsets())
 			case *array.List:
+				if memory.IsNestedList(bindings[i].field) {
+					v, err := arrowArrayNode(a, bindings[i].field, 0)
+					if err == nil {
+						err = v.ValidateWithContext(bindings[i].field, a.Len(), memory.NestedListParentDomain{}, nil)
+					}
+					if err != nil {
+						owner.close()
+						return nil, err
+					}
+					bindings[i].arrays[ri] = v
+					continue
+				}
+				if memory.IsStructList(bindings[i].field) {
+					v, err := arrowStructListVector(a, bindings[i].field, bindings[i].validities[ri], nil)
+					if err == nil {
+						err = v.ValidateWithContext(bindings[i].field, v.Len(), memory.StructListParentDomain{}, nil)
+					}
+					if err != nil {
+						owner.close()
+						return nil, err
+					}
+					bindings[i].structLists[ri] = v
+					continue
+				}
 				if bindings[i].field.Type == memory.TypeList {
 					if bindings[i].field.Children[0].Type == memory.TypeInt64 {
 						v, err := arrowInt64ListVector(a, bindings[i].validities[ri])
@@ -204,7 +282,21 @@ func NewSource(records ...arrow.RecordBatch) (*Source, error) {
 				}
 			case *array.Struct:
 				if bindings[i].field.Type == memory.TypeStruct {
-					v, err := arrowStructVector(a, bindings[i].field, bindings[i].validities[ri])
+					var v *memory.StructVector
+					var err error
+					if options.NativeStructList || options.NativeNested {
+						v, err = arrowRecursiveStructVector(a, bindings[i].field, bindings[i].validities[ri], nil)
+						if err == nil {
+							if options.NativeNested {
+								wrapper := memory.Batch{Rows: a.Len(), Structs: map[string]*memory.StructVector{bindings[i].field.Name: v}}
+								err = memory.ValidateNestedListsBatch(&wrapper, memory.Schema{Fields: []memory.Field{bindings[i].field}}, nil)
+							} else {
+								err = v.ValidateStructListsWithContext(bindings[i].field, a.Len(), nil)
+							}
+						}
+					} else {
+						v, err = arrowStructVectorOption(a, bindings[i].field, bindings[i].validities[ri], options.NativeRecursiveStruct)
+					}
 					if err != nil {
 						owner.close()
 						return nil, fmt.Errorf("arrowrecord: column %q: %w", bindings[i].name, err)
@@ -231,7 +323,7 @@ func NewSource(records ...arrow.RecordBatch) (*Source, error) {
 	}
 	logicalSchema := memory.NewSchema(fields...)
 	return &Source{
-		owner:       owner,
+		nativeRecursive: options.NativeRecursiveStruct || options.NativeStructList || options.NativeNested, owner: owner,
 		baseSchema:  logicalSchema,
 		schema:      logicalSchema,
 		allBindings: bindings,
@@ -253,7 +345,12 @@ func (s *Source) Close() error {
 func (s *Source) Description() string { return "arrow-record-batches" }
 
 // Schema returns the current projected logical schema.
-func (s *Source) Schema() memory.Schema { return s.schema }
+func (s *Source) Schema() memory.Schema {
+	if s.nativeRecursive {
+		return memory.NewSchema(s.schema.Fields...)
+	}
+	return s.schema
+}
 
 // Replayability reports that retained RecordBatches are a stable snapshot.
 func (*Source) Replayability() source.Replayability { return source.ReplayStable }

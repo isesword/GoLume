@@ -88,7 +88,7 @@ func TestNativeDecimalNestedSchemasRejected(t *testing.T) {
 		{"struct decimal", memory.StructField("record", true, decimal), "unsupported type decimal"},
 		{"list decimal", list, "requires string child"},
 		{"struct list decimal", memory.StructField("record", true, list), "requires string child"},
-		{"recursive struct decimal", memory.StructField("outer", true, memory.StructField("inner", true, decimal)), "unsupported type struct"},
+		{"recursive struct decimal", memory.StructField("outer", true, memory.StructField("inner", true, decimal)), "unsupported type decimal"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			schema := memory.NewSchema(tc.field)

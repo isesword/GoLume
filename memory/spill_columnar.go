@@ -3,6 +3,7 @@ package memory
 import (
 	"context"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"github.com/apache/arrow-go/v18/arrow/decimal128"
 	"math"
@@ -87,7 +88,14 @@ func EncodeColumnarRun(ctx context.Context, schema Schema, batch *Batch, workspa
 	if workspace == nil {
 		return nil, fmt.Errorf("columnar encode requires a workspace manager")
 	}
-	size, err := columnarRunSize(schema, batch)
+	arrays, graphErr := columnarBatchHasArrays(batch, 0, ctx.Err)
+	if graphErr != nil {
+		return nil, graphErr
+	}
+	if arrays && !schema.HasNestedLists() {
+		return nil, fmt.Errorf("two-level array spill requires its explicit codec checkpoint")
+	}
+	size, err := columnarRunSizeContext(schema, batch, ctx.Err)
 	if err != nil {
 		return nil, err
 	}
@@ -96,9 +104,9 @@ func EncodeColumnarRun(ctx context.Context, schema Schema, batch *Batch, workspa
 		return nil, fmt.Errorf("reserve columnar encode buffer: %w", err)
 	}
 	payload := make([]byte, size)
-	writer := runWriter{buf: payload}
+	writer := runWriter{buf: payload, check: ctx.Err}
 	writer.bytes(columnarRunMagic[:])
-	writer.u16(columnarRunVersion)
+	writer.u16(columnarVersionForSchema(schema))
 	writer.u64(uint64(batch.Rows))
 	writer.u32(uint32(len(schema.Fields)))
 	for _, field := range schema.Fields {
@@ -136,8 +144,11 @@ func DecodeColumnarRun(ctx context.Context, schema Schema, restored *RestoredSpi
 	if workspace == nil {
 		return nil, fmt.Errorf("columnar decode requires a workspace manager")
 	}
-	metadata, err := ColumnarRunDecodeMetadataBytes(schema)
+	metadata, err := columnarRunDecodeMetadataBytesContext(schema, ctx.Err)
 	if err != nil {
+		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+			return nil, err
+		}
 		return nil, fmt.Errorf("%w: columnar decode schema: %v", ErrSpillCorrupt, err)
 	}
 	payload := restored.Object.Payload
@@ -156,12 +167,20 @@ func DecodeColumnarRun(ctx context.Context, schema Schema, restored *RestoredSpi
 			_ = owned.Close()
 		}
 	}()
-	reader := runReader{buf: payload}
-	if string(reader.bytes(8)) != string(columnarRunMagic[:]) || reader.u16() != columnarRunVersion {
+	reader := runReader{buf: payload, check: ctx.Err}
+	magic, version := reader.bytes(8), reader.u16()
+	if reader.err != nil {
+		return nil, reader.err
+	}
+	if string(magic) != string(columnarRunMagic[:]) || version != columnarVersionForSchema(schema) {
 		return nil, fmt.Errorf("%w: columnar run magic or version mismatch", ErrSpillCorrupt)
 	}
 	rows64 := reader.u64()
-	if rows64 >= uint64(math.MaxInt) || reader.u32() != uint32(len(schema.Fields)) {
+	fields := reader.u32()
+	if reader.err != nil {
+		return nil, reader.err
+	}
+	if rows64 >= uint64(math.MaxInt) || fields != uint32(len(schema.Fields)) {
 		return nil, fmt.Errorf("%w: columnar run row or field count mismatch", ErrSpillCorrupt)
 	}
 	rows := int(rows64)
@@ -175,7 +194,10 @@ func DecodeColumnarRun(ctx context.Context, schema Schema, restored *RestoredSpi
 		return nil, reader.err
 	}
 	for _, field := range schema.Fields {
-		if err := validateColumnarDecodedField(owned.Batch, field, rows); err != nil {
+		if err := validateColumnarDecodedFieldContext(owned.Batch, field, rows, ctx.Err); err != nil {
+			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+				return nil, err
+			}
 			return nil, fmt.Errorf("%w: decoded field %q: %v", ErrSpillCorrupt, field.Name, err)
 		}
 	}
@@ -187,18 +209,37 @@ func DecodeColumnarRun(ctx context.Context, schema Schema, restored *RestoredSpi
 }
 
 func columnarRunSize(schema Schema, batch *Batch) (int, error) {
+	return columnarRunSizeContext(schema, batch, nil)
+}
+
+func columnarRunSizeContext(schema Schema, batch *Batch, check func() error) (int, error) {
+	if err := recursiveCheck(check); err != nil {
+		return 0, err
+	}
+	if err := checkColumnarStructDepthContext(schema.Fields, 0, check); err != nil {
+		return 0, err
+	}
 	if batch.Rows < 0 {
 		return 0, fmt.Errorf("columnar batch rows cannot be negative")
 	}
 	if uint64(len(schema.Fields)) > math.MaxUint32 {
 		return 0, fmt.Errorf("columnar schema field count exceeds uint32")
 	}
+	if schema.HasNestedLists() {
+		if err := ValidateNestedListsBatch(batch, schema, check); err != nil {
+			return 0, err
+		}
+	} else if schema.HasStructLists() {
+		if err := ValidateStructListsBatch(batch, schema, check); err != nil {
+			return 0, err
+		}
+	}
 	size := int64(columnarRunHeader)
 	for _, field := range schema.Fields {
-		if err := validateRunField(batch, field, batch.Rows); err != nil {
+		if err := validateColumnarRootContext(batch, field, batch.Rows, check); err != nil {
 			return 0, fmt.Errorf("columnar field %q: %w", field.Name, err)
 		}
-		fieldSize, err := runFieldSize(batch, field, batch.Rows)
+		fieldSize, err := runFieldSizeContext(batch, field, batch.Rows, check)
 		if err != nil {
 			return 0, err
 		}
@@ -225,23 +266,35 @@ func validitySize(validity Bitmap, rows int) (int64, error) {
 }
 
 func runFieldSize(batch *Batch, field Field, rows int) (int64, error) {
+	return runFieldSizeContext(batch, field, rows, nil)
+}
+
+func runFieldSizeContext(batch *Batch, field Field, rows int, check func() error) (int64, error) {
+	if err := recursiveCheck(check); err != nil {
+		return 0, err
+	}
 	if batch == nil {
 		return 0, fmt.Errorf("field %q has nil batch", field.Name)
+	}
+	if IsNestedList(field) {
+		return arrayRunSize(batch.Arrays[field.Name], check)
+	}
+	if IsStructList(field) {
+		return structListRunSize(batch.StructLists[field.Name], field, rows, check)
 	}
 	if field.Type == TypeStruct {
 		vector := batch.Structs[field.Name]
 		if vector == nil || vector.Values == nil {
 			return 0, fmt.Errorf("struct field %q is missing", field.Name)
 		}
-		if err := vector.Validate(field, rows); err != nil {
-			return 0, err
-		}
+		// The entire root was validated by columnarRunSize. Sizing must not
+		// revalidate descendants without their ancestor validity domain.
 		size, err := validitySize(vector.Validity, rows)
 		if err != nil {
 			return 0, err
 		}
 		for _, child := range field.Children {
-			childSize, err := runFieldSize(vector.Values, child, rows)
+			childSize, err := runFieldSizeContext(vector.Values, child, rows, check)
 			if err != nil {
 				return 0, err
 			}
@@ -367,8 +420,19 @@ func normalizedOffsetDataSize(offsets []uint32, data []byte) (int64, error) {
 }
 
 func validateRunField(batch *Batch, field Field, rows int) error {
+	return validateRunFieldContext(batch, field, rows, nil)
+}
+
+func validateRunFieldContext(batch *Batch, field Field, rows int, check func() error) error {
+	if err := recursiveCheck(check); err != nil {
+		return err
+	}
 	if batch == nil {
 		return fmt.Errorf("field %q has nil batch", field.Name)
+	}
+	if field.Type == TypeStruct && recursiveColumnarField(field) {
+		var ancestors [MaxStructDepth]*StructVector
+		return validateRecursiveVector(batch.Structs[field.Name], field, rows, check, &ancestors, 0)
 	}
 	switch field.Type {
 	case TypeStruct:
@@ -580,10 +644,24 @@ func fixedRunField(batch *Batch, field Field, rows int) (Bitmap, int, error) {
 }
 
 func encodeRunField(writer *runWriter, batch *Batch, field Field, rows int) error {
+	if IsNestedList(field) {
+		return encodeArrayRun(writer, batch.Arrays[field.Name])
+	}
+	if writer.check != nil {
+		if err := writer.check(); err != nil {
+			return err
+		}
+	}
+	if IsStructList(field) {
+		return encodeStructListRun(writer, batch.StructLists[field.Name], field, rows)
+	}
 	if field.Type == TypeStruct {
 		vector := batch.Structs[field.Name]
 		encodeValidity(writer, vector.Validity, rows)
 		for _, child := range field.Children {
+			if writer.err != nil {
+				return writer.err
+			}
 			if err := encodeRunField(writer, vector.Values, child, rows); err != nil {
 				return err
 			}
@@ -597,6 +675,9 @@ func encodeRunField(writer *runWriter, batch *Batch, field Field, rows int) erro
 		encodeOffsets(writer, v.Offsets, 0)
 		encodeValidity(writer, v.Values.Validity, v.Values.Len())
 		for _, value := range v.Values.Values {
+			if writer.err != nil {
+				return writer.err
+			}
 			writer.u64(uint64(value))
 		}
 		return writer.err
@@ -616,6 +697,9 @@ func encodeRunField(writer *runWriter, batch *Batch, field Field, rows int) erro
 			vector := batch.DictStrings[field.Name]
 			encodeValidity(writer, vector.Validity, rows)
 			for _, value := range vector.Indices {
+				if writer.err != nil {
+					return writer.err
+				}
 				writer.u32(value)
 			}
 			writer.u32(uint32(len(vector.Offsets)))
@@ -639,47 +723,80 @@ func encodeRunField(writer *runWriter, batch *Batch, field Field, rows int) erro
 		writer.u32(uint32(field.DecimalPrecision))
 		writer.u32(uint32(field.DecimalScale))
 		for _, value := range batch.Decimals[field.Name].Values {
+			if writer.err != nil {
+				return writer.err
+			}
 			writer.u64(value.LowBits())
 			writer.u64(uint64(value.HighBits()))
 		}
 	case TypeInt8:
 		for _, value := range batch.Int8s[field.Name].Values {
+			if writer.err != nil {
+				return writer.err
+			}
 			writer.u8(uint8(value))
 		}
 	case TypeInt16:
 		for _, value := range batch.Int16s[field.Name].Values {
+			if writer.err != nil {
+				return writer.err
+			}
 			writer.u16(uint16(value))
 		}
 	case TypeInt32, TypeDate32, TypeTime32:
 		for _, value := range batch.Int32s[field.Name].Values {
+			if writer.err != nil {
+				return writer.err
+			}
 			writer.u32(uint32(value))
 		}
 	case TypeInt64, TypeDate64, TypeTimestamp, TypeTime64, TypeDuration:
 		for _, value := range batch.Int64s[field.Name].Values {
+			if writer.err != nil {
+				return writer.err
+			}
 			writer.u64(uint64(value))
 		}
 	case TypeUint8:
 		for _, value := range batch.Uint8s[field.Name].Values {
+			if writer.err != nil {
+				return writer.err
+			}
 			writer.u8(value)
 		}
 	case TypeUint16:
 		for _, value := range batch.Uint16s[field.Name].Values {
+			if writer.err != nil {
+				return writer.err
+			}
 			writer.u16(value)
 		}
 	case TypeUint32, TypeBool:
 		for _, value := range batch.Uint32s[field.Name].Values {
+			if writer.err != nil {
+				return writer.err
+			}
 			writer.u32(value)
 		}
 	case TypeUint64:
 		for _, value := range batch.Uint64s[field.Name].Values {
+			if writer.err != nil {
+				return writer.err
+			}
 			writer.u64(value)
 		}
 	case TypeFloat32:
 		for _, value := range batch.Float32s[field.Name].Values {
+			if writer.err != nil {
+				return writer.err
+			}
 			writer.u32(math.Float32bits(value))
 		}
 	case TypeFloat64:
 		for _, value := range batch.Float64s[field.Name].Values {
+			if writer.err != nil {
+				return writer.err
+			}
 			writer.u64(math.Float64bits(value))
 		}
 	}
@@ -694,12 +811,18 @@ func encodeValidity(writer *runWriter, validity Bitmap, rows int) {
 	words := WordsFor(rows)
 	writer.u32(uint32(words))
 	for _, word := range validity[:words] {
+		if writer.err != nil {
+			return
+		}
 		writer.u64(word)
 	}
 }
 
 func encodeOffsets(writer *runWriter, offsets []uint32, base uint32) {
 	for _, offset := range offsets {
+		if writer.err != nil {
+			return
+		}
 		writer.u32(offset - base)
 	}
 }
@@ -719,6 +842,19 @@ func encodeNormalizedString(writer *runWriter, offsets []uint32, data []byte) {
 }
 
 func decodeRunField(reader *runReader, batch *Batch, field Field, rows int) error {
+	if IsNestedList(field) {
+		v, err := decodeArrayRun(reader, field, rows)
+		batch.Arrays[field.Name] = v
+		return err
+	}
+	if reader.check != nil {
+		if err := reader.check(); err != nil {
+			return err
+		}
+	}
+	if IsStructList(field) {
+		return decodeStructListRun(reader, batch, field, rows)
+	}
 	if field.Type == TypeStruct {
 		vector := &StructVector{Rows: rows, Encoding: field.Encoding}
 		batch.Structs[field.Name] = vector
@@ -727,6 +863,9 @@ func decodeRunField(reader *runReader, batch *Batch, field Field, rows int) erro
 		vector.Values = newColumnarDecodeBatch(field.Children, rows)
 		vector.Validity = decodeValidity(reader, rows)
 		for _, child := range field.Children {
+			if reader.err != nil {
+				return reader.err
+			}
 			if err := decodeRunField(reader, vector.Values, child, rows); err != nil {
 				return err
 			}
@@ -753,6 +892,9 @@ func decodeRunField(reader *runReader, batch *Batch, field Field, rows int) erro
 		}
 		v.Values.Values = make([]int64, childRows)
 		for i := range v.Values.Values {
+			if reader.err != nil {
+				return reader.err
+			}
 			v.Values.Values[i] = int64(reader.u64())
 		}
 		return reader.err
@@ -787,6 +929,9 @@ func decodeRunField(reader *runReader, batch *Batch, field Field, rows int) erro
 			}
 			vector.Indices = make([]uint32, rows)
 			for i := range vector.Indices {
+				if reader.err != nil {
+					return reader.err
+				}
 				vector.Indices[i] = reader.u32()
 			}
 			vector.Offsets = reader.offsets(reader.u32(), -1)
@@ -814,6 +959,9 @@ func decodeRunField(reader *runReader, batch *Batch, field Field, rows int) erro
 		}
 		vector.Values = make([]Decimal128, rows)
 		for i := range vector.Values {
+			if reader.err != nil {
+				return reader.err
+			}
 			lo := reader.u64()
 			hi := reader.u64()
 			vector.Values[i] = decimal128.New(int64(hi), lo)
@@ -827,6 +975,9 @@ func decodeRunField(reader *runReader, batch *Batch, field Field, rows int) erro
 		}
 		vector.Values = make([]int8, rows)
 		for i := range vector.Values {
+			if reader.err != nil {
+				return reader.err
+			}
 			vector.Values[i] = int8(reader.u8())
 		}
 	case TypeInt16:
@@ -838,6 +989,9 @@ func decodeRunField(reader *runReader, batch *Batch, field Field, rows int) erro
 		}
 		vector.Values = make([]int16, rows)
 		for i := range vector.Values {
+			if reader.err != nil {
+				return reader.err
+			}
 			vector.Values[i] = int16(reader.u16())
 		}
 	case TypeInt32, TypeDate32, TypeTime32:
@@ -849,6 +1003,9 @@ func decodeRunField(reader *runReader, batch *Batch, field Field, rows int) erro
 		}
 		vector.Values = make([]int32, rows)
 		for i := range vector.Values {
+			if reader.err != nil {
+				return reader.err
+			}
 			vector.Values[i] = int32(reader.u32())
 		}
 	case TypeInt64, TypeDate64, TypeTimestamp, TypeTime64, TypeDuration:
@@ -860,6 +1017,9 @@ func decodeRunField(reader *runReader, batch *Batch, field Field, rows int) erro
 		}
 		vector.Values = make([]int64, rows)
 		for i := range vector.Values {
+			if reader.err != nil {
+				return reader.err
+			}
 			vector.Values[i] = int64(reader.u64())
 		}
 	case TypeUint8:
@@ -871,6 +1031,9 @@ func decodeRunField(reader *runReader, batch *Batch, field Field, rows int) erro
 		}
 		vector.Values = make([]uint8, rows)
 		for i := range vector.Values {
+			if reader.err != nil {
+				return reader.err
+			}
 			vector.Values[i] = reader.u8()
 		}
 	case TypeUint16:
@@ -882,6 +1045,9 @@ func decodeRunField(reader *runReader, batch *Batch, field Field, rows int) erro
 		}
 		vector.Values = make([]uint16, rows)
 		for i := range vector.Values {
+			if reader.err != nil {
+				return reader.err
+			}
 			vector.Values[i] = reader.u16()
 		}
 	case TypeUint32, TypeBool:
@@ -893,6 +1059,9 @@ func decodeRunField(reader *runReader, batch *Batch, field Field, rows int) erro
 		}
 		vector.Values = make([]uint32, rows)
 		for i := range vector.Values {
+			if reader.err != nil {
+				return reader.err
+			}
 			vector.Values[i] = reader.u32()
 		}
 	case TypeUint64:
@@ -904,6 +1073,9 @@ func decodeRunField(reader *runReader, batch *Batch, field Field, rows int) erro
 		}
 		vector.Values = make([]uint64, rows)
 		for i := range vector.Values {
+			if reader.err != nil {
+				return reader.err
+			}
 			vector.Values[i] = reader.u64()
 		}
 	case TypeFloat32:
@@ -915,6 +1087,9 @@ func decodeRunField(reader *runReader, batch *Batch, field Field, rows int) erro
 		}
 		vector.Values = make([]float32, rows)
 		for i := range vector.Values {
+			if reader.err != nil {
+				return reader.err
+			}
 			vector.Values[i] = math.Float32frombits(reader.u32())
 		}
 	case TypeFloat64:
@@ -926,6 +1101,9 @@ func decodeRunField(reader *runReader, batch *Batch, field Field, rows int) erro
 		}
 		vector.Values = make([]float64, rows)
 		for i := range vector.Values {
+			if reader.err != nil {
+				return reader.err
+			}
 			vector.Values[i] = math.Float64frombits(reader.u64())
 		}
 	default:
@@ -948,27 +1126,62 @@ func decodeValidity(reader *runReader, rows int) Bitmap {
 	}
 	validity := make(Bitmap, words)
 	for i := range validity {
+		if reader.err != nil {
+			return nil
+		}
 		validity[i] = reader.u64()
 	}
 	return validity
 }
 
 type runWriter struct {
-	buf []byte
-	pos int
-	err error
+	check func() error
+	buf   []byte
+	pos   int
+	err   error
 }
 
 func (w *runWriter) bytes(value []byte) {
+	if w.err != nil {
+		return
+	}
+	if w.check != nil {
+		if err := w.check(); err != nil {
+			w.err = err
+			return
+		}
+	}
 	if w.err != nil || len(value) > len(w.buf)-w.pos {
 		w.err = fmt.Errorf("columnar encoder buffer overflow")
 		return
 	}
-	copy(w.buf[w.pos:], value)
-	w.pos += len(value)
+	for len(value) > 0 {
+		if w.check != nil {
+			if err := w.check(); err != nil {
+				w.err = err
+				return
+			}
+		}
+		n := len(value)
+		if n > 32768 {
+			n = 32768
+		}
+		copy(w.buf[w.pos:w.pos+n], value[:n])
+		w.pos += n
+		value = value[n:]
+	}
 }
 
 func (w *runWriter) u8(value uint8) {
+	if w.err != nil {
+		return
+	}
+	if w.check != nil {
+		if err := w.check(); err != nil {
+			w.err = err
+			return
+		}
+	}
 	if w.err != nil || len(w.buf)-w.pos < 1 {
 		w.err = fmt.Errorf("columnar encoder buffer overflow")
 		return
@@ -997,9 +1210,10 @@ func (w *runWriter) string(value string) {
 }
 
 type runReader struct {
-	buf []byte
-	pos int
-	err error
+	check func() error
+	buf   []byte
+	pos   int
+	err   error
 }
 
 func (r *runReader) fail(detail string) {
@@ -1008,6 +1222,15 @@ func (r *runReader) fail(detail string) {
 	}
 }
 func (r *runReader) bytes(length int) []byte {
+	if r.err != nil {
+		return nil
+	}
+	if r.check != nil {
+		if err := r.check(); err != nil {
+			r.err = err
+			return nil
+		}
+	}
 	if r.err != nil || length < 0 || length > len(r.buf)-r.pos {
 		r.fail("columnar run truncated")
 		return nil
@@ -1018,6 +1241,15 @@ func (r *runReader) bytes(length int) []byte {
 }
 
 func (r *runReader) u8() uint8 {
+	if r.err != nil {
+		return 0
+	}
+	if r.check != nil {
+		if err := r.check(); err != nil {
+			r.err = err
+			return 0
+		}
+	}
 	if r.err != nil || len(r.buf)-r.pos < 1 {
 		r.fail("uint8 exceeds remaining payload")
 		return 0
@@ -1058,6 +1290,9 @@ func (r *runReader) offsets(count uint32, want int) []uint32 {
 	offsets := make([]uint32, int(count))
 	for i := range offsets {
 		offsets[i] = r.u32()
+		if r.err != nil {
+			return nil
+		}
 		if i > 0 && offsets[i] < offsets[i-1] {
 			r.fail("columnar offsets decrease")
 		}
@@ -1085,7 +1320,20 @@ func (r *runReader) data() []byte {
 		return nil
 	}
 	out := make([]byte, len(data))
-	copy(out, data)
+	for at := 0; at < len(data); {
+		if r.check != nil {
+			if err := r.check(); err != nil {
+				r.err = err
+				return nil
+			}
+		}
+		n := len(data) - at
+		if n > 32768 {
+			n = 32768
+		}
+		copy(out[at:at+n], data[at:at+n])
+		at += n
+	}
 	return out
 }
 func (r *runReader) string() string {
@@ -1095,4 +1343,41 @@ func (r *runReader) string() string {
 		return ""
 	}
 	return string(r.bytes(int(length)))
+}
+
+// columnarBatchHasArrays checks the bounded codec graph before detecting a new
+// profile. Unlike the legacy valid-acyclic detector, it is safe on extra cyclic
+// runtime bindings, including StructList element batches.
+func columnarBatchHasArrays(b *Batch, depth int, check func() error) (bool, error) {
+	if err := recursiveCheck(check); err != nil {
+		return false, err
+	}
+	if b == nil {
+		return false, fmt.Errorf("columnar runtime graph has nil child batch")
+	}
+	if depth > MaxStructDepth+1 {
+		return false, fmt.Errorf("columnar runtime graph exceeds container depth")
+	}
+	found := len(b.Arrays) != 0
+	for _, v := range b.Structs {
+		if v == nil {
+			return false, fmt.Errorf("columnar runtime graph has nil Struct")
+		}
+		x, err := columnarBatchHasArrays(v.Values, depth+1, check)
+		if err != nil {
+			return false, err
+		}
+		found = found || x
+	}
+	for _, v := range b.StructLists {
+		if v == nil || v.Values == nil {
+			return false, fmt.Errorf("columnar runtime graph has nil StructList")
+		}
+		x, err := columnarBatchHasArrays(v.Values.Values, depth+1, check)
+		if err != nil {
+			return false, err
+		}
+		found = found || x
+	}
+	return found, nil
 }

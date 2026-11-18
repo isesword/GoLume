@@ -13,6 +13,9 @@ import (
 // or require a sizing contract from arbitrary Retain/Release values.
 // Inputs must satisfy CloneBatchRange's valid acyclic runtime graph contract.
 func EstimateCollectBatchBytes(src *Batch) (int64, error) {
+	if BatchHasStructLists(src) {
+		return 0, fmt.Errorf("StructList Collect requires explicit owned profile")
+	}
 	if src != nil && len(src.Decimals)+len(src.Strings)+len(src.DictStrings)+len(src.StringLists)+len(src.Int64Lists)+len(src.Structs)+len(src.Opaque) == 0 {
 		return estimateCollectFixedWidth(src)
 	}

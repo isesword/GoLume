@@ -249,6 +249,12 @@ func TestBinaryDictionarySortKeepsNativeDecimalBoundary(t *testing.T) {
 	keys := []SortKey{{Column: "key"}}
 	for _, spillable := range []bool{false, true} {
 		_, err := NewSortSourceWithOptions(input, keys, nil, SortSourceOptions{Spillable: spillable})
+		if !spillable {
+			if err != nil {
+				t.Fatal(err)
+			}
+			continue
+		}
 		if err == nil || !strings.Contains(err.Error(), "native decimal execution is not supported") {
 			t.Fatalf("spillable=%v native decimal error=%v", spillable, err)
 		}

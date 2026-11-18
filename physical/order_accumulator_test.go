@@ -123,10 +123,14 @@ func TestExternalSortAccumulatorMetadataAdmission(t *testing.T) {
 }
 
 func TestExternalSortAccumulatorMetadataRejectsUnsupportedBeforeReserve(t *testing.T) {
+	tooDeep := memory.Field{Name: "x", Type: memory.TypeInt8}
+	for depth := 0; depth < 9; depth++ {
+		tooDeep = memory.StructField("r", true, tooDeep)
+	}
 	schemas := []memory.Schema{
 		{Fields: []memory.Field{{Name: "x", Type: memory.TypeArrow}}},
 		{Fields: []memory.Field{{Name: "x", Type: memory.TypeInt8}, {Name: "x", Type: memory.TypeInt16}}},
-		{Fields: []memory.Field{memory.StructField("r", true, memory.StructField("nested", true, memory.Field{Name: "x", Type: memory.TypeInt8}))}},
+		{Fields: []memory.Field{tooDeep}},
 		{Fields: []memory.Field{memory.StructField("r", true, memory.Field{Name: "d", Type: memory.TypeString, Encoding: memory.EncodingDictionary})}},
 		{Fields: []memory.Field{{Name: "d", Type: memory.TypeDecimal, DecimalPrecision: 39}}},
 	}
@@ -831,6 +835,49 @@ func TestExternalSortAccumulatorMalformedRowsFailTerminal(t *testing.T) {
 			}
 			if a.reservation.Bytes() != token || w.Used() != token {
 				t.Fatal("failed graph lost reservation")
+			}
+		})
+	}
+}
+
+func TestExternalSortAccumulatorRecursiveMetadataAdmission(t *testing.T) {
+	shallow := memory.NewSchema(memory.StructField("r", true, memory.Field{Name: "x", Type: memory.TypeInt8}))
+	deep, err := memory.NewSchemaChecked(memory.StructField("r", true, memory.StructField("nested", true, memory.Field{Name: "x", Type: memory.TypeInt8})))
+	if err != nil {
+		t.Fatal(err)
+	}
+	base, err := externalSortAccumulatorMetadataBytes(shallow)
+	if err != nil {
+		t.Fatal(err)
+	}
+	charge, err := externalSortAccumulatorMetadataBytes(deep)
+	if err != nil || charge <= base {
+		t.Fatalf("recursive metadata must charge extra node: shallow=%d deep=%d err=%v", base, charge, err)
+	}
+	for _, delta := range []int64{-1, 0} {
+		t.Run(fmt.Sprint(delta), func(t *testing.T) {
+			w, parent := externalAccumulatorTestWorkspace(t, charge+delta)
+			parent.deny = true
+			before := parent.Used()
+			a, err := newExternalSortAccumulator(context.Background(), deep, w, 0)
+			if delta < 0 {
+				if !errors.Is(err, memory.ErrBudgetExceeded) || a != nil || w.Used() != 0 || parent.Used() != before {
+					t.Fatal("recursive metadata -1 admission", a, err, w.Used(), parent.Used())
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if w.Used() != charge || a.reservation.Bytes() != charge || a.capacityBytes != 0 {
+				t.Fatal("recursive metadata exact charge")
+			}
+			if a.batch.Structs["r"].Values.Structs["nested"].Values.Int8s["x"] == nil {
+				t.Fatal("missing recursive sparse node")
+			}
+			a.close()
+			if w.Used() != 0 || parent.Used() != before {
+				t.Fatal("recursive metadata cleanup")
 			}
 		})
 	}

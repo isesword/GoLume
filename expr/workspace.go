@@ -16,6 +16,9 @@ func instructionResultType(in instruction) memory.DataType {
 	return in.Type
 }
 func fixedRegisterBytes(in instruction, rows int) (int64, error) {
+	if in.Code == scalarStructFrom || in.Code == scalarStructGet || in.Code == scalarListGet && (in.Type == memory.TypeStruct || in.Type == memory.TypeList) {
+		return 0, nil
+	}
 	if in.Code == scalarColumn && in.Type != memory.TypeBool {
 		return 0, nil
 	}
@@ -220,6 +223,17 @@ func (w *evaluationState) MemoryBytes() int64 {
 	for _, r := range w.owned[:cap(w.owned)] {
 		if r.exportReservation != nil {
 			n += r.exportReservation.Bytes()
+		}
+		if r.structFromBytes != 0 {
+			n += r.structFromBytes
+			continue
+		}
+		if r.structGetBytes != 0 {
+			n += r.structGetBytes
+			if r.typ == memory.TypeBool {
+				n += int64(cap(r.u32)) * 4
+			}
+			continue
 		}
 		if r.strList != nil {
 			n += int64(cap(r.strList.Offsets)) * 4

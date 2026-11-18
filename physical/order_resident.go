@@ -69,6 +69,19 @@ func (s *residentSortStream) prepare(ctx context.Context) (err error) {
 		if !ok {
 			break
 		}
+		if e = validateResidentTypedDecimalBoundary(ctx, s.owner.Schema(), s.scratch); e != nil {
+			return e
+		}
+		if residentHasNativeDecimal(s.owner.Schema().Fields) {
+			if e = validateResidentDecimalBatch(ctx, s.owner.Schema(), s.scratch); e != nil {
+				return e
+			}
+		}
+		if residentExtendedSchema(s.owner.Schema().Fields) {
+			if e = validateResidentExtendedInput(ctx, s.owner.Schema(), s.scratch, s.workspace); e != nil {
+				return e
+			}
+		}
 		if s.scratch.Rows == 0 {
 			continue
 		}

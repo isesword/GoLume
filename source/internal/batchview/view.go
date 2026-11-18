@@ -10,6 +10,7 @@ import (
 	"github.com/apache/arrow-go/v18/arrow/array"
 	"gocolumn/memory"
 	"gocolumn/source"
+	"math"
 )
 
 // View owns range metadata, decoded Boolean buffers, and Arrow slice references
@@ -46,11 +47,11 @@ func (v *View) Bind(ctx context.Context, dst, src *memory.Batch, offset int, opt
 	rows := min(opts.BatchRows, src.Rows-offset)
 	// Payload and allocation limits are independent. A legal single row may
 	// exceed the soft target, but never the caller's hard payload limit.
-	rows, err := selectDecodedRangeRows(src, offset, rows, opts.BatchPayloadTargetBytes, opts.BatchPayloadBytes)
+	rows, err := selectDecodedRangeRowsCheck(src, offset, rows, opts.BatchPayloadTargetBytes, opts.BatchPayloadBytes, ctx.Err)
 	if err != nil {
 		return 0, err
 	}
-	bytes, err := scratchBytes(src, offset, rows)
+	bytes, err := scratchBytesContext(ctx, src, offset, rows)
 	if err != nil {
 		return 0, err
 	}
@@ -58,7 +59,7 @@ func (v *View) Bind(ctx context.Context, dst, src *memory.Batch, offset int, opt
 		lo, hi := 0, rows
 		for lo < hi {
 			mid := lo + (hi-lo+1)/2
-			size, err := scratchBytes(src, offset, mid)
+			size, err := scratchBytesContext(ctx, src, offset, mid)
 			if err != nil {
 				return 0, err
 			}
@@ -72,7 +73,7 @@ func (v *View) Bind(ctx context.Context, dst, src *memory.Batch, offset int, opt
 		if rows == 0 {
 			return 0, fmt.Errorf("source row metadata exceeds batch byte limit %d: %w", opts.BatchBytes, memory.ErrBudgetExceeded)
 		}
-		bytes, err = scratchBytes(src, offset, rows)
+		bytes, err = scratchBytesContext(ctx, src, offset, rows)
 		if err != nil {
 			return 0, err
 		}
@@ -156,9 +157,37 @@ func stringView(v *memory.StringViewVector, offset, length int) *memory.StringVi
 }
 
 func scratchBytes(src *memory.Batch, offset, length int) (int64, error) {
+	return scratchBytesDepth(src, offset, length, 0, nil)
+}
+
+func scratchBytesContext(ctx context.Context, src *memory.Batch, offset, length int) (int64, error) {
+	return scratchBytesDepth(src, offset, length, 0, ctx.Err)
+}
+
+func scratchBytesDepth(src *memory.Batch, offset, length, depth int, check func() error) (int64, error) {
+	if check != nil {
+		if err := check(); err != nil {
+			return 0, err
+		}
+	}
 	end := offset + length
 	var n int64
+	if depth >= 2 {
+		n = 4096
+		for _, count := range []int{len(src.Int8s), len(src.Int16s), len(src.Int32s), len(src.Int64s), len(src.Uint8s), len(src.Uint16s), len(src.Uint32s), len(src.Uint64s), len(src.Float32s), len(src.Float64s), len(src.Decimals), len(src.Strings), len(src.DictStrings), len(src.Int64Lists), len(src.StringLists), len(src.Structs), len(src.StructLists), len(src.Arrays), len(src.Opaque)} {
+			if int64(count) > (math.MaxInt64-n)/1024 {
+				return 0, fmt.Errorf("recursive view metadata overflow")
+			}
+			n += int64(count) * 1024
+		}
+	}
+
 	for name, v := range src.Int8s {
+		if check != nil {
+			if err := check(); err != nil {
+				return 0, err
+			}
+		}
 		if v == nil || len(v.Values) < end {
 			return 0, fmt.Errorf("column %q shorter than source range", name)
 		}
@@ -168,6 +197,11 @@ func scratchBytes(src *memory.Batch, offset, length int) (int64, error) {
 		n += validityBytes(v.Validity, offset, length)
 	}
 	for name, v := range src.Int16s {
+		if check != nil {
+			if err := check(); err != nil {
+				return 0, err
+			}
+		}
 		if v == nil || len(v.Values) < end {
 			return 0, fmt.Errorf("column %q shorter than source range", name)
 		}
@@ -177,6 +211,11 @@ func scratchBytes(src *memory.Batch, offset, length int) (int64, error) {
 		n += validityBytes(v.Validity, offset, length)
 	}
 	for name, v := range src.Int32s {
+		if check != nil {
+			if err := check(); err != nil {
+				return 0, err
+			}
+		}
 		if v == nil || len(v.Values) < end {
 			return 0, fmt.Errorf("column %q shorter than source range", name)
 		}
@@ -186,6 +225,11 @@ func scratchBytes(src *memory.Batch, offset, length int) (int64, error) {
 		n += validityBytes(v.Validity, offset, length)
 	}
 	for name, v := range src.Int64s {
+		if check != nil {
+			if err := check(); err != nil {
+				return 0, err
+			}
+		}
 		if v == nil || len(v.Values) < end {
 			return 0, fmt.Errorf("column %q shorter than source range", name)
 		}
@@ -195,6 +239,11 @@ func scratchBytes(src *memory.Batch, offset, length int) (int64, error) {
 		n += validityBytes(v.Validity, offset, length)
 	}
 	for name, v := range src.Uint8s {
+		if check != nil {
+			if err := check(); err != nil {
+				return 0, err
+			}
+		}
 		if v == nil || len(v.Values) < end {
 			return 0, fmt.Errorf("column %q shorter than source range", name)
 		}
@@ -204,6 +253,11 @@ func scratchBytes(src *memory.Batch, offset, length int) (int64, error) {
 		n += validityBytes(v.Validity, offset, length)
 	}
 	for name, v := range src.Uint16s {
+		if check != nil {
+			if err := check(); err != nil {
+				return 0, err
+			}
+		}
 		if v == nil || len(v.Values) < end {
 			return 0, fmt.Errorf("column %q shorter than source range", name)
 		}
@@ -213,6 +267,11 @@ func scratchBytes(src *memory.Batch, offset, length int) (int64, error) {
 		n += validityBytes(v.Validity, offset, length)
 	}
 	for name, v := range src.Uint32s {
+		if check != nil {
+			if err := check(); err != nil {
+				return 0, err
+			}
+		}
 		if v == nil || len(v.Values) < end {
 			return 0, fmt.Errorf("column %q shorter than source range", name)
 		}
@@ -222,6 +281,11 @@ func scratchBytes(src *memory.Batch, offset, length int) (int64, error) {
 		n += validityBytes(v.Validity, offset, length)
 	}
 	for name, v := range src.Uint64s {
+		if check != nil {
+			if err := check(); err != nil {
+				return 0, err
+			}
+		}
 		if v == nil || len(v.Values) < end {
 			return 0, fmt.Errorf("column %q shorter than source range", name)
 		}
@@ -231,6 +295,11 @@ func scratchBytes(src *memory.Batch, offset, length int) (int64, error) {
 		n += validityBytes(v.Validity, offset, length)
 	}
 	for name, v := range src.Float32s {
+		if check != nil {
+			if err := check(); err != nil {
+				return 0, err
+			}
+		}
 		if v == nil || len(v.Values) < end {
 			return 0, fmt.Errorf("column %q shorter than source range", name)
 		}
@@ -240,12 +309,22 @@ func scratchBytes(src *memory.Batch, offset, length int) (int64, error) {
 		n += validityBytes(v.Validity, offset, length)
 	}
 	for name, v := range src.Decimals {
+		if check != nil {
+			if err := check(); err != nil {
+				return 0, err
+			}
+		}
 		if v == nil || len(v.Values) < end || v.Validity != nil && len(v.Validity) < memory.WordsFor(end) {
 			return 0, fmt.Errorf("decimal column %q shorter than source range", name)
 		}
 		n += validityBytes(v.Validity, offset, length)
 	}
 	for name, v := range src.Float64s {
+		if check != nil {
+			if err := check(); err != nil {
+				return 0, err
+			}
+		}
 		if v == nil || len(v.Values) < end {
 			return 0, fmt.Errorf("column %q shorter than source range", name)
 		}
@@ -255,6 +334,11 @@ func scratchBytes(src *memory.Batch, offset, length int) (int64, error) {
 		n += validityBytes(v.Validity, offset, length)
 	}
 	for name, v := range src.Strings {
+		if check != nil {
+			if err := check(); err != nil {
+				return 0, err
+			}
+		}
 		size, err := stringBytes(v, offset, length)
 		if err != nil {
 			return 0, fmt.Errorf("column %q: %w", name, err)
@@ -262,6 +346,11 @@ func scratchBytes(src *memory.Batch, offset, length int) (int64, error) {
 		n += size
 	}
 	for name, v := range src.DictStrings {
+		if check != nil {
+			if err := check(); err != nil {
+				return 0, err
+			}
+		}
 		if v == nil || len(v.Indices) < end {
 			return 0, fmt.Errorf("dictionary column %q shorter than source range", name)
 		}
@@ -271,6 +360,11 @@ func scratchBytes(src *memory.Batch, offset, length int) (int64, error) {
 		n += validityBytes(v.Validity, offset, length)
 	}
 	for name, v := range src.Int64Lists {
+		if check != nil {
+			if err := check(); err != nil {
+				return 0, err
+			}
+		}
 		if v == nil || v.Values == nil || len(v.Offsets) < end+1 {
 			return 0, fmt.Errorf("list column %q shorter than source range", name)
 		}
@@ -289,6 +383,11 @@ func scratchBytes(src *memory.Batch, offset, length int) (int64, error) {
 		}
 	}
 	for name, v := range src.StringLists {
+		if check != nil {
+			if err := check(); err != nil {
+				return 0, err
+			}
+		}
 		if v == nil || v.Values == nil || len(v.Offsets) < end+1 {
 			return 0, fmt.Errorf("list column %q shorter than source range", name)
 		}
@@ -303,25 +402,89 @@ func scratchBytes(src *memory.Batch, offset, length int) (int64, error) {
 		if v.Validity != nil && len(v.Validity) < memory.WordsFor(end) {
 			return 0, fmt.Errorf("column %q validity shorter than source range", name)
 		}
-		n += size + validityBytes(v.Validity, offset, length)
+		extra := validityBytes(v.Validity, offset, length)
+		if size < 0 || extra < 0 || size > math.MaxInt64-extra || n > math.MaxInt64-size-extra {
+			return 0, fmt.Errorf("source view size overflow")
+		}
+		n += size + extra
 		if lo != 0 {
 			n += int64(length+1) * 4
 		}
 	}
+	for _, v := range src.Arrays {
+		size, err := arrayScratch(v, offset, length, 0, check)
+		if err != nil {
+			return 0, err
+		}
+		if size > math.MaxInt64-n {
+			return 0, fmt.Errorf("array view size overflow")
+		}
+		n += size
+	}
+	for name, v := range src.StructLists {
+		if check != nil {
+			if err := check(); err != nil {
+				return 0, err
+			}
+		}
+		if v == nil || v.Values == nil || v.Values.Values == nil || len(v.Offsets) < end+1 {
+			return 0, fmt.Errorf("StructList %q shorter than range", name)
+		}
+		lo, hi := v.Offsets[offset], v.Offsets[end]
+		if lo > hi || uint64(hi) > uint64(v.Values.Rows) || v.Validity != nil && len(v.Validity) < memory.WordsFor(end) || v.Values.Validity != nil && len(v.Values.Validity) < memory.WordsFor(int(hi)) {
+			return 0, fmt.Errorf("invalid StructList range")
+		}
+		for i := offset; i < end; i++ {
+			if check != nil {
+				if err := check(); err != nil {
+					return 0, err
+				}
+			}
+			if v.Offsets[i] > v.Offsets[i+1] {
+				return 0, fmt.Errorf("decreasing StructList offsets")
+			}
+		}
+		size, err := scratchBytesDepth(v.Values.Values, int(lo), int(hi-lo), depth+1, check)
+		if err != nil {
+			return 0, err
+		}
+		extra := int64(4096) + int64(len(v.Values.Fields))*1024 + validityBytes(v.Validity, offset, length) + validityBytes(v.Values.Validity, int(lo), int(hi-lo))
+		if lo != 0 {
+			extra += int64(length+1) * 4
+		}
+		if size < 0 || extra < 0 || size > math.MaxInt64-extra || n > math.MaxInt64-size-extra {
+			return 0, fmt.Errorf("StructList view metadata overflow")
+		}
+		n += size + extra
+	}
 	for name, v := range src.Structs {
+		if check != nil {
+			if err := check(); err != nil {
+				return 0, err
+			}
+		}
 		if v == nil || v.Values == nil || v.Rows < end {
 			return 0, fmt.Errorf("struct column %q shorter than source range", name)
 		}
-		size, err := scratchBytes(v.Values, offset, length)
+		size, err := scratchBytesDepth(v.Values, offset, length, depth+1, check)
 		if err != nil {
 			return 0, err
 		}
 		if v.Validity != nil && len(v.Validity) < memory.WordsFor(end) {
 			return 0, fmt.Errorf("column %q validity shorter than source range", name)
 		}
-		n += size + validityBytes(v.Validity, offset, length)
+		extra := validityBytes(v.Validity, offset, length)
+		if size < 0 || extra < 0 || size > math.MaxInt64-extra || n > math.MaxInt64-size-extra {
+			return 0, fmt.Errorf("source view size overflow")
+		}
+		n += size + extra
 	}
 	for name, v := range src.Opaque {
+		if check != nil {
+			if err := check(); err != nil {
+				return 0, err
+			}
+		}
 		if v == nil || v.Rows < end {
 			return 0, fmt.Errorf("opaque column %q shorter than source range", name)
 		}
@@ -394,6 +557,21 @@ func (view *View) bind(ctx context.Context, dst, src *memory.Batch, offset, leng
 	for name, v := range src.StringLists {
 		lo, hi := v.Offsets[offset], v.Offsets[end]
 		dst.StringLists[name] = &memory.StringListVector{Offsets: offsets(v.Offsets, offset, length), Values: stringView(v.Values, int(lo), int(hi-lo)), Validity: validity(v.Validity, offset, length), Encoding: v.Encoding}
+	}
+	for name, v := range src.Arrays {
+		a, err := arrayView(ctx, v, offset, length)
+		if err != nil {
+			return err
+		}
+		dst.Arrays[name] = a
+	}
+	for name, v := range src.StructLists {
+		lo, hi := v.Offsets[offset], v.Offsets[end]
+		values := memory.NewBatch()
+		if err := view.bind(ctx, values, v.Values.Values, int(lo), int(hi-lo)); err != nil {
+			return err
+		}
+		dst.StructLists[name] = &memory.StructListVector{Offsets: offsets(v.Offsets, offset, length), Validity: validity(v.Validity, offset, length), Encoding: v.Encoding, Values: &memory.StructVector{Rows: int(hi - lo), Fields: v.Values.Fields, Values: values, Validity: validity(v.Values.Validity, int(lo), int(hi-lo)), Encoding: v.Values.Encoding}}
 	}
 	for name, v := range src.Structs {
 		values := memory.NewBatch()

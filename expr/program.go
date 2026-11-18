@@ -28,6 +28,10 @@ const (
 // Instruction is one typed vector operation. Specialized comparison opcodes are
 // kernel selections in the same program, not a separate predicate language.
 type instruction struct {
+	StructInputs        []int          // Ordered inputs for bounded StructFrom.
+	StructGet           *structGetPlan // Immutable bounded parent and direct child metadata.
+	ListGet             *memory.Field  // Immutable primitive list metadata.
+	DecimalRounding     DecimalRoundingMode
 	CivilResolver       *civilTimeResolverState // Strong immutable raw-rule resolver identity.
 	CivilTolerant       bool                    // Only the four civil row-value errors become NULL.
 	TimeZone            *timeZoneState          // Strong immutable rule reference for zoned extraction.

@@ -221,10 +221,11 @@ type StructValue struct {
 
 // Fields returns a copy of the fixed child schema.
 func (v StructValue) Fields() []memory.Field {
-	return append([]memory.Field(nil), v.vector.Fields...)
+	return memory.NewSchema(v.vector.Fields...).Fields
 }
 
-// Field returns one copied scalar or List<String> child value and its validity.
+// Field returns one copied scalar, primitive List, or bounded Struct child value
+// and its validity. Struct values are represented as maps of direct field names.
 func (v StructValue) Field(name string) (any, bool, error) {
 	base := chunkBase{state: v.state, start: v.row, end: v.row + 1}
 	if err := base.check(0); err != nil {
@@ -518,7 +519,7 @@ func (s Series) StructChunks() ([]StructChunk, error) {
 	if s.field.Type != memory.TypeStruct {
 		return nil, seriesTypeError(s, "struct")
 	}
-	if err := s.field.ValidateStruct(); err != nil {
+	if err := s.field.ValidateArrayContainers(); err != nil {
 		return nil, err
 	}
 	s.state.mu.RLock()
@@ -673,6 +674,28 @@ func (s Series) ToAnySlice() ([]any, error) {
 		s.field.Type == memory.TypeUint8 || s.field.Type == memory.TypeUint16 ||
 		s.field.Type == memory.TypeUint32 || s.field.Type == memory.TypeFloat32 {
 		return s.nativeNumericAnySlice()
+	}
+	if memory.IsStructList(s.field) || memory.IsNestedList(s.field) {
+		s.state.mu.RLock()
+		defer s.state.mu.RUnlock()
+		spans, err := s.lockedSpans()
+		if err != nil {
+			return nil, err
+		}
+		out := make([]any, 0, s.length)
+		for _, span := range spans {
+			for r := span.start; r < span.end; r++ {
+				v, ok, err := structChildValue(span.batch, s.field, r)
+				if err != nil {
+					return nil, err
+				}
+				if !ok {
+					v = nil
+				}
+				out = append(out, v)
+			}
+		}
+		return out, nil
 	}
 	out := make([]any, 0, s.length)
 	switch {
@@ -932,6 +955,9 @@ func seriesRowValid(batch *memory.Batch, field memory.Field, row int) bool {
 		}
 		return batch.DictStrings[field.Name].IsValid(row)
 	case field.Type == memory.TypeList:
+		if v := batch.StructLists[field.Name]; v != nil {
+			return v.IsValid(row)
+		}
 		if v := batch.Int64Lists[field.Name]; v != nil {
 			return v.IsValid(row)
 		}
@@ -1021,6 +1047,38 @@ func structChildValue(batch *memory.Batch, field memory.Field, row int) (any, bo
 		}
 		return string(v.DictionaryValue(v.Indices[row])), true, nil
 	case field.Type == memory.TypeList:
+		if memory.IsNestedList(field) {
+			return arrayNodeAny(batch.Arrays[field.Name], row, 0)
+		}
+		if memory.IsStructList(field) {
+			v := batch.StructLists[field.Name]
+			if v == nil {
+				return nil, false, fmt.Errorf("missing StructList")
+			}
+			lo, hi, ok := v.ValueRange(row)
+			if !ok {
+				return nil, false, nil
+			}
+			out := make([]any, hi-lo)
+			for e := lo; e < hi; e++ {
+				if !v.Values.IsValid(e) {
+					continue
+				}
+				item := make(map[string]any, len(field.Children[0].Children))
+				for _, c := range field.Children[0].Children {
+					x, valid, err := structChildValue(v.Values.Values, c, e)
+					if err != nil {
+						return nil, false, err
+					}
+					if !valid {
+						x = nil
+					}
+					item[c.Name] = x
+				}
+				out[e-lo] = item
+			}
+			return out, true, nil
+		}
 		if v := batch.Int64Lists[field.Name]; v != nil {
 			start, end, ok := v.ValueRange(row)
 			if !ok {
@@ -1049,6 +1107,30 @@ func structChildValue(batch *memory.Batch, field memory.Field, row int) (any, bo
 			}
 		}
 		return out, true, nil
+	case field.Type == memory.TypeStruct:
+		if err := field.ValidateArrayContainers(); err != nil {
+			return nil, false, err
+		}
+		v := batch.Structs[field.Name]
+		if v == nil {
+			return nil, false, fmt.Errorf("missing Struct child %q", field.Name)
+		}
+		if !v.IsValid(row) {
+			return nil, false, nil
+		}
+		result := make(map[string]any, len(field.Children))
+		for _, child := range field.Children {
+			x, valid, err := structChildValue(v.Values, child, row)
+			if err != nil {
+				return nil, false, err
+			}
+			if valid {
+				result[child.Name] = x
+			} else {
+				result[child.Name] = nil
+			}
+		}
+		return result, true, nil
 	default:
 		return nil, false, fmt.Errorf("unsupported struct child type %s", field.Type)
 	}
@@ -1082,4 +1164,36 @@ func (s Series) nativeNumericAnySlice() ([]any, error) {
 		}
 	}
 	return out, nil
+}
+
+func arrayNodeAny(v *memory.ArrayNode, row, depth int) (any, bool, error) {
+	if v == nil || depth > memory.MaxNestedListDepth || row < 0 || row >= v.Len() {
+		return nil, false, fmt.Errorf("invalid array node row")
+	}
+	if !v.IsValid(row) {
+		return nil, false, nil
+	}
+	switch v.Kind {
+	case memory.TypeList:
+		lo, hi, ok := v.ValueRange(row)
+		if !ok {
+			return nil, false, fmt.Errorf("invalid array range")
+		}
+		out := make([]any, hi-lo)
+		for e := lo; e < hi; e++ {
+			x, valid, err := arrayNodeAny(v.Child, e, depth+1)
+			if err != nil {
+				return nil, false, err
+			}
+			if valid {
+				out[e-lo] = x
+			}
+		}
+		return out, true, nil
+	case memory.TypeInt64:
+		return v.Int64.Values[row], true, nil
+	case memory.TypeString:
+		return string(v.Strings.ValueBytes(row)), true, nil
+	}
+	return nil, false, fmt.Errorf("unsupported array node")
 }

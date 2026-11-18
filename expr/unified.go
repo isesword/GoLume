@@ -148,7 +148,8 @@ func (w *Workspace) EvaluateBool(ctx context.Context, batch *memory.Batch, kerne
 }
 
 // MemoryBytes reports retained buffer capacities and admitted immutable literal
-// IN set payloads, excluding input payloads and other compiled program metadata.
+// IN set and owned bounded Struct payload allowances, excluding input payloads
+// and other compiled program metadata.
 func (w *Workspace) MemoryBytes() int64 {
 	if w == nil {
 		return 0

@@ -47,6 +47,8 @@ const (
 	decodeListMap
 	decodeInt64ListMap
 	decodeStructMap
+	decodeStructListMap
+	decodeArrayMap
 	decodeOpaqueMap // Classified explicitly, but not supported by this codec.
 	decodeMapCount
 )
@@ -55,10 +57,18 @@ const (
 // used by DecodeColumnarRun, in addition to len(payload). Successful estimation
 // does not allocate. It rejects unsupported schemas before any decoder-owned
 // object or validation scratch is allocated. The supported nesting is bounded:
-// Struct children are scalars or List<String>; recursive Structs are rejected.
+// Struct depth is limited to MaxStructDepth; List elements are primitive or
+// the explicit flat fourteen-type Struct profile (version 3).
 // Field names, strings and Children in the input schema remain borrowed.
 func ColumnarRunDecodeMetadataBytes(schema Schema) (int64, error) {
-	return columnarDecodeBatchBytes(schema.Fields, false)
+	return columnarRunDecodeMetadataBytesContext(schema, nil)
+}
+
+func columnarRunDecodeMetadataBytesContext(schema Schema, check func() error) (int64, error) {
+	if err := checkColumnarStructDepthContext(schema.Fields, 0, check); err != nil {
+		return 0, err
+	}
+	return columnarDecodeBatchBytesContext(schema.Fields, false, check)
 }
 
 func columnarDecodeAdd(a, b int64) (int64, error) {
@@ -115,6 +125,12 @@ func columnarDecodeFieldMap(field Field) (columnarDecodeMap, uintptr) {
 		}
 		return decodeStringMap, unsafe.Sizeof(StringViewVector{})
 	case TypeList:
+		if IsNestedList(field) {
+			return decodeArrayMap, unsafe.Sizeof(ArrayNode{})
+		}
+		if IsStructList(field) {
+			return decodeStructListMap, unsafe.Sizeof(StructListVector{})
+		}
 		if len(field.Children) == 1 && field.Children[0].Type == TypeInt64 {
 			return decodeInt64ListMap, unsafe.Sizeof(Int64ListVector{})
 		}
@@ -129,15 +145,25 @@ func columnarDecodeFieldMap(field Field) (columnarDecodeMap, uintptr) {
 }
 
 func columnarDecodeBatchBytes(fields []Field, structChildren bool) (int64, error) {
+	return columnarDecodeBatchBytesContext(fields, structChildren, nil)
+}
+
+func columnarDecodeBatchBytesContext(fields []Field, structChildren bool, check func() error) (int64, error) {
 	if uint64(len(fields)) > math.MaxUint32 {
 		return 0, fmt.Errorf("columnar schema field count exceeds uint32")
 	}
 	var counts [decodeMapCount]int64
 	total := columnarDecodeBaseBytes
 	for i, field := range fields {
+		if err := recursiveCheck(check); err != nil {
+			return 0, err
+		}
 		// An allocation-free uniqueness check avoids a seen map before Reserve.
 		// Names only need to be scanned within this bounded nesting level.
 		for j := 0; j < i; j++ {
+			if err := recursiveCheck(check); err != nil {
+				return 0, err
+			}
 			if fields[j].Name == field.Name {
 				return 0, fmt.Errorf("columnar schema has duplicate field %q", field.Name)
 			}
@@ -147,7 +173,7 @@ func columnarDecodeBatchBytes(fields []Field, structChildren bool) (int64, error
 			return 0, fmt.Errorf("unsupported columnar field %q type %s", field.Name, field.Type)
 		}
 		if structChildren {
-			if field.Name == "" || field.Type == TypeStruct || field.Type == TypeBinary || field.Type == TypeDecimal || field.Type == TypeString && field.Encoding == EncodingDictionary {
+			if field.Name == "" || field.Type == TypeBinary || field.Type == TypeDecimal || field.Type == TypeString && field.Encoding == EncodingDictionary {
 				return 0, fmt.Errorf("unsupported struct child %q type %s", field.Name, field.Type)
 			}
 		}
@@ -158,7 +184,7 @@ func columnarDecodeBatchBytes(fields []Field, structChildren bool) (int64, error
 			if len(field.Children) == 0 {
 				return 0, fmt.Errorf("struct field %q requires at least one child", field.Name)
 			}
-			extra, err = columnarDecodeBatchBytes(field.Children, true)
+			extra, err = columnarDecodeBatchBytesContext(field.Children, true, check)
 			if err == nil {
 				var bytes int64
 				bytes, err = columnarDecodeMul(int64(len(field.Children)), int64(unsafe.Sizeof(Field{})))
@@ -170,6 +196,14 @@ func columnarDecodeBatchBytes(fields []Field, structChildren bool) (int64, error
 				}
 			}
 		case TypeList:
+			if IsNestedList(field) {
+				extra, err = arrayDecodeMetadata(field)
+				break
+			}
+			if IsStructList(field) {
+				extra, err = structListDecodeMetadata(field, check)
+				break
+			}
 			if err = field.ValidateList(); err == nil {
 				if len(field.Children[0].Children) != 0 {
 					return 0, fmt.Errorf("list field %q has nested string child", field.Name)
@@ -251,6 +285,9 @@ func newColumnarDecodeBatch(fields []Field, rows int) *Batch {
 		counts[kind]++
 	}
 	batch := &Batch{Rows: rows}
+	if n := counts[decodeArrayMap]; n != 0 {
+		batch.Arrays = make(map[string]*ArrayNode, n)
+	}
 	if n := counts[decodeInt8Map]; n != 0 {
 		batch.Int8s = make(map[string]*Int8Vector, n)
 	}
@@ -296,6 +333,9 @@ func newColumnarDecodeBatch(fields []Field, rows int) *Batch {
 	if n := counts[decodeListMap]; n != 0 {
 		batch.StringLists = make(map[string]*StringListVector, n)
 	}
+	if n := counts[decodeStructListMap]; n != 0 {
+		batch.StructLists = make(map[string]*StructListVector, n)
+	}
 	if n := counts[decodeStructMap]; n != 0 {
 		batch.Structs = make(map[string]*StructVector, n)
 	}
@@ -306,6 +346,24 @@ func newColumnarDecodeBatch(fields []Field, rows int) *Batch {
 // been validated, so Struct.Validate's allocating duplicate-name map and
 // Decimal.ValidateField's formatted Arrow type are unnecessary here.
 func validateColumnarDecodedField(batch *Batch, field Field, rows int) error {
+	return validateColumnarDecodedFieldContext(batch, field, rows, nil)
+}
+
+func validateColumnarDecodedFieldContext(batch *Batch, field Field, rows int, check func() error) error {
+	if err := recursiveCheck(check); err != nil {
+		return err
+	}
+	if fieldHasNestedLists(field, 0) {
+		return validateColumnarRootContext(batch, field, rows, check)
+	}
+	if fieldHasStructLists(field, 0) {
+		return validateColumnarRootContext(batch, field, rows, check)
+	}
+	if field.Type == TypeStruct && recursiveColumnarField(field) {
+		var ancestors [MaxStructDepth]*StructVector
+		return validateRecursiveVector(batch.Structs[field.Name], field, rows, check, &ancestors, 0)
+	}
+
 	if field.Type == TypeStruct {
 		v := batch.Structs[field.Name]
 		if v == nil || v.Rows != rows || v.Values == nil || v.Values.Rows != rows || len(v.Fields) != len(field.Children) {
@@ -366,11 +424,25 @@ func destroyColumnarDecodedBatch(batch *Batch) {
 	if batch == nil {
 		return
 	}
+	for _, v := range batch.Arrays {
+		clearDecodedArray(v)
+	}
+	clear(batch.Arrays)
 	for _, vector := range batch.Structs {
 		if vector != nil {
 			destroyColumnarDecodedBatch(vector.Values)
 			clear(vector.Fields) // Shallow: never clear borrowed Children arrays.
 			*vector = StructVector{}
+		}
+	}
+	for _, v := range batch.StructLists {
+		if v != nil {
+			if v.Values != nil {
+				destroyColumnarDecodedBatch(v.Values.Values)
+				clear(v.Values.Fields)
+				*v.Values = StructVector{}
+			}
+			*v = StructListVector{}
 		}
 	}
 	for _, vector := range batch.Int64Lists {
@@ -402,10 +474,65 @@ func destroyColumnarDecodedBatch(batch *Batch) {
 	clearColumnarDecodedVectors(batch.Decimals)
 	clearColumnarDecodedVectors(batch.Strings)
 	clearColumnarDecodedVectors(batch.DictStrings)
+	clear(batch.StructLists)
 	clear(batch.Int64Lists)
 	clear(batch.StringLists)
 	clear(batch.Structs)
 	// Opaque is never constructed by this codec.
 	clear(batch.Opaque)
 	*batch = Batch{}
+}
+
+// Bound the tree before metadata, codec, or borrowed-schema walks recurse.
+func checkColumnarStructDepth(fields []Field, depth int) error {
+	return checkColumnarStructDepthContext(fields, depth, nil)
+}
+
+func checkColumnarStructDepthContext(fields []Field, depth int, check func() error) error {
+	for _, f := range fields {
+		if err := recursiveCheck(check); err != nil {
+			return err
+		}
+		if f.Type == TypeStruct {
+			if depth >= MaxStructDepth {
+				return fmt.Errorf("columnar Struct depth exceeds %d", MaxStructDepth)
+			}
+			if err := checkColumnarStructDepthContext(f.Children, depth+1, check); err != nil {
+				return err
+			}
+		} else if f.Type == TypeList {
+			if IsNestedList(f) {
+				if err := f.ValidateNestedList(); err != nil {
+					return err
+				}
+				continue
+			}
+			if IsStructList(f) {
+				if depth >= MaxStructDepth {
+					return fmt.Errorf("columnar Struct depth exceeded")
+				}
+				if err := checkListStructField(f, check); err != nil {
+					return err
+				}
+				continue
+			}
+			if err := f.ValidateList(); err != nil {
+				return err
+			}
+			if len(f.Children[0].Children) != 0 {
+				return fmt.Errorf("columnar List elements cannot have children")
+			}
+		} else if len(f.Children) != 0 {
+			return fmt.Errorf("columnar non-Struct field has children")
+		}
+	}
+	return nil
+}
+func recursiveColumnarField(f Field) bool {
+	for _, c := range f.Children {
+		if c.Type == TypeStruct {
+			return true
+		}
+	}
+	return false
 }

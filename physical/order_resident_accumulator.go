@@ -39,6 +39,9 @@ func newResidentSortAccumulator(ctx context.Context, schema memory.Schema, works
 	// Plan from runtime storage as well as logical fields. Struct string children
 	// can legitimately use DictStrings while their public schema remains View.
 	metadata, dictionaries, err := residentAccumulatorMetadata(schema.Fields, first, 0)
+	if residentExtendedSchema(schema.Fields) {
+		metadata, dictionaries, err = residentExtendedMetadata(ctx, schema.Fields, first, 0)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -224,15 +227,26 @@ func (a *residentSortAccumulator) bindOutput(ctx context.Context, dst *memory.Ba
 	if row >= 0 {
 		offset, count = row, 1
 	}
-	bytes, err := memory.BorrowedRangeMetadataBytes(a.batch, offset, count)
+	bytes, err := memory.BorrowedRangeMetadataBytesWithCheck(a.batch, offset, count, ctx.Err)
 	if err != nil {
 		return err
 	}
 	// BorrowBatchRange creates all batch maps and fresh descriptors in addition
 	// to its precisely sized rebased offsets and misaligned validity buffers.
 	headers, err := topKSnapshotHeaders(a.batch)
+	if residentExtendedSchema(a.schema.Fields) {
+		headers, err = residentExtendedHeaders(ctx, a.batch, 0)
+	}
 	if err != nil {
 		return err
+	}
+	// Generic snapshot headers predate native Decimal. Charge its copied
+	// descriptor/map entries only on this newly admitted resident path.
+	if residentHasNativeDecimal(a.schema.Fields) {
+		headers, err = sortWorkspaceSize(headers, int64(len(a.batch.Decimals))*512)
+		if err != nil {
+			return err
+		}
 	}
 	total, err := sortWorkspaceSize(bytes, headers)
 	if err != nil {
@@ -242,7 +256,7 @@ func (a *residentSortAccumulator) bindOutput(ctx context.Context, dst *memory.Ba
 	if err != nil {
 		return err
 	}
-	a.view, err = memory.BorrowBatchRange(a.batch, offset, count)
+	a.view, err = memory.BorrowBatchRangeWithCheck(a.batch, offset, count, ctx.Err)
 	if err != nil {
 		a.clearOutput()
 		return err
@@ -316,6 +330,16 @@ func destroyResidentBorrowedBatch(b *memory.Batch) {
 		}
 	}
 	clear(b.Structs)
+	for _, v := range b.StructLists {
+		if v != nil {
+			if v.Values != nil {
+				destroyResidentBorrowedBatch(v.Values.Values)
+				*v.Values = memory.StructVector{}
+			}
+			*v = memory.StructListVector{}
+		}
+	}
+	clear(b.StructLists)
 	b.ReleaseOwned()
 	clearExternalSortAccumulatorVectors(b.Opaque)
 	destroyExternalSortAccumulatorBatch(b)
@@ -327,6 +351,9 @@ func destroyResidentBorrowedBatch(b *memory.Batch) {
 func newResidentSortedAccumulator(ctx context.Context, src *residentSortAccumulator, rows []int) (_ *residentSortAccumulator, err error) {
 	if src == nil || src.hasOpaque() {
 		return nil, fmt.Errorf("typed resident gather requires a typed owner")
+	}
+	if residentExtendedSchema(src.schema.Fields) || residentHasNativeDecimal(src.schema.Fields) {
+		return newResidentExtendedSorted(ctx, src, rows)
 	}
 	selection := joinGatherSelection{rows: rows}
 	for _, row := range rows {

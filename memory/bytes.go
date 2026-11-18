@@ -61,6 +61,11 @@ func BatchBytes(b *Batch) int64 {
 			}
 		}
 	}
+	for _, v := range b.StructLists {
+		if v != nil && v.Values != nil {
+			n += int64(len(v.Offsets))*4 + int64(len(v.Validity)+len(v.Values.Validity))*8 + BatchBytes(v.Values.Values)
+		}
+	}
 	for _, v := range b.Structs {
 		if v != nil {
 			n += int64(len(v.Validity))*8 + BatchBytes(v.Values)

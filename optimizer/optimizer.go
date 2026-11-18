@@ -114,6 +114,40 @@ func mergeProjections(plan logical.Plan, rules *[]string) logical.Plan {
 	}
 }
 
+// Sort's resident Decimal support does not imply TopK execution support.
+// Keep the original plan if capability cannot be established. Optimize's
+// existing input/final InferSchema checks retain ownership of schema errors.
+func sortLimitTopKCapable(sorted *logical.Sort) bool {
+	if sorted == nil {
+		return false
+	}
+	schema, err := logical.InferSchema(sorted.Input)
+	if err != nil {
+		return false
+	}
+	for _, field := range schema.Fields {
+		if field.Type == memory.TypeDecimal && field.DecimalPrecision != 0 {
+			return false
+		}
+	}
+	// Expression keys may introduce a hidden native Decimal column even when
+	// the visible input contains only ordinary scalar fields.
+	for _, key := range sorted.By {
+		value, err := key.Expression()
+		if err != nil {
+			return false
+		}
+		bound, err := expr.Bind(schema, value)
+		if err != nil {
+			return false
+		}
+		if bound.Field.Type == memory.TypeDecimal && bound.Field.DecimalPrecision != 0 {
+			return false
+		}
+	}
+	return true
+}
+
 func mergeLimits(plan logical.Plan, rules *[]string) logical.Plan {
 	switch n := plan.(type) {
 	case *logical.Limit:
@@ -130,7 +164,7 @@ func mergeLimits(plan logical.Plan, rules *[]string) logical.Plan {
 			*rules = append(*rules, "limit-into-topk")
 			return &logical.TopK{Input: top.Input, K: int(n.N), By: cloneSortKeys(top.By)}
 		}
-		if sorted, ok := child.(*logical.Sort); ok && n.N <= int64(^uint(0)>>1) {
+		if sorted, ok := child.(*logical.Sort); ok && n.N <= int64(^uint(0)>>1) && sortLimitTopKCapable(sorted) {
 			*rules = append(*rules, "sort-limit-to-topk")
 			return &logical.TopK{Input: sorted.Input, K: int(n.N), By: cloneSortKeys(sorted.By)}
 		}

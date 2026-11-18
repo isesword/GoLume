@@ -350,6 +350,11 @@ func residentUsesOpaque(field memory.Field, b *memory.Batch) bool {
 			return b.DictStrings[name] == nil
 		}
 		return b.Strings[name] == nil && b.DictStrings[name] == nil
+	case memory.TypeDecimal:
+		if field.DecimalPrecision != 0 {
+			return b.Decimals[name] == nil
+		}
+		return true
 	case memory.TypeList:
 		return b.StringLists[name] == nil && b.Int64Lists[name] == nil
 	case memory.TypeStruct:

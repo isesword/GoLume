@@ -94,3 +94,15 @@ func CastDecimal128(value expr.Expr, precision, scale int32) expr.Decimal128Cast
 func TryCastDecimal128(value expr.Expr, precision, scale int32) expr.Decimal128CastExpr {
 	return expr.TryCastDecimal128(value, precision, scale)
 }
+
+// RoundDecimal128 rounds a native decimal once using an explicit mode and
+// target precision/scale. NULLs propagate; target overflow is an error.
+func RoundDecimal128(value expr.Expr, precision, scale int32, mode expr.DecimalRoundingMode) expr.Decimal128RoundExpr {
+	return expr.RoundDecimal128(value, precision, scale, mode)
+}
+
+// DivideRoundDecimal128 rounds an exact quotient once using explicit target
+// metadata and mode. NULLs propagate; zero divisors and final overflow fail.
+func DivideRoundDecimal128(left, right expr.Expr, precision, scale int32, mode expr.DecimalRoundingMode) expr.Decimal128DivideRoundExpr {
+	return expr.DivideRoundDecimal128(left, right, precision, scale, mode)
+}

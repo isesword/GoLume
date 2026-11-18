@@ -22,7 +22,10 @@ type Batch struct {
 	StringLists map[string]*StringListVector
 	Int64Lists  map[string]*Int64ListVector
 	Structs     map[string]*StructVector
-	Opaque      map[string]*OpaqueVector
+	StructLists map[string]*StructListVector
+	// Arrays holds borrowed checked array nodes; owners retain their leases separately.
+	Arrays map[string]*ArrayNode
+	Opaque map[string]*OpaqueVector
 }
 
 // NewBatch allocates an empty batch with reusable column maps.
@@ -44,6 +47,8 @@ func NewBatch() *Batch {
 		StringLists: make(map[string]*StringListVector),
 		Int64Lists:  make(map[string]*Int64ListVector),
 		Structs:     make(map[string]*StructVector),
+		StructLists: make(map[string]*StructListVector),
+		Arrays:      make(map[string]*ArrayNode),
 		Opaque:      make(map[string]*OpaqueVector),
 	}
 }
@@ -66,6 +71,11 @@ func (b *Batch) ReleaseOwned() {
 			rr.Release()
 		}
 		v.Owned = false
+	}
+	for _, v := range b.StructLists {
+		if v != nil && v.Values != nil && v.Values.Values != nil {
+			v.Values.Values.ReleaseOwned()
+		}
 	}
 	for _, v := range b.Structs {
 		if v != nil && v.Values != nil {
@@ -94,6 +104,8 @@ func (b *Batch) ClearColumns() {
 	clear(b.StringLists)
 	clear(b.Int64Lists)
 	clear(b.Structs)
+	clear(b.StructLists)
+	clear(b.Arrays)
 	clear(b.Opaque)
 	b.Rows = 0
 }

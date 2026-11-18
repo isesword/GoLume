@@ -31,9 +31,14 @@ func Columns(e Expr) []string {
 			visit(x.Value)
 		case Cast:
 			visit(x.Value)
+		case Decimal128DivideRoundExpr:
+			visit(x.Left)
+			visit(x.Right)
 		case Decimal128DivideExpr:
 			visit(x.Left)
 			visit(x.Right)
+		case Decimal128RoundExpr:
+			visit(x.Value)
 		case Decimal128RescaleExpr:
 			visit(x.Value)
 		case TryCastExpr:
@@ -42,6 +47,15 @@ func Columns(e Expr) []string {
 			visit(x.Value)
 			visit(x.First)
 			visit(x.Second)
+		case StructFromExpr:
+			for _, field := range x.Fields {
+				visit(field.Expr)
+			}
+		case StructGetExpr:
+			visit(x.Value)
+		case ListGetExpr:
+			visit(x.Value)
+			visit(x.Index)
 		case YMDDateExpr:
 			visit(x.Year)
 			visit(x.Month)

@@ -23,8 +23,42 @@ type Source struct {
 
 // New constructs a zero-copy immutable source over batches.
 func New(schema memory.Schema, batches ...*memory.Batch) (*Source, error) {
+	arrays := schema.HasNestedLists()
+	extended := schema.HasStructLists()
+	recursive := schema.HasRecursiveStruct()
+	if arrays {
+		var err error
+		schema, err = memory.NewSchemaWithNestedListsChecked(schema.Fields...)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if extended && !arrays {
+		var err error
+		schema, err = memory.NewSchemaWithStructListsChecked(schema.Fields...)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if recursive && !extended && !arrays {
+		var err error
+		schema, err = memory.NewSchemaChecked(schema.Fields...)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	s := &Source{identity: new(byte), schema: schema, batches: append([]*memory.Batch(nil), batches...), dicts: make(map[string]source.Dictionary)}
 	for _, field := range schema.Fields {
+		if arrays && (field.Type == memory.TypeStruct || memory.IsNestedList(field) || memory.IsStructList(field)) {
+			continue
+		}
+		if extended && (field.Type == memory.TypeStruct || memory.IsStructList(field)) {
+			if err := field.ValidateStructLists(); err != nil {
+				return nil, err
+			}
+			continue
+		}
 		// Validate supported shapes even when the source has no batches. In
 		// particular, native decimals are scalar-only until nested storage and
 		// execution have matching precision/scale contracts.
@@ -35,7 +69,11 @@ func New(schema memory.Schema, batches ...*memory.Batch) (*Source, error) {
 				err = field.ValidateDecimal128()
 			}
 		case memory.TypeStruct:
-			err = field.ValidateStruct()
+			if recursive {
+				err = field.ValidateRecursiveStruct()
+			} else {
+				err = field.ValidateStruct()
+			}
 		case memory.TypeList:
 			err = field.ValidateList()
 		}
@@ -47,7 +85,36 @@ func New(schema memory.Schema, batches ...*memory.Batch) (*Source, error) {
 		if b == nil {
 			return nil, fmt.Errorf("batch %d is nil", i)
 		}
+		if arrays {
+			if err := memory.ValidateNestedListsBatch(b, schema, nil); err != nil {
+				return nil, err
+			}
+		}
+		if !arrays {
+			if err := checkRecursiveBatchGraph(b, 0); err != nil {
+				return nil, err
+			}
+		}
+		if !arrays && memory.BatchHasArrays(b) {
+			return nil, fmt.Errorf("undeclared array-node storage")
+		}
+		if extended && !arrays {
+			if err := memory.ValidateStructListsBatch(b, schema, nil); err != nil {
+				return nil, err
+			}
+		}
+		if recursive && !extended && !arrays {
+			if err := checkRecursiveBatchGraph(b, 0); err != nil {
+				return nil, fmt.Errorf("batch %d: %w", i, err)
+			}
+		}
 		for _, field := range schema.Fields {
+			if arrays && (field.Type == memory.TypeStruct || memory.IsNestedList(field) || memory.IsStructList(field)) {
+				continue
+			}
+			if extended && (field.Type == memory.TypeStruct || memory.IsStructList(field)) {
+				continue
+			}
 			if v, hasNative := b.Decimals[field.Name]; hasNative || (field.Type == memory.TypeDecimal && field.DecimalPrecision != 0) {
 				if err := v.ValidateField(field, b.Rows); err != nil {
 					return nil, fmt.Errorf("batch %d: %w", i, err)
@@ -59,7 +126,11 @@ func New(schema memory.Schema, batches ...*memory.Batch) (*Source, error) {
 				if !ok {
 					return nil, fmt.Errorf("batch %d struct column %q is missing", i, field.Name)
 				}
-				if err := v.Validate(field, b.Rows); err != nil {
+				validate := v.Validate
+				if recursive {
+					validate = func(f memory.Field, rows int) error { return v.ValidateRecursiveWithContext(f, rows, nil) }
+				}
+				if err := validate(field, b.Rows); err != nil {
 					return nil, fmt.Errorf("batch %d column %q: %w", i, field.Name, err)
 				}
 				continue
@@ -128,7 +199,12 @@ func (s *Source) Ordering() []source.OrderingColumn {
 }
 
 // Schema returns the source schema.
-func (s *Source) Schema() memory.Schema { return s.schema }
+func (s *Source) Schema() memory.Schema {
+	if s.schema.HasRecursiveStruct() || s.schema.HasStructLists() || s.schema.HasNestedLists() {
+		return memory.NewSchema(s.schema.Fields...)
+	}
+	return s.schema
+}
 
 // Replayability reports that immutable in-memory batches are a stable snapshot.
 func (*Source) Replayability() source.Replayability { return source.ReplayStable }
@@ -359,6 +435,14 @@ func (s *batchStream) bindProjection(src *memory.Batch) error {
 			dst.DictStrings[name] = v
 			continue
 		}
+		if v, ok := src.Arrays[name]; ok {
+			dst.Arrays[name] = v
+			continue
+		}
+		if v, ok := src.StructLists[name]; ok {
+			dst.StructLists[name] = v
+			continue
+		}
 		if v, ok := src.Int64Lists[name]; ok {
 			dst.Int64Lists[name] = v
 			continue
@@ -404,6 +488,33 @@ func (s *batchStream) clearProjection() {
 	clear(s.projected.StringLists)
 	clear(s.projected.Int64Lists)
 	clear(s.projected.Structs)
+	clear(s.projected.StructLists)
+	clear(s.projected.Arrays)
 	clear(s.projected.Opaque)
 	s.projected.Rows = 0
+}
+
+// The borrowed range engine walks runtime maps, not just declared fields.
+// Bound even undeclared Struct maps before that engine can recurse.
+func checkRecursiveBatchGraph(b *memory.Batch, depth int) error {
+	if b == nil {
+		return fmt.Errorf("recursive source has nil child batch")
+	}
+	for _, v := range b.Structs {
+		if depth >= memory.MaxStructDepth || v == nil {
+			return fmt.Errorf("recursive source runtime Struct graph exceeds depth or is nil")
+		}
+		if err := checkRecursiveBatchGraph(v.Values, depth+1); err != nil {
+			return err
+		}
+	}
+	for _, v := range b.StructLists {
+		if depth >= memory.MaxStructDepth || v == nil || v.Values == nil {
+			return fmt.Errorf("invalid source StructList graph")
+		}
+		if err := checkRecursiveBatchGraph(v.Values.Values, depth+1); err != nil {
+			return err
+		}
+	}
+	return nil
 }

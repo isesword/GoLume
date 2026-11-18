@@ -47,6 +47,11 @@ const (
 	scalarCivilCompose
 	scalarISOWeekDate
 	scalarYMDDate
+	scalarDecimalRound
+	scalarDecimalDivideRound
+	scalarStructGet
+	scalarListGet
+	scalarStructFrom
 )
 
 // ProjectionOutput maps one compiled root register to a named output column.
@@ -59,12 +64,16 @@ type programOutput struct {
 }
 
 type scalarRegister struct {
-	exportBatch       *memory.Batch
-	exportReservation memory.Reservation
-	opaque            *memory.OpaqueVector
-	regions           []*evaluationState
-	regionReservation memory.Reservation
-	choices           []int
+	structFromReservation memory.Reservation
+	structFromBytes       int64
+	structGetReservation  memory.Reservation
+	structGetBytes        int64
+	exportBatch           *memory.Batch
+	exportReservation     memory.Reservation
+	opaque                *memory.OpaqueVector
+	regions               []*evaluationState
+	regionReservation     memory.Reservation
+	choices               []int
 	BoolVector
 	dictionary dictionaryPredicateCache
 	literal    []byte
@@ -86,13 +95,15 @@ type scalarRegister struct {
 	decimal     []memory.Decimal128
 	decimalType *memory.Field
 
-	strView *memory.StringViewVector
-	strDict *memory.DictionaryStringVector
-	strList *memory.StringListVector
-	intList *memory.Int64ListVector
-	strct   *memory.StructVector
-	offsets []uint32
-	data    []byte
+	strView    *memory.StringViewVector
+	strDict    *memory.DictionaryStringVector
+	strList    *memory.StringListVector
+	intList    *memory.Int64ListVector
+	strct      *memory.StructVector
+	structList *memory.StructListVector
+	array      *memory.ArrayNode
+	offsets    []uint32
+	data       []byte
 
 	constant        bool
 	i64lit          int64
@@ -343,8 +354,12 @@ func (c *scalarCompiler) compileBound(bound *BoundExpr) (int, TypeInfo, error) {
 		case Cast:
 			in.Code = scalarCast
 			in.SourceType = bound.Children[0].Field.Type
+		case Decimal128DivideRoundExpr:
+			in.Code, in.DecimalRounding = scalarDecimalDivideRound, n.Mode
 		case Decimal128DivideExpr:
 			in.Code = scalarDecimalDivide
+		case Decimal128RoundExpr:
+			in.Code, in.DecimalRounding = scalarDecimalRound, n.Mode
 		case Decimal128RescaleExpr:
 			in.Code = scalarDecimalRescale
 		case TryCastExpr:
@@ -356,6 +371,10 @@ func (c *scalarCompiler) compileBound(bound *BoundExpr) (int, TypeInfo, error) {
 			in.SourceType = bound.Children[0].Field.Type
 			if n.Op == OpListLength {
 				in.SourceType = bound.Children[0].Field.Children[0].Type
+				if memory.IsStructList(bound.Children[0].Field) || memory.IsNestedList(bound.Children[0].Field) {
+					field := cloneBoundField(bound.Children[0].Field)
+					in.ListGet = &field
+				}
 			}
 			if n.Op == OpNot || n.Op == OpIsNull || n.Op == OpIsNotNull {
 				in.Code = scalarBoolean
@@ -382,6 +401,25 @@ func (c *scalarCompiler) compileBound(bound *BoundExpr) (int, TypeInfo, error) {
 				in.B = -1
 				in.C = -1
 			}
+		case StructFromExpr:
+			in.Code = scalarStructFrom
+			in.StructInputs = append([]int(nil), children...)
+			in.StructFields = cloneBoundField(bound.Field).Children
+		case StructGetExpr:
+			in.Code = scalarStructGet
+			parent := cloneBoundField(bound.Children[0].Field)
+			index := 0
+			for i, field := range parent.Children {
+				if field.Name == n.FieldName {
+					index = i
+					break
+				}
+			}
+			in.StructGet = &structGetPlan{parent: parent, child: cloneBoundField(bound.Field), index: index}
+		case ListGetExpr:
+			in.Code = scalarListGet
+			field := cloneBoundField(bound.Children[0].Field)
+			in.ListGet = &field
 		case YMDDateExpr:
 			in.Code, in.CivilTolerant = scalarYMDDate, n.tolerant
 		case ISOWeekDateExpr:
@@ -436,6 +474,8 @@ type ScalarValue struct {
 	String           *memory.StringViewVector
 	DictionaryString *memory.DictionaryStringVector
 	StringList       *memory.StringListVector
+	StructList       *memory.StructListVector
+	Array            *memory.ArrayNode
 	Int64List        *memory.Int64ListVector
 	Struct           *memory.StructVector
 }
@@ -483,6 +523,8 @@ func scalarValue(r *scalarRegister, rows int) ScalarValue {
 			v.String = &memory.StringViewVector{Offsets: r.offsets[:rows+1], Data: r.data, Validity: r.validity, Encoding: memory.EncodingView}
 		}
 	case familyListString:
+		v.StructList = r.structList
+		v.Array = r.array
 		v.StringList = r.strList
 		v.Int64List = r.intList
 	case familyInvalid:
@@ -708,6 +750,10 @@ func evaluateInstructionsActive(instructions []instruction, batch *memory.Batch,
 			if err := evalCast(r, w.regs[in.A], in.SourceType, in.Type, batch.Rows); err != nil {
 				return err
 			}
+		case scalarListGet:
+			if err := evalListGet(r, w.regs[in.A], w.regs[in.B], in.ListGet, batch.Rows, w.activeRows); err != nil {
+				return err
+			}
 		case scalarYMDDate:
 			if err := evalYMDDate(r, w.regs[in.A], w.regs[in.B], w.regs[in.C], in.CivilTolerant, batch.Rows, w.activeRows); err != nil {
 				return err
@@ -740,8 +786,16 @@ func evaluateInstructionsActive(instructions []instruction, batch *memory.Batch,
 			if err := evalZonedExtract(r, w.regs[in.A], in.TimeZone, in.Op, batch.Rows); err != nil {
 				return err
 			}
+		case scalarDecimalDivideRound:
+			if err := evalDecimalDivideRound(r, w.regs[in.A], w.regs[in.B], in.DecimalRounding, batch.Rows); err != nil {
+				return err
+			}
 		case scalarDecimalDivide:
 			if err := evalDecimalDivide(r, w.regs[in.A], w.regs[in.B], batch.Rows); err != nil {
+				return err
+			}
+		case scalarDecimalRound:
+			if err := evalDecimalRound(r, w.regs[in.A], in.DecimalRounding, batch.Rows); err != nil {
 				return err
 			}
 		case scalarDecimalRescale:
@@ -757,6 +811,18 @@ func evaluateInstructionsActive(instructions []instruction, batch *memory.Batch,
 				return err
 			}
 		case scalarUnary:
+			if in.Op == OpListLength && in.ListGet != nil && memory.IsNestedList(*in.ListGet) {
+				if err := evalNestedListLength(r, w.regs[in.A], *in.ListGet, batch.Rows, w.activeRows); err != nil {
+					return err
+				}
+				break
+			}
+			if in.Op == OpListLength && in.ListGet != nil {
+				if err := evalStructListLength(r, w.regs[in.A], *in.ListGet, batch.Rows, w.activeRows); err != nil {
+					return err
+				}
+				break
+			}
 			if err := evalUnary(r, w.regs[in.A], in.Op, in.SourceType, batch.Rows, kernels); err != nil {
 				return err
 			}
@@ -768,6 +834,14 @@ func evaluateInstructionsActive(instructions []instruction, batch *memory.Batch,
 			if err := evalTernary(r, w.regs[in.A], first, second, in, batch.Rows); err != nil {
 				return err
 			}
+		case scalarStructFrom:
+			if err := evalStructFrom(r, w.regs, in.StructInputs, in.StructFields, batch.Rows, w.activeRows); err != nil {
+				return err
+			}
+		case scalarStructGet:
+			if err := evalStructGet(r, w.regs[in.A], in.StructGet, batch.Rows, w.activeRows); err != nil {
+				return err
+			}
 		case scalarJSONDecode:
 			if err := evalJSONDecode(r, w.regs[in.A], in.StructFields, batch.Rows); err != nil {
 				return err
@@ -775,8 +849,12 @@ func evaluateInstructionsActive(instructions []instruction, batch *memory.Batch,
 		default:
 			return fmt.Errorf("unsupported scalar opcode %d", in.Code)
 		}
-		if err := w.applyActive(i, r, batch.Rows); err != nil {
-			return err
+		// StructFrom commits a fully masked owned parent bitmap. Reapplying
+		// the mask could allocate after its atomic commit and double-charge it.
+		if in.Code != scalarStructFrom {
+			if err := w.applyActive(i, r, batch.Rows); err != nil {
+				return err
+			}
 		}
 		w.regs[i] = r
 	}
@@ -872,6 +950,16 @@ func bindScalarColumn(r *scalarRegister, batch *memory.Batch, name string, typ m
 		}
 		return fmt.Errorf("string column %q not present in batch", name)
 	case familyListString:
+		if v := batch.Arrays[name]; v != nil {
+			r.array, r.structList, r.intList, r.strList, r.validity = v, nil, nil, nil, v.Validity
+			return nil
+		}
+		r.array = nil
+		if v := batch.StructLists[name]; v != nil {
+			r.structList, r.intList, r.strList, r.validity = v, nil, nil, v.Validity
+			return nil
+		}
+		r.structList = nil
 		if v := batch.Int64Lists[name]; v != nil {
 			r.intList, r.strList, r.validity = v, nil, v.Validity
 			return nil

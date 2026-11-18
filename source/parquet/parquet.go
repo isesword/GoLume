@@ -34,6 +34,10 @@ type columnBinding struct {
 // timestamps. Pushdown clones are immutable and safe to prepare independently
 // from the same base source.
 type Source struct {
+	nativeForest  bool
+	structNodes   []nestedStructNode
+	nestedLists   []nestedListPlan
+	fixed         *fixedPlan
 	path          string
 	meta          *metadata.FileMetaData
 	baseSchema    memory.Schema
@@ -252,7 +256,12 @@ func parquetTimestampScale(unit schema.TimeUnitType) (int64, error) {
 func (s *Source) Description() string { return "parquet(" + s.path + ")" }
 
 // Schema returns the logical schema exposed by the current projection.
-func (s *Source) Schema() memory.Schema { return s.schema }
+func (s *Source) Schema() memory.Schema {
+	if s.fixed != nil {
+		return memory.NewSchema(s.schema.Fields...)
+	}
+	return s.schema
+}
 
 // Stats returns row/partition counts after any row-group pruning. Rows is an
 // upper bound when a retained predicate may exclude pages during streaming.
@@ -271,6 +280,9 @@ func (s *Source) Partitions(context.Context) ([]source.Partition, error) {
 // to Parquet min/max/null-count statistics. The row-level predicate must still
 // be evaluated by the engine for every retained row group.
 func (s *Source) ApplyPushdown(_ context.Context, req source.PushdownRequest) (source.Source, source.PushdownReport, error) {
+	if s != nil && s.nativeForest {
+		return s.fixedPushdown(req)
+	}
 	if s == nil {
 		return nil, source.PushdownReport{}, fmt.Errorf("nil parquet source")
 	}

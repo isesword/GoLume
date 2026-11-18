@@ -29,11 +29,19 @@ func addDecodedBooleanBytes(total int64, rows int) (int64, error) {
 // decodedPayloadBytes uses the representation exposed by Bind, not the packed
 // Arrow buffer retained internally. Other opaque backing still counts in full.
 func decodedPayloadBytes(src *memory.Batch, offset, length int) (int64, error) {
+	return decodedPayloadBytesCheck(src, offset, length, nil)
+}
+func decodedPayloadBytesCheck(src *memory.Batch, offset, length int, check func() error) (int64, error) {
+	if check != nil {
+		if err := check(); err != nil {
+			return 0, err
+		}
+	}
 	// Validate packed backing before the generic Arrow estimator dereferences it.
 	if err := validatePackedBooleanRanges(src, offset, length); err != nil {
 		return 0, err
 	}
-	total, err := memory.EstimateBatchRangeBytes(src, offset, length)
+	total, err := memory.EstimateBatchRangeBytesWithCheck(src, offset, length, check)
 	if err != nil {
 		return 0, err
 	}
@@ -91,6 +99,14 @@ func replaceBooleanPayloadBytes(src *memory.Batch, total int64, rows int) (int64
 // Match the native source payload policy: a maximal prefix under the soft
 // target, allowing one row above it but never above the hard limit.
 func selectDecodedRangeRows(src *memory.Batch, offset, maxRows int, target, hard int64) (int, error) {
+	return selectDecodedRangeRowsCheck(src, offset, maxRows, target, hard, nil)
+}
+func selectDecodedRangeRowsCheck(src *memory.Batch, offset, maxRows int, target, hard int64, check func() error) (int, error) {
+	if check != nil {
+		if err := check(); err != nil {
+			return 0, err
+		}
+	}
 	if src == nil || offset < 0 || maxRows < 0 || offset > src.Rows || maxRows > src.Rows-offset || target < 0 || hard < 0 {
 		return 0, fmt.Errorf("invalid batch payload range or limits")
 	}
@@ -104,14 +120,14 @@ func selectDecodedRangeRows(src *memory.Batch, offset, maxRows int, target, hard
 	if limit == 0 {
 		return maxRows, nil
 	}
-	size, err := decodedPayloadBytes(src, offset, maxRows)
+	size, err := decodedPayloadBytesCheck(src, offset, maxRows, check)
 	if err != nil {
 		return 0, err
 	}
 	if size <= limit {
 		return maxRows, nil
 	}
-	one, err := decodedPayloadBytes(src, offset, 1)
+	one, err := decodedPayloadBytesCheck(src, offset, 1, check)
 	if err != nil {
 		return 0, err
 	}
@@ -124,7 +140,7 @@ func selectDecodedRangeRows(src *memory.Batch, offset, maxRows int, target, hard
 	lo, hi := 1, maxRows-1
 	for lo < hi {
 		mid := lo + (hi-lo+1)/2
-		size, err := decodedPayloadBytes(src, offset, mid)
+		size, err := decodedPayloadBytesCheck(src, offset, mid, check)
 		if err != nil {
 			return 0, err
 		}

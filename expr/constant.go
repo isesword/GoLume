@@ -52,6 +52,9 @@ func acceptsLiteralScalars(in instruction) bool {
 }
 
 func prepareInstructionBuffers(r *scalarRegister, in instruction, rows int) error {
+	if in.Code == scalarStructFrom || in.Code == scalarStructGet || in.Code == scalarListGet && (in.Type == memory.TypeStruct || in.Type == memory.TypeList) {
+		return nil
+	}
 	if !in.compactLiteral {
 		return prepareScalarBuffers(r, rows)
 	}

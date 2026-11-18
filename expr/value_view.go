@@ -22,6 +22,9 @@ func (w *evaluationState) exportBorrowedValue(index, rows int) (ScalarValue, err
 	if owned.exportBatch == nil {
 		source := memory.NewBatch()
 		switch {
+		case r.array != nil:
+			source.Arrays["v"] = r.array
+			source.Rows = r.array.Len()
 		case r.strView != nil:
 			source.Strings["v"] = r.strView
 			source.Rows = r.strView.Len()
@@ -41,7 +44,7 @@ func (w *evaluationState) exportBorrowedValue(index, rows int) (ScalarValue, err
 			source.Opaque["v"] = r.opaque
 			source.Rows = r.opaque.Len()
 		}
-		size, err := memory.BorrowedRangeMetadataBytes(source, 0, rows)
+		size, err := memory.BorrowedRangeMetadataBytesWithCheck(source, 0, rows, w.checkContext)
 		if err != nil {
 			return ScalarValue{}, err
 		}
@@ -49,7 +52,7 @@ func (w *evaluationState) exportBorrowedValue(index, rows int) (ScalarValue, err
 		if err != nil {
 			return ScalarValue{}, err
 		}
-		view, err := memory.BorrowBatchRange(source, 0, rows)
+		view, err := memory.BorrowBatchRangeWithCheck(source, 0, rows, w.checkContext)
 		if err != nil {
 			lease.Release()
 			return ScalarValue{}, err
@@ -57,7 +60,7 @@ func (w *evaluationState) exportBorrowedValue(index, rows int) (ScalarValue, err
 		owned.exportBatch, owned.exportReservation = view, lease
 	}
 	view := owned.exportBatch
-	result := ScalarValue{Type: r.typ, String: view.Strings["v"], DictionaryString: view.DictStrings["v"], StringList: view.StringLists["v"], Int64List: view.Int64Lists["v"], Struct: view.Structs["v"], Opaque: view.Opaque["v"]}
+	result := ScalarValue{Type: r.typ, Array: view.Arrays["v"], String: view.Strings["v"], DictionaryString: view.DictStrings["v"], StringList: view.StringLists["v"], Int64List: view.Int64Lists["v"], Struct: view.Structs["v"], Opaque: view.Opaque["v"]}
 	if result.Opaque != nil {
 		header := *result.Opaque
 		header.Owned = false

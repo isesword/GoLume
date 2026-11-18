@@ -286,3 +286,150 @@ func TestDateInZoneSameLabelAndUTCCompatibility(t *testing.T) {
 		}
 	}
 }
+
+// Restore only the bounded StructFrom/StructGet date round trip; the flat
+// published regression above remains unchanged, and recursive profiles stay deferred.
+func TestStructConstructDateInZoneGroupedCalendarPipeline(t *testing.T) {
+	for _, name := range []string{"new_york", "apia"} {
+		for _, mode := range []kernel.Mode{kernel.ModeScalar, kernel.ModeSIMD} {
+			t.Run(fmt.Sprintf("%s/%d", name, mode), func(t *testing.T) {
+				opts := engine.DefaultOptions()
+				opts.KernelMode = mode
+				opts.PreparedCacheBytes = 0
+				s := NewSession(opts)
+				defer func() {
+					s.Close()
+					if s.Engine().Memory().Used() != 0 {
+						t.Error("leak")
+					}
+				}()
+				zone := zoneLazyHandle(t, name)
+				src := dateZoneSource(t, name)
+				scan := s.FromSource(src)
+				projected := scan.WithColumns(DateInZone(Col("ts"), zone).Alias("local_date"))
+				record := StructFrom(Col("local_date").Alias("date"), Col("amount").Alias("amount"))
+				bounded := projected.SelectExprs(record.Alias("record")).SelectExprs(StructGet(Col("record"), "date").Alias("date"), StructGet(Col("record"), "amount").Alias("amount"))
+				schema, e := bounded.Schema()
+				if e != nil {
+					t.Fatal(e)
+				}
+				field, _ := schema.Field("date")
+				if field.Type != memory.TypeDate32 || !field.Nullable || field.ArrowType != "" {
+					t.Fatal("date metadata", field)
+				}
+				df, e := bounded.Collect(context.Background())
+				if e != nil {
+					t.Fatal(e)
+				}
+				c, e := df.Column("date")
+				if e != nil {
+					t.Fatal(e)
+				}
+				got, e := c.ToAnySlice()
+				if e != nil {
+					t.Fatal(e)
+				}
+				want := make([]any, 130)
+				days := lazyZoneDateDays[name]
+				for row := range want {
+					if row%7 != 0 {
+						want[row] = days[row%len(days)]
+					}
+				}
+				if !reflect.DeepEqual(got, want) {
+					t.Fatal("row date oracle", got, want)
+				}
+				df.Close()
+				grouped := bounded.GroupBy("date").Agg(Count("count"), Sum("amount", "sum"))
+				gs, e := grouped.Schema()
+				if e != nil {
+					t.Fatal(e)
+				}
+				gf, _ := gs.Field("date")
+				if gf.Type != memory.TypeDate32 || !gf.Nullable {
+					t.Fatal("group metadata", gf)
+				}
+				df, e = grouped.Collect(context.Background())
+				if e != nil {
+					t.Fatal(e)
+				}
+				dateZoneGroups(t, df, name)
+				df.Close()
+				path := filepath.Join(t.TempDir(), "dates.arrow")
+				if _, e := grouped.SinkIPC(context.Background(), path, IPCSinkOptions{}); e != nil {
+					t.Fatal(e)
+				}
+				f, e := os.Open(path)
+				if e != nil {
+					t.Fatal(e)
+				}
+				reader, e := ipc.NewFileReader(f)
+				if e != nil {
+					t.Fatal(e)
+				}
+				if reader.Schema().Field(0).Type.ID() != arrow.DATE32 {
+					t.Fatal("Arrow date metadata", reader.Schema())
+				}
+				var records []arrow.RecordBatch
+				for i := 0; i < reader.NumRecords(); i++ {
+					r, e := reader.RecordBatchAt(i)
+					if e != nil {
+						t.Fatal(e)
+					}
+					records = append(records, r)
+				}
+				round, e := s.ScanArrow(records...)
+				for _, r := range records {
+					r.Release()
+				}
+				reader.Close()
+				f.Close()
+				if e != nil {
+					t.Fatal(e)
+				}
+				df, e = round.Collect(context.Background())
+				if e != nil {
+					t.Fatal(e)
+				}
+				dateZoneGroups(t, df, name)
+				df.Close()
+				// An active batch stream is closed before exhausting multiple source batches.
+				early, e := bounded.CollectBatches(context.Background(), BatchOptions{TargetBatchBytes: 256, MaxBatchBytes: 4096})
+				if e != nil {
+					t.Fatal(e)
+				}
+				if !early.Next(context.Background()) {
+					t.Fatal(early.Err())
+				}
+				early.Close()
+				ctx, cancel := context.WithCancel(context.Background())
+				cancel()
+				df, e = grouped.Collect(ctx)
+				if !errors.Is(e, context.Canceled) {
+					if e == nil {
+						df.Close()
+					}
+					t.Fatal(e)
+				}
+				if s.Engine().Memory().Used() != 0 {
+					t.Fatal("early/cancel leak")
+				}
+				tinyOpts := opts
+				tinyOpts.MemoryLimitBytes = 1
+				tiny := NewSession(tinyOpts)
+				df, e = tiny.FromSource(src).WithColumns(DateInZone(Col("ts"), zone).Alias("date")).GroupBy("date").Agg(Count("n")).Collect(context.Background())
+				if !errors.Is(e, memory.ErrBudgetExceeded) {
+					if e == nil {
+						df.Close()
+					}
+					tiny.Close()
+					t.Fatal(e)
+				}
+				if tiny.Engine().Memory().Used() != 0 {
+					t.Fatal("budget denial leak")
+				}
+				tiny.Close()
+			})
+		}
+	}
+}

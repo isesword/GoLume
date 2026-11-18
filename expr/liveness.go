@@ -75,9 +75,11 @@ func (p *Program) planStorage() {
 
 func instructionInputs(in instruction) []int {
 	switch in.Code {
-	case scalarCivilCompose, scalarBinary, scalarDecimalDivide, scalarCompare, scalarStringMatch, codeAnd, codeOr:
+	case scalarStructFrom:
+		return in.StructInputs
+	case scalarListGet, scalarCivilCompose, scalarBinary, scalarDecimalDivideRound, scalarDecimalDivide, scalarCompare, scalarStringMatch, codeAnd, codeOr:
 		return []int{in.A, in.B}
-	case scalarCivilFormat, scalarDateAtMidnight, scalarCivilTimestamp, scalarDateInZone, scalarZonedExtract, scalarCast, scalarTryCast, scalarDecimalRescale, scalarUnary, scalarJSONDecode, codeNot:
+	case scalarStructGet, scalarCivilFormat, scalarDateAtMidnight, scalarCivilTimestamp, scalarDateInZone, scalarZonedExtract, scalarCast, scalarTryCast, scalarDecimalRound, scalarDecimalRescale, scalarUnary, scalarJSONDecode, codeNot:
 		return []int{in.A}
 	case scalarBoolean:
 		if in.Op == OpAnd || in.Op == OpOr {
@@ -96,7 +98,7 @@ func instructionInputs(in instruction) []int {
 func reusableInstruction(in instruction) bool {
 	// Borrowed columns, nested regions, and instruction-specific caches retain
 	// dedicated owners. Variable-width results are deliberately not pooled.
-	if in.Code == scalarColumn || in.Code == scalarConditional || in.Code == scalarInSet || in.Code == scalarJSONDecode || in.LiteralString != "" {
+	if in.Code == scalarStructFrom || in.Code == scalarStructGet || in.Code == scalarListGet || in.Code == scalarColumn || in.Code == scalarConditional || in.Code == scalarInSet || in.Code == scalarJSONDecode || in.LiteralString != "" {
 		return false
 	}
 	if in.Code == codeStringMatch || (in.Code == codeCmpScalar && (in.Type == memory.TypeString || in.Type == memory.TypeBinary)) || in.Code == codeCmpExtract {

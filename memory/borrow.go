@@ -148,6 +148,26 @@ func BorrowBatchRangeWithCheck(src *Batch, offset, length int, check func() erro
 		lo, hi := v.Offsets[offset], v.Offsets[end]
 		dst.Int64Lists[name] = &Int64ListVector{Offsets: borrowOffsets(v.Offsets, offset, length), Validity: borrowValidityRange(v.Validity, offset, length), Encoding: v.Encoding, Values: &Int64Vector{Values: v.Values.Values[lo:hi], Validity: borrowValidityRange(v.Values.Validity, int(lo), int(hi-lo)), Encoding: v.Values.Encoding}}
 	}
+	for name, v := range src.Arrays {
+		a, err := borrowArrayRange(v, offset, length, check)
+		if err != nil {
+			return fail(err)
+		}
+		dst.Arrays[name] = a
+	}
+	for name, v := range src.StructLists {
+		if check != nil {
+			if err := check(); err != nil {
+				return fail(err)
+			}
+		}
+		lo, hi := v.Offsets[offset], v.Offsets[end]
+		children, err := BorrowBatchRangeWithCheck(v.Values.Values, int(lo), int(hi-lo), check)
+		if err != nil {
+			return fail(err)
+		}
+		dst.StructLists[name] = &StructListVector{Offsets: borrowOffsets(v.Offsets, offset, length), Validity: borrowValidityRange(v.Validity, offset, length), Encoding: v.Encoding, Values: &StructVector{Rows: int(hi - lo), Fields: v.Values.Fields, Values: children, Validity: borrowValidityRange(v.Values.Validity, int(lo), int(hi-lo)), Encoding: v.Values.Encoding}}
+	}
 	for name, v := range src.Structs {
 		if check != nil {
 			if err := check(); err != nil {
@@ -210,7 +230,7 @@ func BorrowedRangeMetadataBytesWithCheck(src *Batch, offset, length int, check f
 	typed := *src
 	typed.Opaque = nil
 	typed.Structs = nil
-	if _, err := EstimateBatchRangeBytes(&typed, offset, length); err != nil {
+	if _, err := EstimateBatchRangeBytesWithCheck(&typed, offset, length, check); err != nil {
 		return 0, err
 	}
 	if check != nil {
@@ -397,6 +417,58 @@ func BorrowedRangeMetadataBytesWithCheck(src *Batch, offset, length int, check f
 			return 0, err
 		}
 	}
+	for _, v := range src.Arrays {
+		n, e := arrayBorrowSize(v, offset, length, 0, check)
+		if e != nil {
+			return 0, e
+		}
+		var err error
+		total, err = ownedRangeAdd(total, n, 1)
+		if err != nil {
+			return 0, err
+		}
+	}
+	for _, v := range src.StructLists {
+		if check != nil {
+			if err := check(); err != nil {
+				return 0, err
+			}
+		}
+		if v == nil || v.Values == nil || v.Values.Values == nil || len(v.Offsets) < offset+length+1 {
+			return 0, fmt.Errorf("invalid borrowed StructList")
+		}
+		lo, hi := v.Offsets[offset], v.Offsets[offset+length]
+		if lo > hi || uint64(hi) > uint64(v.Values.Rows) {
+			return 0, fmt.Errorf("invalid borrowed StructList offsets")
+		}
+		if err := add(v.Validity); err != nil {
+			return 0, err
+		}
+		child, err := BorrowedRangeMetadataBytesWithCheck(v.Values.Values, int(lo), int(hi-lo), check)
+		if err != nil {
+			return 0, err
+		}
+		extra := int64(4096) + int64(len(v.Values.Fields))*1024
+		if lo != 0 {
+			extra += int64(length+1) * 4
+		}
+		if v.Values.Validity != nil {
+			if len(v.Values.Validity) < WordsFor(int(hi)) {
+				return 0, fmt.Errorf("short element bitmap")
+			}
+			if lo%64 != 0 {
+				extra += int64(WordsFor(int(hi-lo))) * 8
+			}
+		}
+		total, err = ownedRangeAdd(total, child, 1)
+		if err != nil {
+			return 0, err
+		}
+		total, err = ownedRangeAdd(total, extra, 1)
+		if err != nil {
+			return 0, err
+		}
+	}
 	for _, v := range src.Structs {
 		if v == nil || v.Values == nil || v.Rows < offset+length {
 			return 0, fmt.Errorf("struct vector shorter than borrowed range")
@@ -464,6 +536,14 @@ func (e *BatchPayloadTooLargeError) Unwrap() error { return ErrBudgetExceeded }
 // count logical payload (including shared dictionary/opaque backing), not new
 // allocations; zero disables the corresponding limit.
 func SelectBatchRangeRows(src *Batch, offset, maxRows int, targetBytes, hardBytes int64) (int, error) {
+	return SelectBatchRangeRowsWithCheck(src, offset, maxRows, targetBytes, hardBytes, nil)
+}
+
+// SelectBatchRangeRowsWithCheck permits cancellation during array payload sizing.
+func SelectBatchRangeRowsWithCheck(src *Batch, offset, maxRows int, targetBytes, hardBytes int64, check func() error) (int, error) {
+	if err := recursiveCheck(check); err != nil {
+		return 0, err
+	}
 	if src == nil || offset < 0 || maxRows < 0 || offset > src.Rows || maxRows > src.Rows-offset || targetBytes < 0 || hardBytes < 0 {
 		return 0, fmt.Errorf("invalid batch payload range or limits")
 	}
@@ -477,14 +557,14 @@ func SelectBatchRangeRows(src *Batch, offset, maxRows int, targetBytes, hardByte
 	if limit == 0 {
 		return maxRows, nil
 	}
-	size, err := EstimateBatchRangeBytes(src, offset, maxRows)
+	size, err := EstimateBatchRangeBytesWithCheck(src, offset, maxRows, check)
 	if err != nil {
 		return 0, err
 	}
 	if size <= limit {
 		return maxRows, nil
 	}
-	one, err := EstimateBatchRangeBytes(src, offset, 1)
+	one, err := EstimateBatchRangeBytesWithCheck(src, offset, 1, check)
 	if err != nil {
 		return 0, err
 	}
@@ -497,7 +577,7 @@ func SelectBatchRangeRows(src *Batch, offset, maxRows int, targetBytes, hardByte
 	lo, hi := 1, maxRows-1
 	for lo < hi {
 		mid := lo + (hi-lo+1)/2
-		size, err := EstimateBatchRangeBytes(src, offset, mid)
+		size, err := EstimateBatchRangeBytesWithCheck(src, offset, mid, check)
 		if err != nil {
 			return 0, err
 		}

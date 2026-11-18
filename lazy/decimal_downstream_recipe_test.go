@@ -7,6 +7,7 @@ import (
 	"math/big"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 
@@ -222,6 +223,34 @@ func TestExplicitDecimalDownstreamConsumerBoundaries(t *testing.T) {
 		for name, f := range cases {
 			df, err := f.Collect(context.Background())
 			t.Logf("bounded=%v consumer=%s err=%v", bounded, name, err)
+			if !bounded && (name == "sort_decimal" || name == "sort_payload") {
+				if err != nil {
+					t.Fatal(err)
+				}
+				rows := make([]int, downstreamRows)
+				for i := range rows {
+					rows[i] = i
+				}
+				if name == "sort_decimal" {
+					sort.SliceStable(rows, func(i, j int) bool {
+						a, b := rows[i], rows[j]
+						an, bn := a%7 == 0, b%7 == 0
+						if an != bn {
+							return !an
+						}
+						if an {
+							return false
+						}
+						return downstreamWant(a).Cmp(downstreamWant(b)) < 0
+					})
+				}
+				decimalArrowCheck(t, df.Column, "amount", 21, 0, 0, downstreamRows, func(i int) (*big.Int, bool) { r := rows[i]; return downstreamWant(r), r%7 != 0 })
+				df.Close()
+				if s.Engine().Memory().Used() != 0 {
+					t.Fatal("resident result leak")
+				}
+				continue
+			}
 			if err == nil {
 				_ = df.Close()
 				t.Fatalf("expected documented current boundary for %s", name)

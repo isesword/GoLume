@@ -387,6 +387,8 @@ func joinGatherCheckChild(batch *memory.Batch, field memory.Field) error {
 		present = batch.Float64s[field.Name] != nil
 	case memory.TypeString:
 		present = batch.Strings[field.Name] != nil || batch.DictStrings[field.Name] != nil
+	case memory.TypeStruct:
+		present = batch.Structs[field.Name] != nil
 	case memory.TypeList:
 		if len(field.Children) == 1 && field.Children[0].Type == memory.TypeInt64 {
 			present = batch.Int64Lists[field.Name] != nil
@@ -584,6 +586,17 @@ func joinGatherStructOwnedSelected(v *memory.StructVector, rows joinGatherSelect
 				if err := addJoinEstimate(&owned, int64(len(dictionary.Data))); err != nil {
 					return 0, 0, err
 				}
+			}
+		case memory.TypeStruct:
+			childOwned, childMetadata, err := joinGatherStructOwnedSelected(v.Values.Structs[field.Name], rows)
+			if err != nil {
+				return 0, 0, err
+			}
+			if err := addJoinEstimate(&owned, childOwned); err != nil {
+				return 0, 0, err
+			}
+			if err := addJoinEstimate(&metadata, childMetadata); err != nil {
+				return 0, 0, err
 			}
 		case memory.TypeList:
 			if err := addJoinEstimate(&metadata, 512); err != nil {

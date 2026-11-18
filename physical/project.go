@@ -425,7 +425,7 @@ func (s *projectBatchStream) Next(ctx context.Context, dst *memory.Batch) (bool,
 		}
 		nextRows := rows / 2
 		if err == nil {
-			selected, selectErr := memory.SelectBatchRangeRows(dst, 0, dst.Rows, s.opts.BatchPayloadTargetBytes, s.opts.BatchPayloadBytes)
+			selected, selectErr := memory.SelectBatchRangeRowsWithCheck(dst, 0, dst.Rows, s.opts.BatchPayloadTargetBytes, s.opts.BatchPayloadBytes, ctx.Err)
 			if selectErr != nil {
 				err = selectErr
 			} else if selected == rows {
@@ -476,7 +476,7 @@ func (s *projectBatchStream) clearBorrowed() {
 }
 
 func (s *projectBatchStream) bindInputView(ctx context.Context, rows int) error {
-	bytes, err := memory.BorrowedRangeMetadataBytes(s.input, s.inputOffset, rows)
+	bytes, err := memory.BorrowedRangeMetadataBytesWithCheck(s.input, s.inputOffset, rows, ctx.Err)
 	if err != nil {
 		return err
 	}
@@ -486,7 +486,7 @@ func (s *projectBatchStream) bindInputView(ctx context.Context, rows int) error 
 			return err
 		}
 	}
-	s.inputView, err = memory.BorrowBatchRange(s.input, s.inputOffset, rows)
+	s.inputView, err = memory.BorrowBatchRangeWithCheck(s.input, s.inputOffset, rows, ctx.Err)
 	if err != nil {
 		s.releaseInputView()
 	}
@@ -534,6 +534,10 @@ func bindScalarValue(dst *memory.Batch, name string, v expr.ScalarValue) error {
 		dst.DictStrings[name] = v.DictionaryString
 	case v.String != nil:
 		dst.Strings[name] = v.String
+	case v.Array != nil:
+		dst.Arrays[name] = v.Array
+	case v.StructList != nil:
+		dst.StructLists[name] = v.StructList
 	case v.Int64List != nil:
 		dst.Int64Lists[name] = v.Int64List
 	case v.StringList != nil:
@@ -588,6 +592,12 @@ func bindAll(dst, src *memory.Batch) {
 	}
 	for k, v := range src.DictStrings {
 		dst.DictStrings[k] = v
+	}
+	for k, v := range src.Arrays {
+		dst.Arrays[k] = v
+	}
+	for k, v := range src.StructLists {
+		dst.StructLists[k] = v
 	}
 	for k, v := range src.Int64Lists {
 		dst.Int64Lists[k] = v
@@ -657,6 +667,14 @@ func bindNamed(dst *memory.Batch, out string, src *memory.Batch, in string) erro
 		dst.DictStrings[out] = v
 		return nil
 	}
+	if v, ok := src.Arrays[in]; ok {
+		dst.Arrays[out] = v
+		return nil
+	}
+	if v, ok := src.StructLists[in]; ok {
+		dst.StructLists[out] = v
+		return nil
+	}
 	if v, ok := src.Int64Lists[in]; ok {
 		dst.Int64Lists[out] = v
 		return nil
@@ -703,6 +721,8 @@ func removeColumn(dst *memory.Batch, name string) {
 	delete(dst.Strings, name)
 	delete(dst.DictStrings, name)
 	delete(dst.Int64Lists, name)
+	delete(dst.StructLists, name)
+	delete(dst.Arrays, name)
 	delete(dst.StringLists, name)
 	delete(dst.Structs, name)
 	delete(dst.Opaque, name)

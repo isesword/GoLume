@@ -100,8 +100,12 @@ func (s *structuralInterner) expression(bound *BoundExpr) int {
 		parts = []string{"decimal128-cast", strconv.Itoa(int(n.Precision)), strconv.Itoa(int(n.Scale)), strconv.FormatBool(n.Tolerant)}
 	case Cast:
 		parts = []string{"cast", strconv.Itoa(int(n.Target))}
+	case Decimal128DivideRoundExpr:
+		parts = []string{"decimal128-divide-round", strconv.Itoa(int(n.Precision)), strconv.Itoa(int(n.Scale)), strconv.Itoa(int(n.Mode))}
 	case Decimal128DivideExpr:
 		parts = []string{"decimal128-divide", strconv.Itoa(int(n.Precision)), strconv.Itoa(int(n.Scale))}
+	case Decimal128RoundExpr:
+		parts = []string{"decimal128-round", strconv.Itoa(int(n.Precision)), strconv.Itoa(int(n.Scale)), strconv.Itoa(int(n.Mode))}
 	case Decimal128RescaleExpr:
 		parts = []string{"decimal128-rescale", strconv.Itoa(int(n.Precision)), strconv.Itoa(int(n.Scale))}
 	case TryCastExpr:
@@ -112,6 +116,12 @@ func (s *structuralInterner) expression(bound *BoundExpr) int {
 		parts = []string{"unary", strconv.Itoa(int(n.Op))}
 	case Ternary:
 		parts = []string{"ternary", strconv.Itoa(int(n.Op))}
+	case StructFromExpr:
+		parts = []string{"struct-from", strconv.Itoa(s.field(bound.Field))}
+	case StructGetExpr:
+		parts = []string{"struct-get", n.FieldName, strconv.Itoa(s.field(bound.Field)), strconv.Itoa(s.field(bound.Children[0].Field))}
+	case ListGetExpr:
+		parts = []string{"list-get", strconv.Itoa(s.field(bound.Children[0].Field)), strconv.Itoa(s.field(bound.Field))}
 	case YMDDateExpr:
 		parts = []string{"ymd-date", strconv.FormatBool(n.tolerant)}
 	case ISOWeekDateExpr:

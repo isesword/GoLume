@@ -69,12 +69,41 @@ func (s *Session) ScanParquet(path string) (LazyFrame, error) {
 	return s.FromSource(src), nil
 }
 
+// ParquetScanOptions selects bounded native nested Parquet decoding. Its zero
+// value preserves the flat primitive ScanParquet contract.
+type ParquetScanOptions = parquetsource.Options
+
+// ScanParquetWithOptions discovers a schema using explicit source options.
+// NativeNested admits primitive lists and bounded recursive Struct forests, not
+// arbitrary nested containers. Decoding remains deferred until execution.
+func (s *Session) ScanParquetWithOptions(path string, options ParquetScanOptions) (LazyFrame, error) {
+	src, err := parquetsource.OpenFileWithOptions(path, options)
+	if err != nil {
+		return LazyFrame{}, err
+	}
+	return s.FromSource(src), nil
+}
+
 // ScanArrow retains Arrow RecordBatches and returns a lazy scan over them.
 // Every Arrow field is preserved in the logical schema; fields without a
 // specialized engine vector remain available as opaque Arrow arrays. The
 // session releases its RecordBatch retains when Close is called.
 func (s *Session) ScanArrow(records ...arrow.RecordBatch) (LazyFrame, error) {
-	src, err := arrowrecord.NewSource(records...)
+	return s.ScanArrowWithOptions(ArrowScanOptions{}, records...)
+}
+
+// ArrowScanOptions selects explicit per-source Arrow conversions. Its zero
+// value preserves legacy opaque Decimal input behavior.
+type ArrowScanOptions = arrowrecord.Options
+
+// ScanArrowWithOptions retains records with explicit Arrow conversion options.
+// NativeDecimal128 selects only top-level Decimal128; downstream Decimal
+// aggregate, join, sort and window admission restrictions remain unchanged.
+// NativeStructList separately enables flat fourteen-type Struct list items.
+// NativeRecursiveStruct separately opts into depth-bounded recursive Struct
+// transport; default Arrow admission remains one-level.
+func (s *Session) ScanArrowWithOptions(options ArrowScanOptions, records ...arrow.RecordBatch) (LazyFrame, error) {
+	src, err := arrowrecord.NewSourceWithOptions(options, records...)
 	if err != nil {
 		return LazyFrame{}, err
 	}
