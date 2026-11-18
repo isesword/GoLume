@@ -93,6 +93,30 @@ func renamePredicateColumns(value expr.Expr, names map[string]string) (expr.Expr
 	case expr.TryCastExpr:
 		n.Value = rename(n.Value)
 		return n, ok
+	case expr.YMDDateExpr:
+		n.Year, n.Month, n.Day = rename(n.Year), rename(n.Month), rename(n.Day)
+		return n, ok
+	case expr.ISOWeekDateExpr:
+		n.Year, n.Week, n.Weekday = rename(n.Year), rename(n.Week), rename(n.Weekday)
+		return n, ok
+	case expr.CivilComposeExpr:
+		n.Date, n.Clock = rename(n.Date), rename(n.Clock)
+		return n, ok
+	case expr.CivilFormatExpr:
+		n.Value = rename(n.Value)
+		return n, ok
+	case expr.DateAtMidnightExpr:
+		n.Value = rename(n.Value)
+		return n, ok
+	case expr.CivilTimestampExpr:
+		n.Value = rename(n.Value)
+		return n, ok
+	case expr.DateInZoneExpr:
+		n.Value = rename(n.Value)
+		return n, ok
+	case expr.ZonedExtractExpr:
+		n.Value = rename(n.Value)
+		return n, ok
 	case expr.JSONDecodeExpr:
 		n.Value = rename(n.Value)
 		return n, ok

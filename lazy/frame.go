@@ -119,6 +119,18 @@ func Following(n int64) RowBound { return logical.RowBound{Kind: logical.RowFoll
 // are reported during logical schema validation.
 func RowsBetween(start, end RowBound) RowsFrame { return logical.RowsFrame{Start: start, End: end} }
 
+// CumeDist returns the fraction of partition rows through the current peer.
+// It requires explicit ordering and ignores ROWS frames, like Rank.
+func CumeDist(alias string) WindowExpr {
+	return logical.WindowExpr{Function: logical.WindowCumeDist, Alias: alias}
+}
+
+// PercentRank returns (rank-1)/(partition rows-1), or zero for a singleton.
+// It requires explicit ordering and ignores ROWS frames, like Rank.
+func PercentRank(alias string) WindowExpr {
+	return logical.WindowExpr{Function: logical.WindowPercentRank, Alias: alias}
+}
+
 // RowNumber assigns one-based consecutive positions inside each partition.
 func RowNumber(alias string) WindowExpr {
 	return logical.WindowExpr{Function: logical.WindowRowNumber, Alias: alias}
@@ -160,6 +172,26 @@ func RollingMin(column string, frame RowsFrame, alias string) WindowExpr {
 // RollingMax returns the maximum non-NULL numeric column value in frame.
 func RollingMax(column string, frame RowsFrame, alias string) WindowExpr {
 	return logical.WindowExpr{Function: logical.WindowMax, Column: column, Frame: frame, Alias: alias}
+}
+
+// RollingStdDevPop returns population standard deviation from exact frame moments.
+func RollingStdDevPop(column string, frame RowsFrame, alias string) WindowExpr {
+	return WindowExpr{Function: logical.WindowStdDevPop, Column: column, Frame: frame, Alias: alias}
+}
+
+// RollingStdDevSamp returns sample standard deviation, or NULL below two values.
+func RollingStdDevSamp(column string, frame RowsFrame, alias string) WindowExpr {
+	return WindowExpr{Function: logical.WindowStdDevSamp, Column: column, Frame: frame, Alias: alias}
+}
+
+// RollingVarPop returns the population variance of non-NULL numeric frame values.
+func RollingVarPop(column string, frame RowsFrame, alias string) WindowExpr {
+	return WindowExpr{Function: logical.WindowVarPop, Column: column, Frame: frame, Alias: alias}
+}
+
+// RollingVarSamp returns sample variance, or NULL when fewer than two values exist.
+func RollingVarSamp(column string, frame RowsFrame, alias string) WindowExpr {
+	return WindowExpr{Function: logical.WindowVarSamp, Column: column, Frame: frame, Alias: alias}
 }
 
 // RollingAvg returns the mean of non-NULL numeric column values in frame.
@@ -414,6 +446,33 @@ func (f LazyFrame) WithColumns(expressions ...expr.NamedExpr) LazyFrame {
 		return f
 	}
 	f.plan = &logical.ExprProjection{Input: f.plan, Exprs: append([]expr.NamedExpr(nil), expressions...), IncludeInput: true}
+	return f
+}
+
+// ConfiguredWindowExpr preserves a window expression and its positional configuration.
+type ConfiguredWindowExpr = logical.ConfiguredWindowExpr
+
+// NTile divides each ordered partition into positive, nearly equal numbered buckets.
+// Larger buckets come first; ordering peers may be split. Invalid buckets fail Prepare.
+func NTile(buckets int64, alias string) ConfiguredWindowExpr {
+	return ConfiguredWindowExpr{Expr: WindowExpr{Function: logical.WindowNTile, Alias: alias}, Buckets: buckets}
+}
+
+// UseWindow includes an ordinary window expression in a configured window group.
+func UseWindow(expression WindowExpr) ConfiguredWindowExpr {
+	return ConfiguredWindowExpr{Expr: expression}
+}
+
+// WithConfiguredWindows evaluates configured and ordinary windows together with one shared ordering.
+func (f LazyFrame) WithConfiguredWindows(spec WindowSpec, expressions ...ConfiguredWindowExpr) LazyFrame {
+	if f.err != nil {
+		return f
+	}
+	if len(expressions) == 0 {
+		f.err = fmt.Errorf("WithConfiguredWindows requires at least one expression")
+		return f
+	}
+	f.plan = &logical.ConfiguredWindow{Input: f.plan, Spec: spec, Exprs: append([]logical.ConfiguredWindowExpr(nil), expressions...)}
 	return f
 }
 
@@ -935,6 +994,12 @@ func applyPushdown(ctx context.Context, plan logical.Plan) (logical.Plan, source
 			return nil, source.PushdownReport{}, err
 		}
 		return &logical.Aggregate{Input: child, GroupBy: append([]string(nil), n.GroupBy...), Aggregates: append([]expr.Aggregate(nil), n.Aggregates...), Hints: n.Hints}, report, nil
+	case *logical.ConfiguredWindow:
+		child, report, err := applyPushdown(ctx, n.Input)
+		if err != nil {
+			return nil, source.PushdownReport{}, err
+		}
+		return &logical.ConfiguredWindow{Input: child, Spec: logical.WindowSpec{PartitionBy: append([]string(nil), n.Spec.PartitionBy...), By: append([]logical.SortKey(nil), n.Spec.By...)}, Exprs: append([]logical.ConfiguredWindowExpr(nil), n.Exprs...)}, report, nil
 	case *logical.Window:
 		child, report, err := applyPushdown(ctx, n.Input)
 		if err != nil {
@@ -985,7 +1050,7 @@ func containsAdvancedPlan(plan logical.Plan) bool {
 	switch n := plan.(type) {
 	case *logical.ExprProjection:
 		return true
-	case *logical.Sort, *logical.TopK, *logical.Limit, *logical.Window:
+	case *logical.Sort, *logical.TopK, *logical.Limit, *logical.Window, *logical.ConfiguredWindow:
 		return true
 	case *logical.Filter:
 		// The aggregate-only shortcut folds filters into one predicate. Partial
@@ -1422,6 +1487,67 @@ func lowerSourcePipeline(ctx context.Context, plan logical.Plan, manager memory.
 		}
 		childID := profileSourceID(src)
 		return profileSource(ctx, aggSrc, "aggregate", "native aggregate stream", childID), nil, closers, nil
+	case *logical.ConfiguredWindow:
+		src, pending, closers, err := lowerSourcePipeline(ctx, n.Input, manager, kernels, exec)
+		if err != nil {
+			return nil, nil, closers, err
+		}
+		if pending != nil {
+			childID := profileSourceID(src)
+			src, err = physical.NewFilterSource(src, pending)
+			if err != nil {
+				return nil, nil, closers, err
+			}
+			src = profileSource(ctx, src, "filter", "residual filter before window", childID)
+		}
+		// Window results can replace input columns. Hidden keys must remain
+		// privately owned until order.hide, including across the window outputs.
+		outSchema, err := logical.InferSchema(n)
+		if err != nil {
+			return nil, nil, closers, err
+		}
+		order, err := newOrderKeyPlan(src.Schema(), n.Spec.By, outSchema)
+		if err != nil {
+			return nil, nil, closers, err
+		}
+		keyed, err := order.materialize(src)
+		if err != nil {
+			return nil, nil, closers, err
+		}
+		if keyed != src {
+			keyed = profileSource(ctx, keyed, "projection", "internal expression window keys", profileSourceID(src))
+		}
+		outputFields := make([]memory.Field, len(n.Exprs))
+		for i, window := range n.Exprs {
+			field, ok := outSchema.Field(window.Expr.Alias)
+			if !ok {
+				return nil, nil, closers, fmt.Errorf("window output %q missing from schema", window.Expr.Alias)
+			}
+			outputFields[i] = field
+		}
+		mode := physical.WindowExecutionResident
+		capable := logicalWindowBoundedCapable(n.WindowExpressions())
+		if capable && windowInputOrdered(keyed, n.Spec.PartitionBy, order.keys) {
+			mode = physical.WindowExecutionOrdered
+		} else if capable {
+			if eng, ok := exec.(*engine.Engine); ok && eng != nil {
+				policy := engine.ExecutionPolicyFromContext(ctx, eng.ExecutionPolicy())
+				if policy == engine.ExecutionBounded && eng.SpillConfigured() ||
+					policy == engine.ExecutionAuto && eng.SpillConfigured() && shouldUseExternalOrder(ctx, keyed, eng.Memory().Limit()) {
+					mode = physical.WindowExecutionExternalSort
+				}
+			}
+		}
+		windowed, err := physical.NewConfiguredWindowSourceWithOptions(keyed, n.Spec.PartitionBy, order.keys, lowerConfiguredWindowExpressions(n.Exprs), outputFields, manager, physical.WindowSourceOptions{Mode: mode})
+		if err != nil {
+			return nil, nil, closers, err
+		}
+		windowed = profileSource(ctx, windowed, "window", fmt.Sprintf("analytic window mode=%d", mode), profileSourceID(keyed))
+		out, err := order.hide(windowed)
+		if err != nil {
+			return nil, nil, closers, err
+		}
+		return out, nil, closers, nil
 	case *logical.Window:
 		src, pending, closers, err := lowerSourcePipeline(ctx, n.Input, manager, kernels, exec)
 		if err != nil {
@@ -1728,4 +1854,13 @@ func closePreparedResources(q *engine.PreparedQuery, closers []io.Closer) {
 	for i := len(closers) - 1; i >= 0; i-- {
 		_ = closers[i].Close()
 	}
+}
+
+func lowerConfiguredWindowExpressions(expressions []logical.ConfiguredWindowExpr) []physical.ConfiguredWindowExpression {
+	out := make([]physical.ConfiguredWindowExpression, len(expressions))
+	for i, e := range expressions {
+		w := e.Expr
+		out[i] = physical.ConfiguredWindowExpression{Expr: physical.WindowExpression{Function: physical.WindowFunction(w.Function), Column: w.Column, Alias: w.Alias, Frame: physical.WindowFrame{Start: physical.WindowBound{Kind: physical.WindowBoundKind(w.Frame.Start.Kind), Offset: w.Frame.Start.Offset}, End: physical.WindowBound{Kind: physical.WindowBoundKind(w.Frame.End.Kind), Offset: w.Frame.End.Offset}}}, Buckets: e.Buckets}
+	}
+	return out
 }

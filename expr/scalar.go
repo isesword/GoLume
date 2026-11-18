@@ -39,6 +39,14 @@ const (
 	scalarLiteralDecimal
 	scalarDecimalRescale
 	scalarDecimalDivide
+	scalarZonedExtract
+	scalarDateInZone
+	scalarCivilTimestamp
+	scalarDateAtMidnight
+	scalarCivilFormat
+	scalarCivilCompose
+	scalarISOWeekDate
+	scalarYMDDate
 )
 
 // ProjectionOutput maps one compiled root register to a named output column.
@@ -374,6 +382,22 @@ func (c *scalarCompiler) compileBound(bound *BoundExpr) (int, TypeInfo, error) {
 				in.B = -1
 				in.C = -1
 			}
+		case YMDDateExpr:
+			in.Code, in.CivilTolerant = scalarYMDDate, n.tolerant
+		case ISOWeekDateExpr:
+			in.Code, in.CivilTolerant = scalarISOWeekDate, n.tolerant
+		case CivilComposeExpr:
+			in.Code, in.CivilResolver, in.CivilTolerant = scalarCivilCompose, n.resolver.state, n.tolerant
+		case CivilFormatExpr:
+			in.Code, in.TimeZone = scalarCivilFormat, n.zone.state
+		case DateAtMidnightExpr:
+			in.Code, in.CivilResolver, in.CivilTolerant = scalarDateAtMidnight, n.resolver.state, n.tolerant
+		case CivilTimestampExpr:
+			in.Code, in.CivilResolver, in.CivilTolerant = scalarCivilTimestamp, n.resolver.state, n.tolerant
+		case DateInZoneExpr:
+			in.Code, in.TimeZone = scalarDateInZone, n.zone.state
+		case ZonedExtractExpr:
+			in.Code, in.TimeZone, in.Op = scalarZonedExtract, n.zone.state, n.part
 		case JSONDecodeExpr:
 			in.Code = scalarJSONDecode
 			in.StructFields = bound.Field.Children
@@ -682,6 +706,38 @@ func evaluateInstructionsActive(instructions []instruction, batch *memory.Batch,
 			}
 		case scalarCast:
 			if err := evalCast(r, w.regs[in.A], in.SourceType, in.Type, batch.Rows); err != nil {
+				return err
+			}
+		case scalarYMDDate:
+			if err := evalYMDDate(r, w.regs[in.A], w.regs[in.B], w.regs[in.C], in.CivilTolerant, batch.Rows, w.activeRows); err != nil {
+				return err
+			}
+		case scalarISOWeekDate:
+			if err := evalISOWeekDate(r, w.regs[in.A], w.regs[in.B], w.regs[in.C], in.CivilTolerant, batch.Rows, w.activeRows); err != nil {
+				return err
+			}
+		case scalarCivilCompose:
+			if err := evalCivilCompose(r, w.regs[in.A], w.regs[in.B], in.CivilResolver, in.CivilTolerant, batch.Rows, w.activeRows); err != nil {
+				return err
+			}
+		case scalarCivilFormat:
+			if err := evalCivilFormat(r, w.regs[in.A], in.TimeZone, batch.Rows, w.activeRows); err != nil {
+				return err
+			}
+		case scalarDateAtMidnight:
+			if err := evalDateAtMidnight(r, w.regs[in.A], in.CivilResolver, in.CivilTolerant, batch.Rows, w.activeRows); err != nil {
+				return err
+			}
+		case scalarCivilTimestamp:
+			if err := evalCivilTimestamp(r, w.regs[in.A], in.CivilResolver, in.CivilTolerant, batch.Rows, w.activeRows); err != nil {
+				return err
+			}
+		case scalarDateInZone:
+			if err := evalDateInZone(r, w.regs[in.A], in.TimeZone, batch.Rows); err != nil {
+				return err
+			}
+		case scalarZonedExtract:
+			if err := evalZonedExtract(r, w.regs[in.A], in.TimeZone, in.Op, batch.Rows); err != nil {
 				return err
 			}
 		case scalarDecimalDivide:

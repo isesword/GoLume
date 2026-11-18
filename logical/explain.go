@@ -119,6 +119,25 @@ func writePlan(b *strings.Builder, plan Plan, depth int) {
 		}
 		fmt.Fprintf(b, "%sAGGREGATE keys=[%s] aggs=[%s]\n", indent, strings.Join(n.GroupBy, ", "), strings.Join(aggs, ", "))
 		writePlan(b, n.Input, depth+1)
+	case *ConfiguredWindow:
+		order := make([]string, 0, len(n.Spec.By))
+		for _, key := range n.Spec.By {
+			direction := "asc"
+			if key.Descending {
+				direction = "desc"
+			}
+			nulls := "nulls-first"
+			if key.NullsLast {
+				nulls = "nulls-last"
+			}
+			order = append(order, fmt.Sprintf("%s %s %s", sortKeyString(key), direction, nulls))
+		}
+		items := make([]string, 0, len(n.Exprs))
+		for _, window := range n.Exprs {
+			items = append(items, configuredWindowExprString(window))
+		}
+		fmt.Fprintf(b, "%sWINDOW partition_by=[%s] order_by=[%s] outputs=[%s]\n", indent, strings.Join(n.Spec.PartitionBy, ", "), strings.Join(order, ", "), strings.Join(items, ", "))
+		writePlan(b, n.Input, depth+1)
 	case *Window:
 		order := make([]string, 0, len(n.Spec.By))
 		for _, key := range n.Spec.By {
@@ -146,6 +165,10 @@ func writePlan(b *strings.Builder, plan Plan, depth int) {
 func windowExprString(window WindowExpr) string {
 	var name string
 	switch window.Function {
+	case WindowCumeDist:
+		name = "cume_dist()"
+	case WindowPercentRank:
+		name = "percent_rank()"
 	case WindowRowNumber:
 		name = "row_number()"
 	case WindowRank:
@@ -162,6 +185,14 @@ func windowExprString(window WindowExpr) string {
 		name = "min(" + window.Column + ", " + frameString(window.Frame) + ")"
 	case WindowMax:
 		name = "max(" + window.Column + ", " + frameString(window.Frame) + ")"
+	case WindowStdDevPop:
+		name = "stddev_pop(" + window.Column + ", " + frameString(window.Frame) + ")"
+	case WindowStdDevSamp:
+		name = "stddev_samp(" + window.Column + ", " + frameString(window.Frame) + ")"
+	case WindowVarPop:
+		name = "var_pop(" + window.Column + ", " + frameString(window.Frame) + ")"
+	case WindowVarSamp:
+		name = "var_samp(" + window.Column + ", " + frameString(window.Frame) + ")"
 	case WindowAvg:
 		name = "avg(" + window.Column + ", " + frameString(window.Frame) + ")"
 	default:
@@ -221,4 +252,11 @@ func aggregateString(a expr.Aggregate) string {
 		return fn + " AS " + a.Alias
 	}
 	return fn
+}
+
+func configuredWindowExprString(e ConfiguredWindowExpr) string {
+	if e.Expr.Function == WindowNTile {
+		return fmt.Sprintf("ntile(%d) AS %s", e.Buckets, e.Expr.Alias)
+	}
+	return windowExprString(e.Expr)
 }

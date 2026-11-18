@@ -2,6 +2,7 @@ package physical
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"gocolumn/memory"
 	"gocolumn/source"
@@ -12,12 +13,12 @@ import (
 
 const windowStateCellBytes = int64(64)
 
-// validateBoundedWindowExpressions admits finite Count/Min/Max frames, plus
+// validateBoundedWindowExpressions admits finite aggregate frames, plus
 // the existing trailing aggregates and ranking/offset/fill operations.
 func validateBoundedWindowExpressions(expressions []WindowExpression) error {
 	for _, expression := range expressions {
 		switch expression.Function {
-		case WindowRowNumber, WindowRank, WindowDenseRank, WindowForwardFill, WindowBackwardFill:
+		case WindowNTile, WindowCumeDist, WindowPercentRank, WindowRowNumber, WindowRank, WindowDenseRank, WindowForwardFill, WindowBackwardFill:
 			continue
 		case WindowShift, WindowDiff:
 			if expression.Frame.Start != expression.Frame.End || (expression.Frame.Start.Kind != WindowCurrentRow && expression.Frame.Start.Kind != WindowPreceding && expression.Frame.Start.Kind != WindowFollowing) || expression.Frame.Start.Offset < 0 {
@@ -63,6 +64,9 @@ type residentWindowStream struct {
 }
 
 func newResidentWindowStream(ctx context.Context, owner *WindowSource, opts source.ReadOptions) (source.BatchStream, error) {
+	if windowsNeedPercentRank(owner.expressions) || windowsHaveMoments(owner.expressions) {
+		return newPercentRankResidentStream(ctx, owner, opts)
+	}
 	child, err := source.OpenBatchStream(ctx, owner.input, opts)
 	if err != nil {
 		return nil, err
@@ -207,17 +211,32 @@ func (s *orderedWindowSource) NewBatchStream(ctx context.Context, opts source.Re
 }
 
 type externalWindowStream struct {
-	child  source.BatchStream
-	query  *memory.QueryBudget
-	rows   int64
-	closed bool
+	percentRankDiagnostics *percentRankDiagnostics
+	child                  source.BatchStream
+	query                  *memory.QueryBudget
+	rows                   int64
+	closed                 bool
 }
 
-func newExternalWindowStream(ctx context.Context, owner *WindowSource, opts source.ReadOptions) (source.BatchStream, error) {
+func newExternalWindowStream(ctx context.Context, owner *WindowSource, opts source.ReadOptions) (result source.BatchStream, resultErr error) {
 	query := memory.QueryBudgetFromContext(ctx)
 	if query == nil || query.Limit() <= 0 || !query.SpillConfigured() {
 		return nil, fmt.Errorf("external window requires finite memory and spill quotas")
 	}
+	var diagnostics *percentRankDiagnostics
+	if windowsNeedPercentRank(owner.expressions) || windowsHaveMoments(owner.expressions) {
+		var err error
+		diagnostics, err = newPercentRankDiagnostics(ctx, query.Operator("PercentRankDiagnostics", memory.MemoryRetainedState))
+		if err != nil {
+			return nil, err
+		}
+	}
+	keepDiagnostics := false
+	defer func() {
+		if !keepDiagnostics && diagnostics != nil {
+			resultErr = errors.Join(resultErr, diagnostics.Close())
+		}
+	}()
 	ordinal := newOrdinalSource(owner.input, owner.output, owner.manager)
 	keys := make([]SortKey, 0, len(owner.partitionBy)+len(owner.orderBy))
 	for _, column := range owner.partitionBy {
@@ -228,14 +247,23 @@ func newExternalWindowStream(ctx context.Context, owner *WindowSource, opts sour
 	if err != nil {
 		return nil, err
 	}
+	if diagnostics != nil {
+		ordered = diagnostics.Wrap("front_sort", ordered)
+	}
 	windowSchema, err := windowOutputSchema(ordinal.Schema(), owner.outputFields)
 	if err != nil {
 		return nil, err
 	}
-	windowed := &orderedWindowSource{owner: owner, input: ordered, schema: windowSchema}
+	var windowed source.Source = &orderedWindowSource{owner: owner, input: ordered, schema: windowSchema}
+	if diagnostics != nil && windowsNeedPercentRank(owner.expressions) {
+		windowed = diagnostics.Wrap("partition_spool", windowed)
+	}
 	restored, err := NewSortSourceWithOptions(windowed, []SortKey{{Column: ordinal.column}}, owner.manager, SortSourceOptions{Spillable: true})
 	if err != nil {
 		return nil, err
+	}
+	if diagnostics != nil {
+		restored = diagnostics.Wrap("restore_sort", restored)
 	}
 	hidden, err := NewDropColumnsSource(restored, []string{ordinal.column})
 	if err != nil {
@@ -245,7 +273,8 @@ func newExternalWindowStream(ctx context.Context, owner *WindowSource, opts sour
 	if err != nil {
 		return nil, err
 	}
-	return &externalWindowStream{child: child, query: query}, nil
+	keepDiagnostics = true
+	return &externalWindowStream{child: child, query: query, percentRankDiagnostics: diagnostics}, nil
 }
 
 // Next emits one restored original-order window batch.
@@ -263,16 +292,26 @@ func (s *externalWindowStream) Close() error {
 		return nil
 	}
 	s.closed = true
-	return s.child.Close()
+	err := s.child.Close()
+	if s.percentRankDiagnostics != nil {
+		err = errors.Join(err, s.percentRankDiagnostics.Close())
+	}
+	return err
 }
 
 // StreamDiagnostics reports the composite external-window resource totals.
 func (s *externalWindowStream) StreamDiagnostics() map[string]string {
 	snapshot := s.query.Snapshot()
-	return map[string]string{
+	diagnostics := map[string]string{
 		"strategy": "external-sort-restore", "output_rows": fmt.Sprint(s.rows),
 		"spill_bytes": fmt.Sprint(snapshot.SpilledBytes), "peak_memory_scope": "query", "peak_memory_bytes": fmt.Sprint(snapshot.PeakBytes),
 	}
+	if s.percentRankDiagnostics != nil {
+		for k, v := range s.percentRankDiagnostics.Snapshot() {
+			diagnostics[k] = v
+		}
+	}
+	return diagnostics
 }
 
 type windowNumericCell struct {
@@ -354,6 +393,7 @@ type rollingWindowState struct {
 	validCount  int64
 	signedSum   big.Int
 	unsignedSum big.Int
+	moments     *windowExactMoments
 	exactSum    *windowExactSum
 	exact       bool
 	single      bool
@@ -396,6 +436,9 @@ func newRollingWindowState(expression WindowExpression, input, output memory.Dat
 const windowRollingStateBytes = int64((unsafe.Sizeof(rollingWindowState{}) + 63) &^ 63)
 
 func (s *rollingWindowState) initialize() {
+	if isMomentWindow(s.expression.Function) {
+		s.moments = new(windowExactMoments)
+	}
 	if s.single {
 		return
 	}
@@ -423,6 +466,9 @@ func (s *rollingWindowState) reset() {
 	if s.exactSum != nil {
 		*s.exactSum = windowExactSum{}
 	}
+	if s.moments != nil {
+		*s.moments = windowExactMoments{}
+	}
 	s.best, s.hasBest = windowNumericCell{}, false
 }
 
@@ -438,6 +484,17 @@ func (s *rollingWindowState) advance(cell windowNumericCell) error {
 	}
 	cell.seq = s.position
 	s.position++
+	if s.moments != nil {
+		if !s.unbounded {
+			removed, full := s.queue.push(cell)
+			if full {
+				if err := s.moments.addCell(s.inputType, removed, -1); err != nil {
+					return err
+				}
+			}
+		}
+		return s.moments.addCell(s.inputType, cell, 1)
+	}
 	if s.exact {
 		if s.single {
 			s.best = cell
@@ -567,7 +624,9 @@ func windowCellBetter(value, best windowNumericCell, typ memory.DataType, minimu
 }
 
 type orderedWindowStream struct {
+	percentRankProvider    interface{ PercentRankDiagnostics() map[string]string }
 	hiddenColumns          []string
+	percentRankReservation memory.Reservation
 	preparationReservation memory.Reservation
 	owner                  *WindowSource
 	inputSchema            memory.Schema
@@ -594,6 +653,19 @@ type orderedWindowStream struct {
 }
 
 func newOrderedWindowStream(ctx context.Context, owner *WindowSource, input source.Source, output memory.Schema, opts source.ReadOptions) (source.BatchStream, error) {
+	pageMoments := owner.mode == WindowExecutionExternalSort && windowsHaveMoments(owner.expressions) && !windowsNeedPercentRank(owner.expressions)
+	owner, input, rankHidden, rankLease, err := preparePercentRankWindow(ctx, owner, input)
+	if err != nil {
+		return nil, err
+	}
+	rankProvider, _ := input.(interface{ PercentRankDiagnostics() map[string]string })
+	keepRank := false
+	defer func() {
+		if !keepRank && rankLease != nil {
+			rankLease.Release()
+		}
+	}()
+
 	var preparation memory.Reservation
 	preparationBytes, err := futurePreparationAdmissionBytes(owner, input)
 	if err != nil {
@@ -612,12 +684,24 @@ func newOrderedWindowStream(ctx context.Context, owner *WindowSource, input sour
 		}
 	}()
 	owner, input, hidden := prepareFutureWindow(owner, input)
+	if pageMoments && len(hidden) > 0 {
+		future, ok := input.(*futureWindowSource)
+		if ok {
+			onlyMoments := true
+			for _, e := range future.expressions {
+				onlyMoments = onlyMoments && isMomentWindow(e.Function)
+			}
+			future.pageVariance = onlyMoments
+		}
+	}
 	child, err := source.OpenBatchStream(ctx, input, opts)
 	if err != nil {
 		return nil, err
 	}
 	stream := &orderedWindowStream{owner: owner, inputSchema: input.Schema(), output: output, child: child, input: memory.NewBatch(), manager: owner.manager}
-	stream.hiddenColumns = hidden
+	stream.hiddenColumns = append(hidden, rankHidden...)
+	stream.percentRankReservation = rankLease
+	stream.percentRankProvider = rankProvider
 	stream.preparationReservation = preparation
 	// First describe all unique states without allocating their execution
 	// storage. Shared exact outputs own one ring/accumulator, not one per alias.
@@ -653,6 +737,9 @@ func newOrderedWindowStream(ctx context.Context, owner *WindowSource, input sour
 				multiplier *= 2
 			}
 			stateBytes, err = futureBudgetAdd(stateBytes, int64(state.width), multiplier)
+		}
+		if err == nil && isMomentWindow(expression.Function) {
+			stateBytes, err = futureBudgetAdd(stateBytes, 1, windowExactMomentsBytes)
 		}
 		if err == nil && state.exact && !state.single {
 			stateBytes, err = futureBudgetAdd(stateBytes, 1, windowExactSumBytes)
@@ -694,6 +781,7 @@ func newOrderedWindowStream(ctx context.Context, owner *WindowSource, input sour
 		state.initialize()
 	}
 	keepPreparation = true
+	keepRank = true
 	return stream, nil
 }
 
@@ -972,6 +1060,18 @@ func setWindowInt64(batch *memory.Batch, name string, row int, value int64, vali
 
 func (s *rollingWindowState) write(batch *memory.Batch, row int) error {
 	expression := s.expression
+	if s.moments != nil {
+		value, valid, err := momentResult(s.moments, expression.Function)
+		if err != nil {
+			return err
+		}
+		vector := batch.Float64s[expression.Alias]
+		vector.Values[row] = value
+		if valid {
+			memory.Set(vector.Validity, row)
+		}
+		return nil
+	}
 	if s.exact {
 		s.writeExact(batch.Float64s[expression.Alias], row, expression.Function)
 		return nil
@@ -1075,12 +1175,17 @@ func (s *orderedWindowStream) Close() error {
 	}
 	s.input.ReleaseOwned()
 	err := s.child.Close()
+	if s.percentRankReservation != nil {
+		s.percentRankReservation.Release()
+		s.percentRankReservation = nil
+	}
 	if s.preparationReservation != nil {
 		s.preparationReservation.Release()
 		s.preparationReservation = nil
 	}
 	// Closed streams may themselves remain reachable. Drop their execution-owned
 	// rings and derived future descriptors when their reservations are released.
+	s.percentRankProvider = nil
 	s.owner = nil
 	s.child = nil
 	s.input = nil
@@ -1099,3 +1204,20 @@ func (s *orderedWindowStream) Close() error {
 }
 
 var _ source.BatchStreamDiagnostics = (*externalWindowStream)(nil)
+
+// StreamDiagnostics forwards partition-spool counters when present.
+func (s *orderedWindowStream) StreamDiagnostics() map[string]string {
+	var report map[string]string
+	if d, ok := s.child.(source.BatchStreamDiagnostics); ok {
+		report = d.StreamDiagnostics()
+	}
+	if s.percentRankProvider != nil {
+		if report == nil {
+			report = make(map[string]string)
+		}
+		for k, v := range s.percentRankProvider.PercentRankDiagnostics() {
+			report[k] = v
+		}
+	}
+	return report
+}

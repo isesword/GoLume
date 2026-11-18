@@ -12,14 +12,15 @@ import (
 // private columns carry already-computed future results to the ordinary window
 // evaluator, which reads them as zero-offset shifts and removes their names.
 type futureWindowSource struct {
-	input       source.Source
-	schema      memory.Schema
-	expressions []WindowExpression
-	fields      []memory.Field
-	names       []string
-	partitionBy []string
-	maxLead     int64
-	manager     memory.Manager
+	pageVariance bool
+	input        source.Source
+	schema       memory.Schema
+	expressions  []WindowExpression
+	fields       []memory.Field
+	names        []string
+	partitionBy  []string
+	maxLead      int64
+	manager      memory.Manager
 }
 
 // Schema returns the input and private numeric result fields.
@@ -55,6 +56,12 @@ func (s *futureWindowSource) NewBatchStream(ctx context.Context, opts source.Rea
 	}
 	st := &futureWindowStream{owner: s, child: child, scratch: memory.NewBatch()}
 	bytes := int64(2048) + int64(len(s.expressions))*1024
+	if s.pageVariance {
+		// Bounded internal clone pages, not an upstream ownership release or
+		// a change to the restore sort's public output batching.
+		st.pageRows = varianceLookaheadPageRows(opts.BatchRows)
+		bytes += 64 // source flag, stream cursor/page size, allocator slack
+	}
 	// Describe and admit rings before allocating their backing storage.
 	st.finiteRows = make([]*finiteRowsState, len(s.expressions))
 	for index, e := range s.expressions {
@@ -98,16 +105,17 @@ type futureWindowBatch struct {
 	next       *futureWindowBatch
 }
 type futureWindowStream struct {
-	owner               *futureWindowSource
-	child               source.BatchStream
-	scratch             *memory.Batch
-	head, tail, current *futureWindowBatch
-	cursors             []*futureWindowBatch
-	fillPositions       []int64
-	finiteRows          []*finiteRowsState
-	base, output        memory.Reservation
-	end                 int64
-	done, closed        bool
+	pageRows, scratchOffset int
+	owner                   *futureWindowSource
+	child                   source.BatchStream
+	scratch                 *memory.Batch
+	head, tail, current     *futureWindowBatch
+	cursors                 []*futureWindowBatch
+	fillPositions           []int64
+	finiteRows              []*finiteRowsState
+	base, output            memory.Reservation
+	end                     int64
+	done, closed            bool
 }
 
 func (s *futureWindowStream) releaseCurrent() {
@@ -132,21 +140,36 @@ func (s *futureWindowStream) load(ctx context.Context) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	ok, err := s.child.Next(ctx, s.scratch)
-	if err != nil {
-		return err
-	}
-	if !ok {
-		s.done = true
-		return nil
+	start, count := 0, 0
+	if s.pageRows <= 0 || s.scratchOffset >= s.scratch.Rows {
+		// Keep the destination's initialized maps, as on the original load
+		// path. The child retires/refills its output only at this actual Next.
+		ok, err := s.child.Next(ctx, s.scratch)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			s.done = true
+			return nil
+		}
+		s.scratchOffset = 0
 	}
 	if s.scratch.Rows == 0 {
 		return nil
 	}
-	if int64(s.scratch.Rows) > math.MaxInt64-s.end {
+	if s.pageRows > 0 {
+		start = s.scratchOffset
+		count = min(s.pageRows, s.scratch.Rows-start)
+	} else {
+		count = s.scratch.Rows
+	}
+	if count <= 0 {
+		return fmt.Errorf("window lookahead has invalid remaining page")
+	}
+	if int64(count) > math.MaxInt64-s.end {
 		return fmt.Errorf("window lookahead row ordinal overflow")
 	}
-	bytes, err := futureCloneAdmissionBytes(s.scratch)
+	bytes, err := futureCloneRangeAdmissionBytes(s.scratch, start, count)
 	if err != nil {
 		return err
 	}
@@ -157,12 +180,25 @@ func (s *futureWindowStream) load(ctx context.Context) error {
 			return fmt.Errorf("window lookahead retained input: %w", err)
 		}
 	}
-	cloned, err := memory.CloneBatchRange(s.scratch, 0, s.scratch.Rows)
+	cloned, err := memory.CloneBatchRange(s.scratch, start, count)
 	if err != nil {
 		if lease != nil {
 			lease.Release()
 		}
 		return err
+	}
+	if s.pageRows > 0 {
+		if err := ctx.Err(); err != nil {
+			cloned.ReleaseOwned()
+			cloned.ClearColumns()
+			if lease != nil {
+				lease.Release()
+			}
+			return err
+		}
+	}
+	if s.pageRows > 0 {
+		s.scratchOffset = start + count
 	}
 	node := &futureWindowBatch{batch: cloned, lease: lease, start: s.end, end: s.end + int64(cloned.Rows)}
 	s.end = node.end
@@ -326,7 +362,11 @@ func (s *futureWindowStream) Close() error {
 		}
 	}
 	s.finiteRows = nil
-	s.scratch.ReleaseOwned()
+	if s.pageRows > 0 {
+		*s.scratch = memory.Batch{}
+	} else {
+		s.scratch.ReleaseOwned()
+	}
 	if s.base != nil {
 		s.base.Release()
 		s.base = nil
@@ -400,6 +440,20 @@ func prepareFutureWindow(owner *WindowSource, input source.Source) (*WindowSourc
 	if len(future.expressions) == 0 {
 		return owner, input, nil
 	}
+	// Zero PRECEDING/FOLLOWING and CURRENT share a canonical exact plan,
+	// yet only some spellings move to lookahead. Replan remaining expressions
+	// so no follower can retain a leader that is now a private Shift.
+	copied.exactPlans = planExactWindows(input.Schema(), copied.expressions)
 	future.schema = memory.NewSchema(fields...)
 	return &copied, future, future.names
+}
+
+// The internal cap prevents producer-sized pages from multiplying lookahead
+// clones. Explicit smaller reader pages are respected; larger ones are capped
+// only between the two sorts of the eligible new variance query.
+func varianceLookaheadPageRows(requested int) int {
+	if requested <= 0 {
+		return 1024
+	}
+	return min(requested, 1024)
 }

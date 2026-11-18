@@ -40,6 +40,20 @@ const (
 	WindowForwardFill
 	// WindowBackwardFill replaces NULL with the following non-NULL value.
 	WindowBackwardFill
+	// WindowPercentRank returns the peer-aware fractional rank within a partition.
+	WindowPercentRank
+	// WindowCumeDist returns the inclusive peer-end fraction of its partition.
+	WindowCumeDist
+	// WindowNTile divides partition rows into nearly equal numbered buckets.
+	WindowNTile
+	// WindowVarPop computes population variance over non-NULL frame values.
+	WindowVarPop
+	// WindowVarSamp computes sample variance over non-NULL frame values.
+	WindowVarSamp
+	// WindowStdDevPop computes population standard deviation over non-NULL frame values.
+	WindowStdDevPop
+	// WindowStdDevSamp computes sample standard deviation over non-NULL frame values.
+	WindowStdDevSamp
 )
 
 // WindowBoundKind identifies one side of an inclusive ROWS frame.
@@ -86,6 +100,7 @@ type WindowSource struct {
 	input        source.Source
 	partitionBy  []string
 	orderBy      []SortKey
+	buckets      []int64
 	expressions  []WindowExpression
 	outputFields []memory.Field
 	output       memory.Schema
@@ -124,6 +139,14 @@ func (s *WindowSource) StreamPlan() source.StreamPlanNode {
 		class = source.StreamSpillable
 		detail = fmt.Sprintf("strategy=external-sort-restore outputs=%d", len(s.expressions))
 	}
+	if windowsNeedPercentRank(s.expressions) {
+		if s.mode == WindowExecutionOrdered {
+			class = source.StreamSpillable
+			detail = fmt.Sprintf("strategy=ordered-partition-spool-replay outputs=%d", len(s.expressions))
+		} else if s.mode == WindowExecutionExternalSort {
+			detail += "; partition-spool-replay"
+		}
+	}
 	return source.StreamPlanNode{
 		Operator: "Window",
 		Class:    class,
@@ -141,6 +164,14 @@ func NewWindowSource(input source.Source, partitionBy []string, orderBy []SortKe
 // NewWindowSourceWithOptions validates an analytic window source and selects
 // its resident, already-ordered, or external-sort implementation.
 func NewWindowSourceWithOptions(input source.Source, partitionBy []string, orderBy []SortKey, expressions []WindowExpression, outputFields []memory.Field, manager memory.Manager, options WindowSourceOptions) (source.Source, error) {
+	return newWindowSourceConfigured(input, partitionBy, orderBy, expressions, nil, outputFields, manager, options)
+}
+
+func newWindowSourceConfigured(input source.Source, partitionBy []string, orderBy []SortKey, expressions []WindowExpression, buckets []int64, outputFields []memory.Field, manager memory.Manager, options WindowSourceOptions) (source.Source, error) {
+	if len(buckets) != 0 && len(buckets) != len(expressions) {
+		return nil, fmt.Errorf("unaligned window configuration")
+	}
+
 	if input != nil {
 		if err := rejectNativeDecimalExecution(input.Schema()); err != nil {
 			return nil, err
@@ -160,7 +191,30 @@ func NewWindowSourceWithOptions(input source.Source, partitionBy []string, order
 		return nil, fmt.Errorf("window expressions and output fields must be non-empty and aligned")
 	}
 	inputSchema := input.Schema()
+	if windowsNeedPercentRank(expressions) || windowsHaveMoments(expressions) {
+		if err := validatePercentRankPayload(inputSchema); err != nil {
+			return nil, err
+		}
+	}
 	for index, expression := range expressions {
+		if isMomentWindow(expression.Function) {
+			if err := validateVarianceWindow(inputSchema, expression, outputFields[index]); err != nil {
+				return nil, err
+			}
+		}
+
+		if expression.Function == WindowNTile {
+			if len(buckets) != len(expressions) || buckets[index] <= 0 || expression.Column != "" || expression.Frame != (WindowFrame{}) || outputFields[index].Name != expression.Alias || outputFields[index].Type != memory.TypeInt64 || outputFields[index].Nullable || !canonicalNTileField(outputFields[index]) {
+				return nil, fmt.Errorf("NTILE requires configured positive buckets, zero frame and matching non-null Int64 output")
+			}
+		} else if len(buckets) > 0 && buckets[index] != 0 {
+			return nil, fmt.Errorf("buckets are only valid for NTILE")
+		}
+		if expression.Function == WindowPercentRank || expression.Function == WindowCumeDist {
+			if expression.Column != "" || outputFields[index].Name != expression.Alias || outputFields[index].Type != memory.TypeFloat64 || outputFields[index].Nullable {
+				return nil, fmt.Errorf("percent rank requires no input column and matching non-null Float64 output")
+			}
+		}
 		if expression.Function == WindowCountRows || expression.Function == WindowCountValues {
 			if err := validateCountWindow(inputSchema, expression, outputFields[index]); err != nil {
 				return nil, err
@@ -207,6 +261,7 @@ func NewWindowSourceWithOptions(input source.Source, partitionBy []string, order
 		partitionBy:  append([]string(nil), partitionBy...),
 		orderBy:      append([]SortKey(nil), orderBy...),
 		expressions:  append([]WindowExpression(nil), expressions...),
+		buckets:      append([]int64(nil), buckets...),
 		outputFields: append([]memory.Field(nil), outputFields...),
 		output:       output,
 		manager:      manager,
@@ -450,6 +505,49 @@ func sameRowsByKeys(batch *memory.Batch, schema memory.Schema, keys []SortKey, l
 
 func evaluateWindowExpression(ctx context.Context, input *memory.Batch, schema memory.Schema, output *memory.Batch, rows []int, order []SortKey, window WindowExpression) error {
 	switch window.Function {
+	case WindowVarPop, WindowVarSamp, WindowStdDevPop, WindowStdDevSamp:
+		return fmt.Errorf("variance requires admitted moment state")
+	case WindowCumeDist:
+		values := windowF64Values(output, window.Alias, input.Rows)
+		for start := 0; start < len(rows); {
+			if err := ctx.Err(); err != nil {
+				return err
+			}
+			end := start + 1
+			for end < len(rows) && sameRowsByKeys(input, schema, order, rows[start], rows[end]) {
+				if err := everyWindowRows(ctx, end); err != nil {
+					return err
+				}
+				end++
+			}
+			value := float64(end) / float64(len(rows))
+			for i := start; i < end; i++ {
+				if err := everyWindowRows(ctx, i); err != nil {
+					return err
+				}
+				values[rows[i]] = value
+			}
+			start = end
+		}
+		output.Float64s[window.Alias] = &memory.Float64Vector{Values: values}
+		return nil
+	case WindowPercentRank:
+		values := windowF64Values(output, window.Alias, input.Rows)
+		rank := int64(1)
+		for i, row := range rows {
+			if err := everyWindowRows(ctx, i); err != nil {
+				return err
+			}
+			if i == 0 || !sameRowsByKeys(input, schema, order, rows[i-1], row) {
+				rank = int64(i) + 1
+			}
+			values[row] = 0
+			if len(rows) > 1 {
+				values[row] = float64(rank-1) / float64(len(rows)-1)
+			}
+		}
+		output.Float64s[window.Alias] = &memory.Float64Vector{Values: values}
+		return nil
 	case WindowForwardFill, WindowBackwardFill:
 		return evaluateFillWindow(ctx, input, schema, output, rows, window)
 	case WindowShift, WindowDiff:
@@ -974,4 +1072,20 @@ func windowNumericFloat(batch *memory.Batch, schema memory.Schema, column string
 		return float64(v), ok, err
 	}
 	return windowFloat64(batch, schema, column, row)
+}
+
+func windowsNeedPercentRank(expressions []WindowExpression) bool {
+	for _, e := range expressions {
+		if e.Function == WindowPercentRank || e.Function == WindowCumeDist || e.Function == WindowNTile {
+			return true
+		}
+	}
+	return false
+}
+
+func windowF64Values(batch *memory.Batch, name string, rows int) []float64 {
+	if existing, ok := batch.Float64s[name]; ok && len(existing.Values) == rows {
+		return existing.Values
+	}
+	return make([]float64, rows)
 }

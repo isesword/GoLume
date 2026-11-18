@@ -234,6 +234,76 @@ func (b *expressionBinder) bindNode(e Expr) (*BoundExpr, error) {
 		}
 		bound.Field = computedField(n.Target, true)
 		bound.Expr = TryCastExpr{Value: bound.Children[0].Expr, Target: n.Target}
+	case YMDDateExpr:
+		if err := bindChildren(n.Year, n.Month, n.Day); err != nil {
+			return nil, err
+		}
+		if err := bindYMDDate(bound, n); err != nil {
+			return nil, err
+		}
+		n.Year, n.Month, n.Day = bound.Children[0].Expr, bound.Children[1].Expr, bound.Children[2].Expr
+		bound.Expr = n
+	case ISOWeekDateExpr:
+		if err := bindChildren(n.Year, n.Week, n.Weekday); err != nil {
+			return nil, err
+		}
+		if err := bindISOWeekDate(bound, n); err != nil {
+			return nil, err
+		}
+		n.Year, n.Week, n.Weekday = bound.Children[0].Expr, bound.Children[1].Expr, bound.Children[2].Expr
+		bound.Expr = n
+	case CivilComposeExpr:
+		if err := bindChildren(n.Date, n.Clock); err != nil {
+			return nil, err
+		}
+		if err := bindCivilCompose(bound, n); err != nil {
+			return nil, err
+		}
+		n.Date, n.Clock = bound.Children[0].Expr, bound.Children[1].Expr
+		bound.Expr = n
+	case CivilFormatExpr:
+		if err := bindChildren(n.Value); err != nil {
+			return nil, err
+		}
+		if err := bindCivilFormat(bound, n); err != nil {
+			return nil, err
+		}
+		n.Value = bound.Children[0].Expr
+		bound.Expr = n
+	case DateAtMidnightExpr:
+		if err := bindChildren(n.Value); err != nil {
+			return nil, err
+		}
+		if err := bindDateAtMidnight(bound, n); err != nil {
+			return nil, err
+		}
+		n.Value = bound.Children[0].Expr
+		bound.Expr = n
+	case CivilTimestampExpr:
+		if err := bindChildren(n.Value); err != nil {
+			return nil, err
+		}
+		if err := bindCivilTimestamp(bound, n); err != nil {
+			return nil, err
+		}
+		n.Value = bound.Children[0].Expr
+		bound.Expr = n
+	case DateInZoneExpr:
+		if err := bindChildren(n.Value); err != nil {
+			return nil, err
+		}
+		if err := bindDateInZone(bound, n); err != nil {
+			return nil, err
+		}
+		bound.Expr = DateInZoneExpr{Value: bound.Children[0].Expr, zone: n.zone}
+	case ZonedExtractExpr:
+		if err := bindChildren(n.Value); err != nil {
+			return nil, err
+		}
+		if err := bindZonedExtract(bound, n); err != nil {
+			return nil, err
+		}
+		bound.Expr = ZonedExtractExpr{Value: bound.Children[0].Expr, zone: n.zone, part: n.part}
 	case JSONDecodeExpr:
 		if err := bindChildren(n.Value); err != nil {
 			return nil, err

@@ -328,6 +328,20 @@ func InferSchema(plan Plan) (memory.Schema, error) {
 		}
 		return memory.NewSchema(fields...), nil
 
+	case *ConfiguredWindow:
+		if n == nil {
+			return memory.Schema{}, fmt.Errorf("configured window is nil")
+		}
+		expressions := n.WindowExpressions()
+		for i, e := range n.Exprs {
+			if err := ValidateWindowConfiguration(e); err != nil {
+				return memory.Schema{}, err
+			}
+			if expressions[i].Function == WindowNTile {
+				expressions[i].Function = WindowRowNumber
+			}
+		}
+		return InferSchema(&Window{Input: n.Input, Spec: n.Spec, Exprs: expressions})
 	case *Window:
 		if n == nil || n.Input == nil || len(n.Exprs) == 0 {
 			return memory.Schema{}, fmt.Errorf("logical window requires input and expressions")
@@ -401,6 +415,12 @@ func InferSchema(plan Plan) (memory.Schema, error) {
 func inferWindowField(schema memory.Schema, window WindowExpr) (memory.Field, error) {
 	field := memory.Field{Name: window.Alias, Encoding: memory.EncodingPlain}
 	switch window.Function {
+	case WindowPercentRank, WindowCumeDist:
+		if window.Column != "" {
+			return memory.Field{}, fmt.Errorf("window %q does not accept an input column", window.Alias)
+		}
+		field.Type = memory.TypeFloat64
+		return field, nil
 	case WindowForwardFill, WindowBackwardFill:
 		return inferFillWindowField(schema, window)
 	case WindowShift, WindowDiff:
@@ -428,7 +448,7 @@ func inferWindowField(schema memory.Schema, window WindowExpr) (memory.Field, er
 		}
 		field.Type = memory.TypeInt64
 		return field, nil
-	case WindowSum, WindowMin, WindowMax, WindowAvg:
+	case WindowSum, WindowMin, WindowMax, WindowAvg, WindowVarPop, WindowVarSamp, WindowStdDevPop, WindowStdDevSamp:
 		if window.Column == "" {
 			return memory.Field{}, fmt.Errorf("window aggregate %q requires an input column", window.Alias)
 		}
@@ -442,6 +462,22 @@ func inferWindowField(schema memory.Schema, window WindowExpr) (memory.Field, er
 		if err := validateWindowFrame(window.Frame); err != nil {
 			return memory.Field{}, fmt.Errorf("window aggregate %q: %w", window.Alias, err)
 		}
+		if window.Function == WindowVarPop || window.Function == WindowVarSamp || window.Function == WindowStdDevPop || window.Function == WindowStdDevSamp {
+			finite := func(b RowBound) bool { return b.Kind == RowPreceding || b.Kind == RowCurrent || b.Kind == RowFollowing }
+			if !(finite(window.Frame.Start) && finite(window.Frame.End)) && !(window.Frame.Start.Kind == RowUnboundedPreceding && window.Frame.End.Kind == RowCurrent) {
+				return memory.Field{}, fmt.Errorf("variance requires finite ROWS or UNBOUNDED PRECEDING through CURRENT ROW")
+			}
+			if finite(window.Frame.Start) && finite(window.Frame.End) {
+				start, _ := windowBoundOrder(window.Frame.Start)
+				end, _ := windowBoundOrder(window.Frame.End)
+				if start < 0 && end > math.MaxInt64+start-1 {
+					return memory.Field{}, fmt.Errorf("variance frame width overflows int64")
+				}
+				if end-start >= int64(int(^uint(0)>>1)) {
+					return memory.Field{}, fmt.Errorf("variance frame exceeds platform capacity")
+				}
+			}
+		}
 		field.Nullable = true
 		switch window.Function {
 		case WindowSum:
@@ -453,7 +489,7 @@ func inferWindowField(schema memory.Schema, window WindowExpr) (memory.Field, er
 			default:
 				field.Type = memory.TypeFloat64
 			}
-		case WindowAvg:
+		case WindowAvg, WindowVarPop, WindowVarSamp, WindowStdDevPop, WindowStdDevSamp:
 			field.Type = memory.TypeFloat64
 		default:
 			field.Type = input.Type

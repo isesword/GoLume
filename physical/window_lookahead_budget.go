@@ -17,11 +17,20 @@ import (
 // complete admission is held until the retained clone is discarded; it is not a
 // claim of exact live bytes. Metadata traversal allocates no tracking structures.
 func futureCloneAdmissionBytes(batch *memory.Batch) (int64, error) {
+	if batch == nil {
+		return 0, fmt.Errorf("window lookahead clone has nil batch")
+	}
+	return futureCloneRangeAdmissionBytes(batch, 0, batch.Rows)
+}
+
+// Range admission retains whole-batch descriptor accounting and complete
+// dictionary backing per page, matching CloneBatchRange's ownership behavior.
+func futureCloneRangeAdmissionBytes(batch *memory.Batch, start, count int) (int64, error) {
 	metadata, err := futureCloneMetadata(batch, 0)
 	if err != nil {
 		return 0, err
 	}
-	payload, err := memory.EstimateBatchRangeBytes(batch, 0, batch.Rows)
+	payload, err := memory.EstimateBatchRangeBytes(batch, start, count)
 	if err != nil {
 		return 0, err
 	}
@@ -172,6 +181,13 @@ func futurePreparationAdmissionBytes(owner *WindowSource, input source.Source) (
 		if err != nil {
 			return 0, err
 		}
+	}
+	// Replanning the non-moved exact outputs owns a pointer table, descriptors,
+	// index slices and a temporary grouping map. One KiB per original slot
+	// covers those allocations and growth overlap on 32/64-bit targets.
+	total, err = futureBudgetAdd(total, int64(len(owner.exactPlans)), 1024)
+	if err != nil {
+		return 0, err
 	}
 	nested, err := futureSchemaMetadata(input.Schema().Fields, 0)
 	if err != nil {

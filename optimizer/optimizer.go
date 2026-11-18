@@ -67,6 +67,8 @@ func mergeFilters(plan logical.Plan, rules *[]string) logical.Plan {
 		return cloneConfiguredAggregate(n, mergeFilters(n.Input, rules))
 	case *logical.Aggregate:
 		return &logical.Aggregate{Input: mergeFilters(n.Input, rules), GroupBy: append([]string(nil), n.GroupBy...), Aggregates: append([]expr.Aggregate(nil), n.Aggregates...), Hints: n.Hints}
+	case *logical.ConfiguredWindow:
+		return cloneConfiguredWindow(n, mergeFilters(n.Input, rules), n.Exprs)
 	case *logical.Window:
 		return cloneWindow(n, mergeFilters(n.Input, rules))
 	case *logical.Scan:
@@ -101,6 +103,8 @@ func mergeProjections(plan logical.Plan, rules *[]string) logical.Plan {
 		return cloneConfiguredAggregate(n, mergeProjections(n.Input, rules))
 	case *logical.Aggregate:
 		return &logical.Aggregate{Input: mergeProjections(n.Input, rules), GroupBy: append([]string(nil), n.GroupBy...), Aggregates: append([]expr.Aggregate(nil), n.Aggregates...), Hints: n.Hints}
+	case *logical.ConfiguredWindow:
+		return cloneConfiguredWindow(n, mergeProjections(n.Input, rules), n.Exprs)
 	case *logical.Window:
 		return cloneWindow(n, mergeProjections(n.Input, rules))
 	case *logical.Scan:
@@ -147,6 +151,8 @@ func mergeLimits(plan logical.Plan, rules *[]string) logical.Plan {
 		return cloneConfiguredAggregate(n, mergeLimits(n.Input, rules))
 	case *logical.Aggregate:
 		return &logical.Aggregate{Input: mergeLimits(n.Input, rules), GroupBy: append([]string(nil), n.GroupBy...), Aggregates: append([]expr.Aggregate(nil), n.Aggregates...), Hints: n.Hints}
+	case *logical.ConfiguredWindow:
+		return cloneConfiguredWindow(n, mergeLimits(n.Input, rules), n.Exprs)
 	case *logical.Window:
 		return cloneWindow(n, mergeLimits(n.Input, rules))
 	case *logical.Scan:
@@ -228,6 +234,18 @@ func pushPredicates(plan logical.Plan, inherited expr.Expr, rules *[]string, all
 		// pushed through the aggregation boundary. Predicates already inside the
 		// aggregate subtree are optimized independently.
 		return &logical.Aggregate{Input: pushPredicates(n.Input, nil, rules, allowJoinPushdown), GroupBy: append([]string(nil), n.GroupBy...), Aggregates: append([]expr.Aggregate(nil), n.Aggregates...), Hints: n.Hints}
+	case *logical.ConfiguredWindow:
+		// Window order keys are scalar expressions materialized before the
+		// window, just like Sort/TopK keys. Preserve their batch error domain.
+		if sortKeysMayError(n.Input, n.Spec.By) {
+			allowJoinPushdown = false
+		}
+		// A filter above a window changes the rows contributing to rank and
+		// rolling frames, even when it mentions only inherited input columns.
+		// Keep inherited predicates above this strict semantic boundary while
+		// still optimizing predicates already present in the child subtree.
+		return cloneConfiguredWindow(n, pushPredicates(n.Input, nil, rules, allowJoinPushdown), n.Exprs)
+
 	case *logical.Window:
 		// Window order keys are scalar expressions materialized before the
 		// window, just like Sort/TopK keys. Preserve their batch error domain.
@@ -287,6 +305,68 @@ func sortKeysMayError(input logical.Plan, keys []logical.SortKey) bool {
 // back into their original position.
 func pushProjection(plan logical.Plan, required map[string]struct{}, rules *[]string) (logical.Plan, error) {
 	switch n := plan.(type) {
+	case *logical.ConfiguredWindow:
+		inSchema, err := logical.InferSchema(n.Input)
+		if err != nil {
+			return nil, err
+		}
+		wanted := required
+		if wanted == nil {
+			wanted = allColumns(n)
+		}
+		produced := make(map[string]logical.ConfiguredWindowExpr, len(n.Exprs))
+		kept := make([]logical.ConfiguredWindowExpr, 0, len(n.Exprs))
+		for _, window := range n.Exprs {
+			produced[window.Expr.Alias] = window
+			if _, ok := wanted[window.Expr.Alias]; ok {
+				kept = append(kept, window)
+			}
+		}
+		childRequired := make(map[string]struct{})
+		for name := range wanted {
+			if _, computed := produced[name]; computed {
+				continue
+			}
+			if _, ok := inSchema.Field(name); ok {
+				childRequired[name] = struct{}{}
+			}
+		}
+		if len(kept) == 0 {
+			child, err := pushProjection(n.Input, childRequired, rules)
+			if err != nil {
+				return nil, err
+			}
+			*rules = append(*rules, "window-elimination")
+			return child, nil
+		}
+		for _, name := range n.Spec.PartitionBy {
+			childRequired[name] = struct{}{}
+		}
+		for i, key := range n.Spec.By {
+			value, err := key.Expression()
+			if err != nil {
+				return nil, fmt.Errorf("window order key %d: %w", i, err)
+			}
+			for _, name := range expr.Columns(value) {
+				childRequired[name] = struct{}{}
+			}
+		}
+		for _, window := range kept {
+			if window.Expr.Column != "" {
+				childRequired[window.Expr.Column] = struct{}{}
+			}
+		}
+		child, err := pushProjection(n.Input, childRequired, rules)
+		if err != nil {
+			return nil, err
+		}
+		if len(kept) != len(n.Exprs) {
+			*rules = append(*rules, "window-expression-pruning")
+		}
+		// A kept expression whose alias overwrites an input column replaces it
+		// in place; restore the original position when pruning removed the
+		// overwritten column from the child.
+		return restoreReplacementOrder(cloneConfiguredWindow(n, child, kept), inSchema, "window-reorder", rules)
 	case *logical.Window:
 		inSchema, err := logical.InferSchema(n.Input)
 		if err != nil {
@@ -740,6 +820,8 @@ func removeNoopProjections(plan logical.Plan, rules *[]string) logical.Plan {
 		return cloneConfiguredAggregate(n, removeNoopProjections(n.Input, rules))
 	case *logical.Aggregate:
 		return &logical.Aggregate{Input: removeNoopProjections(n.Input, rules), GroupBy: append([]string(nil), n.GroupBy...), Aggregates: append([]expr.Aggregate(nil), n.Aggregates...), Hints: n.Hints}
+	case *logical.ConfiguredWindow:
+		return cloneConfiguredWindow(n, removeNoopProjections(n.Input, rules), n.Exprs)
 	case *logical.Window:
 		return cloneWindow(n, removeNoopProjections(n.Input, rules))
 	case *logical.Scan:
@@ -853,4 +935,8 @@ func uniqueStrings(in []string) []string {
 
 func cloneConfiguredAggregate(n *logical.ConfiguredAggregate, input logical.Plan) *logical.ConfiguredAggregate {
 	return &logical.ConfiguredAggregate{Input: input, GroupBy: append([]string(nil), n.GroupBy...), Aggregates: append([]expr.AggregateSpec(nil), n.Aggregates...), Hints: n.Hints}
+}
+
+func cloneConfiguredWindow(n *logical.ConfiguredWindow, input logical.Plan, expressions []logical.ConfiguredWindowExpr) *logical.ConfiguredWindow {
+	return &logical.ConfiguredWindow{Input: input, Spec: logical.WindowSpec{PartitionBy: append([]string(nil), n.Spec.PartitionBy...), By: cloneSortKeys(n.Spec.By)}, Exprs: append([]logical.ConfiguredWindowExpr(nil), expressions...)}
 }

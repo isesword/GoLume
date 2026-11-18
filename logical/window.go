@@ -38,6 +38,20 @@ const (
 	WindowForwardFill
 	// WindowBackwardFill replaces NULL with the following non-NULL value.
 	WindowBackwardFill
+	// WindowPercentRank returns the peer-aware fractional rank within a partition.
+	WindowPercentRank
+	// WindowCumeDist returns the inclusive peer-end fraction of its partition.
+	WindowCumeDist
+	// WindowNTile divides partition rows into nearly equal numbered buckets.
+	WindowNTile
+	// WindowVarPop computes population variance over non-NULL frame values.
+	WindowVarPop
+	// WindowVarSamp computes sample variance over non-NULL frame values.
+	WindowVarSamp
+	// WindowStdDevPop computes population standard deviation over non-NULL frame values.
+	WindowStdDevPop
+	// WindowStdDevSamp computes sample standard deviation over non-NULL frame values.
+	WindowStdDevSamp
 )
 
 // RowBoundKind identifies one side of a ROWS frame.

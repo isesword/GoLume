@@ -32,10 +32,11 @@ retained accumulator or subsequent frames when the large values leave.
   spill/restore boundaries and input permutation within a frame do not change
   a finite result. Frame membership still follows the existing ordering rules.
 
-The accepted frame shapes have not expanded. Resident execution supports its
-existing ROWS frames. Ordered/external Sum/Avg still require CURRENT ROW as the
-end, with UNBOUNDED PRECEDING, finite PRECEDING or CURRENT ROW as the start.
-Finite following-frame support for Count/Min/Max is separate.
+Resident execution retains its existing ROWS frames. Ordered/external Sum/Avg
+also accept all finite PRECEDING/CURRENT/FOLLOWING endpoint pairs with start
+not after end. Existing UNBOUNDED PRECEDING-to-CURRENT support is unchanged;
+unbounded-to-following and UNBOUNDED FOLLOWING remain outside the bounded
+contract. See WINDOW_FINITE_SUM_AVG.md for admission and state ownership.
 
 ## Algorithm and resource bounds
 
@@ -50,7 +51,7 @@ conversion extracts the leading numerator bits, divides at most 116 bits by
 the integer count, and uses the untouched lower words in the half-ulp decision.
 There is no intermediate floating sum, rounded divisor or double rounding.
 
-Each unique ordered exact input/frame admits 320 additional bytes before
+For the existing trailing ordered path, each unique exact input/frame admits 320 additional bytes before
 allocating its fixed accumulator. Outputs with the same original column, type
 and normalized frame share that accumulator and value ring. Sum and Avg still
 round independently; an already-rounded Sum is never used to compute Avg. The accumulator never grows with row count,

@@ -68,6 +68,11 @@ const (
 	OpBitXor
 	OpBitNot
 	OpListLength
+	OpISOWeekYear
+	OpISOWeek
+	OpISOWeekday
+	OpUTCOffset
+	OpTimeOfDay
 )
 
 // Expr is a logical scalar expression node.
@@ -413,6 +418,16 @@ func (o Op) String() string {
 		return "LIST_LENGTH"
 	case OpLength:
 		return "LENGTH"
+	case OpISOWeekYear:
+		return "ISO_WEEK_YEAR"
+	case OpISOWeek:
+		return "ISO_WEEK"
+	case OpISOWeekday:
+		return "ISO_WEEKDAY"
+	case OpTimeOfDay:
+		return "TIME_OF_DAY"
+	case OpUTCOffset:
+		return "UTC_OFFSET"
 	case OpYear:
 		return "YEAR"
 	case OpMonth:

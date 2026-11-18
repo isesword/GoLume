@@ -48,7 +48,8 @@ lookahead errors close that stage immediately.
 
 ## Scope and checks
 
-This extension does not change Sum/Avg arithmetic or add their frame support.
+Sum/Avg finite frame support is specified separately in WINDOW_FINITE_SUM_AVG.md;
+it uses the existing exact accumulation contract, not the extrema deque.
 It does not add UNBOUNDED FOLLOWING or UNBOUNDED PRECEDING-to-FOLLOWING support.
 Existing unbounded-preceding-to-current aggregates are unchanged.
 

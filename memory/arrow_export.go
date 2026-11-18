@@ -127,6 +127,9 @@ func ArrowRecordRange(allocator arrowmem.Allocator, schema Schema, batch *Batch,
 		return nil, err
 	}
 	for _, field := range schema.Fields {
+		if err := validateArrowBinaryDictionary(batch, field, batch.Rows); err != nil {
+			return nil, fmt.Errorf("arrow field %q: %w", field.Name, err)
+		}
 		if err := validateArrowInt64ListStorage(batch, field, batch.Rows); err != nil {
 			return nil, fmt.Errorf("arrow field %q: %w", field.Name, err)
 		}
@@ -213,7 +216,11 @@ func appendArrowValue(builder array.Builder, batch *Batch, field Field, row int)
 		}
 		builder.(*array.StringBuilder).Append(string(value))
 	case TypeBinary:
-		builder.(*array.BinaryBuilder).Append(batch.Strings[field.Name].ValueBytes(row))
+		value, err := batchStringBytes(batch, field, row)
+		if err != nil {
+			return err
+		}
+		builder.(*array.BinaryBuilder).Append(value)
 	case TypeList:
 		if field.Children[0].Type == TypeInt64 {
 			list := batch.Int64Lists[field.Name]
@@ -347,11 +354,22 @@ func batchValueValid(batch *Batch, field Field, row int) (bool, error) {
 		}
 		return false, fmt.Errorf("string vector is missing")
 	case TypeBinary:
-		value, ok := batch.Strings[field.Name]
-		if !ok {
-			return false, fmt.Errorf("binary vector is missing")
+		if value := batch.Strings[field.Name]; value != nil {
+			return value.IsValid(row), nil
 		}
-		return value.IsValid(row), nil
+		if value := batch.DictStrings[field.Name]; value != nil {
+			if row < 0 || row >= len(value.Indices) || (value.Validity != nil && row/64 >= len(value.Validity)) {
+				return false, fmt.Errorf("binary dictionary row out of bounds")
+			}
+			if value.IsValid(row) {
+				code := uint64(value.Indices[row])
+				if code+1 >= uint64(len(value.Offsets)) || value.Offsets[code] > value.Offsets[code+1] || uint64(value.Offsets[code+1]) > uint64(len(value.Data)) {
+					return false, fmt.Errorf("binary dictionary code or offsets out of bounds")
+				}
+			}
+			return value.IsValid(row), nil
+		}
+		return false, fmt.Errorf("binary vector is missing")
 	case TypeList:
 		if field.Children[0].Type == TypeInt64 {
 			value, ok := batch.Int64Lists[field.Name]
@@ -397,6 +415,38 @@ func validateArrowInt64ListStorage(batch *Batch, field Field, rows int) error {
 			if child.Type == TypeList && child.Children[0].Type == TypeInt64 {
 				return batch.Structs[field.Name].Validate(field, rows)
 			}
+		}
+	}
+	return nil
+}
+
+// validateArrowBinaryDictionary validates the complete backing storage even for
+// empty or partial exports. NULL row codes are unobserved and need not be valid.
+func validateArrowBinaryDictionary(batch *Batch, field Field, rows int) error {
+	if field.Type != TypeBinary || batch.Strings[field.Name] != nil {
+		return nil
+	}
+	v := batch.DictStrings[field.Name]
+	if v == nil {
+		return nil
+	}
+	if err := v.Validate(rows); err != nil {
+		return err
+	}
+	if v.Validity != nil && len(v.Validity) < WordsFor(rows) {
+		return fmt.Errorf("binary dictionary validity is short")
+	}
+	if len(v.Offsets) == 0 {
+		return fmt.Errorf("binary dictionary offsets are empty")
+	}
+	for i, offset := range v.Offsets {
+		if uint64(offset) > uint64(len(v.Data)) || (i > 0 && offset < v.Offsets[i-1]) {
+			return fmt.Errorf("binary dictionary offset %d is invalid", i)
+		}
+	}
+	for row, code := range v.Indices {
+		if v.IsValid(row) && uint64(code)+1 >= uint64(len(v.Offsets)) {
+			return fmt.Errorf("binary dictionary code at row %d is invalid", row)
 		}
 	}
 	return nil

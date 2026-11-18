@@ -12,7 +12,14 @@ import (
 // and Arrow slice headers allocate range storage. ClearColumns releases any
 // retained Arrow slices, never source-owned bindings.
 func BorrowBatchRange(src *Batch, offset, length int) (*Batch, error) {
-	if _, err := BorrowedRangeMetadataBytes(src, offset, length); err != nil {
+	return BorrowBatchRangeWithCheck(src, offset, length, nil)
+}
+
+// BorrowBatchRangeWithCheck checks cancellation before validation, at column and
+// struct boundaries, and before returning. Payload copies within one vector are
+// not interrupted. A failed check clears every acquired borrowed header/Arrow slice.
+func BorrowBatchRangeWithCheck(src *Batch, offset, length int, check func() error) (*Batch, error) {
+	if _, err := BorrowedRangeMetadataBytesWithCheck(src, offset, length, check); err != nil {
 		return nil, err
 	}
 	dst := NewBatch()
@@ -20,60 +27,145 @@ func BorrowBatchRange(src *Batch, offset, length int) (*Batch, error) {
 	end := offset + length
 	fail := func(err error) (*Batch, error) { dst.ClearColumns(); return nil, err }
 	for name, v := range src.Int8s {
+		if check != nil {
+			if err := check(); err != nil {
+				return fail(err)
+			}
+		}
 		dst.Int8s[name] = &Int8Vector{Values: v.Values[offset:end], Validity: borrowValidityRange(v.Validity, offset, length), Encoding: v.Encoding}
 	}
 	for name, v := range src.Int16s {
+		if check != nil {
+			if err := check(); err != nil {
+				return fail(err)
+			}
+		}
 		dst.Int16s[name] = &Int16Vector{Values: v.Values[offset:end], Validity: borrowValidityRange(v.Validity, offset, length), Encoding: v.Encoding}
 	}
 	for name, v := range src.Int32s {
+		if check != nil {
+			if err := check(); err != nil {
+				return fail(err)
+			}
+		}
 		dst.Int32s[name] = &Int32Vector{Values: v.Values[offset:end], Validity: borrowValidityRange(v.Validity, offset, length), Encoding: v.Encoding}
 	}
 	for name, v := range src.Int64s {
+		if check != nil {
+			if err := check(); err != nil {
+				return fail(err)
+			}
+		}
 		dst.Int64s[name] = &Int64Vector{Values: v.Values[offset:end], Validity: borrowValidityRange(v.Validity, offset, length), Encoding: v.Encoding}
 	}
 	for name, v := range src.Uint8s {
+		if check != nil {
+			if err := check(); err != nil {
+				return fail(err)
+			}
+		}
 		dst.Uint8s[name] = &Uint8Vector{Values: v.Values[offset:end], Validity: borrowValidityRange(v.Validity, offset, length), Encoding: v.Encoding}
 	}
 	for name, v := range src.Uint16s {
+		if check != nil {
+			if err := check(); err != nil {
+				return fail(err)
+			}
+		}
 		dst.Uint16s[name] = &Uint16Vector{Values: v.Values[offset:end], Validity: borrowValidityRange(v.Validity, offset, length), Encoding: v.Encoding}
 	}
 	for name, v := range src.Uint32s {
+		if check != nil {
+			if err := check(); err != nil {
+				return fail(err)
+			}
+		}
 		dst.Uint32s[name] = &Uint32Vector{Values: v.Values[offset:end], Validity: borrowValidityRange(v.Validity, offset, length), Encoding: v.Encoding}
 	}
 	for name, v := range src.Uint64s {
+		if check != nil {
+			if err := check(); err != nil {
+				return fail(err)
+			}
+		}
 		dst.Uint64s[name] = &Uint64Vector{Values: v.Values[offset:end], Validity: borrowValidityRange(v.Validity, offset, length), Encoding: v.Encoding}
 	}
 	for name, v := range src.Float32s {
+		if check != nil {
+			if err := check(); err != nil {
+				return fail(err)
+			}
+		}
 		dst.Float32s[name] = &Float32Vector{Values: v.Values[offset:end], Validity: borrowValidityRange(v.Validity, offset, length), Encoding: v.Encoding}
 	}
 	for name, v := range src.Decimals {
+		if check != nil {
+			if err := check(); err != nil {
+				return fail(err)
+			}
+		}
 		dst.Decimals[name] = &Decimal128Vector{Values: v.Values[offset:end], Validity: borrowValidityRange(v.Validity, offset, length), Precision: v.Precision, Scale: v.Scale}
 	}
 	for name, v := range src.Float64s {
+		if check != nil {
+			if err := check(); err != nil {
+				return fail(err)
+			}
+		}
 		dst.Float64s[name] = &Float64Vector{Values: v.Values[offset:end], Validity: borrowValidityRange(v.Validity, offset, length), Encoding: v.Encoding}
 	}
 	for name, v := range src.Strings {
+		if check != nil {
+			if err := check(); err != nil {
+				return fail(err)
+			}
+		}
 		dst.Strings[name] = borrowStringRange(v, offset, length)
 	}
 	for name, v := range src.DictStrings {
+		if check != nil {
+			if err := check(); err != nil {
+				return fail(err)
+			}
+		}
 		dst.DictStrings[name] = &DictionaryStringVector{Indices: v.Indices[offset:end], Offsets: v.Offsets, Data: v.Data, Validity: borrowValidityRange(v.Validity, offset, length), DictionaryDomain: v.DictionaryDomain, Encoding: v.Encoding}
 	}
 	for name, v := range src.StringLists {
+		if check != nil {
+			if err := check(); err != nil {
+				return fail(err)
+			}
+		}
 		lo, hi := v.Offsets[offset], v.Offsets[end]
 		dst.StringLists[name] = &StringListVector{Offsets: borrowOffsets(v.Offsets, offset, length), Values: borrowStringRange(v.Values, int(lo), int(hi-lo)), Validity: borrowValidityRange(v.Validity, offset, length), Encoding: v.Encoding}
 	}
 	for name, v := range src.Int64Lists {
+		if check != nil {
+			if err := check(); err != nil {
+				return fail(err)
+			}
+		}
 		lo, hi := v.Offsets[offset], v.Offsets[end]
 		dst.Int64Lists[name] = &Int64ListVector{Offsets: borrowOffsets(v.Offsets, offset, length), Validity: borrowValidityRange(v.Validity, offset, length), Encoding: v.Encoding, Values: &Int64Vector{Values: v.Values.Values[lo:hi], Validity: borrowValidityRange(v.Values.Validity, int(lo), int(hi-lo)), Encoding: v.Values.Encoding}}
 	}
 	for name, v := range src.Structs {
-		children, err := BorrowBatchRange(v.Values, offset, length)
+		if check != nil {
+			if err := check(); err != nil {
+				return fail(err)
+			}
+		}
+		children, err := BorrowBatchRangeWithCheck(v.Values, offset, length, check)
 		if err != nil {
 			return fail(err)
 		}
 		dst.Structs[name] = &StructVector{Rows: length, Fields: v.Fields, Values: children, Validity: borrowValidityRange(v.Validity, offset, length), Encoding: v.Encoding}
 	}
 	for name, v := range src.Opaque {
+		if check != nil {
+			if err := check(); err != nil {
+				return fail(err)
+			}
+		}
 		view := &OpaqueVector{Rows: length, Type: v.Type, ArrowType: v.ArrowType, Encoding: v.Encoding, Validity: borrowValidityRange(v.Validity, offset, length), Value: v.Value}
 		if offset != 0 || length != src.Rows {
 			a, ok := v.Value.(arrow.Array)
@@ -85,6 +177,11 @@ func BorrowBatchRange(src *Batch, offset, length int) (*Batch, error) {
 		}
 		dst.Opaque[name] = view
 	}
+	if check != nil {
+		if err := check(); err != nil {
+			return fail(err)
+		}
+	}
 	return dst, nil
 }
 
@@ -92,6 +189,18 @@ func BorrowBatchRange(src *Batch, offset, length int) (*Batch, error) {
 // Column payloads remain charged to their source owner. Map/vector/Arrow
 // headers follow the same accounting convention as BatchBytes.
 func BorrowedRangeMetadataBytes(src *Batch, offset, length int) (int64, error) {
+	return BorrowedRangeMetadataBytesWithCheck(src, offset, length, nil)
+}
+
+// BorrowedRangeMetadataBytesWithCheck applies cancellation checks before and
+// after typed validation, at column and struct boundaries, and before return.
+// Its admitted payload and metadata amounts match BorrowedRangeMetadataBytes.
+func BorrowedRangeMetadataBytesWithCheck(src *Batch, offset, length int, check func() error) (int64, error) {
+	if check != nil {
+		if err := check(); err != nil {
+			return 0, err
+		}
+	}
 	if src == nil || offset < 0 || length < 0 || offset > src.Rows || length > src.Rows-offset {
 		return 0, fmt.Errorf("invalid borrowed batch range")
 	}
@@ -104,8 +213,18 @@ func BorrowedRangeMetadataBytes(src *Batch, offset, length int) (int64, error) {
 	if _, err := EstimateBatchRangeBytes(&typed, offset, length); err != nil {
 		return 0, err
 	}
+	if check != nil {
+		if err := check(); err != nil {
+			return 0, err
+		}
+	}
 	var total int64
 	add := func(validity Bitmap) error {
+		if check != nil {
+			if err := check(); err != nil {
+				return err
+			}
+		}
 		if validity == nil || length == 0 {
 			return nil
 		}
@@ -285,11 +404,16 @@ func BorrowedRangeMetadataBytes(src *Batch, offset, length int) (int64, error) {
 		if err := add(v.Validity); err != nil {
 			return 0, err
 		}
-		child, err := BorrowedRangeMetadataBytes(v.Values, offset, length)
+		child, err := BorrowedRangeMetadataBytesWithCheck(v.Values, offset, length, check)
 		if err != nil {
 			return 0, err
 		}
 		total += child
+	}
+	if check != nil {
+		if err := check(); err != nil {
+			return 0, err
+		}
 	}
 	return total, nil
 }

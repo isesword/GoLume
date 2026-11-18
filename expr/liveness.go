@@ -75,16 +75,16 @@ func (p *Program) planStorage() {
 
 func instructionInputs(in instruction) []int {
 	switch in.Code {
-	case scalarBinary, scalarDecimalDivide, scalarCompare, scalarStringMatch, codeAnd, codeOr:
+	case scalarCivilCompose, scalarBinary, scalarDecimalDivide, scalarCompare, scalarStringMatch, codeAnd, codeOr:
 		return []int{in.A, in.B}
-	case scalarCast, scalarTryCast, scalarDecimalRescale, scalarUnary, scalarJSONDecode, codeNot:
+	case scalarCivilFormat, scalarDateAtMidnight, scalarCivilTimestamp, scalarDateInZone, scalarZonedExtract, scalarCast, scalarTryCast, scalarDecimalRescale, scalarUnary, scalarJSONDecode, codeNot:
 		return []int{in.A}
 	case scalarBoolean:
 		if in.Op == OpAnd || in.Op == OpOr {
 			return []int{in.A, in.B}
 		}
 		return []int{in.A}
-	case scalarTernary:
+	case scalarYMDDate, scalarISOWeekDate, scalarTernary:
 		return []int{in.A, in.B, in.C}
 	case scalarConditional, scalarInSet:
 		return []int{in.A}

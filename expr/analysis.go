@@ -42,6 +42,27 @@ func Columns(e Expr) []string {
 			visit(x.Value)
 			visit(x.First)
 			visit(x.Second)
+		case YMDDateExpr:
+			visit(x.Year)
+			visit(x.Month)
+			visit(x.Day)
+		case ISOWeekDateExpr:
+			visit(x.Year)
+			visit(x.Week)
+			visit(x.Weekday)
+		case CivilComposeExpr:
+			visit(x.Date)
+			visit(x.Clock)
+		case CivilFormatExpr:
+			visit(x.Value)
+		case DateAtMidnightExpr:
+			visit(x.Value)
+		case CivilTimestampExpr:
+			visit(x.Value)
+		case DateInZoneExpr:
+			visit(x.Value)
+		case ZonedExtractExpr:
+			visit(x.Value)
 		case JSONDecodeExpr:
 			visit(x.Value)
 		case IfExpr:

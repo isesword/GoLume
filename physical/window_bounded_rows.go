@@ -7,11 +7,11 @@ import (
 	"math"
 )
 
-// finiteRowsAggregate is deliberately narrower than all window aggregates:
-// extending floating Sum/Avg requires a separate accumulation contract.
+// finiteRowsAggregate admits finite frames with bounded owned state. Sum/Avg
+// reuse the existing exact accumulation and final-rounding contract.
 func finiteRowsAggregate(e WindowExpression) bool {
 	switch e.Function {
-	case WindowCountRows, WindowCountValues, WindowMin, WindowMax:
+	case WindowCountRows, WindowCountValues, WindowMin, WindowMax, WindowSum, WindowAvg, WindowVarPop, WindowVarSamp, WindowStdDevPop, WindowStdDevSamp:
 	default:
 		return false
 	}
@@ -30,6 +30,11 @@ func needsFiniteRowsWindow(e WindowExpression) bool {
 // endpoint, the existing owned lookahead supplies cells. Missing partition
 // rows enter as invalid cells, so clipping also expires values at the tail.
 // No borrowed vector or row reference survives a child Next call.
+// At most MaxInt64 cells of at most 64 bits require at most 127 magnitude
+// bits. This envelope covers big.Int limbs, growth overlap, and add/remove
+// temporaries on 32/64-bit targets, beyond the fixed state descriptor.
+const windowFiniteIntegerSumBytes = int64(256)
+
 type finiteRowsState struct {
 	aggregate    rollingWindowState
 	delay        windowCellRing
@@ -72,11 +77,29 @@ func newFiniteRowsState(e WindowExpression, input, output memory.DataType, parti
 	if function == WindowCountRows {
 		function = WindowCountValues
 	}
-	aggregate := rollingWindowState{expression: WindowExpression{Function: function}, inputType: input, outputType: output, width: int(width)}
+	aggregate := rollingWindowState{expression: WindowExpression{Function: function}, inputType: input, outputType: output, width: int(width), exact: usesExactWindowSum(function, input)}
 	cells := width
 	bytes, err := futureBudgetAdd(1024, cells, windowStateCellBytes)
 	if err != nil {
 		return nil, 0, err
+	}
+	if isMomentWindow(function) {
+		bytes, err = futureBudgetAdd(bytes, 1, windowExactMomentsBytes)
+		if err != nil {
+			return nil, 0, err
+		}
+	}
+	if aggregate.exact {
+		bytes, err = futureBudgetAdd(bytes, 1, windowExactSumBytes)
+		if err != nil {
+			return nil, 0, err
+		}
+	}
+	if function == WindowSum && !aggregate.exact {
+		bytes, err = futureBudgetAdd(bytes, 1, windowFiniteIntegerSumBytes)
+		if err != nil {
+			return nil, 0, err
+		}
 	}
 	bytes, err = futureBudgetAdd(bytes, delay, windowStateCellBytes)
 	if err != nil {
@@ -91,6 +114,12 @@ func newFiniteRowsState(e WindowExpression, input, output memory.DataType, parti
 }
 
 func (s *finiteRowsState) initialize(partitionBy []string) {
+	if isMomentWindow(s.aggregate.expression.Function) {
+		s.aggregate.moments = new(windowExactMoments)
+	}
+	if s.aggregate.exact {
+		s.aggregate.exactSum = new(windowExactSum)
+	}
 	if s.aggregate.expression.Function == WindowMin || s.aggregate.expression.Function == WindowMax {
 		s.aggregate.extrema = newWindowCellRing(s.aggregate.width)
 	} else {
@@ -114,6 +143,34 @@ func (s *finiteRowsState) advance(cell windowNumericCell, steps int64) error {
 	a.position += steps
 	cell.seq = a.position - 1
 	cutoff := cell.seq - int64(a.width)
+	if a.moments != nil {
+		for a.queue.len > 0 && a.queue.front().seq <= cutoff {
+			if err := a.moments.addCell(a.inputType, a.queue.front(), -1); err != nil {
+				return err
+			}
+			a.queue.popFront()
+		}
+		if cell.valid {
+			if err := a.moments.addCell(a.inputType, cell, 1); err != nil {
+				return err
+			}
+			a.queue.pushBack(cell)
+		}
+		return nil
+	}
+	if a.expression.Function == WindowSum || a.expression.Function == WindowAvg {
+		// Unlike trailing advance, this queue contains only valid cells and
+		// expires by sequence. A clipped partition tail can skip many rows.
+		for a.queue.len > 0 && a.queue.front().seq <= cutoff {
+			a.remove(a.queue.front())
+			a.queue.popFront()
+		}
+		if cell.valid {
+			a.add(cell)
+			a.queue.pushBack(cell)
+		}
+		return nil
+	}
 	if a.expression.Function == WindowCountValues {
 		for a.queue.len > 0 && a.queue.front().seq <= cutoff {
 			a.queue.popFront()
@@ -278,6 +335,34 @@ func (s *futureWindowStream) finiteRowsBatch(ctx context.Context, node *futureWi
 		value := windowNumericCell{}
 		if e.Function == WindowCountRows || e.Function == WindowCountValues {
 			value = windowNumericCell{valid: true, i64: state.aggregate.validCount}
+		} else if isMomentWindow(e.Function) {
+			v, valid, err := momentResult(state.aggregate.moments, e.Function)
+			if err != nil {
+				return err
+			}
+			value = windowNumericCell{f64: v, valid: valid}
+		} else if e.Function == WindowSum || e.Function == WindowAvg {
+			a := &state.aggregate
+			if a.validCount != 0 {
+				value.valid = true
+				if a.exact {
+					divisor := int64(1)
+					if e.Function == WindowAvg {
+						divisor = a.validCount
+					}
+					value.f64 = a.exactSum.result(divisor)
+				} else if windowSigned(a.inputType) {
+					if !a.signedSum.IsInt64() {
+						return fmt.Errorf("window sum %q overflows int64 at ordered row %d", e.Alias, node.start+int64(row))
+					}
+					value.i64 = a.signedSum.Int64()
+				} else {
+					if a.unsignedSum.Sign() < 0 || a.unsignedSum.BitLen() > 64 {
+						return fmt.Errorf("window sum %q overflows uint64 at ordered row %d", e.Alias, node.start+int64(row))
+					}
+					value.u64 = a.unsignedSum.Uint64()
+				}
+			}
 		} else if state.aggregate.hasBest {
 			value = state.aggregate.best
 		}

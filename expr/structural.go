@@ -15,8 +15,10 @@ import (
 // The interner is compile-local and may span guarded regions: only structural
 // identity is shared; each region's register memo and evaluation domain is local.
 type structuralInterner struct {
-	keys  map[string]int
-	bound map[*BoundExpr]int
+	civilResolvers map[*civilTimeResolverState]int
+	zones          map[*timeZoneState]int // Strong compile-local identity; never raw addresses.
+	keys           map[string]int
+	bound          map[*BoundExpr]int
 }
 
 func newStructuralInterner() *structuralInterner {
@@ -110,6 +112,70 @@ func (s *structuralInterner) expression(bound *BoundExpr) int {
 		parts = []string{"unary", strconv.Itoa(int(n.Op))}
 	case Ternary:
 		parts = []string{"ternary", strconv.Itoa(int(n.Op))}
+	case YMDDateExpr:
+		parts = []string{"ymd-date", strconv.FormatBool(n.tolerant)}
+	case ISOWeekDateExpr:
+		parts = []string{"iso-week-date", strconv.FormatBool(n.tolerant)}
+	case CivilComposeExpr:
+		if s.civilResolvers == nil {
+			s.civilResolvers = make(map[*civilTimeResolverState]int)
+		}
+		id, ok := s.civilResolvers[n.resolver.state]
+		if !ok {
+			id = len(s.civilResolvers) + 1
+			s.civilResolvers[n.resolver.state] = id
+		}
+		parts = []string{"civil-compose", strconv.Itoa(id), strconv.FormatBool(n.tolerant)}
+	case DateAtMidnightExpr:
+		if s.civilResolvers == nil {
+			s.civilResolvers = make(map[*civilTimeResolverState]int)
+		}
+		id, ok := s.civilResolvers[n.resolver.state]
+		if !ok {
+			id = len(s.civilResolvers) + 1
+			s.civilResolvers[n.resolver.state] = id
+		}
+		parts = []string{"date-at-midnight", strconv.Itoa(id), strconv.FormatBool(n.tolerant)}
+	case CivilTimestampExpr:
+		if s.civilResolvers == nil {
+			s.civilResolvers = make(map[*civilTimeResolverState]int)
+		}
+		id, ok := s.civilResolvers[n.resolver.state]
+		if !ok {
+			id = len(s.civilResolvers) + 1
+			s.civilResolvers[n.resolver.state] = id
+		}
+		parts = []string{"civil-timestamp", strconv.Itoa(id), strconv.FormatBool(n.tolerant)}
+	case CivilFormatExpr:
+		if s.zones == nil {
+			s.zones = make(map[*timeZoneState]int)
+		}
+		id, ok := s.zones[n.zone.state]
+		if !ok {
+			id = len(s.zones) + 1
+			s.zones[n.zone.state] = id
+		}
+		parts = []string{"civil-format", strconv.Itoa(id)}
+	case DateInZoneExpr:
+		if s.zones == nil {
+			s.zones = make(map[*timeZoneState]int)
+		}
+		id, ok := s.zones[n.zone.state]
+		if !ok {
+			id = len(s.zones) + 1
+			s.zones[n.zone.state] = id
+		}
+		parts = []string{"date-in-zone", strconv.Itoa(id)}
+	case ZonedExtractExpr:
+		if s.zones == nil {
+			s.zones = make(map[*timeZoneState]int)
+		}
+		id, ok := s.zones[n.zone.state]
+		if !ok {
+			id = len(s.zones) + 1
+			s.zones[n.zone.state] = id
+		}
+		parts = []string{"zoned-extract", strconv.Itoa(int(n.part)), strconv.Itoa(id)}
 	case JSONDecodeExpr:
 		parts = []string{"json"}
 		for _, field := range n.Schema.Fields {

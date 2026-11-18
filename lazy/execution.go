@@ -114,6 +114,8 @@ func firstLogicalBlocking(plan logical.Plan, path []string, aggregateSpillable b
 		name, children = "TopK", []logical.Plan{node.Input}
 	case *logical.Sort:
 		name, children, blocking = "Sort", []logical.Plan{node.Input}, !aggregateSpillable
+	case *logical.ConfiguredWindow:
+		name, children, blocking = "Window", []logical.Plan{node.Input}, !logicalWindowBoundedCapable(node.WindowExpressions())
 	case *logical.Window:
 		name, children, blocking = "Window", []logical.Plan{node.Input}, !logicalWindowBoundedCapable(node.Exprs)
 	case *logical.ConfiguredAggregate:
@@ -165,6 +167,13 @@ func streamPlanForLogical(plan logical.Plan, aggregateClass source.StreamClass) 
 		node.Operator, node.Class, children = "TopK", source.StreamBounded, []logical.Plan{value.Input}
 	case *logical.Sort:
 		node.Operator, node.Class, children = "Sort", source.StreamBlocking, []logical.Plan{value.Input}
+	case *logical.ConfiguredWindow:
+		node.Operator, children = "Window", []logical.Plan{value.Input}
+		if logicalWindowBoundedCapable(value.WindowExpressions()) {
+			node.Class = source.StreamSpillable
+		} else {
+			node.Class = source.StreamBlocking
+		}
 	case *logical.Window:
 		node.Operator, children = "Window", []logical.Plan{value.Input}
 		if logicalWindowBoundedCapable(value.Exprs) {
@@ -217,10 +226,10 @@ func logicalWindowBoundedCapable(expressions []logical.WindowExpr) bool {
 				return false
 			}
 			continue
-		case logical.WindowRowNumber, logical.WindowRank, logical.WindowDenseRank:
+		case logical.WindowNTile, logical.WindowCumeDist, logical.WindowPercentRank, logical.WindowRowNumber, logical.WindowRank, logical.WindowDenseRank:
 			continue
 		}
-		if expression.Function == logical.WindowCountRows || expression.Function == logical.WindowCountValues || expression.Function == logical.WindowMin || expression.Function == logical.WindowMax {
+		if expression.Function == logical.WindowCountRows || expression.Function == logical.WindowCountValues || expression.Function == logical.WindowMin || expression.Function == logical.WindowMax || expression.Function == logical.WindowSum || expression.Function == logical.WindowAvg || expression.Function == logical.WindowVarPop || expression.Function == logical.WindowVarSamp || expression.Function == logical.WindowStdDevPop || expression.Function == logical.WindowStdDevSamp {
 			finite := func(b logical.RowBound) bool {
 				return b.Kind == logical.RowPreceding || b.Kind == logical.RowCurrent || b.Kind == logical.RowFollowing
 			}
