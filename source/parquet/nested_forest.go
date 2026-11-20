@@ -29,6 +29,11 @@ func planNativeForest(s *Source) (*Source, error) {
 		descriptor := s.meta.Schema.Column(index)
 		physical := descriptor.PhysicalType()
 		switch logical := descriptor.LogicalType().(type) {
+		case schema.DecimalLogicalType:
+			if parent != "" || ancestors.count != 0 {
+				return memory.Field{}, fmt.Errorf("native forest rejects nested Decimal field %q", n.Name())
+			}
+			// bindingAt owns exact precision, physical representation and footer encoding checks.
 		case schema.StringLogicalType:
 			if physical != arrowparquet.Types.ByteArray {
 				return memory.Field{}, fmt.Errorf("native UTF8 String requires BYTE_ARRAY for %q", n.Name())
@@ -55,6 +60,10 @@ func planNativeForest(s *Source) (*Source, error) {
 			return memory.Field{}, e
 		}
 		switch b.Type {
+		case memory.TypeDecimal:
+			if parent != "" || ancestors.count != 0 {
+				return memory.Field{}, fmt.Errorf("native forest rejects nested Decimal field %q", n.Name())
+			}
 		case memory.TypeString:
 		case memory.TypeInt8, memory.TypeInt16, memory.TypeInt32, memory.TypeInt64, memory.TypeUint8, memory.TypeUint16, memory.TypeUint32, memory.TypeUint64, memory.TypeFloat32, memory.TypeFloat64, memory.TypeBool, memory.TypeDate32, memory.TypeTimestamp:
 		default:
@@ -124,6 +133,14 @@ func planNativeForest(s *Source) (*Source, error) {
 				if !t.IsSigned() || t.BitWidth() != 64 {
 					return memory.Field{}, fmt.Errorf("Int List requires signed64")
 				}
+			case schema.TimeLogicalType:
+				if parent != "" || ancestors.count != 0 || t.IsAdjustedToUTC() || t.TimeUnit() != schema.TimeUnitNanos {
+					return memory.Field{}, fmt.Errorf("LIST TIME requires a top-level single LIST with local TIME(nanos)")
+				}
+				if err := validateFixedScalarPageEncodings(s.meta, index, "wall-clock list", time64ValueEncodingSupported); err != nil {
+					return memory.Field{}, err
+				}
+				kind = memory.TypeTime64
 			default:
 				return memory.Field{}, fmt.Errorf("unsupported LIST logical type")
 			}
@@ -146,6 +163,9 @@ func planNativeForest(s *Source) (*Source, error) {
 		plan.leaves = append(plan.leaves, fixedLeaf{binding: columnBinding{Name: p.name, Index: p.index, Type: memory.TypeList}, parent: parent, parentOptional: ancestors.optionalCount() > 0, ancestors: ancestors})
 		if kind == memory.TypeString {
 			return memory.ListStringField(p.name, p.optional, p.elementOptional), nil
+		}
+		if kind == memory.TypeTime64 {
+			return memory.ListTime64Field(p.name, p.optional, p.elementOptional), nil
 		}
 		return memory.ListInt64Field(p.name, p.optional, p.elementOptional), nil
 	}

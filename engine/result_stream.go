@@ -25,10 +25,23 @@ func (p *PreparedQuery) execute(ctx context.Context, opts ExecuteOptions, allowR
 	return p.executeTyped(ctx, opts, allowReuse, nil)
 }
 func (p *PreparedQuery) executeTyped(ctx context.Context, opts ExecuteOptions, allowReuse bool, typed *TypedResult) (result Result, err error) {
+	return p.executeResults(ctx, opts, allowReuse, typed, nil)
+}
+
+// All public materializers share preparation ownership, concurrency admission,
+// query budget, stream finalization and observer reporting here.
+func (p *PreparedQuery) executeResults(ctx context.Context, opts ExecuteOptions, allowReuse bool, typed *TypedResult, decimal *DecimalResult) (result Result, err error) {
+
 	if p == nil || ctx == nil {
 		return Result{}, fmt.Errorf("prepared execution requires a query and context")
 	}
-	if typed == nil && opts.Materialize && (p.nativeAggregate() || p.cq.GroupShape == GroupShapeGeneric) {
+	if decimal != nil && !p.decimalGlobal() {
+		return Result{}, fmt.Errorf("ExecuteDecimal requires global native Decimal SUM or SUM/COUNT")
+	}
+	if (p.decimalGlobal() || p.decimalGrouped()) && opts.Materialize && decimal == nil {
+		return Result{}, fmt.Errorf("Decimal SUM record materialization unsupported; use BatchStream or lazy Collect")
+	}
+	if typed == nil && decimal == nil && opts.Materialize && (p.nativeAggregate() || p.cq.GroupShape == GroupShapeGeneric) {
 		return Result{}, fmt.Errorf("native aggregate materialization requires ExecuteTyped or a lazy DataFrame")
 	}
 	if err := ctx.Err(); err != nil {
@@ -70,6 +83,16 @@ func (p *PreparedQuery) executeTyped(ctx context.Context, opts ExecuteOptions, a
 		typedCollector = &typedResultCollector{query: p, result: typed, account: resultCollector{budget: budget.Operator("CollectTypedResult", memory.MemoryRetainedState)}}
 		defer typedCollector.account.close()
 	}
+	var decimalCollector *decimalResultCollector
+	if decimal != nil && opts.Materialize {
+		decimalCollector = &decimalResultCollector{query: p, result: decimal, manager: budget.Operator("CollectDecimalResult", memory.MemoryRetainedState)}
+		defer decimalCollector.close()
+	}
+	defer func() {
+		if decimal != nil && err != nil {
+			decimal.Rows = nil
+		}
+	}()
 	schema := p.executionSchema
 	if schema.Fields == nil {
 		// Keep manually assembled internal plans usable without mutating
@@ -91,19 +114,27 @@ func (p *PreparedQuery) executeTyped(ctx context.Context, opts ExecuteOptions, a
 	}
 	defer func() {
 		err = errors.Join(err, stream.Close())
+		if decimal != nil {
+			err = errors.Join(err, ctx.Err())
+		}
 		if err != nil {
 			result = Result{}
 		}
 	}()
 	var sink func(aggregateRecord) error
-	if opts.Materialize {
+	if opts.Materialize && decimal == nil {
 		if typed != nil {
 			sink = func(record aggregateRecord) error { return typedCollector.append(ctx, record) }
 		} else {
 			sink = func(record aggregateRecord) error { return collector.append(ctx, record) }
 		}
 	}
-	stats, err := stream.(aggregateRecordConsumer).consumeRecords(ctx, sink)
+	var stats AggregateStreamStats
+	if decimalCollector != nil {
+		stats, err = collectDecimalStream(ctx, stream, decimalCollector)
+	} else {
+		stats, err = stream.(aggregateRecordConsumer).consumeRecords(ctx, sink)
+	}
 	if err != nil {
 		return Result{}, err
 	}
@@ -122,6 +153,9 @@ func (p *PreparedQuery) executeTyped(ctx context.Context, opts ExecuteOptions, a
 }
 
 func (p *PreparedQuery) resultSchema() memory.Schema {
+	if p.decimalGlobal() || p.decimalGrouped() {
+		return p.decimalResultSchema()
+	}
 	fields := make([]memory.Field, 0, len(p.cq.GroupBy)+len(p.cq.Aggregates))
 	if p.cq.GroupShape == GroupShapeGeneric {
 		for _, field := range p.cq.GenericFields {

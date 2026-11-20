@@ -59,7 +59,8 @@ func (s *Source) PlanIdentity() string { return fmt.Sprintf("parquet:%p", s.meta
 // integer, float, boolean, UTF-8 string, date, and UTC timestamp columns.
 // Repeated/nested columns and unsupported physical or logical types are
 // rejected rather than silently decoded incorrectly. DECIMAL precision 1..38
-// and nonnegative scale are decoded exactly to decimal128; TIME is unsupported.
+// and nonnegative scale are decoded exactly to decimal128. Top-level local
+// nanosecond TIME is decoded as Time64 without timezone conversion.
 func OpenFile(path string) (*Source, error) {
 	base, err := openMetadata(path)
 	if err != nil {
@@ -130,6 +131,17 @@ func bindingAt(meta *metadata.FileMetaData, index int, logicalName string) (colu
 	// also normalizes legacy converted types into these logical types.
 	switch d.LogicalType().(type) {
 	case schema.NoLogicalType, schema.IntLogicalType, schema.StringLogicalType, schema.DateLogicalType, schema.TimestampLogicalType:
+	case schema.TimeLogicalType:
+		logical := d.LogicalType().(schema.TimeLogicalType)
+		if len(d.ColumnPath()) != 1 || d.MaxRepetitionLevel() != 0 || d.MaxDefinitionLevel() > 1 ||
+			d.PhysicalType() != arrowparquet.Types.Int64 || logical.IsAdjustedToUTC() || logical.TimeUnit() != schema.TimeUnitNanos {
+			return columnBinding{}, fmt.Errorf("parquet column %q logical type %s is not supported by native scan; require top-level local INT64 TIME(nanos)", d.Path(), logical)
+		}
+		if err := validateFixedScalarPageEncodings(meta, index, "wall-clock time", time64ValueEncodingSupported); err != nil {
+			return columnBinding{}, err
+		}
+		binding.Type = memory.TypeTime64
+		return binding, nil
 	case schema.DecimalLogicalType:
 		decimal := d.LogicalType().(schema.DecimalLogicalType)
 

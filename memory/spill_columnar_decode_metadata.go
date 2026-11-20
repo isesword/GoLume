@@ -490,6 +490,14 @@ func checkColumnarStructDepth(fields []Field, depth int) error {
 
 func checkColumnarStructDepthContext(fields []Field, depth int, check func() error) error {
 	for _, f := range fields {
+		if err := ValidateRepeatedListDepth([]Field{f}, MaxNestedListDepth); err != nil {
+			// Payload v4 additionally transports canonical top-level three-axis
+			// Lists. This is not a recursive Struct/List admission expansion.
+			axes, shapeErr := repeatedListDepth(f, check)
+			if depth != 0 || shapeErr != nil || axes != MaxRepeatedListDepth {
+				return err
+			}
+		}
 		if err := recursiveCheck(check); err != nil {
 			return err
 		}

@@ -52,6 +52,7 @@ const (
 	scalarStructGet
 	scalarListGet
 	scalarStructFrom
+	scalarCalendarDays
 )
 
 // ProjectionOutput maps one compiled root register to a named output column.
@@ -424,6 +425,8 @@ func (c *scalarCompiler) compileBound(bound *BoundExpr) (int, TypeInfo, error) {
 			in.Code, in.CivilTolerant = scalarYMDDate, n.tolerant
 		case ISOWeekDateExpr:
 			in.Code, in.CivilTolerant = scalarISOWeekDate, n.tolerant
+		case CalendarDaysExpr:
+			in.Code, in.CivilResolver, in.CivilTolerant = scalarCalendarDays, n.resolver.state, n.tolerant
 		case CivilComposeExpr:
 			in.Code, in.CivilResolver, in.CivilTolerant = scalarCivilCompose, n.resolver.state, n.tolerant
 		case CivilFormatExpr:
@@ -760,6 +763,10 @@ func evaluateInstructionsActive(instructions []instruction, batch *memory.Batch,
 			}
 		case scalarISOWeekDate:
 			if err := evalISOWeekDate(r, w.regs[in.A], w.regs[in.B], w.regs[in.C], in.CivilTolerant, batch.Rows, w.activeRows); err != nil {
+				return err
+			}
+		case scalarCalendarDays:
+			if err := evalCalendarDays(r, w.regs[in.A], w.regs[in.B], in.CivilResolver, in.CivilTolerant, batch.Rows, w.activeRows); err != nil {
 				return err
 			}
 		case scalarCivilCompose:

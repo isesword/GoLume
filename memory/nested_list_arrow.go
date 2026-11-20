@@ -27,7 +27,34 @@ func validateArrayArrowLimits(b *Batch, f Field, offset, length int, parents [Ma
 	if v == nil {
 		return fmt.Errorf("missing array Arrow column")
 	}
-	var counts [3]uint64
+	var counts [MaxRepeatedListDepth + 1]uint64
+	var visit func(*ArrayNode, int, int) error
+	visit = func(n *ArrayNode, r, axis int) error {
+		if !n.IsValid(r) {
+			return nil
+		}
+		if n.Kind == TypeList {
+			lo, hi, ok := n.ValueRange(r)
+			if !ok {
+				return fmt.Errorf("invalid Arrow array range")
+			}
+			var err error
+			counts[axis], err = addArrayArrowCount(counts[axis], uint64(hi-lo))
+			if err != nil {
+				return err
+			}
+			for i := lo; i < hi; i++ {
+				if err := visit(n.Child, i, axis+1); err != nil {
+					return err
+				}
+			}
+		} else if n.Kind == TypeString {
+			var err error
+			counts[axis], err = addArrayArrowCount(counts[axis], uint64(n.Strings.Offsets[r+1]-n.Strings.Offsets[r]))
+			return err
+		}
+		return nil
+	}
 	for r := offset; r < offset+length; r++ {
 		visible := true
 		for d := 0; d < depth; d++ {
@@ -36,34 +63,9 @@ func validateArrayArrowLimits(b *Batch, f Field, offset, length int, parents [Ma
 				break
 			}
 		}
-		if !visible || !v.IsValid(r) {
-			continue
-		}
-		lo, hi, _ := v.ValueRange(r)
-		var err error
-		counts[0], err = addArrayArrowCount(counts[0], uint64(hi-lo))
-		if err != nil {
-			return err
-		}
-		for i := lo; i < hi; i++ {
-			if !v.Child.IsValid(i) {
-				continue
-			}
-			a, z, _ := v.Child.ValueRange(i)
-			counts[1], err = addArrayArrowCount(counts[1], uint64(z-a))
-			if err != nil {
+		if visible {
+			if err := visit(v, r, 0); err != nil {
 				return err
-			}
-			if v.Child.Child.Kind == TypeString {
-				leaf := v.Child.Child
-				for e := a; e < z; e++ {
-					if leaf.IsValid(e) {
-						counts[2], err = addArrayArrowCount(counts[2], uint64(leaf.Strings.Offsets[e+1]-leaf.Strings.Offsets[e]))
-						if err != nil {
-							return err
-						}
-					}
-				}
 			}
 		}
 	}

@@ -69,7 +69,7 @@ func (e *Engine) Prepare(ctx context.Context, src source.Source, q expr.Query, o
 	return e.prepare(ctx, src, q, opts, nil)
 }
 
-func (e *Engine) prepare(ctx context.Context, src source.Source, q expr.Query, opts PrepareOptions, quantiles []expr.QuantileOption) (*PreparedQuery, error) {
+func (e *Engine) prepare(ctx context.Context, src source.Source, q expr.Query, opts PrepareOptions, quantiles []expr.QuantileOption, averages ...[]expr.DecimalAverageOption) (*PreparedQuery, error) {
 	if e == nil {
 		return nil, fmt.Errorf("engine is nil")
 	}
@@ -113,7 +113,13 @@ func (e *Engine) prepare(ctx context.Context, src source.Source, q expr.Query, o
 	if q.Hints.ForceStrategy == "radix" {
 		return nil, fmt.Errorf("input-wide radix execution was removed; use automatic native stream planning or bitmap-direct")
 	}
-	cq, err := compileConfiguredQuery(src.Schema(), q, quantiles)
+	var cq CompiledQuery
+	var err error
+	if len(averages) > 0 && len(averages[0]) > 0 {
+		cq, err = compileDecimalAverageQuery(src.Schema(), q, quantiles, averages[0])
+	} else {
+		cq, err = compileConfiguredQuery(src.Schema(), q, quantiles)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -129,7 +135,7 @@ func (e *Engine) prepare(ctx context.Context, src source.Source, q expr.Query, o
 		return nil, err
 	}
 	for _, part := range parts {
-		if part.Rows < 0 {
+		if part.Rows < 0 && !(part.Rows == -1 && cq.MultiAggregate != nil && cq.MultiAggregate.DecimalGroupedFields != nil) {
 			return nil, fmt.Errorf("partition %d has negative row count %d", part.ID, part.Rows)
 		}
 	}
@@ -144,6 +150,21 @@ func (e *Engine) prepare(ctx context.Context, src source.Source, q expr.Query, o
 	if cq.GroupShape == GroupShapeGlobal && cq.ForceStrategy != "" && cq.ForceStrategy != "sorted" {
 		return nil, fmt.Errorf("global aggregation requires the single-state sorted strategy, got forced %q", cq.ForceStrategy)
 	}
+	groupedDecimal := cq.MultiAggregate != nil && cq.MultiAggregate.DecimalGroupedFields != nil
+	residentDecimal := groupedDecimal && !source.OrderedByPrefix(src, q.GroupBy)
+	if groupedDecimal {
+		if residentDecimal {
+			if policy != ExecutionMemoryOnly {
+				return nil, fmt.Errorf("unordered Decimal grouping requires MemoryOnly with finite query budget or explicit Sort")
+			}
+			if cq.ForceStrategy != "" && cq.ForceStrategy != "bitmap-direct" {
+				return nil, fmt.Errorf("unordered Decimal grouping supports only bitmap-direct strategy")
+			}
+		} else if cq.ForceStrategy != "" && cq.ForceStrategy != "sorted" {
+			return nil, fmt.Errorf("Decimal grouped SUM requires sorted strategy")
+		}
+	}
+
 	strategy, err := e.opts.CostModel.Choose(planner.Input{
 		Rows: stats.Rows, Partitions: stats.Partitions, Workers: workers,
 		Selectivity: cq.SelectivityHint, Cardinality: cq.CardinalityHint,
@@ -157,8 +178,14 @@ func (e *Engine) prepare(ctx context.Context, src source.Source, q expr.Query, o
 	if err != nil {
 		return nil, err
 	}
-	if cq.GroupShape == GroupShapeGlobal {
+	if cq.GroupShape == GroupShapeGlobal || groupedDecimal && !residentDecimal {
 		strategy = planner.Strategy{Kind: planner.StrategySorted, Workers: 1, Reason: "global aggregation uses one bounded state"}
+		if groupedDecimal {
+			strategy.Reason = "ordered Decimal grouping uses one bounded current-group state"
+		}
+	}
+	if residentDecimal {
+		strategy = planner.Strategy{Kind: planner.StrategyBitmapDirect, Workers: 1, Reason: "unordered Decimal grouping retains budgeted per-group state"}
 	}
 	if policy == ExecutionBounded && strategy.Kind != planner.StrategySorted && !e.SpillConfigured() {
 		return nil, &UnsupportedBoundedPlanError{
@@ -175,7 +202,7 @@ func (e *Engine) prepare(ctx context.Context, src source.Source, q expr.Query, o
 		strategy.Reason = "exact-global-tuple-sort fallback (group ordering alone does not bound exact distinct/quantile state); planned policy: " + strategy.Kind.String()
 		strategy.Workers = 1
 	}
-	if stats.Rows < 0 || stats.Rows > int64(^uint(0)>>1) {
+	if (stats.Rows < 0 && !(stats.Rows == -1 && cq.MultiAggregate != nil && (cq.MultiAggregate.DecimalFields != nil || cq.MultiAggregate.DecimalGroupedFields != nil))) || stats.Rows > int64(^uint(0)>>1) {
 		return nil, fmt.Errorf("row count %d exceeds addressable workspace", stats.Rows)
 	}
 	maxConc := opts.MaxConcurrency

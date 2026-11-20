@@ -207,6 +207,25 @@ func ListInt64Field(name string, nullable, elementNullable bool) Field {
 	}
 }
 
+// ListTime64Field describes a top-level list of local nanosecond wall-clock times.
+func ListTime64Field(name string, nullable, elementNullable bool) Field {
+	f := ListInt64Field(name, nullable, elementNullable)
+	f.Children[0].Type = TypeTime64
+	return f
+}
+
+// IsListTime64 identifies the canonical top-level local TIME list storage profile.
+func IsListTime64(f Field) bool {
+	return f.Type == TypeList && f.Name != "" && len(f.Children) == 1 &&
+		f.Children[0].Name == "item" && f.Children[0].Type == TypeTime64 &&
+		(f.Encoding == EncodingView || f.Encoding == EncodingPlain) &&
+		f.Children[0].Encoding == EncodingPlain && f.DictionaryDomain == "" &&
+		f.Children[0].DictionaryDomain == "" && f.ArrowType == "" &&
+		f.Children[0].ArrowType == "" && len(f.Children[0].Children) == 0 &&
+		f.DecimalPrecision == 0 && f.DecimalScale == 0 &&
+		f.Children[0].DecimalPrecision == 0 && f.Children[0].DecimalScale == 0
+}
+
 // StructField constructs the bounded Phase 2.21 struct schema contract.
 func StructField(name string, nullable bool, children ...Field) Field {
 	return Field{Name: name, Type: TypeStruct, Nullable: nullable, Encoding: EncodingView, Children: append([]Field(nil), children...)}

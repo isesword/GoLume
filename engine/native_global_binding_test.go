@@ -97,7 +97,17 @@ func TestGlobalAggregateBindingsEligibility(t *testing.T) {
 			m.Types[0] = memory.TypeUint8
 			m.Layouts[0].Max = true
 		}, true},
-		{"avg", func(m *CompiledMultiAggregate, _ *PreparedQuery) { m.Layouts[0].Avg = true }, false},
+		{"avg-f64", func(m *CompiledMultiAggregate, _ *PreparedQuery) { m.Layouts[0].Avg = true }, true},
+		{"avg-f32", func(m *CompiledMultiAggregate, _ *PreparedQuery) {
+			m.Layouts[0].Avg = true
+			m.Types[0] = memory.TypeFloat32
+		}, false},
+		{"avg-i64", func(m *CompiledMultiAggregate, _ *PreparedQuery) {
+			m.Layouts[0].Avg = true
+			m.Types[0] = memory.TypeInt64
+		}, false},
+		{"avg-min", func(m *CompiledMultiAggregate, _ *PreparedQuery) { m.Layouts[0].Avg = true; m.Layouts[0].Min = true }, false},
+		{"avg-max", func(m *CompiledMultiAggregate, _ *PreparedQuery) { m.Layouts[0].Avg = true; m.Layouts[0].Max = true }, false},
 		{"statistics", func(m *CompiledMultiAggregate, _ *PreparedQuery) { m.Statistics = &CompiledStatistics{} }, false},
 		{"distinct", func(m *CompiledMultiAggregate, _ *PreparedQuery) { m.Distinct = &CompiledDistinct{} }, false},
 		{"quantiles", func(m *CompiledMultiAggregate, _ *PreparedQuery) { m.Quantiles = &CompiledQuantiles{} }, false},

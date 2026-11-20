@@ -104,6 +104,8 @@ func writePlan(b *strings.Builder, plan Plan, depth int) {
 			switch a := spec.(type) {
 			case expr.Aggregate:
 				aggs = append(aggs, aggregateString(a))
+			case expr.DecimalAverageSpec:
+				aggs = append(aggs, fmt.Sprintf("AVG_DECIMAL128(%s,p=%d,s=%d,mode=%s) AS %s", a.Column, a.Precision, a.Scale, a.Mode, a.Alias))
 			case expr.QuantileSpec:
 				aggs = append(aggs, fmt.Sprintf("QUANTILE(%s,q=%g,mode=%d) AS %s", a.Column, a.Probability, a.Mode, a.Alias))
 			default:
@@ -118,6 +120,15 @@ func writePlan(b *strings.Builder, plan Plan, depth int) {
 			aggs = append(aggs, aggregateString(a))
 		}
 		fmt.Fprintf(b, "%sAGGREGATE keys=[%s] aggs=[%s]\n", indent, strings.Join(n.GroupBy, ", "), strings.Join(aggs, ", "))
+		writePlan(b, n.Input, depth+1)
+	case *PartitionedDecimalPrefixAverage:
+		fmt.Fprintf(b, "%sPARTITIONED_DECIMAL_PREFIX_AVG partition=%s value=%s order=%s alias=%s precision=%d scale=%d rounding=%d\n", indent, n.PartitionBy, n.Column, n.OrderBy, n.Alias, n.Precision, n.Scale, n.Rounding)
+		writePlan(b, n.Input, depth+1)
+	case *TimestampRange:
+		fmt.Fprintf(b, "%sTIMESTAMP_RANGE order=%s value=%s preceding_ns=%d count_rows=%s count=%s sum=%s avg=%s complete_peers=true\n", indent, n.Spec.OrderBy, n.Spec.Column, n.Spec.Frame.PrecedingNS, n.Spec.CountRowsAlias, n.Spec.CountAlias, n.Spec.SumAlias, n.Spec.AvgAlias)
+		writePlan(b, n.Input, depth+1)
+	case *DecimalPrefixAverage:
+		fmt.Fprintf(b, "%sDECIMAL_PREFIX_AVG value=%s order=%s alias=%s precision=%d scale=%d rounding=%d\n", indent, n.Column, n.OrderBy, n.Alias, n.Precision, n.Scale, n.Rounding)
 		writePlan(b, n.Input, depth+1)
 	case *ConfiguredWindow:
 		order := make([]string, 0, len(n.Spec.By))

@@ -204,7 +204,7 @@ func recursiveFieldEqual(a, b Field, depth int, check func() error) (bool, error
 	if err := recursiveCheck(check); err != nil {
 		return false, err
 	}
-	if depth > MaxStructDepth+1 {
+	if depth > MaxStructDepth+MaxRepeatedListDepth {
 		return false, nil
 	}
 	if a.Name != b.Name || a.Type != b.Type || a.Nullable != b.Nullable || a.Encoding != b.Encoding || a.DictionaryDomain != b.DictionaryDomain || a.ArrowType != b.ArrowType || a.DecimalPrecision != b.DecimalPrecision || a.DecimalScale != b.DecimalScale || len(a.Children) != len(b.Children) {

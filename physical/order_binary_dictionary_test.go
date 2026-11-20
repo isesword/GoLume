@@ -6,8 +6,9 @@ import (
 	"fmt"
 	"math"
 	"sort"
-	"strings"
 	"testing"
+
+	"github.com/apache/arrow-go/v18/arrow/decimal128"
 
 	"gocolumn/memory"
 	"gocolumn/source"
@@ -240,26 +241,63 @@ func TestBinaryDictionarySortKeepsNativeDecimalBoundary(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	batch := memory.NewBatch()
+	batch.Rows = 3
+	batch.DictStrings["key"] = &memory.DictionaryStringVector{
+		Data: []byte("bac"), Offsets: []uint32{0, 1, 2, 3}, Indices: []uint32{0, 1, 2},
+		Encoding: memory.EncodingDictionary, DictionaryDomain: "decimal-payload",
+	}
+	batch.Decimals["amount"] = &memory.Decimal128Vector{
+		Values:    []memory.Decimal128{decimal128.FromI64(200), decimal128.FromI64(100), decimal128.FromI64(300)},
+		Precision: 9, Scale: 2,
+	}
 	input, err := inmemory.New(memory.NewSchema(
 		memory.Field{Name: "key", Type: memory.TypeBinary, Encoding: memory.EncodingDictionary}, decimal,
-	))
+	), batch)
 	if err != nil {
 		t.Fatal(err)
 	}
 	keys := []SortKey{{Column: "key"}}
-	for _, spillable := range []bool{false, true} {
-		_, err := NewSortSourceWithOptions(input, keys, nil, SortSourceOptions{Spillable: spillable})
-		if !spillable {
-			if err != nil {
-				t.Fatal(err)
-			}
-			continue
+	if _, err := NewSortSourceWithOptions(input, keys, nil, SortSourceOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	n13CheckSpillPayload(t, input, "key", []memory.Decimal128{decimal128.FromI64(100), decimal128.FromI64(200), decimal128.FromI64(300)}, []bool{true, true, true})
+
+	top, err := NewTopKSourceWithManager(input, 2, keys, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	stream, err := source.OpenBatchStream(context.Background(), top, testReadOptions())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer stream.Close()
+	out := memory.NewBatch()
+	seen := 0
+	for {
+		ok, err := stream.Next(context.Background(), out)
+		if err != nil {
+			t.Fatal(err)
 		}
-		if err == nil || !strings.Contains(err.Error(), "native decimal execution is not supported") {
-			t.Fatalf("spillable=%v native decimal error=%v", spillable, err)
+		if !ok {
+			break
+		}
+		for row := 0; row < out.Rows; row++ {
+			if seen >= 2 {
+				t.Fatal("too many TopK rows")
+			}
+			want := decimal128.FromI64(int64((seen + 1) * 100))
+			v := out.Decimals["amount"]
+			if v == nil || !v.IsValid(row) || v.Precision != 9 || v.Scale != 2 || v.Values[row] != want {
+				t.Fatalf("TopK Decimal payload row %d: %+v", seen, v)
+			}
+			seen++
 		}
 	}
-	if _, err := NewTopKSourceWithManager(input, 1, keys, nil); err == nil || !strings.Contains(err.Error(), "native decimal execution is not supported") {
-		t.Fatalf("top-k native decimal error=%v", err)
+	if seen != 2 {
+		t.Fatalf("TopK rows=%d want=2", seen)
+	}
+	if err := stream.Close(); err != nil {
+		t.Fatal(err)
 	}
 }

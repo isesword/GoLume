@@ -21,7 +21,9 @@ NativeNested accepts a forest of top-level fixed primitives, UTF-8 String,
 standard three-level List<Int64> or List<String>, and nonempty recursive Structs
 up to memory.MaxStructDepth (8, counting the root as depth one). Multiple Structs and top-level
 siblings may coexist. Fixed primitives are ten numeric types, Bool, Date32 and
-Timestamp. Timestamp conversion follows the existing Parquet binding semantics.
+Timestamp. N11 additionally permits root-level native Decimal128 (precision 1..38,
+scale 0..precision); Decimal descendants inside Struct/List remain unsupported.
+See [root Decimal composition](PARQUET_ROOT_DECIMAL.md). Timestamp conversion follows the existing Parquet binding semantics.
 
 Struct depth above eight, nested item Structs, List<List>, Map, nonstandard repeated schemas,
 TIME and Decimal are rejected in this native mode. This is not arbitrary generic

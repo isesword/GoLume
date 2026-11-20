@@ -9,6 +9,8 @@ and changes no persistent Go settings. Direct Go commands still need the
 experiment explicitly enabled. `ModeAuto` prefers retained native SIMD wherever
 available; `ModeScalar` is the reference and `ModeSIMD` is diagnostic selection.
 Runtime emulation/disablement and hardware/vector-width guards remain in force.
+On amd64 the common native guard requires AVX2 even for 128-bit execution;
+512-bit comparison overrides additionally require the AVX-512 feature predicate.
 
 The former P0 baseline was `865f8dd99ccfdb8deaa53584f98577be720ba554` on Go
 1.27.0, darwin/arm64, Apple M4 Pro. Its test and benchmark records are historical,
@@ -22,12 +24,12 @@ go version
 go env GOOS GOARCH GOEXPERIMENT
 ./scripts/build.sh
 GOEXPERIMENT= ./scripts/build.sh
-go test ./kernel ./cmd/kernel-info ./memory ./expr ./engine ./lazy ./physical
-GOEXPERIMENT=simd go test ./kernel ./cmd/kernel-info ./memory ./expr ./engine ./lazy ./physical
+GOEXPERIMENT= go test ./kernel ./cmd/kernel-info ./memory ./expr ./engine ./physical
+GOEXPERIMENT=simd go test ./kernel ./cmd/kernel-info ./memory ./expr ./engine ./physical
 GOEXPERIMENT=simd go run ./cmd/kernel-info -mode scalar
 GOEXPERIMENT=simd go run ./cmd/kernel-info -mode auto -json
 GOEXPERIMENT=simd go run ./cmd/kernel-info -mode simd
-GOEXPERIMENT=simd GODEBUG=simd=0 go test ./kernel ./cmd/kernel-info ./expr ./engine ./lazy ./physical
+GOEXPERIMENT=simd GODEBUG=simd=0 go test ./kernel ./cmd/kernel-info ./expr ./engine ./physical
 ```
 
 These are commands to run, not a declaration that every check above passed.
@@ -44,23 +46,27 @@ inactive inputs to positive zero before native floating operations.
 
 | Family | Physical operations | Auto native backend / guard | Remaining scalar boundary |
 |---|---|---|---|
-| Literal comparison | Int8/Int32/Int64/Uint32/Uint64/Float32/Float64 GT/GE/LT/LE/EQ | portable SIMD; guarded amd64 direct mask extraction; arm64 retains Int32 GT/GE/LT/LE and Uint32 overrides | unavailable native runtime, tails |
-| Literal comparison | Int16/Uint8/Uint16 | none | typed scalar entries |
-| Column comparison | Int32/Uint32/Float32/Float64 GT/GE/LT/LE/EQ | portable SIMD; guarded amd64 direct mask extraction | unavailable native runtime, tails |
-| Column comparison | Int8/Int16/Int64/Uint8/Uint16/Uint64 | none | typed scalar entries |
+| Literal comparison | All ten primitive numeric types GT/GE/LT/LE/EQ | portable SIMD; amd64 direct masks at exact width; arm64 Int32/Uint32 literal overrides | unavailable native runtime, short inputs/tails |
+| Column comparison | All ten primitive numeric types GT/GE/LT/LE/EQ | portable SIMD; amd64 direct masks at exact width | unavailable native runtime, short inputs/tails |
 | Arithmetic kernels | Float32/Float64 Add/Sub/Mul/Div | portable SIMD | unavailable native runtime, tails |
-| Expression arithmetic | Float32 operands | promotes to Float64, existing scalar conversion path | native Float32 arithmetic API is not reached |
-| Arithmetic | checked integers | none | scalar with existing numerical/overflow semantics |
-| Unary math | Float32/Float64 Abs/Sqrt | portable SIMD, dense and nullable/selected inputs; mask before math, bounded fixed-stack nullable tails | dense nil-mask tails, unavailable native runtime |
+| Widening / mixed arithmetic | Int8/16/32, Uint8/16/32, Float32 to Float64; Float32-pair arithmetic with Float64 result | amd64 selected width >=256, conversion uses 256 bits; arm64 128 | other widths/architectures, unsupported expression shapes, tails |
+| Widening / mixed arithmetic | Int64/Uint64 to Float64 | amd64 selected width >=256 plus AVX-512; arm64 128 | same fallback boundaries; result remains Float64 |
+| Checked arithmetic | Int32/Uint32/Int64/Uint64 Add/Sub/Mul | generated amd64 128/256/512 and arm64 128 | other ops/types, unsupported runtime, short/tail/alias fallback; exact overflow retained |
+| Unary math | Float32/Float64 Abs/Sqrt | portable SIMD, dense and nullable/selected; mask before math | dense nil-mask tails, unavailable native runtime |
 | Other math | integer math, Round/Floor/Ceil/Log/Mod/FloorDiv/Pow | none | typed scalar; no approximate replacements |
-| Integer bitwise | Int32/Uint32/Int64/Uint64 AND/OR/XOR/NOT | portable native SIMD, dense and nullable; expression and kernel.Set entry points | unavailable native runtime, short inputs and tails; other integer widths and shifts unsupported |
+| Integer bitwise | Int32/Uint32/Int64/Uint64 AND/OR/XOR/NOT | portable SIMD, dense and nullable; expression/kernel entry points | unavailable native runtime, short/tails; other widths and shifts unsupported |
 | Boolean | bitmap AND/OR/NOT | none | word scalar |
-| Hash | Hash64 batch | amd64 AVX-512 with native width >=512 | arm64 Auto retains non-SIMD four-way unroll; other cases scalar |
+| Masked SUM | Int8/Int16/Uint8/Uint16 | architecture-specific widening, amd64 128/256/512 and arm64 128 | <=64 inputs, exact Int64 result; short/tails/sparse scalar work |
+| Masked SUM | Int32/Uint32/Int64/Uint64 | portable SIMD, amd64 512-bit override when AVX-512 available | <=64 inputs, native-width wrapping; unsupported runtime/tails |
+| Masked SUM | Float32/Float64 | none | ordered scalar floating accumulation |
+| Masked MIN/MAX | All ten primitive numeric types | portable 32/64-bit reducers; architecture-specific narrow widening | <=64 inputs; empty mask, short/tails and IEEE handling retain reference semantics |
+| Global Float64 AVG | engine batch updater, optional SUM/count lanes | not a SIMD reduction | original-order scalar math; nonfinite state/input or overflow replays original row lane |
+| Hash | Hash64 batch | amd64 AVX-512, selected width >=512 | arm64 Auto has non-SIMD unroll; other cases scalar |
 | Hash | Hash128 batch | none | scalar |
-| Scale | checked Int64 scale | none | bounded scalar |
+| Scale | checked Int64 scale | generated amd64 128/256/512 and arm64 128 | unsupported runtime, short/tails; checked factor special cases |
 | String length / match | byte/UTF-8 length, equality/prefix/suffix/contains | none | scalar KernelID entries |
-| Compact | Int32/Int64/Uint32/Uint64/Float64 | amd64 AVX-512 Compress with native width >=512 | other architectures/widths |
-| Compact | Int8/Int16/Uint8/Uint16/Float32 | none | native-width scalar |
+| Compact | Int32/Int64/Uint32/Uint64/Float32/Float64 | amd64 AVX-512, selected width >=512 | other architectures/widths, short inputs and operation-specific fallback |
+| Compact | Int8/Int16/Uint8/Uint16 | same guard plus AVX512VBMI2 | other architectures/widths/features |
 | Parquet decode / payload | typed decode, clone/materialize, key extraction | no general SIMD backend | typed scalar paths; not a kernel SIMD claim |
 | Operator-owned loops | hash probes/state updates, merge/sort, Top-K, random gather | no general SIMD backend | algorithm/access-pattern work remains |
 
@@ -82,8 +88,9 @@ follows the native-preferred policy above, not those historical gate states.
 - Auto selection expresses the native-preferred default, not a performance
   certification. `auto_admitted` retains its report name but means selection
   of a non-scalar-named backend; inspect `hardware_simd` for actual SIMD.
-- `GODEBUG=simd=0` checks disabled/emulated correctness. It cannot establish
-  hardware SIMD availability or performance.
+- `GODEBUG=simd=0` checks disabled-runtime scalar fallback correctness. The
+  captured kernel capability reports do not establish an emulated SIMD backend,
+  hardware SIMD availability, or performance.
 - The planner's measured bitmap/direct strategy decisions are independent and
   unchanged. Existing strategy approvals still apply only to their recorded
   architecture, width, operation, and selectivity bucket.
@@ -95,9 +102,10 @@ follows the native-preferred policy above, not those historical gate states.
 
 ## Remaining optimization inventory
 
-The portable column-comparison kernels are selected in Auto now; their
-operator switch and stored-mask lane scan have not been rewritten as generated
-literal kernels. Remaining operator-owned loops include hash aggregation probe
+The separately maintained portable Int32/Uint32/Float32 column-comparison
+kernels are selected in Auto; their operator switch and stored-mask lane scan
+have not been rewritten as generated literal kernels. This does not describe
+the generated column-comparison implementations for the other numeric types. Remaining operator-owned loops include hash aggregation probe
 and state updates, join probes, and merge/sort. Native-width storage and batching
 alone do not make these SIMD.
 
@@ -109,8 +117,18 @@ alone do not make these SIMD.
 - Retain raw final-build kernel and end-to-end samples per target host before
   claiming performance gains or changing planner strategy approvals.
 
-The amd64 comparison mask backend selects only the actual runtime width: AVX
-at 128 bits, AVX2 at 256 bits, and the complete archsimd AVX512 feature group
+The amd64 comparison mask backend selects only the actual runtime width: AVX2
+at both 128 and 256 bits, and the complete archsimd AVX512 feature group
 at 512 bits. Feature/width mismatch keeps the portable backend. Native column
 and literal masks are packed directly; portable column32 validity is applied
-per word rather than per lane. See the [bitmap report](../validation/bitmap-native/README.md).
+per word rather than per lane. The historical artifact path is `validation/bitmap-native/README.md`; it is
+not included in this frozen source package and cannot serve as this review's
+raw-data evidence.
+
+## Evidence boundary for this revision
+
+This matrix is a source audit, not a fresh execution report. Native ARM64 and
+hosted CI success are not established here; architecture source code and
+cross-compilation are not native test results. Consult the operation-specific
+capability reports and preserve actual command/toolchain/CPU/width results when
+validating a target. Historical stage links apply only to their recorded scope.

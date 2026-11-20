@@ -124,6 +124,9 @@ func renamePredicateColumns(value expr.Expr, names map[string]string) (expr.Expr
 	case expr.ISOWeekDateExpr:
 		n.Year, n.Week, n.Weekday = rename(n.Year), rename(n.Week), rename(n.Weekday)
 		return n, ok
+	case expr.CalendarDaysExpr:
+		n.Timestamp, n.Days = rename(n.Timestamp), rename(n.Days)
+		return n, ok
 	case expr.CivilComposeExpr:
 		n.Date, n.Clock = rename(n.Date), rename(n.Clock)
 		return n, ok

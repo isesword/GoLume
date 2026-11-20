@@ -69,6 +69,9 @@ func (s *residentSortStream) prepare(ctx context.Context) (err error) {
 		if !ok {
 			break
 		}
+		if e = validateResidentListTimeBatch(ctx, s.owner.Schema(), s.scratch); e != nil {
+			return e
+		}
 		if e = validateResidentTypedDecimalBoundary(ctx, s.owner.Schema(), s.scratch); e != nil {
 			return e
 		}

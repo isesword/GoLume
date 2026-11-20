@@ -223,7 +223,47 @@ func TestExplicitDecimalDownstreamConsumerBoundaries(t *testing.T) {
 		for name, f := range cases {
 			df, err := f.Collect(context.Background())
 			t.Logf("bounded=%v consumer=%s err=%v", bounded, name, err)
-			if !bounded && (name == "sort_decimal" || name == "sort_payload") {
+			if name == "sum" {
+				if err != nil {
+					t.Fatal(err)
+				}
+				c, e := df.Column("n")
+				if e != nil {
+					t.Fatal(e)
+				}
+				chunks, e := c.Decimal128Chunks()
+				if e != nil {
+					t.Fatal(e)
+				}
+				want := new(big.Int)
+				for i := 0; i < downstreamRows; i++ {
+					if i%7 != 0 {
+						want.Add(want, downstreamWant(i))
+					}
+				}
+				seen := 0
+				for _, ch := range chunks {
+					if ch.Precision() != 38 || ch.Scale() != 0 {
+						t.Fatal("SUM metadata")
+					}
+					for i := 0; i < ch.Len(); i++ {
+						v, valid, e := ch.Value(i)
+						if e != nil || !valid || v.BigInt().Cmp(want) != 0 {
+							t.Fatal("SUM exact oracle", v, valid, e)
+						}
+						seen++
+					}
+				}
+				if seen != 1 {
+					t.Fatal("SUM rows", seen)
+				}
+				df.Close()
+				if s.Engine().Memory().Used() != 0 {
+					t.Fatal("SUM leak")
+				}
+				continue
+			}
+			if name == "sort_decimal" || name == "sort_payload" {
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -262,8 +302,9 @@ func TestExplicitDecimalDownstreamConsumerBoundaries(t *testing.T) {
 			case "count_value", "group_decimal":
 				want = "native decimal aggregation is not supported"
 			}
-			if !strings.Contains(err.Error(), want) {
-				t.Fatalf("%s: wanted %q got %v", name, want, err)
+			allowedSumBoundary := (name == "min" || name == "max" || name == "avg" || name == "count_value" || name == "group_decimal") && (strings.Contains(err.Error(), "native Decimal aggregation requires global SUM only") || strings.Contains(err.Error(), "native Decimal aggregation requires only global native Decimal SUM outputs") || strings.Contains(err.Error(), "native Decimal aggregation requires at least one native Decimal SUM"))
+			if !strings.Contains(err.Error(), want) && !allowedSumBoundary && !(name == "group_decimal" && err.Error() == "native Decimal mixed aggregate requires at least one SUM") {
+				t.Fatalf("%s: wanted %q or explicit global-SUM-only boundary got %v", name, want, err)
 			}
 			if s.Engine().Memory().Used() != 0 {
 				t.Fatal("rejection leaked query memory")

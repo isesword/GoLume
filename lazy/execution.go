@@ -66,6 +66,9 @@ func (f LazyFrame) effectiveExecutionPolicy() (engine.ExecutionPolicy, error) {
 }
 
 func (f LazyFrame) validateExecutionLogical(plan logical.Plan) error {
+	if err := f.validateDecimalPrefixExecution(); err != nil {
+		return err
+	}
 	policy, err := f.effectiveExecutionPolicy()
 	if err != nil {
 		return err
@@ -114,6 +117,12 @@ func firstLogicalBlocking(plan logical.Plan, path []string, aggregateSpillable b
 		name, children = "TopK", []logical.Plan{node.Input}
 	case *logical.Sort:
 		name, children, blocking = "Sort", []logical.Plan{node.Input}, !aggregateSpillable
+	case *logical.PartitionedDecimalPrefixAverage:
+		name, children = "PartitionedDecimalPrefixAverage", []logical.Plan{node.Input}
+	case *logical.TimestampRange:
+		name, children = "TimestampRange", []logical.Plan{node.Input}
+	case *logical.DecimalPrefixAverage:
+		name, children = "DecimalPrefixAverage", []logical.Plan{node.Input}
 	case *logical.ConfiguredWindow:
 		name, children, blocking = "Window", []logical.Plan{node.Input}, !logicalWindowBoundedCapable(node.WindowExpressions())
 	case *logical.Window:
@@ -167,6 +176,12 @@ func streamPlanForLogical(plan logical.Plan, aggregateClass source.StreamClass) 
 		node.Operator, node.Class, children = "TopK", source.StreamBounded, []logical.Plan{value.Input}
 	case *logical.Sort:
 		node.Operator, node.Class, children = "Sort", source.StreamBlocking, []logical.Plan{value.Input}
+	case *logical.PartitionedDecimalPrefixAverage:
+		node.Operator, node.Class, children = "PartitionedDecimalPrefixAverage", source.StreamBounded, []logical.Plan{value.Input}
+	case *logical.TimestampRange:
+		node.Operator, node.Class, children = "TimestampRange", source.StreamBounded, []logical.Plan{value.Input}
+	case *logical.DecimalPrefixAverage:
+		node.Operator, node.Class, children = "DecimalPrefixAverage", source.StreamBounded, []logical.Plan{value.Input}
 	case *logical.ConfiguredWindow:
 		node.Operator, children = "Window", []logical.Plan{value.Input}
 		if logicalWindowBoundedCapable(value.WindowExpressions()) {

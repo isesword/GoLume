@@ -90,3 +90,17 @@ uses runtime-guarded 128/256/512-bit paths; ARM64 has a 128-bit implementation.
 Scalar, disabled-SIMD and unsupported-ISA fallbacks retain the same contract.
 ARM64 validation for this addition is cross-compilation only, not execution or
 a performance claim. Kernel coverage does not imply a whole query is vectorized.
+
+N16 adds the explicit Engine/PreparedQuery `ExecuteDecimal` materialization
+endpoint with a separate `DecimalResult`; see [public Decimal results](DECIMAL_RESULT.md).
+Legacy Execute/ExecuteTyped materialization restrictions and existing TypedValue
+layout remain unchanged. This result API does not expand aggregate eligibility.
+
+N17 separately adds [ordered single-Int64-key grouped SUM/COUNT](DECIMAL_GROUPED_SUM.md)
+through BatchStream/Lazy only. Global identities, fees and ExecuteDecimal scope
+remain unchanged; the new grouped path is not a general hash/spill aggregate.
+
+N18 separately permits [unordered resident Decimal grouping](DECIMAL_RESIDENT_GROUPED_SUM.md)
+under explicit finite-budget ExecutionMemoryOnly. N17 ordered behavior is retained;
+the new path is O(groups), has no result-order promise and does not expand
+ExecuteDecimal beyond global plans.

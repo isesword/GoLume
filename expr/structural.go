@@ -126,6 +126,16 @@ func (s *structuralInterner) expression(bound *BoundExpr) int {
 		parts = []string{"ymd-date", strconv.FormatBool(n.tolerant)}
 	case ISOWeekDateExpr:
 		parts = []string{"iso-week-date", strconv.FormatBool(n.tolerant)}
+	case CalendarDaysExpr:
+		if s.civilResolvers == nil {
+			s.civilResolvers = make(map[*civilTimeResolverState]int)
+		}
+		id, ok := s.civilResolvers[n.resolver.state]
+		if !ok {
+			id = len(s.civilResolvers) + 1
+			s.civilResolvers[n.resolver.state] = id
+		}
+		parts = []string{"calendar-days", strconv.Itoa(id), strconv.FormatBool(n.tolerant)}
 	case CivilComposeExpr:
 		if s.civilResolvers == nil {
 			s.civilResolvers = make(map[*civilTimeResolverState]int)

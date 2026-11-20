@@ -455,7 +455,9 @@ func residentAccumulatorMetadata(fields []memory.Field, src *memory.Batch, depth
 				n, err = sortWorkspaceSize(n, int64(len(v.Fields))*int64(unsafe.Sizeof(memory.Field{})))
 			}
 		case memory.TypeList:
-			if len(f.Children) == 1 && f.Children[0].Type == memory.TypeInt64 {
+			if depth == 0 && memory.IsListTime64(f) {
+				n = int64(unsafe.Sizeof(memory.Int64Vector{}))
+			} else if len(f.Children) == 1 && f.Children[0].Type == memory.TypeInt64 {
 				err = f.ValidateListInt64()
 				n = int64(unsafe.Sizeof(memory.Int64Vector{}))
 			} else {

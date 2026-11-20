@@ -11,27 +11,28 @@ type repeatedFrame struct{ present, slot bool }
 type nestedArrayCursor struct {
 	cursor                   *nestedListCursor
 	plan                     *nestedArrayPlan
-	stack                    [2]repeatedFrame
+	stack                    [memory.MaxRepeatedListDepth]repeatedFrame
 	stage, output, candidate arrayBuffer
 	vector                   *memory.ArrayNode
 	empty                    [1]uint32
-	target                   [3]int
+	target                   [memory.MaxRepeatedListDepth]int
+	targetBytes              int
 }
 
 func (g *nestedArrayCursor) payload(b *arrayBuffer) int64 {
 	if b.node == nil {
 		return 0
 	}
-	n, e, bytes := b.counts()
-	v, err := arrayBufferBytes(g.cursor.kind, n, e, bytes)
-	if err != nil {
+	c, n := b.axisCounts()
+	size, e := arrayBufferSize(g.cursor.kind, g.plan.depth, c, n)
+	if e != nil {
 		return -1
 	}
-	return v
+	return size
 }
-func (g *nestedArrayCursor) grow(ctx context.Context, n, e, bytes int) error {
+func (g *nestedArrayCursor) grow(ctx context.Context, counts [memory.MaxRepeatedListDepth]int, bytes int) error {
 	c := g.cursor
-	needed, err := arrayBufferBytes(c.kind, n, e, bytes)
+	needed, err := arrayBufferSize(c.kind, g.plan.depth, counts, bytes)
 	if err != nil {
 		return err
 	}
@@ -39,19 +40,28 @@ func (g *nestedArrayCursor) grow(ctx context.Context, n, e, bytes int) error {
 	if err != nil {
 		return err
 	}
-	if n <= g.stage.slots && e <= g.stage.values && bytes <= g.stage.bytes && g.stage.node != nil {
+	fits := g.stage.node != nil && bytes <= g.stage.bytes
+	for i := 0; i < g.plan.depth; i++ {
+		fits = fits && counts[i] <= g.stage.caps[i]
+	}
+	if fits {
 		return nil
 	}
-	caps := [3]int{n, e, bytes}
-	olds := [3]int{g.stage.slots, g.stage.values, g.stage.bytes}
-	for j := range caps {
-		if olds[j] > 0 && olds[j] <= math.MaxInt/2 && caps[j] < olds[j]*2 {
-			caps[j] = olds[j] * 2
+	caps := counts
+	capBytes := bytes
+	for i := 0; i < g.plan.depth; i++ {
+		old := g.stage.caps[i]
+		if old > 0 && old <= math.MaxInt/2 && caps[i] < old*2 {
+			caps[i] = old * 2
 		}
 	}
-	size, err := arrayBufferBytes(c.kind, caps[0], caps[1], caps[2])
+	if old := g.stage.bytes; old > 0 && old <= math.MaxInt/2 && capBytes < old*2 {
+		capBytes = old * 2
+	}
+	size, err := arrayBufferSize(c.kind, g.plan.depth, caps, capBytes)
 	if err != nil || size > limit-g.stage.charge {
-		caps = [3]int{n, e, bytes}
+		caps = counts
+		capBytes = bytes
 		size = needed
 	}
 	if size > limit-g.stage.charge {
@@ -64,7 +74,7 @@ func (g *nestedArrayCursor) grow(ctx context.Context, n, e, bytes int) error {
 			return err
 		}
 	}
-	b := newArrayBuffer(c.kind, caps[0], caps[1], caps[2])
+	b := newRepeatedArrayBuffer(c.kind, g.plan.depth, caps, capBytes)
 	b.lease = lease
 	if err = copyArrayBuffer(ctx, c, &b, &g.stage); err != nil {
 		b.close()
@@ -100,17 +110,25 @@ func (g *nestedArrayCursor) assemble(ctx context.Context) error {
 			c.complete = true
 			return nil
 		}
-		rep, def := c.tuple.rep[0], c.tuple.def[0]
+		rep, def := int(c.tuple.rep[0]), c.tuple.def[0]
 		if !c.first && rep == 0 {
 			c.complete = true
 			return nil
 		}
+		if rep < 0 || rep > g.plan.depth {
+			return fmt.Errorf("array repetition exceeds depth")
+		}
 		if !c.first {
-			if rep == 1 && (!g.stack[0].slot || def < g.plan.boundaries[0].slot) {
-				return fmt.Errorf("array rep1 after outer placeholder")
-			}
-			if rep == 2 && (!g.stack[1].slot || !g.stack[1].present || def < g.plan.boundaries[1].slot) {
-				return fmt.Errorf("array rep2 after inner placeholder")
+			if rep == 0 || !g.stack[rep-1].slot || !g.stack[rep-1].present || def < g.plan.boundaries[rep-1].slot {
+				if g.plan.depth == memory.MaxNestedListDepth {
+					if rep == 1 {
+						return fmt.Errorf("array rep1 after outer placeholder")
+					}
+					if rep == 2 {
+						return fmt.Errorf("array rep2 after inner placeholder")
+					}
+				}
+				return fmt.Errorf("array rep%d after axis %d placeholder", rep, rep-1)
 			}
 			for j := 0; j < c.ancestors.count; j++ {
 				if (def >= c.ancestors.thresholds[j]) != c.witness[j] {
@@ -127,18 +145,32 @@ func (g *nestedArrayCursor) assemble(ctx context.Context) error {
 			c.first = false
 			continue
 		}
-		fresh := c.first || rep == 1
-		inner := g.stack[1]
-		if fresh {
-			inner = repeatedFrame{present: def >= g.plan.boundaries[1].present, slot: def >= g.plan.boundaries[1].slot}
+		counts, bytes := g.stage.axisCounts()
+		next := counts
+		nb := bytes
+		var fresh [memory.MaxRepeatedListDepth]bool
+		active := true
+		for axis := 1; axis < g.plan.depth; axis++ {
+			if !g.stack[axis-1].slot {
+				active = false
+				break
+			}
+			fresh[axis] = c.first || rep <= axis
+			if fresh[axis] {
+				g.stack[axis] = repeatedFrame{present: def >= g.plan.boundaries[axis].present, slot: def >= g.plan.boundaries[axis].slot}
+				if next[axis-1] == math.MaxInt {
+					return memory.ErrBudgetExceeded
+				}
+				next[axis-1]++
+			}
 		}
-		n, e, bytes := g.stage.counts()
-		nn, ne, nb := n, e, bytes
-		if fresh {
-			nn++
-		}
-		if inner.slot {
-			ne++
+		leaf := g.plan.depth - 1
+		addLeaf := active && g.stack[leaf].slot
+		if addLeaf {
+			if next[leaf] == math.MaxInt {
+				return memory.ErrBudgetExceeded
+			}
+			next[leaf]++
 			if c.kind == memory.TypeString && c.tuple.valid {
 				if len(c.bytes[0]) > math.MaxInt-bytes {
 					return memory.ErrBudgetExceeded
@@ -149,20 +181,34 @@ func (g *nestedArrayCursor) assemble(ctx context.Context) error {
 				}
 			}
 		}
-		if err := g.grow(ctx, nn, ne, nb); err != nil {
+		if err := g.grow(ctx, next, nb); err != nil {
 			return err
 		}
 		v := g.stage.node
-		if fresh {
-			v.Offsets = v.Offsets[:nn+1]
-			v.Offsets[nn] = uint32(e)
-			if inner.present {
-				memory.Set(v.Validity, n)
+		for axis := 1; axis < g.plan.depth; axis++ {
+			if !g.stack[axis-1].slot {
+				break
 			}
+			n := next[axis-1]
+			if fresh[axis] {
+				v.Offsets = v.Offsets[:n+1]
+				v.Offsets[n] = uint32(counts[axis])
+				if g.stack[axis].present {
+					memory.Set(v.Validity, n-1)
+				}
+			}
+			v.Offsets[n] = uint32(next[axis])
+			v = v.Child
 		}
-		if inner.slot {
+		if addLeaf {
+			v = g.stage.node
+			for v.Child != nil {
+				v = v.Child
+			}
+			e := counts[leaf]
+			ne := next[leaf]
 			if c.kind == memory.TypeString {
-				x := v.Child.Strings
+				x := v.Strings
 				x.Offsets = x.Offsets[:ne+1]
 				x.Data = x.Data[:nb]
 				if c.tuple.valid {
@@ -173,38 +219,42 @@ func (g *nestedArrayCursor) assemble(ctx context.Context) error {
 				}
 				x.Offsets[ne] = uint32(nb)
 			} else {
-				x := v.Child.Int64
+				x := v.Int64
 				x.Values = x.Values[:ne]
 				if c.tuple.valid {
 					x.Values[e] = c.tuple.value[0]
 					memory.Set(x.Validity, e)
 				}
 			}
-			v.Offsets[nn] = uint32(ne)
 		}
-		g.stack[1] = inner
 		c.tuple.present = false
 		c.bytes[0] = nil
 		c.first = false
 	}
 }
 func (g *nestedArrayCursor) prepareSize() (int64, int64, error) {
-	a, b, c := g.output.counts()
-	x, y, z := g.stage.counts()
-	if x > math.MaxInt-a || y > math.MaxInt-b || z > math.MaxInt-c {
+	a, ab := g.output.axisCounts()
+	b, bb := g.stage.axisCounts()
+	for i := 0; i < g.plan.depth; i++ {
+		if b[i] > math.MaxInt-a[i] {
+			return 0, 0, memory.ErrBudgetExceeded
+		}
+		g.target[i] = a[i] + b[i]
+	}
+	if bb > math.MaxInt-ab {
 		return 0, 0, memory.ErrBudgetExceeded
 	}
-	g.target = [3]int{a + x, b + y, c + z}
-	if a+x == 0 {
+	g.targetBytes = ab + bb
+	if g.target[0] == 0 {
 		g.cursor.candidateBytes = 0
 		return 0, 0, nil
 	}
-	size, err := arrayBufferBytes(g.cursor.kind, a+x, b+y, c+z)
+	size, err := arrayBufferSize(g.cursor.kind, g.plan.depth, g.target, g.targetBytes)
 	if err != nil {
 		return 0, 0, err
 	}
 	extra := int64(0)
-	if a > 0 && x > 0 {
+	if a[0] > 0 && b[0] > 0 {
 		extra = size
 	}
 	g.cursor.candidateBytes = extra
@@ -215,7 +265,7 @@ func (g *nestedArrayCursor) copyCandidate(ctx context.Context) error {
 	if c.candidateBytes == 0 {
 		return c.check(ctx)
 	}
-	g.candidate = newArrayBuffer(c.kind, g.target[0], g.target[1], g.target[2])
+	g.candidate = newRepeatedArrayBuffer(c.kind, g.plan.depth, g.target, g.targetBytes)
 	if err := copyArrayBuffer(ctx, c, &g.candidate, &g.output); err != nil {
 		return err
 	}
@@ -246,14 +296,23 @@ func (g *nestedArrayCursor) commit(row int) {
 	c.clearStage()
 }
 func (g *nestedArrayCursor) allocate(rows int, b *memory.Batch) {
-	leaf := &memory.ArrayNode{Kind: g.cursor.kind, Encoding: memory.EncodingView}
-	if g.cursor.kind == memory.TypeString {
-		leaf.Strings = &memory.StringViewVector{Offsets: g.empty[:], Encoding: memory.EncodingView}
-	} else {
-		leaf.Int64 = &memory.Int64Vector{Encoding: memory.EncodingPlain}
+	var child *memory.ArrayNode
+	for axis := g.plan.depth; axis >= 1; axis-- {
+		v := &memory.ArrayNode{Kind: memory.TypeList, Encoding: memory.EncodingView, Offsets: g.empty[:]}
+		if axis == g.plan.depth {
+			v.Kind = g.cursor.kind
+			v.Offsets = nil
+			if g.cursor.kind == memory.TypeString {
+				v.Strings = &memory.StringViewVector{Offsets: g.empty[:], Encoding: memory.EncodingView}
+			} else {
+				v.Int64 = &memory.Int64Vector{Encoding: memory.EncodingPlain}
+			}
+		} else {
+			v.Child = child
+		}
+		child = v
 	}
-	inner := &memory.ArrayNode{Kind: memory.TypeList, Offsets: g.empty[:], Child: leaf, Encoding: memory.EncodingView}
-	g.vector = &memory.ArrayNode{Kind: memory.TypeList, Offsets: make([]uint32, rows+1), Validity: make(memory.Bitmap, memory.WordsFor(rows)), Child: inner, Encoding: memory.EncodingView}
+	g.vector = &memory.ArrayNode{Kind: memory.TypeList, Offsets: make([]uint32, rows+1), Validity: make(memory.Bitmap, memory.WordsFor(rows)), Child: child, Encoding: memory.EncodingView}
 	if b.Arrays == nil {
 		b.Arrays = make(map[string]*memory.ArrayNode)
 	}
@@ -262,12 +321,20 @@ func (g *nestedArrayCursor) allocate(rows int, b *memory.Batch) {
 func (g *nestedArrayCursor) crop(rows int) {
 	g.vector.Offsets = g.vector.Offsets[:rows+1]
 	g.vector.Validity = g.vector.Validity[:memory.WordsFor(rows)]
-	v := g.vector.Child
-	v.Validity = v.Validity[:memory.WordsFor(v.Len())]
-	leaf := v.Child
-	if leaf.Kind == memory.TypeString {
-		leaf.Strings.Validity = leaf.Strings.Validity[:memory.WordsFor(leaf.Len())]
-	} else {
-		leaf.Int64.Validity = leaf.Int64.Validity[:memory.WordsFor(leaf.Len())]
+	for v := g.vector.Child; v != nil; v = v.Child {
+		switch v.Kind {
+		case memory.TypeList:
+			if v.Validity != nil {
+				v.Validity = v.Validity[:memory.WordsFor(v.Len())]
+			}
+		case memory.TypeString:
+			if v.Strings.Validity != nil {
+				v.Strings.Validity = v.Strings.Validity[:memory.WordsFor(v.Len())]
+			}
+		case memory.TypeInt64:
+			if v.Int64.Validity != nil {
+				v.Int64.Validity = v.Int64.Validity[:memory.WordsFor(v.Len())]
+			}
+		}
 	}
 }

@@ -41,6 +41,18 @@ func Optimize(plan logical.Plan) (Result, error) {
 
 func mergeFilters(plan logical.Plan, rules *[]string) logical.Plan {
 	switch n := plan.(type) {
+	case *logical.PartitionedDecimalPrefixAverage:
+		c := *n
+		c.Input = mergeFilters(n.Input, rules)
+		return &c
+	case *logical.TimestampRange:
+		c := *n
+		c.Input = mergeFilters(n.Input, rules)
+		return &c
+	case *logical.DecimalPrefixAverage:
+		c := *n
+		c.Input = mergeFilters(n.Input, rules)
+		return &c
 	case *logical.Filter:
 		child := mergeFilters(n.Input, rules)
 		if inner, ok := child.(*logical.Filter); ok && !mayError(inner, n.Predicate) {
@@ -80,6 +92,18 @@ func mergeFilters(plan logical.Plan, rules *[]string) logical.Plan {
 
 func mergeProjections(plan logical.Plan, rules *[]string) logical.Plan {
 	switch n := plan.(type) {
+	case *logical.PartitionedDecimalPrefixAverage:
+		c := *n
+		c.Input = mergeProjections(n.Input, rules)
+		return &c
+	case *logical.TimestampRange:
+		c := *n
+		c.Input = mergeProjections(n.Input, rules)
+		return &c
+	case *logical.DecimalPrefixAverage:
+		c := *n
+		c.Input = mergeProjections(n.Input, rules)
+		return &c
 	case *logical.Projection:
 		child := mergeProjections(n.Input, rules)
 		if inner, ok := child.(*logical.Projection); ok {
@@ -114,7 +138,7 @@ func mergeProjections(plan logical.Plan, rules *[]string) logical.Plan {
 	}
 }
 
-// Sort's resident Decimal support does not imply TopK execution support.
+// Resident Sort and TopK both support root native Decimal keys and payloads.
 // Keep the original plan if capability cannot be established. Optimize's
 // existing input/final InferSchema checks retain ownership of schema errors.
 func sortLimitTopKCapable(sorted *logical.Sort) bool {
@@ -127,7 +151,9 @@ func sortLimitTopKCapable(sorted *logical.Sort) bool {
 	}
 	for _, field := range schema.Fields {
 		if field.Type == memory.TypeDecimal && field.DecimalPrecision != 0 {
-			return false
+			if field.ValidateDecimal128() != nil {
+				return false
+			}
 		}
 	}
 	// Expression keys may introduce a hidden native Decimal column even when
@@ -142,7 +168,9 @@ func sortLimitTopKCapable(sorted *logical.Sort) bool {
 			return false
 		}
 		if bound.Field.Type == memory.TypeDecimal && bound.Field.DecimalPrecision != 0 {
-			return false
+			if bound.Field.ValidateDecimal128() != nil {
+				return false
+			}
 		}
 	}
 	return true
@@ -150,6 +178,18 @@ func sortLimitTopKCapable(sorted *logical.Sort) bool {
 
 func mergeLimits(plan logical.Plan, rules *[]string) logical.Plan {
 	switch n := plan.(type) {
+	case *logical.PartitionedDecimalPrefixAverage:
+		c := *n
+		c.Input = mergeLimits(n.Input, rules)
+		return &c
+	case *logical.TimestampRange:
+		c := *n
+		c.Input = mergeLimits(n.Input, rules)
+		return &c
+	case *logical.DecimalPrefixAverage:
+		c := *n
+		c.Input = mergeLimits(n.Input, rules)
+		return &c
 	case *logical.Limit:
 		child := mergeLimits(n.Input, rules)
 		if inner, ok := child.(*logical.Limit); ok {
@@ -205,6 +245,18 @@ func mergeLimits(plan logical.Plan, rules *[]string) logical.Plan {
 // boundaries and thus widen a later partial expression's demand before a Limit.
 func pushPredicates(plan logical.Plan, inherited expr.Expr, rules *[]string, allowJoinPushdown bool) logical.Plan {
 	switch n := plan.(type) {
+	case *logical.PartitionedDecimalPrefixAverage:
+		c := *n
+		c.Input = pushPredicates(n.Input, nil, rules, false)
+		return &c
+	case *logical.TimestampRange:
+		c := *n
+		c.Input = pushPredicates(n.Input, nil, rules, false)
+		return &c
+	case *logical.DecimalPrefixAverage:
+		c := *n
+		c.Input = pushPredicates(n.Input, nil, rules, false)
+		return &c
 	case *logical.Filter:
 		var combined expr.Expr
 		if !mayError(n.Input, n.Predicate) {
@@ -339,6 +391,30 @@ func sortKeysMayError(input logical.Plan, keys []logical.SortKey) bool {
 // back into their original position.
 func pushProjection(plan logical.Plan, required map[string]struct{}, rules *[]string) (logical.Plan, error) {
 	switch n := plan.(type) {
+	case *logical.PartitionedDecimalPrefixAverage:
+		c := *n
+		child, err := pushProjection(n.Input, allColumns(n.Input), rules)
+		if err != nil {
+			return nil, err
+		}
+		c.Input = child
+		return &c, nil
+	case *logical.TimestampRange:
+		c := *n
+		child, err := pushProjection(n.Input, allColumns(n.Input), rules)
+		if err != nil {
+			return nil, err
+		}
+		c.Input = child
+		return &c, nil
+	case *logical.DecimalPrefixAverage:
+		c := *n
+		child, err := pushProjection(n.Input, allColumns(n.Input), rules)
+		if err != nil {
+			return nil, err
+		}
+		c.Input = child
+		return &c, nil
 	case *logical.ConfiguredWindow:
 		inSchema, err := logical.InferSchema(n.Input)
 		if err != nil {
@@ -464,7 +540,7 @@ func pushProjection(plan logical.Plan, required map[string]struct{}, rules *[]st
 		// overwritten column from the child.
 		return restoreReplacementOrder(cloneWindowExprs(n, child, kept), inSchema, "window-reorder", rules)
 	case *logical.ConfiguredAggregate:
-		aggs, _, err := expr.NormalizeAggregates(n.Aggregates)
+		aggs, _, _, err := expr.NormalizeConfiguredAggregates(n.Aggregates)
 		if err != nil {
 			return nil, err
 		}
@@ -528,6 +604,12 @@ func pushProjection(plan logical.Plan, required map[string]struct{}, rules *[]st
 					childRequired[name] = struct{}{}
 				}
 			}
+		}
+		// COUNT(*) may require no values, but this fallible prefix must still
+		// execute. Retain a stable existing projected column rather than emit
+		// an unsupported empty physical projection or delete the prefix.
+		if len(childRequired) == 0 && len(n.Columns) > 0 && (logical.ContainsDecimalPrefixAverage(n.Input) || logical.ContainsTimestampRange(n.Input)) {
+			childRequired[n.Columns[0]] = struct{}{}
 		}
 		child, err := pushProjection(n.Input, childRequired, rules)
 		if err != nil {
@@ -830,6 +912,18 @@ func restoreReplacementOrder(node logical.Plan, inSchema memory.Schema, rule str
 
 func removeNoopProjections(plan logical.Plan, rules *[]string) logical.Plan {
 	switch n := plan.(type) {
+	case *logical.PartitionedDecimalPrefixAverage:
+		c := *n
+		c.Input = removeNoopProjections(n.Input, rules)
+		return &c
+	case *logical.TimestampRange:
+		c := *n
+		c.Input = removeNoopProjections(n.Input, rules)
+		return &c
+	case *logical.DecimalPrefixAverage:
+		c := *n
+		c.Input = removeNoopProjections(n.Input, rules)
+		return &c
 	case *logical.Projection:
 		child := removeNoopProjections(n.Input, rules)
 		childSchema, err := logical.InferSchema(child)

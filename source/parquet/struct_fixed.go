@@ -10,10 +10,10 @@ import (
 
 // Options selects explicit Parquet schema decoding. Zero retains the flat reader.
 type Options struct {
-	// NativeNested enables a bounded flat forest: primitive/String/List<Int64 or
-	// String> top-level fields and recursive Structs up to memory.MaxStructDepth.
-	// Flat fourteen-type List<Struct> items are also supported within the depth
-	// limit. Nested item Structs/Lists, Maps, TIME and Decimal remain unsupported.
+	// NativeNested enables a bounded flat forest: primitive/String/
+	// primitive list top-level fields and recursive Structs up to memory.MaxStructDepth.
+	// A single-level root List may store local TIME(nanos), but deeper TIME paths
+	// and UTC-adjusted or lower-resolution TIME list elements are unsupported.
 	NativeNested bool
 }
 

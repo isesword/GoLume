@@ -2,12 +2,12 @@ package memory
 
 import "fmt"
 
-// MaxNestedListDepth bounds the new checked array profile to two repeated axes.
+// MaxNestedListDepth is the legacy expression, sort and spill ceiling.
 // It is an engineering limit independent of MaxStructDepth.
 const MaxNestedListDepth = 2
 
-// NestedListField snapshots exactly List<List<Int64>> or List<List<String>>.
-// inner must be a primitive List field named item. Existing admission is unchanged.
+// NestedListField snapshots two or three repeated List axes over Int64/String.
+// inner is a List field named item. Individual consumers enforce their own ceiling.
 func NestedListField(name string, nullable bool, inner Field) (Field, error) {
 	f := Field{Name: name, Type: TypeList, Nullable: nullable, Encoding: EncodingView, Children: []Field{inner}}
 	if err := f.ValidateNestedList(); err != nil {
@@ -16,30 +16,22 @@ func NestedListField(name string, nullable bool, inner Field) (Field, error) {
 	return cloneField(f), nil
 }
 
-// ValidateNestedList checks the bounded two-List shape before any recursive clone.
+// ValidateNestedList checks two or three List axes before any recursive clone.
 func (f Field) ValidateNestedList() error { return checkNestedListField(f, nil) }
 func checkNestedListField(f Field, check func() error) error {
-	for depth := 0; depth < MaxNestedListDepth; depth++ {
-		if err := recursiveCheck(check); err != nil {
-			return err
-		}
-		if f.Name == "" || (depth > 0 && f.Name != "item") || f.Type != TypeList || len(f.Children) != 1 || !structListEncoding(f.Encoding) || f.DictionaryDomain != "" || f.DecimalPrecision != 0 || f.DecimalScale != 0 {
-			return fmt.Errorf("invalid checked nested List field")
-		}
-		f = f.Children[0]
-	}
-	if f.Name != "item" || (f.Type != TypeInt64 && f.Type != TypeString) || len(f.Children) != 0 || !structListEncoding(f.Encoding) || f.DictionaryDomain != "" || f.DecimalPrecision != 0 || f.DecimalScale != 0 {
-		return fmt.Errorf("nested List terminal must be native Int64 or String")
-	}
-	return recursiveCheck(check)
+	_, err := repeatedListDepth(f, check)
+	return err
 }
 
 // NewSchemaWithNestedListsChecked validates and snapshots bounded nested Lists
 // and existing checked shapes. It does not admit this profile to Batch consumers.
-// Up to eight outer Structs plus two Lists form a maximum ten-container path.
+// Up to eight outer Structs plus three Lists form an eleven-container path.
 func NewSchemaWithNestedListsChecked(fields ...Field) (Schema, error) {
 	var walk func(Field, int) error
 	walk = func(f Field, depth int) error {
+		if depth == 0 && IsListTime64(f) {
+			return nil
+		}
 		if f.Name == "" {
 			return fmt.Errorf("unnamed nested field")
 		}
@@ -200,8 +192,9 @@ func (v *ArrayNode) validateNestedStructure(f Field, rows int, d NestedListParen
 		return fmt.Errorf("nested List parent row mismatch")
 	}
 	node := v
-	var seen [3]*ArrayNode
-	for axis := 0; axis < 3; axis++ {
+	depth, _ := repeatedListDepth(f, check)
+	var seen [MaxRepeatedListDepth + 1]*ArrayNode
+	for axis := 0; axis <= depth; axis++ {
 		if err := recursiveCheck(check); err != nil {
 			return err
 		}
@@ -214,7 +207,7 @@ func (v *ArrayNode) validateNestedStructure(f Field, rows int, d NestedListParen
 			}
 		}
 		seen[axis] = node
-		if axis < 2 {
+		if axis < depth {
 			if node.Int64 != nil || node.Strings != nil || node.Child == nil || len(node.Offsets) == 0 || len(node.Offsets)-1 != rows || node.Offsets[0] != 0 || !structValidityFits(node.Validity, rows) {
 				return fmt.Errorf("invalid nested List storage")
 			}
@@ -260,37 +253,25 @@ func (v *ArrayNode) validateNestedStructure(f Field, rows int, d NestedListParen
 	return nil
 }
 func (v *ArrayNode) validateNestedParent(f Field, d NestedListParentDomain, r int, check func() error) error {
+	if !d.visible(r) {
+		return recursiveCheck(check)
+	}
+	return validateRepeatedVisible(v, f, r, check)
+}
+func validateRepeatedVisible(v *ArrayNode, f Field, row int, check func() error) error {
 	if err := recursiveCheck(check); err != nil {
 		return err
 	}
-	if !d.visible(r) {
-		return nil
-	}
-	if !v.IsValid(r) {
+	if !v.IsValid(row) {
 		if !f.Nullable {
-			return fmt.Errorf("required outer List is NULL")
+			return fmt.Errorf("required nested value is NULL")
 		}
 		return nil
 	}
-	inner, leaf := v.Child, v.Child.Child
-	innerField := f.Children[0]
-	leafField := innerField.Children[0]
-	for i := int(v.Offsets[r]); i < int(v.Offsets[r+1]); i++ {
-		if err := recursiveCheck(check); err != nil {
-			return err
-		}
-		if !inner.IsValid(i) {
-			if !innerField.Nullable {
-				return fmt.Errorf("required inner List is NULL")
-			}
-			continue
-		}
-		for j := int(inner.Offsets[i]); j < int(inner.Offsets[i+1]); j++ {
-			if err := recursiveCheck(check); err != nil {
+	if v.Kind == TypeList {
+		for i := int(v.Offsets[row]); i < int(v.Offsets[row+1]); i++ {
+			if err := validateRepeatedVisible(v.Child, f.Children[0], i, check); err != nil {
 				return err
-			}
-			if !leaf.IsValid(j) && !leafField.Nullable {
-				return fmt.Errorf("required terminal value is NULL")
 			}
 		}
 	}

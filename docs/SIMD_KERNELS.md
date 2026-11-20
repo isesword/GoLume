@@ -6,7 +6,10 @@ The supported build entry, `./scripts/build.sh`, defaults an unset
 explicit build arguments and honors an explicitly set experiment value,
 including `GOEXPERIMENT=`, without changing persistent `go env` settings.
 Direct `go build`/`go test` commands still require `GOEXPERIMENT=simd` to include
-SIMD implementations. SIMD vector types never leave the kernel package.
+SIMD implementations. SIMD vector types never leave the kernel package. Go 1.27 alone does not
+enable the experiment (`go.mod` requires Go 1.27.0). The shared native guard
+requires non-emulated SIMD and, on amd64, AVX2 even at 128 bits because the
+current experimental lowering uses AVX2 broadcasts.
 
 ## Dispatch contract
 
@@ -44,29 +47,37 @@ its Auto backend can differ from the explicit-SIMD `available_backend`.
 
 ## Current native coverage
 
-- Portable native SIMD in Auto and explicit SIMD: literal `GT/GE/LT/LE/EQ`
-  for Int8/Int32/Int64/Uint32/Uint64/Float32/Float64; column comparisons for
-  Int32/Uint32/Float32/Float64; Float32/Float64 `Add/Sub/Mul/Div`; dense and masked
-  Float32/Float64 `Abs/Sqrt`.
-- arm64 retains `archsimd-arm64-mask` overrides for literal Int32
-  `GT/GE/LT/LE` and Uint32 `GT/GE/LT/LE/EQ`, at 128 bits. Int32 literal EQ now
-  uses portable SIMD. The existing Auto Hash64 unroll remains a scalar MUL pipeline.
-- Float32 arithmetic kernels preserve native Float32 precision, but ordinary
-  expression arithmetic still promotes Float32 operands to Float64. This stage
-  does not change result types or claim SIMD acceleration of that expression path.
-- Int16/Uint8/Uint16 literal comparisons and Int8/Int16/Int64/Uint8/Uint16/Uint64
-  column comparisons remain scalar. Checked integer arithmetic is unchanged.
-- amd64 replaces these 35 literal and 20 column comparison entries with
-  generated direct mask-to-bitmap kernels at the exact selected runtime width:
-  128-bit AVX, 256-bit AVX2, or 512-bit AVX512 (F+CD+BW+DQ+VL). Unsupported
-  widths/features retain the portable implementation. `archsimd-amd64-mask`
-  reports this backend independently of arithmetic and hash/compaction.
-- amd64 Hash64 and Int32/Int64/Uint32/Uint64/Float64 compaction use AVX-512
-  only when the runtime reports AVX-512, portable SIMD is non-emulated, and
-  the selected native width is at least 512 bits. Narrower widths fall back
-  to scalar for these operations; there is no AVX2 multiply emulation.
-- Other current operations remain scalar. See the
-  [operation matrix](SIMD_OPERATION_MATRIX.md) for the explicit boundaries.
+- Portable native SIMD comparisons cover all ten primitive numeric types
+  (Int8/16/32/64, Uint8/16/32/64, Float32/64), both literal and column-to-column,
+  for `GT/GE/LT/LE/EQ`. Float32/Float64 Add/Sub/Mul/Div and dense/masked
+  Abs/Sqrt also have native paths.
+- arm64 retains 128-bit `archsimd-arm64-mask` overrides for literal Int32
+  GT/GE/LT/LE and Uint32 GT/GE/LT/LE/EQ. Int32 EQ uses portable SIMD.
+  Auto Hash64 remains a non-SIMD scalar MUL unroll.
+- amd64 replaces 50 literal and 50 column comparison entries with direct
+  mask-to-bitmap kernels at the exact selected runtime width: 128/256 bits
+  require AVX2; 512 bits additionally requires `archsimd.X86.AVX512()`.
+  Width/feature mismatch cannot force unsupported instructions.
+- Checked Int32/Uint32/Int64/Uint64 Add/Sub/Mul and checked Int64 scale have
+  generated amd64 128/256/512-bit and arm64 128-bit native implementations.
+  First-overflow and alias semantics remain checked; tails and unsupported
+  paths retain scalar work. This is not native coverage for every integer op.
+- Widening and mixed arithmetic to Float64 have architecture-specific paths.
+  amd64 uses 256-bit conversion kernels when the selected width is at least
+  256; Int64/Uint64 conversion additionally requires AVX-512. arm64 supplies
+  128-bit conversion paths. Float32 expression arithmetic still returns
+  Float64, but eligible paths now use widening kernels rather than being
+  universally scalar. Query `Float64WideningCapability` for the source type.
+- Masked integer SUM and numeric MIN/MAX have native implementations. Narrow
+  integer SUM widens to Int64; Float32/Float64 SUM remains row-ordered scalar.
+  Global Float64 AVG batching is not a SIMD reduction, and exceptional IEEE
+  inputs/state use the original row updater. See the operation matrix.
+- amd64 Hash64 and 32/64-bit numeric compaction (including Float32) require
+  AVX-512 and selected width at least 512. Byte/word compaction additionally
+  requires VBMI2. Other architectures/widths retain scalar compaction; no AVX2
+  Hash64 multiply emulation is installed.
+- Native implementation availability is not a whole-query speedup guarantee.
+  See the [operation matrix](SIMD_OPERATION_MATRIX.md) for explicit boundaries.
 
 ## Operation-specialized generation
 
@@ -86,7 +97,7 @@ in Auto does not imply they have the generated literal-kernel shape.
 
 amd64 comparison masks are widened to uint64 before shifting into the output
 word, avoiding narrow-mask truncation. They do not store masks to scratch arrays
-or scan lanes. The 165 generated width/type/operation variants share one generator
+or scan lanes. The 300 generated width/type/operation variants share one generator
 and are selected once during Set installation, not through a per-vector type switch.
 Scalar fallback below one vector is preserved. This adds fixed generated code;
 it does not add per-call heap buffers, and is not a claim about total process RSS.
@@ -99,15 +110,16 @@ directly in addition to testing the selected architecture backend.
 Portable literal and generated Float64 column comparisons use bounded stack
 mask storage and combine validity once per bitmap word. Arithmetic writes its
 caller-owned output, then zeros invalid rows; both exact input aliases are
-supported. There are no heap scratch buffers or widened Float32 arithmetic.
+supported. These arithmetic kernels do not allocate heap scratch buffers. Separate
+widening kernels serve Float64-result expression paths.
 Float comparison predicates are ordered: every predicate is false for NaN,
 including EQ, while positive and negative zero compare equal. NaN arithmetic
 payload identity is not part of the contract.
 
-Checked integer arithmetic is operation-specialized scalar code with exact
-first-overflow rows. Int64 scale has dedicated factor `0`, `1`, and `-1` paths
-and precomputed legal bounds for other factors. Float64 preserves IEEE NaN,
-infinity, and signed-zero behavior.
+Checked integer kernels preserve exact first-overflow rows with native and
+scalar paths. Int64 scale retains factor special cases and checked bounds.
+Float64 arithmetic preserves IEEE NaN, infinity, and signed-zero semantics;
+this does not promise one universal NaN payload across platforms or builds.
 
 ## Operation-level reduction benchmarks
 
@@ -168,7 +180,9 @@ closures/runtime switches, stored-mask lane scans in those kernels,
 Int64/Uint64 comparison SIMD, checked integer SIMD with overflow rescans,
 arm64 widening/amd64 AVX2 multiply emulation, Hash128 intermediate arrays and
 unrolled experiments, portable SIMD Boolean operations, and UTF-8 double-scan
-candidates. This history does not describe the separate current column kernels.
+candidates. This is deletion history, not the current coverage boundary: later generated
+comparison, checked arithmetic, scale and widening implementations described
+above supersede several of those former gaps.
 
 The historical arm64 UTF-8 candidate improved long ASCII by 90.28% but
 regressed the mixed-Chinese expression workload by 4.12% (`p=0.004`). It was
@@ -182,7 +196,7 @@ all math operations, or an entire query are vectorized.
 
 ## Numeric native expansion validation
 
-The [numeric stage report](../validation/numeric-native/README.md) records
+The historical numeric stage artifact `validation/numeric-native/README.md` records
 native amd64 128/256/512-bit execution, runtime-disabled fallback, dispatch
 identity checks, IEEE/boundary tests, allocations, and complete query measurements.
 Linux/arm64 validation for this stage is cross-compilation only, not native execution.
@@ -191,11 +205,13 @@ are mixed and managed-memory/heap allocation comparisons are reported separately
 
 ## Comparison bitmap validation
 
-The [bitmap stage report](../validation/bitmap-native/README.md) separates
+The historical bitmap stage artifact `validation/bitmap-native/README.md` separates
 independent native safety checks from paired before/after Auto benchmarks.
-The native operation counts are unchanged; this stage improves 55 existing
-comparison dispatch entries rather than claiming 165 new public operations.
-All three amd64 widths and CPU-feature-masked fallback paths were checked.
+That historical stage improved 55 comparison dispatch entries; the current
+generated backend contains 100 entries across three widths (300 variants),
+not 300 distinct public operations.
+That report records checks of all three amd64 widths and CPU-feature-masked
+fallback paths for its recorded revision, not a fresh run of this candidate.
 arm64 is cross-compiled only, and its literal overrides remain unchanged.
 
 ## Narrow masked MIN/MAX
@@ -212,3 +228,18 @@ Dispatch remains behind existing CPU and SIMD-width guards. The four registry
 entries are candidates, not statistical-gate approvals. ARM64 has been
 cross-compiled only. Engine batch support preserves narrow output types and
 promoted Int64 sums without changing the pure-Int64 legacy query boundary.
+
+## Scope of this documentation audit
+
+The current dispatch descriptions above were checked against the installers in
+`kernel/simd_go127.go`, `simd_guard_amd64.go`, generated comparison/checked/scale/
+widening files, masked reduction installers, and hash/compaction installers.
+This documentation-only review executes no tests or benchmarks. Historical
+reports are revision-specific evidence, not proof of current native ARM64 or
+hosted CI execution. Cross-compilation cannot establish native behavior.
+
+The historical `validation/numeric-native/README.md` and
+`validation/bitmap-native/README.md` artifacts are not included in this frozen
+source package. Their paths above are historical references, not available
+links or raw-data evidence for this review. Historical measurement figures
+are retained as previously documented, not newly reproduced here.

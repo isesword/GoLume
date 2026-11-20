@@ -316,13 +316,22 @@ func TestDecimalArrowPrecision38AndSessionOwnership(t *testing.T) {
 				}
 			})
 			sorted.Close()
-			// Native opt-in must not remove existing downstream admission boundaries.
+			// Global native Decimal SUM preserves exact cancellation at both scale limits.
+			sumQuery := q.Agg(lazy.Sum("d", "sum"))
+			decimalArrowField(t, sumQuery, "sum", 38, scale, true)
+			sum, err := sumQuery.Collect(context.Background())
+			if err != nil {
+				t.Fatal(err)
+			}
+			decimalArrowCheck(t, sum.Column, "sum", 38, scale, 0, 1, func(int) (*big.Int, bool) {
+				return big.NewInt(0), true
+			})
+			sum.Close()
+			// Native opt-in must not remove the remaining downstream admission boundaries.
 			for _, tc := range []struct {
 				q    lazy.LazyFrame
 				want string
 			}{
-				{q.Agg(lazy.Sum("d", "sum")), "decimal does not support numeric reductions"},
-
 				{q.WithWindows(lazy.NewWindow(nil, lazy.OrderBy(lazy.Asc("d"))), lazy.RowNumber("n")), "not orderable"},
 				{q.Join(q, lazy.JoinOptions{Type: lazy.InnerJoin, LeftOn: []string{"d"}, RightOn: []string{"d"}, Suffix: "_r"}), "native decimal execution is not supported"},
 			} {

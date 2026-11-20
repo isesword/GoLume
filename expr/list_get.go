@@ -28,7 +28,7 @@ func bindListGet(bound *BoundExpr) error {
 	if parent.Type != memory.TypeList {
 		return fmt.Errorf("LIST_GET requires native List")
 	}
-	if err := validateExpressionContainers(parent); err != nil {
+	if err := validateListAccessContainers(parent); err != nil {
 		return fmt.Errorf("LIST_GET: %w", err)
 	}
 	child := parent.Children[0]

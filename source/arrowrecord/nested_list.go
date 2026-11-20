@@ -26,8 +26,21 @@ func checkNestedArrowType(dt arrow.DataType, structs int) error {
 		if t == nil || nilArrayDataType(t.Elem()) {
 			return fmt.Errorf("nil List datatype")
 		}
-		if inner, ok := t.Elem().(*arrow.ListType); ok {
-			if inner == nil || nilArrayDataType(inner.Elem()) || !nativeArrayTerminalType(inner.Elem()) {
+		if _, ok := t.Elem().(*arrow.ListType); ok {
+			var terminal arrow.DataType = t
+			depth := 0
+			for {
+				axis, ok := terminal.(*arrow.ListType)
+				if !ok {
+					break
+				}
+				if axis == nil || nilArrayDataType(axis.Elem()) || depth >= memory.MaxRepeatedListDepth {
+					return fmt.Errorf("native repeated LIST exceeds transport depth")
+				}
+				depth++
+				terminal = axis.Elem()
+			}
+			if !nativeArrayTerminalType(terminal) {
 				return fmt.Errorf("nested List requires Int64 or String terminal")
 			}
 			return nil
@@ -45,6 +58,7 @@ func nestedMemoryField(f arrow.Field) (memory.Field, error) {
 	}
 	out := mapStructListField(f)
 	normalizeRecursiveStringFields(&out)
+	canonicalizeThreeAxisProvenance(&out)
 	s, err := memory.NewSchemaWithNestedListsChecked(out)
 	if err != nil {
 		return memory.Field{}, err
@@ -52,19 +66,56 @@ func nestedMemoryField(f arrow.Field) (memory.Field, error) {
 	return s.Fields[0], nil
 }
 
-// arrowArrayNode normalizes both offset axes over retained Arrow buffers.
+// Canonicalize only the newly admitted path, after Arrow type validation.
+// Existing depth-two siblings retain their complete source provenance.
+func canonicalizeThreeAxisProvenance(f *memory.Field) bool {
+	if f.Type == memory.TypeStruct {
+		changed := false
+		for i := range f.Children {
+			if canonicalizeThreeAxisProvenance(&f.Children[i]) {
+				changed = true
+			}
+		}
+		if changed {
+			f.ArrowType = ""
+		}
+		return changed
+	}
+	if f.Type != memory.TypeList {
+		return false
+	}
+	node := f
+	depth := 0
+	for node.Type == memory.TypeList && len(node.Children) == 1 && depth <= memory.MaxRepeatedListDepth {
+		depth++
+		node = &node.Children[0]
+	}
+	if depth != memory.MaxRepeatedListDepth {
+		return false
+	}
+	node = f
+	for axis := 0; axis <= depth; axis++ {
+		node.ArrowType = ""
+		if axis < depth {
+			node = &node.Children[0]
+		}
+	}
+	return true
+}
+
+// arrowArrayNode normalizes two or three repeated offset axes over retained Arrow buffers.
 // Constructor metadata belongs to the retained source; query views are separately admitted.
 func arrowArrayNode(a arrow.Array, f memory.Field, depth int) (*memory.ArrayNode, error) {
 	return arrowArrayNodeDomain(a, f, depth, nil)
 }
 func arrowArrayNodeDomain(a arrow.Array, f memory.Field, depth int, ancestor memory.Bitmap) (*memory.ArrayNode, error) {
-	if nilArrayValue(a) || depth > memory.MaxNestedListDepth {
+	if nilArrayValue(a) || depth > memory.MaxRepeatedListDepth {
 		return nil, fmt.Errorf("invalid native array node")
 	}
 	out := &memory.ArrayNode{Kind: f.Type, Encoding: memory.EncodingView}
 	if f.Type == memory.TypeList {
 		v, ok := a.(*array.List)
-		if !ok || v == nil || depth == memory.MaxNestedListDepth || len(f.Children) != 1 {
+		if !ok || v == nil || depth == memory.MaxRepeatedListDepth || len(f.Children) != 1 {
 			return nil, fmt.Errorf("invalid native List node")
 		}
 		raw := v.Offsets()
@@ -101,7 +152,7 @@ func arrowArrayNodeDomain(a arrow.Array, f memory.Field, depth int, ancestor mem
 		out.Validity = validityBitmap(v)
 		return out, nil
 	}
-	if depth != memory.MaxNestedListDepth {
+	if depth < 2 || depth > memory.MaxRepeatedListDepth {
 		return nil, fmt.Errorf("invalid native terminal depth")
 	}
 	switch v := a.(type) {

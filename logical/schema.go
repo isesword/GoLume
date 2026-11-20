@@ -13,6 +13,12 @@ import (
 // schema without executing the plan.
 func InferSchema(plan Plan) (memory.Schema, error) {
 	switch n := plan.(type) {
+	case *TimestampRange:
+		return inferTimestampRange(n)
+	case *PartitionedDecimalPrefixAverage:
+		return inferPartitionedDecimalPrefixAverage(n)
+	case *DecimalPrefixAverage:
+		return inferDecimalPrefixAverage(n)
 	case *Scan:
 		if n == nil || n.Source == nil {
 			return memory.Schema{}, fmt.Errorf("logical scan has nil source")
@@ -230,6 +236,9 @@ func InferSchema(plan Plan) (memory.Schema, error) {
 		in, err := InferSchema(n.Input)
 		if err != nil {
 			return memory.Schema{}, err
+		}
+		if schema, handled, err := inferDecimalSum(n, in); handled {
+			return schema, err
 		}
 		fields := make([]memory.Field, 0, len(n.GroupBy)+len(n.Aggregates))
 		for _, name := range n.GroupBy {

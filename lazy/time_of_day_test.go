@@ -211,9 +211,18 @@ func TestTimeOfDayLazyTransport(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	// Native TIME scan is intentionally unsupported in this earlier baseline.
-	if _, e = s.ScanParquet(result.Files[0]); e == nil || !strings.Contains(e.Error(), "not supported by native scan") {
-		t.Fatalf("native TIME rejection boundary: %v", e)
+	native, e := s.ScanParquet(result.Files[0])
+	if e != nil {
+		t.Fatalf("native local TIME(ns) admission: %v", e)
+	}
+	ndf, e := native.Collect(context.Background())
+	if e != nil {
+		t.Fatalf("native local TIME(ns) read: %v", e)
+	}
+	defer ndf.Close()
+	timeOfDayCheck(t, ndf, rows)
+	if e := ndf.Close(); e != nil {
+		t.Fatal(e)
 	}
 	// Independently read Parquet with Arrow, then admit those typed records back through ScanArrow.
 	pr, e := file.OpenParquetFile(pp, false)
@@ -531,4 +540,81 @@ func (c *timeOfDayRunContext) Err() error {
 		c.maxRuns = n
 	}
 	return c.Context.Err()
+}
+
+func TestN25WallClockNativeParquet(t *testing.T) {
+	ctx := context.Background()
+	s := NewSession(engine.DefaultOptions())
+	defer s.Close()
+	rb := array.NewRecordBuilder(am.DefaultAllocator, arrow.NewSchema([]arrow.Field{
+		{Name: "instant", Type: &arrow.TimestampType{Unit: arrow.Nanosecond, TimeZone: "UTC"}, Nullable: true},
+	}, nil))
+	defer rb.Release()
+	ts := rb.Field(0).(*array.TimestampBuilder)
+	for _, instant := range []string{"2024-04-06T14:59:59.999999999Z", "2024-04-06T15:00:00Z", "1969-12-31T23:59:59.999999999Z"} {
+		ts.Append(arrow.Timestamp(timeOfDayNS(t, instant)))
+	}
+	ts.AppendNull()
+	record := rb.NewRecordBatch()
+	defer record.Release()
+	base, e := s.ScanArrow(record)
+	if e != nil {
+		t.Fatal(e)
+	}
+	if _, e := base.WithColumns(DateInZone(Col("instant"), expr.TimeZone{}).Alias("bad")).Schema(); e == nil {
+		t.Fatal("zero timezone handle must fail plan binding")
+	}
+	z := timeOfDayZone(t, "lord_howe")
+	projected := base.WithColumns(
+		DateInZone(Col("instant"), z).Alias("local_date"),
+		TimeOfDayInZone(Col("instant"), z).Alias("local_clock"),
+	)
+	schema, e := projected.Schema()
+	if e != nil {
+		t.Fatal(e)
+	}
+	for name, ty := range map[string]memory.DataType{"local_date": memory.TypeDate32, "local_clock": memory.TypeTime64} {
+		f, ok := schema.Field(name)
+		if !ok || f.Type != ty || !f.Nullable {
+			t.Fatalf("projected field %s: %+v", name, f)
+		}
+	}
+
+	path := filepath.Join(t.TempDir(), "lord-howe.parquet")
+	if _, e := projected.SinkParquet(ctx, path, ParquetSinkOptions{RowGroupRows: 2}); e != nil {
+		t.Fatal(e)
+	}
+	read, e := s.ScanParquet(path)
+	if e != nil {
+		t.Fatalf("native local civil transport: %v", e)
+	}
+	df, e := read.Collect(ctx)
+	if e != nil {
+		t.Fatal(e)
+	}
+	defer df.Close()
+	// Lord Howe's half-hour fall-back jumps from 01:59:59.999999999
+	// (+11:00) to 01:30 (+10:30). The negative epoch instant is +10:00.
+	for name, want := range map[string][]any{
+		"local_date":  {int32(19820), int32(19820), int32(0), nil},
+		"local_clock": {int64(7199999999999), int64(5400000000000), int64(35999999999999), nil},
+	} {
+		c, e := df.Column(name)
+		if e != nil {
+			t.Fatal(e)
+		}
+		if name == "local_clock" {
+			if _, e := c.Time64Chunks(); e != nil {
+				t.Fatal(e)
+			}
+		} else {
+			if _, e := c.Date32Chunks(); e != nil {
+				t.Fatal(e)
+			}
+		}
+		got, e := c.ToAnySlice()
+		if e != nil || !reflect.DeepEqual(got, want) {
+			t.Fatalf("%s: got %v want %v: %v", name, got, want, e)
+		}
+	}
 }

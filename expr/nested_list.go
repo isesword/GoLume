@@ -6,10 +6,25 @@ import (
 )
 
 func validateExpressionContainers(f memory.Field) error {
+	if err := memory.ValidateRepeatedListDepth([]memory.Field{f}, memory.MaxNestedListDepth); err != nil {
+		return err
+	}
 	if f.Name == "" {
 		f.Name = "expression"
 	}
 	return f.ValidateArrayContainers()
+}
+
+// Only Length and Get may inspect the outer axis of a checked depth-three List.
+// All other computational consumers retain their independent depth-two guard.
+func validateListAccessContainers(f memory.Field) error {
+	if f.Name == "" {
+		f.Name = "expression"
+	}
+	if f.Type == memory.TypeList && memory.IsNestedList(f) {
+		return f.ValidateNestedList()
+	}
+	return validateExpressionContainers(f)
 }
 
 type nestedArrayLease struct{ owned *memory.OwnedNestedList }
@@ -131,7 +146,6 @@ func evalNestedListGet(out, in, index *scalarRegister, f memory.Field, rows int,
 		}
 	}
 	child := f.Children[0]
-	child.Nullable = true
 	owned, err := memory.TakeNullableArrayRowsOwned(ctx, m, in.array.Child, child, indices)
 	if err != nil {
 		return err
@@ -142,7 +156,9 @@ func evalNestedListGet(out, in, index *scalarRegister, f memory.Field, rows int,
 	out.structList = nil
 	out.intList = nil
 	out.strList = nil
-	if node.Child.Kind == memory.TypeInt64 {
+	if node.Child.Kind == memory.TypeList {
+		out.array = node
+	} else if node.Child.Kind == memory.TypeInt64 {
 		out.intList = &memory.Int64ListVector{Offsets: node.Offsets, Validity: node.Validity, Values: node.Child.Int64, Encoding: memory.EncodingView}
 	} else {
 		out.strList = &memory.StringListVector{Offsets: node.Offsets, Validity: node.Validity, Values: node.Child.Strings, Encoding: memory.EncodingView}

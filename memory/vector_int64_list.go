@@ -5,7 +5,9 @@ import (
 	"math"
 )
 
-// Int64ListVector stores a nullable list<int64> column. Offsets index the
+// Int64ListVector stores nullable lists with 64-bit integer backing values.
+// The schema distinguishes Int64 from top-level nanosecond wall-clock TIME.
+// Offsets index the
 // child int64 rows, while Values owns the child values and optional
 // element validity bitmap. Parent NULL and a valid empty list are distinct.
 type Int64ListVector struct {

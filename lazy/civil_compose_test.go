@@ -215,8 +215,36 @@ func TestComposeCivilLazyTransport(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	if _, e = s.ScanParquet(result.Files[0]); e == nil || !strings.Contains(e.Error(), "not supported by native scan") {
-		t.Fatalf("native TIME rejection boundary: %v", e)
+	// The fixture intentionally carries out-of-domain wall-clock coefficients
+	// so TryCompose is also tested above. Native Parquet TIME validates them
+	// when decoding; keep this separate from the valid transport check.
+	native, e := s.ScanParquet(result.Files[0])
+	if e != nil {
+		t.Fatalf("native local TIME(ns) admission: %v", e)
+	}
+	if bad, e := native.Collect(context.Background()); e == nil {
+		bad.Close()
+		t.Fatal("expected native read to reject out-of-domain TIME")
+	} else if !strings.Contains(e.Error(), "wall-clock time") || !strings.Contains(e.Error(), "out of range") {
+		t.Fatalf("native TIME range diagnostic: %v", e)
+	}
+	validPath := filepath.Join(t.TempDir(), "compose-valid.parquet")
+	valid, e := q.Limit(4).SinkParquet(context.Background(), validPath, ParquetSinkOptions{RowGroupRows: 2})
+	if e != nil {
+		t.Fatal(e)
+	}
+	vq, e := s.ScanParquet(valid.Files[0])
+	if e != nil {
+		t.Fatal(e)
+	}
+	vdf, e := vq.Collect(context.Background())
+	if e != nil {
+		t.Fatal(e)
+	}
+	defer vdf.Close()
+	composeCivilCheck(t, vdf, composeCivilRows(4))
+	if e := vdf.Close(); e != nil {
+		t.Fatal(e)
 	}
 	pr, e := file.OpenParquetFile(pp, false)
 	if e != nil {

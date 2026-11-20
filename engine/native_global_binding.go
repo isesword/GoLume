@@ -41,7 +41,7 @@ func (p *PreparedQuery) globalAggregateBindingsEligible() bool {
 		return false
 	}
 	for lane, layout := range m.Layouts {
-		if layout.Avg {
+		if layout.Avg && (m.Types[lane] != memory.TypeFloat64 || layout.Min || layout.Max) {
 			return false
 		}
 		if layout.Min || layout.Max {
@@ -95,8 +95,8 @@ func (s *sortedAggregateStream) bindGlobalAggregateInputs() {
 			bound.rowsOnly = true
 			continue
 		}
-		_, bound.validity, _ = aggregateColumnInfo(s.inputBatch, name, m.Types[lane], m.Layouts[lane].Sum || m.Layouts[lane].Min || m.Layouts[lane].Max)
-		if !(m.Layouts[lane].Sum || m.Layouts[lane].Min || m.Layouts[lane].Max) {
+		_, bound.validity, _ = aggregateColumnInfo(s.inputBatch, name, m.Types[lane], aggregateNeedsValue(m.Layouts[lane]))
+		if !(aggregateNeedsValue(m.Layouts[lane])) {
 			continue
 		}
 		bound.typ = m.Types[lane]
@@ -176,6 +176,28 @@ func (s *sortedAggregateStream) consumeGlobalAggregateBatch(ctx context.Context)
 		for lane := range s.globalBindings {
 			if err := ctx.Err(); err != nil {
 				return err
+			}
+			if s.query.cq.MultiAggregate.Layouts[lane].Avg {
+				state := s.numeric.Result(0, lane)
+				bound := &s.globalBindings[lane]
+				if err := consumeGlobalFloat64AverageBatch(ctx, bound.float64s.Values[:rows], bound.validity, s.selection, selectedRows, &state); err != nil {
+					if err != errGlobalFloat64AverageFallback {
+						return err
+					}
+					// The tentative snapshot was not committed. Replay this
+					// whole lane only; diagnostics and other lanes stay once.
+					if err := s.consumeGlobalFloat64AverageRows(ctx, lane, rows); err != nil {
+						return err
+					}
+					continue
+				}
+				if err := ctx.Err(); err != nil {
+					return err
+				}
+				if err := s.numeric.InitResult(0, lane, state); err != nil {
+					return err
+				}
+				continue
 			}
 			if layout := s.query.cq.MultiAggregate.Layouts[lane]; layout.Min || layout.Max {
 				state := s.numeric.Result(0, lane)

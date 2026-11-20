@@ -399,11 +399,51 @@ func TestNestedTopKBinaryOpaqueAndDecimalBoundary(t *testing.T) {
 		t.Fatal("D1 changed", v, valid, e)
 	}
 	dd.Close()
-	bad, e := dq.TopK(17, Asc("seq")).Collect(context.Background())
-	if e == nil {
-		bad.Close()
-		t.Fatal("native Decimal TopK expanded")
+	decimalTop, e := dq.TopK(17, Asc("seq")).Collect(context.Background())
+	if e != nil {
+		t.Fatal(e)
 	}
+	seqCol, e := decimalTop.Column("seq")
+	if e != nil {
+		t.Fatal(e)
+	}
+	seqValues, e := seqCol.ToAnySlice()
+	if e != nil {
+		t.Fatal(e)
+	}
+	expectedSeq := make([]any, 17)
+	for i := range expectedSeq {
+		expectedSeq[i] = int64(i)
+	}
+	if !reflect.DeepEqual(seqValues, expectedSeq) {
+		t.Fatal("Decimal TopK stable ordinal", seqValues)
+	}
+	decimalCol, e := decimalTop.Column("decimal")
+	if e != nil {
+		t.Fatal(e)
+	}
+	decimalChunks, e := decimalCol.Decimal128Chunks()
+	if e != nil {
+		t.Fatal(e)
+	}
+	decimalRows := 0
+	for _, ch := range decimalChunks {
+		if ch.Precision() != decType.Precision || ch.Scale() != decType.Scale {
+			t.Fatal("Decimal TopK metadata")
+		}
+		for i := 0; i < ch.Len(); i++ {
+			value, valid, e := ch.Value(i)
+			if e != nil || !valid || value != decimal128.FromI64(int64(decimalRows)) {
+				t.Fatal("Decimal TopK coefficient", decimalRows, value, valid, e)
+			}
+			decimalRows++
+		}
+	}
+	if decimalRows != 17 {
+		t.Fatal("Decimal TopK rows", decimalRows)
+	}
+	decimalTop.Close()
+
 	s.Close()
 	checkOpaque()
 	again, e := c.ToAnySlice()

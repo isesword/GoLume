@@ -12,23 +12,54 @@ import (
 type repeatedBoundary struct{ present, slot int16 }
 type nestedArrayPlan struct {
 	field      memory.Field
-	boundaries [2]repeatedBoundary
+	boundaries [memory.MaxRepeatedListDepth]repeatedBoundary
+	depth      int
 }
 
 func (s *Source) planArrayList(outer, inner *schema.GroupNode, parent string, a nestedAncestorChain, fixed *fixedPlan) (memory.Field, error) {
-	if inner.RepetitionType() == arrowparquet.Repetitions.Repeated || inner.NumFields() != 1 {
-		return memory.Field{}, fmt.Errorf("inner LIST must be standard three-level")
+	var groups [memory.MaxRepeatedListDepth]*schema.GroupNode
+	var bounds [memory.MaxRepeatedListDepth]repeatedBoundary
+	depth := 0
+	g := outer
+	def := a.optionalCount()
+	var leaf *schema.PrimitiveNode
+	for {
+		if depth >= memory.MaxRepeatedListDepth || g.RepetitionType() == arrowparquet.Repetitions.Repeated || g.NumFields() != 1 {
+			return memory.Field{}, fmt.Errorf("repeated LIST depth/shape unsupported")
+		}
+		if _, ok := g.LogicalType().(schema.ListLogicalType); !ok {
+			return memory.Field{}, fmt.Errorf("repeated axis requires LIST annotation")
+		}
+		wrapper, ok := g.Field(0).(*schema.GroupNode)
+		if !ok || wrapper.RepetitionType() != arrowparquet.Repetitions.Repeated || wrapper.NumFields() != 1 {
+			return memory.Field{}, fmt.Errorf("LIST wrapper invalid")
+		}
+		if _, ok := wrapper.LogicalType().(schema.NoLogicalType); !ok {
+			return memory.Field{}, fmt.Errorf("LIST wrapper annotated")
+		}
+		if g.RepetitionType() == arrowparquet.Repetitions.Optional {
+			def++
+		}
+		groups[depth] = g
+		bounds[depth] = repeatedBoundary{present: def, slot: def + 1}
+		def++
+		depth++
+		element := wrapper.Field(0)
+		if element.RepetitionType() == arrowparquet.Repetitions.Repeated {
+			return memory.Field{}, fmt.Errorf("LIST element cannot be repeated")
+		}
+		if next, ok := element.(*schema.GroupNode); ok {
+			g = next
+			continue
+		}
+		leaf, ok = element.(*schema.PrimitiveNode)
+		if !ok {
+			return memory.Field{}, fmt.Errorf("LIST terminal must be primitive")
+		}
+		break
 	}
-	wrapper, ok := inner.Field(0).(*schema.GroupNode)
-	if !ok || wrapper.RepetitionType() != arrowparquet.Repetitions.Repeated || wrapper.NumFields() != 1 {
-		return memory.Field{}, fmt.Errorf("inner LIST repeated wrapper invalid")
-	}
-	if _, ok = wrapper.LogicalType().(schema.NoLogicalType); !ok {
-		return memory.Field{}, fmt.Errorf("inner repeated wrapper annotated")
-	}
-	leaf, ok := wrapper.Field(0).(*schema.PrimitiveNode)
-	if !ok || leaf.RepetitionType() == arrowparquet.Repetitions.Repeated {
-		return memory.Field{}, fmt.Errorf("two-level LIST terminal must be primitive")
+	if depth < 2 {
+		return memory.Field{}, fmt.Errorf("array requires repeated LIST axes")
 	}
 	index := -1
 	for j := 0; j < s.meta.Schema.NumColumns(); j++ {
@@ -60,35 +91,29 @@ func (s *Source) planArrayList(outer, inner *schema.GroupNode, parent string, a 
 	} else {
 		return memory.Field{}, fmt.Errorf("array terminal must be Int64 or String")
 	}
-	o, i, e := outer.RepetitionType() == arrowparquet.Repetitions.Optional, inner.RepetitionType() == arrowparquet.Repetitions.Optional, leaf.RepetitionType() == arrowparquet.Repetitions.Optional
-	d := a.optionalCount()
-	if o {
-		d++
+	optional := leaf.RepetitionType() == arrowparquet.Repetitions.Optional
+	if optional {
+		def++
 	}
-	bounds := [2]repeatedBoundary{{present: d, slot: d + 1}, {present: d + 1, slot: d + 2}}
-	if i {
-		bounds[1].present++
-		bounds[1].slot++
+	if int(desc.MaxRepetitionLevel()) != depth || desc.MaxDefinitionLevel() != def {
+		return memory.Field{}, fmt.Errorf("LIST definition/repetition mismatch")
 	}
-	max := bounds[1].slot
-	if e {
-		max++
+	f := memory.Field{Name: "item", Type: kind, Nullable: optional, Encoding: memory.EncodingPlain}
+	if kind == memory.TypeString {
+		f.Encoding = memory.EncodingView
 	}
-	if desc.MaxRepetitionLevel() != 2 || desc.MaxDefinitionLevel() != max {
-		return memory.Field{}, fmt.Errorf("two-level LIST definition/repetition mismatch")
+	for i := depth - 1; i >= 0; i-- {
+		name := "item"
+		if i == 0 {
+			name = outer.Name()
+		}
+		f = memory.Field{Name: name, Type: memory.TypeList, Nullable: groups[i].RepetitionType() == arrowparquet.Repetitions.Optional, Encoding: memory.EncodingView, Children: []memory.Field{f}}
 	}
-	var item memory.Field
-	if kind == memory.TypeInt64 {
-		item = memory.ListInt64Field("item", i, e)
-	} else {
-		item = memory.ListStringField("item", i, e)
-	}
-	f, err := memory.NestedListField(outer.Name(), o, item)
-	if err != nil {
+	if err := f.ValidateNestedList(); err != nil {
 		return memory.Field{}, err
 	}
-	p := int64ListPlan{name: outer.Name(), index: index, optional: o, elementOptional: e, maxDef: max}
-	s.nestedLists = append(s.nestedLists, nestedListPlan{plan: p, kind: kind, parent: parent, ancestors: a, array: &nestedArrayPlan{field: f, boundaries: bounds}})
+	p := int64ListPlan{name: outer.Name(), index: index, optional: f.Nullable, elementOptional: optional, maxDef: def}
+	s.nestedLists = append(s.nestedLists, nestedListPlan{plan: p, kind: kind, parent: parent, ancestors: a, array: &nestedArrayPlan{field: f, boundaries: bounds, depth: depth}})
 	fixed.leaves = append(fixed.leaves, fixedLeaf{binding: columnBinding{Name: p.name, Index: index, Type: memory.TypeList}, parent: parent, ancestors: a})
 	return f, nil
 }

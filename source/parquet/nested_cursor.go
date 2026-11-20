@@ -148,7 +148,7 @@ func (c *nestedListCursor) outputPayload() int64 {
 func (c *nestedListCursor) clearStage() {
 	if c.array != nil {
 		c.array.stage.close()
-		c.array.stack = [2]repeatedFrame{}
+		c.array.stack = [memory.MaxRepeatedListDepth]repeatedFrame{}
 		c.int64ListStream.clearStage()
 		return
 	}
@@ -190,6 +190,12 @@ func (c *nestedListCursor) hasReader() bool {
 	return c.byteReader != nil || c.listReader != nil
 }
 func (c *nestedListCursor) openReader(ctx context.Context, r *file.RowGroupReader) error {
+	if c.kind == memory.TypeTime64 {
+		binding := columnBinding{Name: c.plan.name, Index: c.plan.index}
+		if err := validateParquetDataPages(func() error { return c.check(ctx) }, r, binding, arrowparquet.Types.Int64, "wall-clock list", time64ValueEncodingSupported, c.expected); err != nil {
+			return fmt.Errorf("LIST %q page preflight: %w", c.plan.name, err)
+		}
+	}
 	if c.group != nil {
 		return c.group.open(ctx, r)
 	}
@@ -248,7 +254,7 @@ func (c *nestedListCursor) peek(ctx context.Context) error {
 	c.levels++
 	maxRep := int16(1)
 	if c.array != nil {
-		maxRep = 2
+		maxRep = int16(c.array.plan.depth)
 	}
 	if t.rep[0] < 0 || (t.rep[0] > maxRep || (c.scalar && t.rep[0] != 0)) || t.def[0] < 0 || t.def[0] > c.plan.maxDef {
 		return fmt.Errorf("nested LIST invalid levels")
@@ -348,6 +354,9 @@ func (c *nestedListCursor) assemble(ctx context.Context) error {
 		count := c.stageCount()
 		if count == math.MaxInt {
 			return fmt.Errorf("nested LIST element overflow: %w", memory.ErrBudgetExceeded)
+		}
+		if c.kind == memory.TypeTime64 && c.tuple.valid && (c.tuple.value[0] < 0 || c.tuple.value[0] >= dayNanoseconds) {
+			return fmt.Errorf("LIST %q wall-clock time outside [0, 24h)", c.plan.name)
 		}
 		if c.strings == nil {
 			if err := c.int64ListStream.growStage(ctx, count+1); err != nil {

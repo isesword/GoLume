@@ -24,7 +24,7 @@ func (f LazyFrame) AggConfigured(aggregates ...expr.AggregateSpec) LazyFrame {
 func (g GroupedFrame) AggConfigured(aggregates ...expr.AggregateSpec) LazyFrame {
 	f := g.frame
 	copied := append([]expr.AggregateSpec(nil), aggregates...)
-	if _, _, err := expr.NormalizeAggregates(copied); err != nil {
+	if _, _, _, err := expr.NormalizeConfiguredAggregates(copied); err != nil {
 		f.err = err
 		return f
 	}
@@ -39,4 +39,9 @@ func terminalAggregate(plan logical.Plan) bool {
 		return true
 	}
 	return false
+}
+
+// AvgDecimal128 constructs an explicit native Decimal AVG for AggConfigured.
+func AvgDecimal128(column string, precision, scale int32, mode expr.DecimalRoundingMode, alias string) expr.DecimalAverageSpec {
+	return expr.AvgDecimal128(column, precision, scale, mode, alias)
 }

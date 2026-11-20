@@ -57,11 +57,18 @@ func NewSortSource(input source.Source, keys []SortKey, manager memory.Manager) 
 // then merged by the original global ordinal to preserve stable ordering.
 func NewSortSourceWithOptions(input source.Source, keys []SortKey, manager memory.Manager, opts SortSourceOptions) (source.Source, error) {
 	if input != nil {
-		if opts.Spillable {
-			if err := rejectSortDecimalExecution(input.Schema(), true); err != nil {
-				return nil, err
-			}
-		} else if err := validateResidentDecimalSchema(input.Schema()); err != nil {
+		if err := validateResidentRepeatedListSchema(input.Schema(), true); err != nil {
+			return nil, err
+		}
+	}
+
+	if input != nil {
+		if err := validateResidentListTimeSchema(input.Schema(), !opts.Spillable); err != nil {
+			return nil, err
+		}
+	}
+	if input != nil {
+		if err := validateResidentDecimalSchema(input.Schema()); err != nil {
 			return nil, err
 		}
 	}
@@ -279,16 +286,41 @@ func NewTopKSourceWithManager(input source.Source, k int, keys []SortKey, manage
 // omit every column except the ordering keys, which avoids decoding payload
 // columns while the bounded heap is being built. When either input cannot
 // promise stable replay, only input is scanned and winner payloads are retained
-// as budget-admitted snapshots; keyInput is not opened.
+// as budget-admitted snapshots; keyInput is not opened. Canonical top-level
+// three-axis List payloads always use this one-pass strategy, even if replayable.
 func NewTopKSourceWithKeyInput(input, keyInput source.Source, k int, keys []SortKey, manager memory.Manager) (source.Source, error) {
-	// TopK owns existing checked container payloads in both execution strategies.
+	// Only a canonical full-payload profile selects the new one-pass route.
+	// A depth-three key-input-only schema must not widen the old replay path.
+	threeAxis := input != nil && residentHasThreeAxisPayload(input.Schema())
 	if input != nil {
-		if err := rejectSortDecimalExecution(input.Schema(), true); err != nil {
+		if err := validateResidentRepeatedListSchema(input.Schema(), threeAxis); err != nil {
 			return nil, err
 		}
 	}
 	if keyInput != nil {
-		if err := rejectSortDecimalExecution(keyInput.Schema(), true); err != nil {
+		if err := validateResidentRepeatedListSchema(keyInput.Schema(), threeAxis); err != nil {
+			return nil, err
+		}
+	}
+
+	if input != nil {
+		if err := validateResidentListTimeSchema(input.Schema(), false); err != nil {
+			return nil, err
+		}
+	}
+	if keyInput != nil {
+		if err := validateResidentListTimeSchema(keyInput.Schema(), false); err != nil {
+			return nil, err
+		}
+	}
+	// TopK owns existing checked container payloads in both execution strategies.
+	if input != nil {
+		if err := validateResidentDecimalSchema(input.Schema()); err != nil {
+			return nil, err
+		}
+	}
+	if keyInput != nil {
+		if err := validateResidentDecimalSchema(keyInput.Schema()); err != nil {
 			return nil, err
 		}
 	}
@@ -305,11 +337,20 @@ func NewTopKSourceWithKeyInput(input, keyInput source.Source, k int, keys []Sort
 	if len(keys) == 0 {
 		return nil, fmt.Errorf("top-k requires at least one key")
 	}
-	if err := validateSortKeys(input.Schema(), keys); err != nil {
+	if err := validateResidentSortKeys(input.Schema(), keys); err != nil {
 		return nil, err
 	}
-	if err := validateSortKeys(keyInput.Schema(), keys); err != nil {
+	if err := validateResidentSortKeys(keyInput.Schema(), keys); err != nil {
 		return nil, fmt.Errorf("top-k key input: %w", err)
+	}
+	for _, key := range keys {
+		left, _ := input.Schema().Field(key.Column)
+		right, _ := keyInput.Schema().Field(key.Column)
+		if left.Type == memory.TypeDecimal || right.Type == memory.TypeDecimal {
+			if left.Type != right.Type || left.DecimalPrecision != right.DecimalPrecision || left.DecimalScale != right.DecimalScale {
+				return nil, fmt.Errorf("top-k Decimal key %q input/key input metadata mismatch", key.Column)
+			}
+		}
 	}
 	return &TopKSource{schema: residentOrderSchema(input.Schema()), input: input, keyInput: keyInput, keys: append([]SortKey(nil), keys...), k: k, manager: manager}, nil
 }
@@ -356,10 +397,11 @@ func (s *TopKSource) Partitions(context.Context) ([]source.Partition, error) {
 func (s *TopKSource) Replayability() source.Replayability { return source.ReplayabilityOf(s.input) }
 
 func (s *TopKSource) canReplay() bool {
-	return source.ReplayabilityOf(s.input) == source.ReplayStable && source.ReplayabilityOf(s.keyInput) == source.ReplayStable
+	return !residentHasThreeAxisPayload(s.input.Schema()) && source.ReplayabilityOf(s.input) == source.ReplayStable && source.ReplayabilityOf(s.keyInput) == source.ReplayStable
 }
 
-// NewBatchStream uses two passes only when both sources promise stable replay.
+// NewBatchStream uses two passes only for existing profiles when both sources
+// promise stable replay. Canonical three-axis payloads always use snapshots.
 // Otherwise it scans the payload once and retains at most K owned row snapshots.
 func (s *TopKSource) NewBatchStream(ctx context.Context, opts source.ReadOptions) (source.BatchStream, error) {
 	if ctx == nil {
@@ -369,7 +411,7 @@ func (s *TopKSource) NewBatchStream(ctx context.Context, opts source.ReadOptions
 		return nil, err
 	}
 	if !s.canReplay() {
-		if residentExtendedSchema(s.input.Schema().Fields) {
+		if residentExtendedSchema(s.input.Schema().Fields) || residentHasNativeDecimal(s.input.Schema().Fields) {
 			return newTopKContainerSnapshotStream(ctx, s, opts)
 		}
 		return newTopKSnapshotStream(ctx, s, opts)
@@ -379,7 +421,7 @@ func (s *TopKSource) NewBatchStream(ctx context.Context, opts source.ReadOptions
 		opts.MemoryManager = query.Operator("SourceScan", memory.MemoryWorkspace)
 	}
 	r := &topKReader{owner: s, scratch: memory.NewBatch(), readOpts: opts, query: query}
-	if s.k == 0 && residentExtendedSchema(s.input.Schema().Fields) {
+	if s.k == 0 && (residentExtendedSchema(s.input.Schema().Fields) || residentHasNativeDecimal(s.input.Schema().Fields)) {
 		return r, nil
 	}
 	first, err := source.OpenBatchStream(ctx, s.keyInput, opts)
@@ -506,6 +548,17 @@ func snapshotCell(batch *memory.Batch, schema memory.Schema, column string, row 
 	f, _ := schema.Field(column)
 	cell := sortCell{typ: f.Type}
 	switch f.Type {
+	case memory.TypeDecimal:
+		v := batch.Decimals[column]
+		if v == nil || row < 0 || row >= len(v.Values) {
+			return cell, fmt.Errorf("Decimal key %q row out of bounds", column)
+		}
+		cell.null = !v.IsValid(row)
+		if !cell.null {
+			cell.i64 = v.Values[row].HighBits()
+			cell.u64 = v.Values[row].LowBits()
+		}
+
 	case memory.TypeInt8:
 		v, err := batch.Int8(column)
 		if err != nil {
@@ -625,6 +678,20 @@ func compareCells(a, b sortCell, nullsLast bool) int {
 		return 1
 	}
 	switch a.typ {
+	case memory.TypeDecimal:
+		if a.i64 < b.i64 {
+			return -1
+		}
+		if a.i64 > b.i64 {
+			return 1
+		}
+		if a.u64 < b.u64 {
+			return -1
+		}
+		if a.u64 > b.u64 {
+			return 1
+		}
+
 	case memory.TypeInt8, memory.TypeInt16, memory.TypeInt32, memory.TypeInt64, memory.TypeDate32, memory.TypeDate64, memory.TypeTimestamp, memory.TypeTime32, memory.TypeTime64, memory.TypeDuration:
 		if a.i64 < b.i64 {
 			return -1

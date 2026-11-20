@@ -31,12 +31,15 @@ type fixedStream struct {
 
 // Scratch is shared across leaves: one logical row never grows with file size.
 type fixedScratch struct {
-	defs    [1]int16
-	i32     [1]int32
-	i64     [1]int64
-	f32     [1]float32
-	f64     [1]float64
-	boolean [1]bool
+	defs         [1]int16
+	i32          [1]int32
+	i64          [1]int64
+	f32          [1]float32
+	f64          [1]float64
+	boolean      [1]bool
+	decimal      memory.Decimal128
+	decimalBytes [1]arrowparquet.ByteArray
+	decimalFixed [1]arrowparquet.FixedLenByteArray
 }
 
 func (s *Source) newFixedStream(ctx context.Context, opts source.ReadOptions, parts []source.Partition) (source.BatchStream, error) {
@@ -140,6 +143,8 @@ func (s *Source) newFixedStream(ctx context.Context, opts source.ReadOptions, pa
 
 func fixedWidth(t memory.DataType) int64 {
 	switch t {
+	case memory.TypeDecimal:
+		return 16
 	case memory.TypeInt8, memory.TypeUint8:
 		return 1
 	case memory.TypeInt16, memory.TypeUint16:
@@ -213,6 +218,9 @@ func (s *fixedStream) closeChunks() error {
 	return first
 }
 func (s *fixedStream) release() error {
+	s.scratch.decimalBytes[0] = nil
+	s.scratch.decimalFixed[0] = nil
+	s.scratch.decimal = memory.Decimal128{}
 	s.clearBatch()
 	err := s.closeChunks()
 	if s.reader != nil {
@@ -295,6 +303,9 @@ func (s *fixedStream) Next(ctx context.Context, dst *memory.Batch) (bool, error)
 			if metadata.NumValues() != s.remaining {
 				return s.fail(fmt.Errorf("native fixed leaf %q value count %d differs from row group rows %d", l.binding.Name, metadata.NumValues(), s.remaining))
 			}
+			if err := s.validateRootDecimalPages(ctx, rg, l); err != nil {
+				return s.fail(err)
+			}
 			c, err := rg.Column(l.binding.Index)
 			if err != nil {
 				return s.fail(err)
@@ -351,7 +362,7 @@ func (s *fixedStream) Next(ctx context.Context, dst *memory.Batch) (bool, error)
 			if err := fixedContext(s.ctx, ctx); err != nil {
 				return s.fail(err)
 			}
-			def, count, err := s.readOne(s.chunks[i], l)
+			def, count, err := s.readOneContext(ctx, s.chunks[i], l)
 			if err != nil {
 				return s.fail(err)
 			}
@@ -397,6 +408,12 @@ func (s *fixedStream) Next(ctx context.Context, dst *memory.Batch) (bool, error)
 }
 
 func (s *fixedStream) readOne(c file.ColumnChunkReader, l fixedLeaf) (int16, int, error) {
+	return s.readOneContext(s.ctx, c, l)
+}
+func (s *fixedStream) readOneContext(ctx context.Context, c file.ColumnChunkReader, l fixedLeaf) (int16, int, error) {
+	if l.binding.Type == memory.TypeDecimal {
+		return s.readRootDecimal(ctx, c, l)
+	}
 	s.scratch.defs[0] = l.maxDef
 	var defs []int16
 	if l.maxDef > 0 {
@@ -429,6 +446,17 @@ func (s *fixedStream) readOne(c file.ColumnChunkReader, l fixedLeaf) (int16, int
 }
 
 func (s *fixedStream) storeOne(dst *memory.Batch, b columnBinding, row int, valid bool) error {
+	if b.Type == memory.TypeDecimal {
+		v := dst.Decimals[b.Name]
+		if valid {
+			v.Values[row] = s.scratch.decimal
+			memory.Set(v.Validity, row)
+		} else {
+			v.Values[row] = memory.Decimal128{}
+		}
+		s.scratch.decimal = memory.Decimal128{}
+		return nil
+	}
 	if !valid {
 		return nil
 	}
@@ -511,6 +539,8 @@ func (s *fixedStream) storeOne(dst *memory.Batch, b columnBinding, row int, vali
 func allocateFixedColumn(dst *memory.Batch, f memory.Field, rows int) {
 	valid := make(memory.Bitmap, memory.WordsFor(rows))
 	switch f.Type {
+	case memory.TypeDecimal:
+		dst.Decimals[f.Name] = &memory.Decimal128Vector{Values: make([]memory.Decimal128, rows), Validity: valid, Precision: f.DecimalPrecision, Scale: f.DecimalScale}
 	case memory.TypeInt8:
 		dst.Int8s[f.Name] = &memory.Int8Vector{Values: make([]int8, rows), Validity: valid, Encoding: memory.EncodingPlain}
 	case memory.TypeInt16:

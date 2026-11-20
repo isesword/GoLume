@@ -134,8 +134,14 @@ func arrayDecodeMetadata(f Field) (int64, error) {
 	if err != nil {
 		return 0, err
 	}
+	// Validation above bounds this walk before any decode allocation plan.
+	axes := 0
+	for f.Type == TypeList {
+		axes++
+		f = f.Children[0]
+	}
 	var leaf int64
-	if f.Children[0].Children[0].Type == TypeInt64 {
+	if f.Type == TypeInt64 {
 		leaf = int64(unsafe.Sizeof(Int64Vector{}))
 	} else {
 		leaf = int64(unsafe.Sizeof(StringViewVector{}))
@@ -146,7 +152,7 @@ func arrayDecodeMetadata(f Field) (int64, error) {
 	}
 	// The root descriptor is already charged by the map classifier.
 	// Each child node is allocated separately and must be rounded separately.
-	return addRunSizes(node, node, leaf)
+	return addRunSizes(int64(axes)*node, leaf)
 }
 func clearDecodedArray(v *ArrayNode) {
 	if v == nil {
@@ -171,65 +177,67 @@ func selectionArrayRunSize(b *Batch, f Field, rows []int, parent columnarSelecti
 	if err := v.validateNestedStructure(f, b.Rows, d, parent.check); err != nil {
 		return 0, err
 	}
-	ri, re, data := 0, 0, 0
+	depth, err := repeatedListDepth(f, parent.check)
+	if err != nil {
+		return 0, err
+	}
+	var counts [MaxRepeatedListDepth + 1]int
+	data := 0
+	var visit func(*ArrayNode, int, int, bool) error
+	visit = func(n *ArrayNode, row, axis int, visible bool) error {
+		if err := recursiveCheck(parent.check); err != nil {
+			return err
+		}
+		var err error
+		counts[axis], err = nestedListAddCount(counts[axis], 1)
+		if err != nil {
+			return err
+		}
+		if !visible || !n.IsValid(row) {
+			return nil
+		}
+		if n.Kind == TypeList {
+			for j := int(n.Offsets[row]); j < int(n.Offsets[row+1]); j++ {
+				if err := visit(n.Child, j, axis+1, true); err != nil {
+					return err
+				}
+			}
+		} else if n.Kind == TypeString {
+			data, err = nestedListAddBytes(data, int(n.Strings.Offsets[row+1]-n.Strings.Offsets[row]))
+			return err
+		}
+		return nil
+	}
 	for _, r := range rows {
 		if err := v.validateNestedParent(f, d, r, parent.check); err != nil {
 			return 0, err
 		}
-		if !d.visible(r) || !v.IsValid(r) {
-			continue
+		if err := visit(v, r, 0, d.visible(r)); err != nil {
+			return 0, err
 		}
-		var err error
-		ri, err = nestedListAddCount(ri, int(v.Offsets[r+1]-v.Offsets[r]))
+	}
+	var total int64
+	leaf := f
+	for axis := 0; axis <= depth; axis++ {
+		validity, err := selectionValidityBytes(int64(counts[axis]))
 		if err != nil {
 			return 0, err
 		}
-		for i := int(v.Offsets[r]); i < int(v.Offsets[r+1]); i++ {
-			if err := recursiveCheck(parent.check); err != nil {
-				return 0, err
-			}
-			inner := v.Child
-			if !inner.IsValid(i) {
-				continue
-			}
-			re, err = nestedListAddCount(re, int(inner.Offsets[i+1]-inner.Offsets[i]))
-			if err != nil {
-				return 0, err
-			}
-			leaf := inner.Child
-			if leaf.Kind == TypeString {
-				for j := int(inner.Offsets[i]); j < int(inner.Offsets[i+1]); j++ {
-					if err := recursiveCheck(parent.check); err != nil {
-						return 0, err
-					}
-					if leaf.IsValid(j) {
-						data, err = nestedListAddBytes(data, int(leaf.Strings.Offsets[j+1]-leaf.Strings.Offsets[j]))
-						if err != nil {
-							return 0, err
-						}
-					}
-				}
-			}
+		total, err = addRunSizes(total, validity)
+		if err != nil {
+			return 0, err
+		}
+		if axis < depth {
+			total, err = addRunSizes(total, 8, 4*(int64(counts[axis])+1))
+			leaf = leaf.Children[0]
+		} else if leaf.Type == TypeInt64 {
+			total, err = addRunSizes(total, 8*int64(counts[axis]))
+		} else {
+			total, err = addRunSizes(total, 4, 4*(int64(counts[axis])+1), 8, int64(data))
+		}
+		if err != nil {
+			return 0, err
 		}
 	}
-	pv, err := selectionValidityBytes(int64(len(rows)))
-	if err != nil {
-		return 0, err
-	}
-	iv, err := selectionValidityBytes(int64(ri))
-	if err != nil {
-		return 0, err
-	}
-	ev, err := selectionValidityBytes(int64(re))
-	if err != nil {
-		return 0, err
-	}
-	total, err := addRunSizes(pv, 8, 4*(int64(len(rows))+1), iv, 8, 4*(int64(ri)+1), ev)
-	if err != nil {
-		return 0, err
-	}
-	if v.Child.Child.Kind == TypeInt64 {
-		return addRunSizes(total, 8*int64(re))
-	}
-	return addRunSizes(total, 4, 4*(int64(re)+1), 8, int64(data))
+	return total, nil
 }

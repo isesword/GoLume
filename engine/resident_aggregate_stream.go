@@ -36,6 +36,12 @@ func (p *PreparedQuery) NewResidentAggregateStreamWithReadOptions(ctx context.Co
 
 // acquirePrepared is false only when Execute already owns the plan lifecycle.
 func (p *PreparedQuery) newResidentAggregateStream(ctx context.Context, schema memory.Schema, outputRows int, readOpts source.ReadOptions, acquirePrepared, reuse bool) (source.BatchStream, error) {
+	if p.decimalResident() {
+		return p.newDecimalResidentStream(ctx, schema, outputRows, readOpts, acquirePrepared, nil)
+	}
+	if p.decimalGlobal() || p.decimalGrouped() {
+		return nil, fmt.Errorf("Decimal SUM requires the dedicated global sorted stream")
+	}
 	if p != nil && p.distinct() != nil {
 		return p.newDistinctAggregateStream(ctx, schema, outputRows, readOpts, acquirePrepared)
 	}

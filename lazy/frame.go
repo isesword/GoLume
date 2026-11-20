@@ -612,6 +612,9 @@ func (f LazyFrame) Schema() (memory.Schema, error) {
 	if f.err != nil {
 		return memory.Schema{}, f.err
 	}
+	if err := f.validateDecimalPrefixExecution(); err != nil {
+		return memory.Schema{}, err
+	}
 	return logical.InferSchema(f.plan)
 }
 
@@ -629,6 +632,9 @@ func (f LazyFrame) Explain() string {
 func (f LazyFrame) ExplainOptimized() (string, error) {
 	if f.err != nil {
 		return "", f.err
+	}
+	if err := f.validateDecimalPrefixExecution(); err != nil {
+		return "", err
 	}
 	result, err := optimizer.Optimize(f.plan)
 	if err != nil {
@@ -920,6 +926,28 @@ func (f LazyFrame) prepare(ctx context.Context, opts engine.PrepareOptions) (*en
 
 func applyPushdown(ctx context.Context, plan logical.Plan) (logical.Plan, source.PushdownReport, error) {
 	switch n := plan.(type) {
+	case *logical.TimestampRange:
+		// Preserve the verified original source, rather than synthesizing a witness
+		// over a source-specific projection/predicate pushdown clone.
+		return n, source.PushdownReport{}, nil
+	case *logical.PartitionedDecimalPrefixAverage:
+		child, report, err := applyPushdown(ctx, n.Input)
+		if err != nil {
+			return nil, report, err
+		}
+		c := *n
+		c.Input = child
+		return &c, report, nil
+
+	case *logical.DecimalPrefixAverage:
+		child, report, err := applyPushdown(ctx, n.Input)
+		if err != nil {
+			return nil, report, err
+		}
+		c := *n
+		c.Input = child
+		return &c, report, nil
+
 	case *logical.Scan:
 		out := *n
 		out.Projection = append([]string(nil), n.Projection...)
@@ -1050,7 +1078,7 @@ func containsAdvancedPlan(plan logical.Plan) bool {
 	switch n := plan.(type) {
 	case *logical.ExprProjection:
 		return true
-	case *logical.Sort, *logical.TopK, *logical.Limit, *logical.Window, *logical.ConfiguredWindow:
+	case *logical.TimestampRange, *logical.PartitionedDecimalPrefixAverage, *logical.DecimalPrefixAverage, *logical.Sort, *logical.TopK, *logical.Limit, *logical.Window, *logical.ConfiguredWindow:
 		return true
 	case *logical.Filter:
 		// The aggregate-only shortcut folds filters into one predicate. Partial
@@ -1217,6 +1245,48 @@ func (p orderKeyPlan) keyPlan(input logical.Plan) logical.Plan {
 // Recursive calls transfer ownership upward; only the outer caller closes them.
 func lowerSourcePipeline(ctx context.Context, plan logical.Plan, manager memory.Manager, kernels kernel.Set, exec join.ParallelExecutor) (source.Source, expr.Expr, []io.Closer, error) {
 	switch n := plan.(type) {
+	case *logical.TimestampRange:
+		eng, _ := exec.(*engine.Engine)
+		src, err := lowerTimestampRange(ctx, n, manager, eng)
+		return src, nil, nil, err
+	case *logical.PartitionedDecimalPrefixAverage:
+		if _, err := logical.InferSchema(n); err != nil {
+			return nil, nil, nil, err
+		}
+		eng, ok := exec.(*engine.Engine)
+		if !ok || eng == nil || engine.ExecutionPolicyFromContext(ctx, eng.ExecutionPolicy()) != engine.ExecutionMemoryOnly || manager == nil || manager.Limit() <= 0 {
+			return nil, nil, nil, fmt.Errorf("decimal prefix AVG requires finite MemoryOnly execution")
+		}
+		src, pending, closers, err := lowerSourcePipeline(ctx, n.Input, manager, kernels, exec)
+		if err != nil {
+			return nil, nil, closers, err
+		}
+		if pending != nil {
+			return nil, nil, closers, fmt.Errorf("decimal prefix AVG does not support FILTER")
+		}
+		src = &decimalPartitionPrefixProjectedSource{Source: src, partition: n.PartitionBy, key: n.OrderBy}
+		out, err := physical.NewPartitionedDecimalPrefixAverageSource(src, physical.PartitionedDecimalPrefixAverage{Column: n.Column, PartitionBy: n.PartitionBy, OrderBy: n.OrderBy, Alias: n.Alias, Precision: n.Precision, Scale: n.Scale, Rounding: n.Rounding, Frame: physical.WindowFrame{Start: physical.WindowBound{Kind: physical.WindowUnboundedPreceding}, End: physical.WindowBound{Kind: physical.WindowCurrentRow}}})
+		return out, nil, closers, err
+
+	case *logical.DecimalPrefixAverage:
+		if _, err := logical.InferSchema(n); err != nil {
+			return nil, nil, nil, err
+		}
+		eng, ok := exec.(*engine.Engine)
+		if !ok || eng == nil || engine.ExecutionPolicyFromContext(ctx, eng.ExecutionPolicy()) != engine.ExecutionMemoryOnly || manager == nil || manager.Limit() <= 0 {
+			return nil, nil, nil, fmt.Errorf("decimal prefix AVG requires finite MemoryOnly execution")
+		}
+		src, pending, closers, err := lowerSourcePipeline(ctx, n.Input, manager, kernels, exec)
+		if err != nil {
+			return nil, nil, closers, err
+		}
+		if pending != nil {
+			return nil, nil, closers, fmt.Errorf("decimal prefix AVG does not support FILTER")
+		}
+		src = &decimalPrefixProjectedSource{Source: src, key: n.OrderBy}
+		out, err := physical.NewDecimalPrefixAverageSource(src, physical.DecimalPrefixAverage{Column: n.Column, OrderBy: n.OrderBy, Alias: n.Alias, Precision: n.Precision, Scale: n.Scale, Rounding: n.Rounding, Frame: physical.WindowFrame{Start: physical.WindowBound{Kind: physical.WindowUnboundedPreceding}, End: physical.WindowBound{Kind: physical.WindowCurrentRow}}})
+		return out, nil, closers, err
+
 	case *logical.Scan:
 		base := profileSource(ctx, n.Source, "scan", sourceDescription(n.Source))
 		src, err := projectScanSource(base, n.Projection)
@@ -1434,7 +1504,7 @@ func lowerSourcePipeline(ctx context.Context, plan logical.Plan, manager memory.
 		}
 		policy := engine.ExecutionPolicyFromContext(ctx, eng.ExecutionPolicy())
 		spillable := (policy == engine.ExecutionBounded || policy == engine.ExecutionAuto && eng.Memory().Limit() > 0 && eng.SpillConfigured())
-		descriptors, quantileOptions, err := expr.NormalizeAggregates(n.Aggregates)
+		descriptors, quantileOptions, _, err := expr.NormalizeConfiguredAggregates(n.Aggregates)
 		if err != nil {
 			return nil, nil, closers, err
 		}

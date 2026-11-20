@@ -416,8 +416,13 @@ func TestNestedListCheckedSchemaDepthAndSnapshot(t *testing.T) {
 		t.Fatal("cycle accepted")
 	}
 	third := Field{Name: "item", Type: TypeList, Children: []Field{f.Children[0]}}
-	if _, e := NestedListField("three", true, third); e == nil {
-		t.Fatal("third List accepted")
+	three, e := NestedListField("three", true, third)
+	if e != nil {
+		t.Fatal("third List rejected", e)
+	}
+	three.Name = "item"
+	if _, e := NestedListField("four", true, three); e == nil {
+		t.Fatal("fourth List accepted")
 	}
 	for _, kind := range []DataType{TypeStruct, TypeDecimal, TypeBool} {
 		inner := Field{Name: "item", Type: TypeList, Children: []Field{{Name: "item", Type: kind}}}

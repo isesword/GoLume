@@ -795,6 +795,9 @@ func (p *PreparedQuery) NewSpillableAggregateStreamWithReadOptions(ctx context.C
 
 // acquirePrepared is false only when Execute already owns the plan lifecycle.
 func (p *PreparedQuery) newSpillableAggregateStream(ctx context.Context, schema memory.Schema, outputRows int, readOpts source.ReadOptions, acquirePrepared bool) (source.BatchStream, error) {
+	if p.decimalGlobal() || p.decimalGrouped() {
+		return nil, fmt.Errorf("Decimal SUM requires the dedicated global sorted stream")
+	}
 	if p != nil && p.distinct() != nil {
 		return p.newDistinctAggregateStream(ctx, schema, outputRows, readOpts, acquirePrepared)
 	}

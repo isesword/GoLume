@@ -28,11 +28,11 @@ type compiledQuantileOutput struct {
 // PrepareConfigured binds legacy and parameterized aggregates in one query.
 // Query/Aggregate positional layouts and existing Prepare behavior are unchanged.
 func (e *Engine) PrepareConfigured(ctx context.Context, src source.Source, q expr.ConfiguredQuery, opts PrepareOptions) (*PreparedQuery, error) {
-	aggs, options, err := expr.NormalizeAggregates(q.Aggregates)
+	aggs, options, averages, err := expr.NormalizeConfiguredAggregates(q.Aggregates)
 	if err != nil {
 		return nil, err
 	}
-	return e.prepare(ctx, src, expr.Query{Filter: q.Filter, GroupBy: append([]string(nil), q.GroupBy...), Aggregates: aggs, Hints: q.Hints}, opts, options)
+	return e.prepare(ctx, src, expr.Query{Filter: q.Filter, GroupBy: append([]string(nil), q.GroupBy...), Aggregates: aggs, Hints: q.Hints}, opts, options, averages)
 }
 
 func compileConfiguredQuery(schema memory.Schema, q expr.Query, options []expr.QuantileOption) (CompiledQuery, error) {

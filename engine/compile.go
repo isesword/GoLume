@@ -9,10 +9,25 @@ import (
 )
 
 func compileQuery(schema memory.Schema, q expr.Query) (CompiledQuery, error) {
-	for _, field := range schema.Fields {
-		if field.Type == memory.TypeDecimal && field.DecimalPrecision != 0 {
-			return CompiledQuery{}, fmt.Errorf("native decimal aggregation is not supported yet for column %q", field.Name)
+	decimalQuery := q
+	if len(q.GroupBy) != 0 {
+		decimalQuery.GroupBy = nil
+	}
+	decimalFields, decimalErr := compileDecimalGlobal(schema, decimalQuery)
+	if decimalErr == nil && decimalFields != nil && len(q.GroupBy) != 0 {
+		if len(q.GroupBy) > 2 {
+			decimalErr = fmt.Errorf("Decimal grouping requires one or two direct Int64 keys")
 		}
+		for _, name := range q.GroupBy {
+			f, ok := schema.Field(name)
+			if !ok || f.Type != memory.TypeInt64 {
+				decimalErr = fmt.Errorf("Decimal grouping requires one or two direct Int64 keys")
+				break
+			}
+		}
+	}
+	if decimalErr != nil {
+		return CompiledQuery{}, decimalErr
 	}
 	outputNames := make(map[string]struct{}, len(q.GroupBy)+len(q.Aggregates))
 	for _, name := range q.GroupBy {
@@ -80,7 +95,17 @@ func compileQuery(schema memory.Schema, q expr.Query) (CompiledQuery, error) {
 			value = a.Column
 		}
 	}
-	multi, err := compileMultiAggregate(schema, q.Aggregates)
+	var multi *CompiledMultiAggregate
+	if decimalFields != nil {
+		multi = &CompiledMultiAggregate{Native: true}
+		if len(q.GroupBy) == 0 {
+			multi.DecimalFields = decimalFields
+		} else {
+			multi.DecimalGroupedFields = decimalFields
+		}
+	} else {
+		multi, err = compileMultiAggregate(schema, q.Aggregates)
+	}
 	if err != nil {
 		return CompiledQuery{}, err
 	}

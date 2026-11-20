@@ -64,6 +64,9 @@ func Columns(e Expr) []string {
 			visit(x.Year)
 			visit(x.Week)
 			visit(x.Weekday)
+		case CalendarDaysExpr:
+			visit(x.Timestamp)
+			visit(x.Days)
 		case CivilComposeExpr:
 			visit(x.Date)
 			visit(x.Clock)

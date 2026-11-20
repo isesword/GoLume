@@ -172,6 +172,9 @@ func (r *topKReader) collect(ctx context.Context) (resultErr error) {
 		if !ok {
 			break
 		}
+		if err := validateTopKDecimalInput(ctx, r.owner.keyInput.Schema(), r.scratch); err != nil {
+			return err
+		}
 		if residentExtendedSchema(r.owner.keyInput.Schema().Fields) {
 			if err := validateResidentExtendedInput(ctx, r.owner.keyInput.Schema(), r.scratch, r.workspace); err != nil {
 				return err
@@ -318,6 +321,9 @@ func (r *topKReader) collect(ctx context.Context) (resultErr error) {
 		}
 		if !ok {
 			break
+		}
+		if err := validateTopKDecimalInput(ctx, r.owner.input.Schema(), r.scratch); err != nil {
+			return err
 		}
 		if residentExtendedSchema(r.owner.input.Schema().Fields) {
 			if err := validateResidentExtendedInput(ctx, r.owner.input.Schema(), r.scratch, r.workspace); err != nil {

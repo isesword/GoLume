@@ -88,7 +88,7 @@ func (s *Source) batchStreamFromReader(ctx context.Context, opts source.ReadOpti
 			out.payloadRowBytes += 2
 		case memory.TypeInt32, memory.TypeUint32, memory.TypeDate32, memory.TypeFloat32, memory.TypeBool:
 			out.payloadRowBytes += 4
-		case memory.TypeInt64, memory.TypeUint64, memory.TypeTimestamp, memory.TypeFloat64:
+		case memory.TypeInt64, memory.TypeUint64, memory.TypeTimestamp, memory.TypeTime64, memory.TypeFloat64:
 			out.payloadRowBytes += 8
 		case memory.TypeDecimal:
 			out.payloadRowBytes += 16
@@ -293,8 +293,11 @@ func (s *batchStream) Next(ctx context.Context, dst *memory.Batch) (bool, error)
 		}
 		var err error
 		switch b.Type {
-		case memory.TypeInt64, memory.TypeTimestamp:
+		case memory.TypeInt64, memory.TypeTimestamp, memory.TypeTime64:
 			err = s.decode.readInt64(s.chunks[i], b, rows, s.batch)
+			if err == nil && b.Type == memory.TypeTime64 {
+				err = s.validateWallClock(ctx, b)
+			}
 		case memory.TypeInt8, memory.TypeInt16, memory.TypeUint8, memory.TypeUint16, memory.TypeInt32, memory.TypeDate32:
 			err = s.decode.readInt32(s.chunks[i], b, rows, s.batch)
 		case memory.TypeUint32:
@@ -378,6 +381,11 @@ func (s *batchStream) openGroup(ctx context.Context) error {
 		if b.Type == memory.TypeDecimal {
 			physical := s.r.MetaData().Schema.Column(b.Index).PhysicalType()
 			if err := validateDecimalPages(ctx, rg, b, physical); err != nil {
+				return err
+			}
+		}
+		if b.Type == memory.TypeTime64 {
+			if err := validateFixedScalarPages(func() error { return s.checkContext(ctx) }, rg, b, arrowparquet.Types.Int64, "wall-clock time", time64ValueEncodingSupported); err != nil {
 				return err
 			}
 		}
@@ -472,7 +480,7 @@ func (s *batchStream) fixedBytes(rows int) int64 {
 		case memory.TypeInt32, memory.TypeDate32:
 			width = 4
 			i32 = i32 || b.Nullable
-		case memory.TypeInt64, memory.TypeTimestamp:
+		case memory.TypeInt64, memory.TypeTimestamp, memory.TypeTime64:
 			width = 8
 			i64 = i64 || b.Nullable
 		case memory.TypeUint32:
@@ -611,7 +619,7 @@ func (s *batchStream) allocateFixed(ctx context.Context, want int, stringBytes i
 			s.batch.Uint16s[b.Name] = &memory.Uint16Vector{Values: make([]uint16, n), Validity: valid}
 		case memory.TypeInt32, memory.TypeDate32:
 			s.batch.Int32s[b.Name] = &memory.Int32Vector{Values: make([]int32, n), Validity: valid}
-		case memory.TypeInt64, memory.TypeTimestamp:
+		case memory.TypeInt64, memory.TypeTimestamp, memory.TypeTime64:
 			s.batch.Int64s[b.Name] = &memory.Int64Vector{Values: make([]int64, n), Validity: valid}
 		case memory.TypeFloat32:
 			s.batch.Float32s[b.Name] = &memory.Float32Vector{Values: make([]float32, n), Validity: valid}
@@ -630,7 +638,7 @@ func (s *batchStream) allocateFixed(ctx context.Context, want int, stringBytes i
 			s.decode.defs = resize(s.decode.defs, n)
 		}
 		switch b.Type {
-		case memory.TypeInt64, memory.TypeTimestamp:
+		case memory.TypeInt64, memory.TypeTimestamp, memory.TypeTime64:
 			if b.Nullable {
 				s.decode.dense64 = resize(s.decode.dense64, n)
 			}

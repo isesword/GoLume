@@ -361,7 +361,6 @@ func TestParquetRejectsUnsupportedLogicalAnnotations(t *testing.T) {
 		{"decimal256", schema.NewDecimalLogicalType(39, 4), arrowparquet.Types.ByteArray, -1, true},
 		{"time_millis_utc", schema.NewTimeLogicalType(true, schema.TimeUnitMillis), arrowparquet.Types.Int32, -1, true},
 		{"time_micros_utc", schema.NewTimeLogicalType(true, schema.TimeUnitMicros), arrowparquet.Types.Int64, -1, true},
-		{"time_nanos_local", schema.NewTimeLogicalType(false, schema.TimeUnitNanos), arrowparquet.Types.Int64, -1, false},
 		{"unknown_int32", schema.NullLogicalType{}, arrowparquet.Types.Int32, -1, false},
 		{"unknown_int64", schema.NullLogicalType{}, arrowparquet.Types.Int64, -1, false},
 		{"unknown_bool", schema.NullLogicalType{}, arrowparquet.Types.Boolean, -1, false},

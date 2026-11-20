@@ -49,6 +49,7 @@ type externalSortStream struct {
 	store       *spillmeta.Store
 	opts        source.ReadOptions
 	internal    memory.Schema
+	inputSchema memory.Schema
 	fingerprint [32]byte
 	ordinal     string
 	runBytes    int64
@@ -102,6 +103,27 @@ func newExternalSortStream(ctx context.Context, owner *SortSource, opts source.R
 	if !query.SpillConfigured() {
 		return nil, fmt.Errorf("external sort requires an explicit finite spill quota")
 	}
+	// Capture one schema view and bound/validate it before store side effects,
+	// metadata recursion, schema cloning, fingerprinting, or spill planning.
+	schema := owner.input.Schema()
+	metadataBytes, err := externalSortSchemaMetadataBytesContext(ctx, schema.Fields)
+	if err != nil {
+		return nil, err
+	}
+	// Counting metadata is not schema admission. Validate the captured runtime
+	// schema here before creating a store, reserving base memory, or cloning.
+	if _, err := memory.ColumnarRunDecodeMetadataBytes(schema); err != nil {
+		return nil, err
+	}
+	if err := validateResidentRepeatedListSchema(schema, true); err != nil {
+		return nil, err
+	}
+	if err := validateResidentListTimeSchema(schema, false); err != nil {
+		return nil, err
+	}
+	if err := validateResidentSortKeys(schema, owner.keys); err != nil {
+		return nil, err
+	}
 	store, err := query.SpillManager()
 	if err != nil {
 		return nil, err
@@ -110,10 +132,7 @@ func newExternalSortStream(ctx context.Context, owner *SortSource, opts source.R
 	// Schema construction clones nested child descriptors too. Account the
 	// temporary field array, cloned tree, and name-index capacity, not just the
 	// top-level columns, before creating the execution schema.
-	metadataBytes, err := externalSortSchemaMetadataBytes(owner.input.Schema().Fields)
-	if err != nil {
-		return nil, err
-	}
+
 	// Retain the original workspace/owner allowance and separately cover the
 	// saved caller header and borrow-tracking pointers introduced below.
 	metadataBytes, err = sortWorkspaceSize(metadataBytes, 4096,
@@ -127,12 +146,12 @@ func newExternalSortStream(ctx context.Context, owner *SortSource, opts source.R
 	}
 	ordinal := "__golume_sort_ordinal"
 	for suffix := 0; ; suffix++ {
-		if _, exists := owner.input.Schema().Field(ordinal); !exists {
+		if _, exists := schema.Field(ordinal); !exists {
 			break
 		}
 		ordinal = fmt.Sprintf("__golume_sort_ordinal_%d", suffix+1)
 	}
-	fields := append([]memory.Field(nil), owner.input.Schema().Fields...)
+	fields := append([]memory.Field(nil), schema.Fields...)
 	fields = append(fields, memory.Field{Name: ordinal, Type: memory.TypeUint64})
 	internal := memory.NewSchema(fields...)
 	rowBytes := pipeline.EstimateSchemaRowBytes(internal)
@@ -152,7 +171,7 @@ func newExternalSortStream(ctx context.Context, owner *SortSource, opts source.R
 	}
 	workspace := &sortWorkspace{parent: query.Operator("ExternalSortWorkspace", memory.MemoryWorkspace)}
 	return &externalSortStream{
-		owner: owner, query: query, store: spillmeta.NewStore(store, metadata), opts: opts, internal: internal,
+		owner: owner, query: query, store: spillmeta.NewStore(store, metadata), opts: opts, internal: internal, inputSchema: memory.Schema{Fields: internal.Fields[:len(internal.Fields)-1]},
 		fingerprint: memory.SchemaFingerprint(internal), ordinal: ordinal, runBytes: runBytes, chunkRows: chunkRows,
 		sortBudget: workspace, encode: workspace, restore: workspace, workspace: workspace,
 		metadata: metadata, baseMetadata: baseMetadata,
@@ -160,11 +179,45 @@ func newExternalSortStream(ctx context.Context, owner *SortSource, opts source.R
 }
 
 func externalSortSchemaMetadataBytes(fields []memory.Field) (int64, error) {
+	return externalSortSchemaMetadataBytesContext(context.Background(), fields)
+}
+
+func externalSortSchemaMetadataBytesContext(ctx context.Context, fields []memory.Field) (int64, error) {
+	if ctx == nil {
+		return 0, fmt.Errorf("external sort schema requires context")
+	}
+	var bound func([]memory.Field, int) error
+	bound = func(fields []memory.Field, depth int) error {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		if depth > memory.MaxStructDepth+memory.MaxRepeatedListDepth {
+			return fmt.Errorf("external sort schema nesting exceeds bounded profile")
+		}
+		for _, field := range fields {
+			if err := ctx.Err(); err != nil {
+				return err
+			}
+			if len(field.Children) != 0 {
+				if err := bound(field.Children, depth+1); err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	}
+	if err := bound(fields, 0); err != nil {
+		return 0, err
+	}
+
 	// The added stable ordinal is another top-level field.
 	total := externalSortMetadataByte + 512
 	var visit func([]memory.Field) error
 	visit = func(fields []memory.Field) error {
 		for _, field := range fields {
+			if err := ctx.Err(); err != nil {
+				return err
+			}
 			if total > math.MaxInt64-512 {
 				return memory.ErrBudgetExceeded
 			}
@@ -245,7 +298,7 @@ func (s *externalSortStream) restoreSegment(ctx context.Context, ref sortSegment
 }
 
 func (s *externalSortStream) makeInitialRun(ctx context.Context, batch *memory.Batch, start, end int, ordinalBase uint64) (externalSortRun, error) {
-	if err := validateSortInitialInput(ctx, s.owner.input.Schema(), batch); err != nil {
+	if err := validateSortInitialInput(ctx, s.inputSchema, batch); err != nil {
 		return externalSortRun{}, err
 	}
 	return s.makeInitialRunValidated(ctx, batch, start, end, ordinalBase)
@@ -254,7 +307,7 @@ func (s *externalSortStream) makeInitialRun(ctx context.Context, batch *memory.B
 // Input bindings are immutable from their one-time bounded validation until
 // every initial gather has closed, before the child is advanced or closed.
 func (s *externalSortStream) makeInitialRunValidated(ctx context.Context, batch *memory.Batch, start, end int, ordinalBase uint64) (externalSortRun, error) {
-	plan, err := planExternalSortInitialGatherValidatedContext(ctx, s.owner.input.Schema(), batch, start, end, len(s.owner.keys), ordinalBase)
+	plan, err := planExternalSortInitialGatherValidatedContext(ctx, s.inputSchema, batch, start, end, len(s.owner.keys), ordinalBase)
 	if err != nil {
 		return externalSortRun{}, err
 	}
@@ -266,7 +319,7 @@ func (s *externalSortStream) makeInitialRunValidated(ctx context.Context, batch 
 		return externalSortRun{}, err
 	}
 	defer s.workspace.trim(0)
-	owner, err := newExternalSortInitialGather(ctx, s.sortBudget, s.owner.input.Schema(), batch, s.owner.keys, s.ordinal, ordinalBase, plan)
+	owner, err := newExternalSortInitialGather(ctx, s.sortBudget, s.inputSchema, batch, s.owner.keys, s.ordinal, ordinalBase, plan)
 	if err != nil {
 		return externalSortRun{}, err
 	}
@@ -398,7 +451,7 @@ func (s *externalSortStream) generateRuns(ctx context.Context) (result spillmeta
 		}
 		// Validate the complete runtime graph before the recursive range
 		// estimator below, including bindings not present in the schema.
-		if err := validateSortInitialInput(ctx, s.owner.input.Schema(), batch); err != nil {
+		if err := validateSortInitialInput(ctx, s.inputSchema, batch); err != nil {
 			return result, errors.Join(err, closeInput())
 		}
 		if uint64(batch.Rows) > math.MaxUint64-ordinalBase {

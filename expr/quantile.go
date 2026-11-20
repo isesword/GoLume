@@ -61,6 +61,9 @@ func NormalizeAggregates(specs []AggregateSpec) ([]Aggregate, []QuantileOption, 
 	for i, spec := range specs {
 		switch a := spec.(type) {
 		case Aggregate:
+			if a.Kind == AggDecimalAverage {
+				return nil, nil, fmt.Errorf("Decimal AVG requires an explicit configuration")
+			}
 			if a.Kind == AggQuantile {
 				return nil, nil, fmt.Errorf("quantile requires an explicit configuration")
 			}

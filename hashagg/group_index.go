@@ -56,14 +56,26 @@ func NewGroupIndex(cardinalityHint int, reserve ReserveFunc) (*GroupIndex, error
 // Lookup returns the ID for key without mutating the index or reserving
 // memory. It returns false for an absent key, a nil index or a closed index.
 func (t *GroupIndex) Lookup(key []byte) (id int, ok bool) {
+	id, ok, _ = t.LookupWithCheck(key, nil)
+	return
+}
+
+// LookupWithCheck is Lookup with cooperative cancellation during probing.
+// bytes.Equal is not preemptible per byte; callers bound their key size.
+func (t *GroupIndex) LookupWithCheck(key []byte, check func() error) (int, bool, error) {
+	if check != nil {
+		if e := check(); e != nil {
+			return 0, false, e
+		}
+	}
 	if t == nil || t.closed || len(t.slots) == 0 {
-		return 0, false
+		return 0, false, nil
 	}
-	slot, found := t.find(key, HashBytes(key))
-	if !found {
-		return 0, false
+	slot, found, e := t.findWithCheck(key, HashBytes(key), check)
+	if e != nil || !found {
+		return 0, false, e
 	}
-	return t.slots[slot] - 1, true
+	return t.slots[slot] - 1, true, nil
 }
 
 // LookupOrInsert returns the existing ID or copies key into the arena and
@@ -71,22 +83,40 @@ func (t *GroupIndex) Lookup(key []byte) (id int, ok bool) {
 // error never inserts a key or consumes an ID; successful capacity growth may
 // be retained if a later allocation is denied. Existing IDs remain usable.
 // Calling LookupOrInsert on a closed or nil index returns an error.
-func (t *GroupIndex) LookupOrInsert(key []byte) (id int, inserted bool, err error) {
+func (t *GroupIndex) LookupOrInsert(key []byte) (int, bool, error) {
+	return t.LookupOrInsertWithCheck(key, nil)
+}
+
+// LookupOrInsertWithCheck preserves insertion atomicity. Successful capacity
+// growth can remain after a later failure, as in LookupOrInsert.
+func (t *GroupIndex) LookupOrInsertWithCheck(key []byte, check func() error) (id int, inserted bool, err error) {
+	if check != nil {
+		if e := check(); e != nil {
+			return 0, false, e
+		}
+	}
+
 	if t == nil || t.closed || len(t.slots) == 0 {
 		return 0, false, fmt.Errorf("group index is closed or uninitialized")
 	}
 	hash := HashBytes(key)
-	slot, found := t.find(key, hash)
+	slot, found, e := t.findWithCheck(key, hash, check)
+	if e != nil {
+		return 0, false, e
+	}
 	if found {
 		return t.slots[slot] - 1, false, nil
 	}
 	if t.size >= t.maxEntries {
-		if err := t.grow(); err != nil {
+		if err := t.growWithCheck(check); err != nil {
 			return 0, false, err
 		}
-		slot, _ = t.find(key, hash)
+		slot, _, e = t.findWithCheck(key, hash, check)
+		if e != nil {
+			return 0, false, e
+		}
 	}
-	offset, err := t.appendKey(key)
+	offset, err := t.appendKeyWithCheck(key, check)
 	if err != nil {
 		return 0, false, err
 	}
@@ -98,19 +128,31 @@ func (t *GroupIndex) LookupOrInsert(key []byte) (id int, inserted bool, err erro
 }
 
 func (t *GroupIndex) find(key []byte, hash uint64) (int, bool) {
+	i, ok, _ := t.findWithCheck(key, hash, nil)
+	return i, ok
+}
+func (t *GroupIndex) findWithCheck(key []byte, hash uint64, check func() error) (int, bool, error) {
 	mask := uint64(len(t.slots) - 1)
 	slot := int(hash & mask)
+	steps := 0
 	for t.slots[slot] != 0 {
+		if steps%64 == 0 && check != nil {
+			if e := check(); e != nil {
+				return 0, false, e
+			}
+		}
+		steps++
 		entry := t.entries[t.slots[slot]-1]
 		if entry.hash == hash && entry.length == len(key) && bytes.Equal(t.arena[entry.offset:entry.offset+entry.length], key) {
-			return slot, true
+			return slot, true, nil
 		}
 		slot = int((uint64(slot) + 1) & mask)
 	}
-	return slot, false
+	return slot, false, nil
 }
 
-func (t *GroupIndex) grow() error {
+func (t *GroupIndex) grow() error { return t.growWithCheck(nil) }
+func (t *GroupIndex) growWithCheck(check func() error) error {
 	n, err := checkedGrowCapacity(len(t.slots), groupIndexSlotBytes)
 	if err != nil {
 		return err
@@ -119,25 +161,62 @@ func (t *GroupIndex) grow() error {
 	if err != nil {
 		return err
 	}
+	committed := false
+	defer func() {
+		if !committed {
+			releaseAllocation(lease)
+		}
+	}()
+	if check != nil {
+		if e := check(); e != nil {
+			return e
+		}
+	}
 	slots := make([]int, n)
 	entries := make([]groupIndexEntry, n)
-	copy(entries, t.entries[:t.size])
+	for start := 0; start < t.size; start += 64 {
+		if check != nil {
+			if e := check(); e != nil {
+				return e
+			}
+		}
+		copy(entries[start:min(start+64, t.size)], t.entries[start:min(start+64, t.size)])
+	}
 	mask := uint64(n - 1)
 	for id := 0; id < t.size; id++ {
+		if id%64 == 0 && check != nil {
+			if e := check(); e != nil {
+				return e
+			}
+		}
 		slot := int(entries[id].hash & mask)
+		steps := 0
 		for slots[slot] != 0 {
+			if steps%64 == 0 && check != nil {
+				if e := check(); e != nil {
+					return e
+				}
+			}
+			steps++
 			slot = int((uint64(slot) + 1) & mask)
 		}
 		slots[slot] = id + 1
 	}
+	if check != nil {
+		if e := check(); e != nil {
+			return e
+		}
+	}
 	previous := t.slotLease
 	t.slots, t.entries, t.slotLease = slots, entries, lease
 	t.maxEntries = loadLimit(n, defaultMaxLoadFactor)
+	committed = true
 	releaseAllocation(previous)
 	return nil
 }
 
-func (t *GroupIndex) appendKey(key []byte) (int, error) {
+func (t *GroupIndex) appendKey(key []byte) (int, error) { return t.appendKeyWithCheck(key, nil) }
+func (t *GroupIndex) appendKeyWithCheck(key []byte, check func() error) (int, error) {
 	offset := len(t.arena)
 	maxInt := int(^uint(0) >> 1)
 	if len(key) > maxInt-offset {
@@ -145,8 +224,10 @@ func (t *GroupIndex) appendKey(key []byte) (int, error) {
 	}
 	need := offset + len(key)
 	if need <= cap(t.arena) {
+		if e := groupIndexCopyWithCheck(t.arena[:need][offset:], key, check); e != nil {
+			return 0, e
+		}
 		t.arena = t.arena[:need]
-		copy(t.arena[offset:], key)
 		return offset, nil
 	}
 	capacity := cap(t.arena)
@@ -164,13 +245,24 @@ func (t *GroupIndex) appendKey(key []byte) (int, error) {
 	if err != nil {
 		return 0, err
 	}
+	committed := false
+	defer func() {
+		if !committed {
+			releaseAllocation(lease)
+		}
+	}()
 	arena := make([]byte, need, capacity)
-	copy(arena, t.arena)
+	if e := groupIndexCopyWithCheck(arena, t.arena, check); e != nil {
+		return 0, e
+	}
 	// key may itself borrow the previous arena. Copy it before releasing that
 	// arena's reservation, so replacement overlap is fully accounted for.
-	copy(arena[offset:], key)
+	if e := groupIndexCopyWithCheck(arena[offset:], key, check); e != nil {
+		return 0, e
+	}
 	previous := t.arenaLease
 	t.arena, t.arenaLease = arena, lease
+	committed = true
 	releaseAllocation(previous)
 	return offset, nil
 }
@@ -213,4 +305,18 @@ func (t *GroupIndex) Close() {
 	*t = GroupIndex{closed: true}
 	releaseAllocation(slots)
 	releaseAllocation(arena)
+}
+
+func groupIndexCopyWithCheck(dst, src []byte, check func() error) error {
+	if check == nil {
+		copy(dst, src)
+		return nil
+	}
+	for i := 0; i < len(src); i += 4096 {
+		if e := check(); e != nil {
+			return e
+		}
+		copy(dst[i:min(i+4096, len(src))], src[i:min(i+4096, len(src))])
+	}
+	return check()
 }

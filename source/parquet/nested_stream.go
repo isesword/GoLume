@@ -358,6 +358,9 @@ func (s *nestedListStream) openGroup(ctx context.Context) error {
 			if meta.NumValues() != b.remaining {
 				return fmt.Errorf("fixed sibling value count mismatch")
 			}
+			if err := b.validateRootDecimalPages(ctx, rg, l); err != nil {
+				return err
+			}
 			r, err := rg.Column(l.binding.Index)
 			if err != nil {
 				return err
@@ -499,7 +502,7 @@ func (s *nestedListStream) commit(ctx context.Context, row int) error {
 			s.rollback()
 			return err
 		}
-		def, count, err := s.base.readOne(s.base.chunks[i], l)
+		def, count, err := s.base.readOneContext(ctx, s.base.chunks[i], l)
 		if err != nil {
 			s.rollback()
 			return err

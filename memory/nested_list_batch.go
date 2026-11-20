@@ -37,6 +37,10 @@ func fieldHasNestedLists(f Field, depth int) bool {
 // ValidateNestedListsBatch validates the explicit container profile, including
 // undeclared nested storage and all ancestor domains. Inputs must stay immutable.
 func ValidateNestedListsBatch(b *Batch, s Schema, check func() error) error {
+	return validateNestedListsBatch(b, s, check, false)
+}
+
+func validateNestedListsBatch(b *Batch, s Schema, check func() error, allowRootTimeList bool) error {
 	for i, f := range s.Fields {
 		for j := 0; j < i; j++ {
 			if err := recursiveCheck(check); err != nil {
@@ -46,8 +50,10 @@ func ValidateNestedListsBatch(b *Batch, s Schema, check func() error) error {
 				return fmt.Errorf("duplicate root field %q", f.Name)
 			}
 		}
-		if err := checkArrayContainerField(f, 0, check); err != nil {
-			return err
+		if !allowRootTimeList || !IsListTime64(f) {
+			if err := checkArrayContainerField(f, 0, check); err != nil {
+				return err
+			}
 		}
 	}
 	if err := checkArrayBatchGraph(b, s.Fields, 0, check); err != nil {

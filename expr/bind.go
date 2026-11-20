@@ -89,16 +89,21 @@ func (b *expressionBinder) bind(e Expr) (*BoundExpr, error) {
 
 func (b *expressionBinder) bindNode(e Expr) (*BoundExpr, error) {
 	bound := &BoundExpr{Expr: e}
-	bindChildren := func(values ...Expr) error {
+	bindChildrenDepth := func(max int, values ...Expr) error {
 		for _, value := range values {
 			child, err := b.bind(value)
 			if err != nil {
+				return err
+			}
+			// Only explicit List access operands opt into depth three; other computations retain depth two.
+			if err := memory.ValidateRepeatedListDepth([]memory.Field{child.Field}, max); err != nil {
 				return err
 			}
 			bound.Children = append(bound.Children, child)
 		}
 		return nil
 	}
+	bindChildren := func(values ...Expr) error { return bindChildrenDepth(memory.MaxNestedListDepth, values...) }
 	switch n := e.(type) {
 	case Column:
 		field, ok := b.schema.Field(n.Name)
@@ -111,7 +116,7 @@ func (b *expressionBinder) bindNode(e Expr) (*BoundExpr, error) {
 			}
 		}
 		if memory.IsNestedList(field) {
-			if err := validateExpressionContainers(field); err != nil {
+			if err := field.ValidateArrayContainers(); err != nil {
 				return nil, err
 			}
 		}
@@ -121,7 +126,7 @@ func (b *expressionBinder) bindNode(e Expr) (*BoundExpr, error) {
 			}
 		}
 		if field.Type == memory.TypeStruct {
-			if err := validateExpressionContainers(field); err != nil {
+			if err := field.ValidateArrayContainers(); err != nil {
 				return nil, err
 			}
 		}
@@ -313,7 +318,10 @@ func (b *expressionBinder) bindNode(e Expr) (*BoundExpr, error) {
 		}
 		bound.Expr = StructGetExpr{Value: bound.Children[0].Expr, FieldName: n.FieldName}
 	case ListGetExpr:
-		if err := bindChildren(n.Value, n.Index); err != nil {
+		if err := bindChildrenDepth(memory.MaxRepeatedListDepth, n.Value); err != nil {
+			return nil, err
+		}
+		if err := bindChildren(n.Index); err != nil {
 			return nil, err
 		}
 		if err := bindListGet(bound); err != nil {
@@ -337,6 +345,15 @@ func (b *expressionBinder) bindNode(e Expr) (*BoundExpr, error) {
 			return nil, err
 		}
 		n.Year, n.Week, n.Weekday = bound.Children[0].Expr, bound.Children[1].Expr, bound.Children[2].Expr
+		bound.Expr = n
+	case CalendarDaysExpr:
+		if err := bindChildren(n.Timestamp, n.Days); err != nil {
+			return nil, err
+		}
+		if err := bindCalendarDays(bound, n); err != nil {
+			return nil, err
+		}
+		n.Timestamp, n.Days = bound.Children[0].Expr, bound.Children[1].Expr
 		bound.Expr = n
 	case CivilComposeExpr:
 		if err := bindChildren(n.Date, n.Clock); err != nil {
@@ -412,7 +429,11 @@ func (b *expressionBinder) bindNode(e Expr) (*BoundExpr, error) {
 		}
 		bound.Expr = Binary{Op: n.Op, Left: bound.Children[0].Expr, Right: bound.Children[1].Expr}
 	case Unary:
-		if err := bindChildren(n.Value); err != nil {
+		max := memory.MaxNestedListDepth
+		if n.Op == OpListLength {
+			max = memory.MaxRepeatedListDepth
+		}
+		if err := bindChildrenDepth(max, n.Value); err != nil {
 			return nil, err
 		}
 		if err := bindUnary(bound, n); err != nil {
@@ -638,7 +659,7 @@ func bindUnary(bound *BoundExpr, n Unary) error {
 		if input.Type != memory.TypeList {
 			return fmt.Errorf("LIST_LENGTH requires native List")
 		}
-		if err := validateExpressionContainers(input); err != nil {
+		if err := validateListAccessContainers(input); err != nil {
 			return fmt.Errorf("LIST_LENGTH requires native List<String> or List<Int64>: %w", err)
 		}
 		if len(input.Children[0].Children) != 0 && !memory.IsStructList(input) && !memory.IsNestedList(input) {

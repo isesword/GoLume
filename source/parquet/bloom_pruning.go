@@ -66,7 +66,7 @@ func bloomGroupExcludedCached(ctx context.Context, r *file.Reader, group int, bi
 	}
 	descr := meta.Schema.Column(anchor.Index)
 	if descr.MaxRepetitionLevel() != 0 || descr.MaxDefinitionLevel() > 1 ||
-		(anchor.Type == memory.TypeInt32 && descr.PhysicalType() != pq.Types.Int32) ||
+		((anchor.Type == memory.TypeInt32 || anchor.Type == memory.TypeUint32) && descr.PhysicalType() != pq.Types.Int32) ||
 		(anchor.Type == memory.TypeInt64 && descr.PhysicalType() != pq.Types.Int64) {
 		return false
 	}
@@ -135,7 +135,7 @@ func bloomAnchor(ctx context.Context, e expr.Expr, bindings map[string]columnBin
 		return columnBinding{}, false
 	}
 	b, ok := bindings[col.Name]
-	return b, ok && (b.Type == memory.TypeInt32 || b.Type == memory.TypeInt64)
+	return b, ok && (b.Type == memory.TypeInt32 || b.Type == memory.TypeInt64 || b.Type == memory.TypeUint32)
 }
 
 func bloomTruth(ctx context.Context, e expr.Expr, anchor columnBinding, filter metadata.BloomFilter, depth int) truthSet {
@@ -186,7 +186,15 @@ func bloomEquality(e expr.Expr, b columnBinding, f metadata.BloomFilter) truthSe
 		out |= truthNull
 	}
 	var present bool
-	if b.Type == memory.TypeInt32 {
+	if b.Type == memory.TypeUint32 {
+		if lit.Value < 0 || lit.Value > math.MaxUint32 {
+			return out
+		}
+		// UINT32 uses physical INT32: retain all 32 bits, including the
+		// high bit, and hash the same four-byte representation as the writer.
+		typed := metadata.TypedBloomFilter[int32]{BloomFilter: f}
+		present = typed.Check(int32(uint32(lit.Value)))
+	} else if b.Type == memory.TypeInt32 {
 		if lit.Value < math.MinInt32 || lit.Value > math.MaxInt32 {
 			return out
 		}
@@ -347,10 +355,12 @@ func (r bloomCachedReader) ReadAt(p []byte, off int64) (int, error) {
 	}
 	return n, nil
 }
+
 // Read rejects sequential access outside the ReadAt-only contract.
 func (r bloomCachedReader) Read([]byte) (int, error) {
 	return 0, errors.New("bloom cached reader requires ReadAt")
 }
+
 // Seek rejects positioning outside the ReadAt-only contract.
 func (r bloomCachedReader) Seek(int64, int) (int64, error) {
 	return 0, errors.New("bloom cached reader requires ReadAt")

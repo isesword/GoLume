@@ -69,6 +69,12 @@ func cropStructBatch(b *memory.Batch, rows int) {
 			v.Validity = v.Validity[:words]
 		}
 	}
+	for _, v := range b.Decimals {
+		v.Values = v.Values[:rows]
+		if v.Validity != nil {
+			v.Validity = v.Validity[:words]
+		}
+	}
 	for _, v := range b.Strings {
 		v.Offsets = v.Offsets[:rows+1]
 		if v.Validity != nil {

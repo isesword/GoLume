@@ -532,7 +532,7 @@ func (c *forestTestCopyContext) Err() error {
 }
 
 func TestNativeNestedForestRejectRecursive(t *testing.T) {
-	for _, kind := range []string{"recursive_struct", "list_struct", "list_list_list"} {
+	for _, kind := range []string{"recursive_struct", "list_struct", "list_list_list", "list_list_list_list"} {
 		t.Run(kind, func(t *testing.T) {
 			req := arrowparquet.Repetitions.Required
 			leaf, e := schema.NewPrimitiveNodeLogical("n", req, schema.NoLogicalType{}, arrowparquet.Types.Int64, -1, -1)
@@ -574,7 +574,7 @@ func TestNativeNestedForestRejectRecursive(t *testing.T) {
 					if e != nil {
 						t.Fatal(e)
 					}
-					if kind == "list_list_list" {
+					if kind == "list_list_list" || kind == "list_list_list_list" {
 						inner, e := schema.NewGroupNode("list", arrowparquet.Repetitions.Repeated, schema.FieldList{leaf}, -1)
 						if e != nil {
 							t.Fatal(e)
@@ -584,7 +584,17 @@ func TestNativeNestedForestRejectRecursive(t *testing.T) {
 							t.Fatal(e)
 						}
 					}
-					if kind == "list_list_list" {
+					if kind == "list_list_list" || kind == "list_list_list_list" {
+						wrapper, err := schema.NewGroupNode("list", arrowparquet.Repetitions.Repeated, schema.FieldList{element}, -1)
+						if err != nil {
+							t.Fatal(err)
+						}
+						element, e = schema.NewGroupNodeLogical("element", req, schema.FieldList{wrapper}, schema.ListLogicalType{}, -1)
+						if e != nil {
+							t.Fatal(e)
+						}
+					}
+					if kind == "list_list_list_list" {
 						wrapper, err := schema.NewGroupNode("list", arrowparquet.Repetitions.Repeated, schema.FieldList{element}, -1)
 						if err != nil {
 							t.Fatal(err)
@@ -617,7 +627,12 @@ func TestNativeNestedForestRejectRecursive(t *testing.T) {
 			if e = w.Close(); e != nil {
 				t.Fatal(e)
 			}
-			if _, e = OpenFileWithOptions(path, Options{NativeNested: true}); e == nil {
+			_, openErr := OpenFileWithOptions(path, Options{NativeNested: true})
+			if kind == "list_list_list" {
+				if openErr != nil {
+					t.Fatal("supported third List rejected", openErr)
+				}
+			} else if openErr == nil {
 				t.Fatal("recursive scope accepted")
 			}
 		})

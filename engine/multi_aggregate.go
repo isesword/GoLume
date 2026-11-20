@@ -14,14 +14,17 @@ import (
 // Columns and layouts are immutable preparation metadata. OutputLane maps each
 // logical aggregate to its column's state; COUNT(*) uses lane zero.
 type CompiledMultiAggregate struct {
-	Columns    []string
-	Types      []memory.DataType
-	Native     bool
-	Layouts    []aggregate.Layout
-	OutputLane []int
-	Statistics *CompiledStatistics
-	Distinct   *CompiledDistinct
-	Quantiles  *CompiledQuantiles
+	DecimalAverages      []aggregate.DecimalAverageOptions // Immutable configured AVG options by output; zero entries are SUM/COUNT.
+	DecimalGroupedFields []memory.Field                    // Sorted-adjacent exact grouped lanes, never global.
+	DecimalFields        []memory.Field                    // Dedicated global exact SUM; never a NumericBundle lane.
+	Columns              []string
+	Types                []memory.DataType
+	Native               bool
+	Layouts              []aggregate.Layout
+	OutputLane           []int
+	Statistics           *CompiledStatistics
+	Distinct             *CompiledDistinct
+	Quantiles            *CompiledQuantiles
 }
 
 func compileMultiAggregate(schema memory.Schema, aggs []expr.Aggregate, force ...bool) (*CompiledMultiAggregate, error) {

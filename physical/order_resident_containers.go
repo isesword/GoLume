@@ -69,7 +69,11 @@ func residentExtendedMetadata(ctx context.Context, fields []memory.Field, b *mem
 			dictionaries += d
 			n, err = sortWorkspaceSize(n, child, 1024)
 		case memory.IsNestedList(f):
-			n, err = sortWorkspaceSize(n, 3*1024)
+			nodes, e := residentRepeatedNodeCount(f)
+			if e != nil {
+				return 0, 0, e
+			}
+			n, err = sortWorkspaceSize(n, nodes*1024)
 		case f.Type == memory.TypeString || f.Type == memory.TypeBinary:
 			if b.Strings[f.Name] == nil && b.DictStrings[f.Name] != nil {
 				dictionaries++
@@ -107,10 +111,14 @@ func residentExtendedHeaders(ctx context.Context, b *memory.Batch, depth int) (i
 		if err := ctx.Err(); err != nil {
 			return 0, err
 		}
+		// BorrowedRangeMetadataBytesWithCheck already charges every ArrayNode
+		// and rebased offsets/bitmaps. Keep this additional map/root allowance
+		// unchanged; it is not a payload-size or axis-count estimate.
 		n, err := sortWorkspaceSize(int64(len(b.Arrays))*4096, int64(len(b.StructLists))*2048)
 		if err != nil {
 			return 0, err
 		}
+
 		for _, v := range b.StructLists {
 			child, e := residentExtendedHeaders(ctx, v.Values.Values, d+1)
 			if e != nil {
@@ -171,6 +179,9 @@ func newResidentExtendedSorted(ctx context.Context, src *residentSortAccumulator
 // The temporary schema is admitted before allocation; nested validation still
 // checks every declared and undeclared container, including hidden offsets.
 func validateResidentExtendedInput(ctx context.Context, schema memory.Schema, b *memory.Batch, w *sortWorkspace) error {
+	if err := validateResidentThreeAxisStorage(ctx, schema, b); err != nil {
+		return err
+	}
 	n, err := sortWorkspaceSize(1024, int64(len(schema.Fields))*int64(unsafe.Sizeof(memory.Field{})))
 	if err != nil {
 		return err

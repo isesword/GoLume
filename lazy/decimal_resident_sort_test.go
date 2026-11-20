@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 	"reflect"
 	"sort"
-	"strings"
 	"testing"
 
 	"github.com/apache/arrow-go/v18/arrow"
@@ -322,11 +321,21 @@ func TestDecimalResidentSortIO(t *testing.T) {
 	if _, e = q.SinkParquet(context.Background(), pp, ParquetSinkOptions{RowGroupRows: 17}); e != nil {
 		t.Fatal(e)
 	}
-	if _, e := s.ScanParquetWithOptions(pp, ParquetScanOptions{NativeNested: true}); e == nil || !strings.Contains(e.Error(), "rejects logical type Decimal") || !strings.Contains(e.Error(), "amount") {
-		t.Fatal("mixed NativeNested/root Decimal boundary", e)
+	native, e := s.ScanParquetWithOptions(pp, ParquetScanOptions{NativeNested: true})
+	if e != nil {
+		t.Fatal(e)
 	}
-	// The complete mixed file was written. Verify it through independent Arrow,
-	// not by pretending the current NativeNested reader accepts root Decimal.
+	native = native.WithColumns(expr.Add(expr.Col("amount"), expr.Decimal128(decimal128.FromI64(0), 1, 0)).Alias("amount"))
+	nativeDF, e := native.Collect(context.Background())
+	if e != nil {
+		t.Fatal(e)
+	}
+	decimalResidentCheck(t, nativeDF, 38, 38, order)
+	nativeDF.Close()
+	if _, e = native.SinkIPC(context.Background(), filepath.Join(t.TempDir(), "n11-native-reread.arrow"), IPCSinkOptions{}); e != nil {
+		t.Fatal(e)
+	}
+	// Keep the independent Arrow oracle alongside the newly native reread.
 	pr, e := pqfile.OpenParquetFile(pp, false)
 	if e != nil {
 		t.Fatal(e)
@@ -487,7 +496,7 @@ func TestDecimalResidentSortLimitCapability(t *testing.T) {
 			df.Close()
 		}
 	}
-	// The hidden expression key also needs the guard when Decimal payload has
+	// The hidden expression key also supports TopK when Decimal payload has
 	// been projected away before sorting.
 	df, e := q.Select("seq").Sort(AscExpr(expr.CastDecimal128(expr.Col("seq"), 20, 0))).Limit(3).Collect(context.Background())
 	if e != nil {
@@ -502,11 +511,13 @@ func TestDecimalResidentSortLimitCapability(t *testing.T) {
 		t.Fatal(got, e)
 	}
 	df.Close()
-	bad, e := q.TopK(3, Asc("amount")).Collect(context.Background())
-	if e == nil {
-		bad.Close()
-		t.Fatal("direct TopK expanded")
+	direct, e := q.TopK(3, Asc("amount")).Collect(context.Background())
+	if e != nil {
+		t.Fatal(e)
 	}
+	decimalResidentCheck(t, direct, 38, 0, decimalResidentOrder(38, false, false)[:3])
+	direct.Close()
+
 	s.Close()
 	if s.Engine().Memory().Used() != 0 {
 		t.Fatal("Sort Limit ownership leak")

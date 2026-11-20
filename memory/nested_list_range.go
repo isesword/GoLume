@@ -11,7 +11,7 @@ func estimateArrayRangeBytes(v *ArrayNode, offset, length, depth int, check func
 	if err := recursiveCheck(check); err != nil {
 		return 0, err
 	}
-	if v == nil || depth > MaxNestedListDepth || offset < 0 || length < 0 || offset > v.Len() || length > v.Len()-offset {
+	if v == nil || depth > MaxRepeatedListDepth || offset < 0 || length < 0 || offset > v.Len() || length > v.Len()-offset {
 		return 0, fmt.Errorf("invalid array payload range")
 	}
 	end := offset + length
@@ -20,7 +20,7 @@ func estimateArrayRangeBytes(v *ArrayNode, offset, length, depth int, check func
 		if len(v.Offsets) < end+1 {
 			return 0, fmt.Errorf("missing array List sentinel")
 		}
-		if depth == MaxNestedListDepth || v.Child == nil || !structValidityFits(v.Validity, end) {
+		if depth == MaxRepeatedListDepth || v.Child == nil || !structValidityFits(v.Validity, end) {
 			return 0, fmt.Errorf("invalid array List storage")
 		}
 		lo, hi := v.Offsets[offset], v.Offsets[end]
@@ -45,7 +45,7 @@ func estimateArrayRangeBytes(v *ArrayNode, offset, length, depth int, check func
 		}
 		return ownedRangeAdd(n, int64(WordsFor(length)), 8)
 	case TypeInt64:
-		if depth != MaxNestedListDepth || v.Int64 == nil || !structValidityFits(v.Int64.Validity, end) {
+		if (depth < 2 || depth > MaxRepeatedListDepth) || v.Int64 == nil || !structValidityFits(v.Int64.Validity, end) {
 			return 0, fmt.Errorf("invalid array Int64 storage")
 		}
 		return ownedRangeAdd(int64(WordsFor(length))*8, int64(length), 8)
@@ -53,7 +53,7 @@ func estimateArrayRangeBytes(v *ArrayNode, offset, length, depth int, check func
 		if v.Strings == nil || len(v.Strings.Offsets) < end+1 {
 			return 0, fmt.Errorf("missing array String sentinel")
 		}
-		if depth != MaxNestedListDepth || v.Strings == nil || !structValidityFits(v.Strings.Validity, end) {
+		if (depth < 2 || depth > MaxRepeatedListDepth) || v.Strings == nil || !structValidityFits(v.Strings.Validity, end) {
 			return 0, fmt.Errorf("invalid array String storage")
 		}
 		lo, hi := v.Strings.Offsets[offset], v.Strings.Offsets[end]

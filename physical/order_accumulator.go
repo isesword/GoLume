@@ -105,7 +105,7 @@ func externalSortAccumulatorKind(field memory.Field) int {
 		}
 		return 11
 	case memory.TypeList:
-		if len(field.Children) == 1 && field.Children[0].Type == memory.TypeInt64 {
+		if memory.IsListTime64(field) || len(field.Children) == 1 && field.Children[0].Type == memory.TypeInt64 {
 			return 15
 		}
 		return 13

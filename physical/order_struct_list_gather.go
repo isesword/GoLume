@@ -171,6 +171,16 @@ func (a *externalSortInitialGather) copyStructListRoots(ctx context.Context, m m
 }
 
 func validateSortInitialInput(ctx context.Context, schema memory.Schema, b *memory.Batch) error {
+	// Validate every input batch before any range sizing or run is created.
+	if err := validateResidentTypedDecimalBoundary(ctx, schema, b); err != nil {
+		return err
+	}
+	if residentHasNativeDecimal(schema.Fields) {
+		if err := validateResidentDecimalBatch(ctx, schema, b); err != nil {
+			return err
+		}
+	}
+
 	if !schema.HasStructLists() && !schema.HasNestedLists() {
 		return validateExternalSortInitialGather(b)
 	}

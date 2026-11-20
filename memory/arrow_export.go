@@ -2,6 +2,7 @@ package memory
 
 import (
 	"fmt"
+	"math"
 
 	"github.com/apache/arrow-go/v18/arrow"
 	"github.com/apache/arrow-go/v18/arrow/array"
@@ -15,6 +16,15 @@ import (
 func ArrowSchema(schema Schema) (*arrow.Schema, error) {
 	fields := make([]arrow.Field, len(schema.Fields))
 	for index, field := range schema.Fields {
+		// This leaf profile is a transport contract, not general List-expression admission.
+		if IsListTime64(field) {
+			child, err := arrowField(field.Children[0])
+			if err != nil {
+				return nil, err
+			}
+			fields[index] = arrow.Field{Name: field.Name, Type: arrow.ListOfField(child), Nullable: field.Nullable}
+			continue
+		}
 		converted, err := arrowField(field)
 		if err != nil {
 			return nil, fmt.Errorf("arrow schema field %q: %w", field.Name, err)
@@ -123,7 +133,7 @@ func ArrowRecordRange(allocator arrowmem.Allocator, schema Schema, batch *Batch,
 		return nil, fmt.Errorf("arrow record range [%d,%d) outside %d rows", offset, offset+length, batch.Rows)
 	}
 	if schema.HasNestedLists() {
-		if err := ValidateNestedListsBatch(batch, schema, nil); err != nil {
+		if err := validateNestedListsBatch(batch, schema, nil, true); err != nil {
 			return nil, err
 		}
 		for _, f := range schema.Fields {
@@ -270,7 +280,7 @@ func appendArrowValue(builder array.Builder, batch *Batch, field Field, row int)
 			}
 			return nil
 		}
-		if field.Children[0].Type == TypeInt64 {
+		if field.Children[0].Type == TypeInt64 || IsListTime64(field) {
 			list := batch.Int64Lists[field.Name]
 			start, end, ok := list.ValueRange(row)
 			if !ok {
@@ -278,7 +288,10 @@ func appendArrowValue(builder array.Builder, batch *Batch, field Field, row int)
 			}
 			listBuilder := builder.(*array.ListBuilder)
 			listBuilder.Append(true)
-			values := listBuilder.ValueBuilder().(*array.Int64Builder)
+			values := listBuilder.ValueBuilder()
+			if IsListTime64(field) && int64(values.Len())+int64(end-start) > math.MaxInt32 {
+				return fmt.Errorf("wall-clock list exceeds Arrow offset range")
+			}
 			for index := start; index < end; index++ {
 				if !list.Values.IsValid(index) {
 					if !field.Children[0].Nullable {
@@ -287,7 +300,15 @@ func appendArrowValue(builder array.Builder, batch *Batch, field Field, row int)
 					values.AppendNull()
 					continue
 				}
-				values.Append(list.Values.Values[index])
+				value := list.Values.Values[index]
+				if IsListTime64(field) {
+					if value < 0 || value >= 86400000000000 {
+						return fmt.Errorf("list wall-clock time outside [0, 24h)")
+					}
+					values.(*array.Time64Builder).Append(arrow.Time64(value))
+				} else {
+					values.(*array.Int64Builder).Append(value)
+				}
 			}
 			return nil
 		}
@@ -433,7 +454,7 @@ func batchValueValid(batch *Batch, field Field, row int) (bool, error) {
 			}
 			return v.IsValid(row), nil
 		}
-		if field.Children[0].Type == TypeInt64 {
+		if field.Children[0].Type == TypeInt64 || IsListTime64(field) {
 			value, ok := batch.Int64Lists[field.Name]
 			if !ok {
 				return false, fmt.Errorf("list vector is missing")
@@ -489,7 +510,7 @@ func validateArrowInt64ListStorage(batch *Batch, field Field, rows int) error {
 		}
 	}
 
-	if field.Type == TypeList && field.Children[0].Type == TypeInt64 {
+	if field.Type == TypeList && (field.Children[0].Type == TypeInt64 || IsListTime64(field)) {
 		return batch.Int64Lists[field.Name].Validate(rows)
 	}
 	if field.Type == TypeStruct {

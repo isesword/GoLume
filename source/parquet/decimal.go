@@ -90,6 +90,10 @@ func (r *typedDecoder) readDecimal(chunk file.ColumnChunkReader, b columnBinding
 // BYTE_STREAM_SPLIT decoder panics on zero values (including a NULL row).
 // Reject these combinations on every CPU, not only when a fallback is active.
 func validateDecimalPageEncodings(meta *metadata.FileMetaData, index int) error {
+	return validateFixedScalarPageEncodings(meta, index, "decimal", decimalValueEncodingSupported)
+}
+
+func validateFixedScalarPageEncodings(meta *metadata.FileMetaData, index int, label string, valueEncodingSupported func(arrowparquet.Type, arrowparquet.Encoding) bool) error {
 	descriptor := meta.Schema.Column(index)
 	for group := 0; group < meta.NumRowGroups(); group++ {
 		chunk, err := meta.RowGroup(group).ColumnChunk(index)
@@ -102,8 +106,8 @@ func validateDecimalPageEncodings(meta *metadata.FileMetaData, index int) error 
 			if encoding == arrowparquet.Encodings.RLE || encoding == arrowparquet.Encodings.BitPacked {
 				continue
 			}
-			if !decimalValueEncodingSupported(descriptor.PhysicalType(), encoding) {
-				return fmt.Errorf("parquet decimal column %q row group %d encoding %s for %s is not supported", descriptor.Path(), group, encoding, descriptor.PhysicalType())
+			if !valueEncodingSupported(descriptor.PhysicalType(), encoding) {
+				return fmt.Errorf("parquet %s column %q row group %d encoding %s for %s is not supported", label, descriptor.Path(), group, encoding, descriptor.PhysicalType())
 			}
 		}
 	}
@@ -115,7 +119,15 @@ func validateDecimalPageEncodings(meta *metadata.FileMetaData, index int) error 
 // no coefficient values and closes the reader before the normal decoder opens.
 // This extra pass is restricted to projected decimal columns and uses the same
 // page-size caps and Arrow page-buffer accounting as the ordinary scan.
-func validateDecimalPages(ctx context.Context, rg *file.RowGroupReader, b columnBinding, physical arrowparquet.Type) (err error) {
+func validateDecimalPages(ctx context.Context, rg *file.RowGroupReader, b columnBinding, physical arrowparquet.Type) error {
+	return validateFixedScalarPages(ctx.Err, rg, b, physical, "decimal", decimalValueEncodingSupported)
+}
+
+func validateFixedScalarPages(check func() error, rg *file.RowGroupReader, b columnBinding, physical arrowparquet.Type, label string, valueEncodingSupported func(arrowparquet.Type, arrowparquet.Encoding) bool) error {
+	return validateParquetDataPages(check, rg, b, physical, label, valueEncodingSupported, -1)
+}
+
+func validateParquetDataPages(check func() error, rg *file.RowGroupReader, b columnBinding, physical arrowparquet.Type, label string, valueEncodingSupported func(arrowparquet.Type, arrowparquet.Encoding) bool, expectedLevels int64) (err error) {
 	pages, err := rg.GetColumnPageReader(b.Index)
 	if err != nil {
 		// Arrow can return an allocated reader together with an init error,
@@ -130,16 +142,27 @@ func validateDecimalPages(ctx context.Context, rg *file.RowGroupReader, b column
 			err = closeErr
 		}
 	}()
-	for pageIndex := 0; ; pageIndex++ {
-		if err := ctx.Err(); err != nil {
+	// Arrow's V2 page iterator advances its termination counter by rows,
+	// not level tuples. A repeated column's footer counts tuples; stop as
+	// soon as actual data pages account for that many tuples, or fail if
+	// the iterator stops first. Scalar callers leave termination unchanged.
+	levels := int64(0)
+	for pageIndex := 0; expectedLevels < 0 || levels < expectedLevels; pageIndex++ {
+		if err := check(); err != nil {
 			return err
 		}
 		if !pages.Next() {
-			return pages.Err()
+			if e := pages.Err(); e != nil {
+				return e
+			}
+			if expectedLevels >= 0 {
+				return fmt.Errorf("%s column %q page level count %d; want %d", label, b.Name, levels, expectedLevels)
+			}
+			return nil
 		}
 		page := pages.Page()
 		if page == nil {
-			return fmt.Errorf("decimal column %q page %d is missing", b.Name, pageIndex)
+			return fmt.Errorf("%s column %q page %d is missing", label, b.Name, pageIndex)
 		}
 		encoding := arrowparquet.Encoding(page.Encoding())
 		supported := false
@@ -147,12 +170,20 @@ func validateDecimalPages(ctx context.Context, rg *file.RowGroupReader, b column
 		case file.PageTypeDictionaryPage:
 			supported = encoding == arrowparquet.Encodings.Plain || encoding == arrowparquet.Encodings.PlainDict
 		case file.PageTypeDataPage, file.PageTypeDataPageV2:
-			supported = decimalValueEncodingSupported(physical, encoding)
+			supported = valueEncodingSupported(physical, encoding)
+			if expectedLevels >= 0 {
+				n := int64(page.NumValues())
+				if n < 0 || n > expectedLevels-levels {
+					return fmt.Errorf("%s column %q page %d has invalid level count %d", label, b.Name, pageIndex, n)
+				}
+				levels += n
+			}
 		}
 		if !supported {
-			return fmt.Errorf("decimal column %q page %d encoding %s for %s is not supported", b.Name, pageIndex, encoding, physical)
+			return fmt.Errorf("%s column %q page %d encoding %s for %s is not supported", label, b.Name, pageIndex, encoding, physical)
 		}
 	}
+	return nil
 }
 
 func decimalValueEncodingSupported(physical arrowparquet.Type, encoding arrowparquet.Encoding) bool {

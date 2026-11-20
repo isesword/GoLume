@@ -174,6 +174,9 @@ func (s *topKContainerSnapshotStream) prepare(ctx context.Context) error {
 		if !ok {
 			break
 		}
+		if err := validateTopKDecimalInput(ctx, s.owner.input.Schema(), s.input); err != nil {
+			return err
+		}
 		validation := &sortWorkspace{parent: s.manager}
 		err = validateResidentExtendedInput(ctx, s.owner.input.Schema(), s.input, validation)
 		validation.close()

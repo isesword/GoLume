@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestDecimalResidentSortLimitKeepsSort(t *testing.T) {
+func TestDecimalResidentSortLimitUsesTopK(t *testing.T) {
 	d, e := memory.Decimal128Field("amount", true, 38, 38)
 	if e != nil {
 		t.Fatal(e)
@@ -20,14 +20,10 @@ func TestDecimalResidentSortLimitKeepsSort(t *testing.T) {
 			if e != nil {
 				t.Fatal(e)
 			}
-			limit, ok := got.Plan.(*logical.Limit)
-			if !ok {
-				t.Fatalf("key=%s n=%d plan=%T, native Decimal must keep Sort+Limit", key, n, got.Plan)
+			if top, ok := got.Plan.(*logical.TopK); !ok || top.K != int(n) {
+				t.Fatalf("key=%s n=%d plan=%T", key, n, got.Plan)
 			}
-			if _, ok := limit.Input.(*logical.Sort); !ok {
-				t.Fatalf("input=%T", limit.Input)
-			}
-			if contains(got.AppliedRules, "sort-limit-to-topk") {
+			if !contains(got.AppliedRules, "sort-limit-to-topk") {
 				t.Fatal(got.AppliedRules)
 			}
 		}
@@ -41,7 +37,7 @@ func TestDecimalResidentSortLimitDerivedAndPruned(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	if _, ok := got.Plan.(*logical.Limit); !ok {
+	if _, ok := got.Plan.(*logical.TopK); !ok {
 		t.Fatalf("derived native payload lost: %T", got.Plan)
 	}
 	// Native field removed BEFORE sort does not block the legacy rewrite.
@@ -79,8 +75,8 @@ func TestDecimalResidentSortLimitExpressionKey(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	if _, ok := got.Plan.(*logical.Limit); !ok {
-		t.Fatalf("hidden Decimal key rewritten: %T", got.Plan)
+	if _, ok := got.Plan.(*logical.TopK); !ok {
+		t.Fatalf("hidden Decimal key not rewritten: %T", got.Plan)
 	}
 	if sortLimitTopKCapable(&logical.Sort{Input: &logical.Scan{Source: src}, By: []logical.SortKey{{Expr: expr.Col("missing")}}}) {
 		t.Fatal("unknown key capability guessed")

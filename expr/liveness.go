@@ -77,7 +77,7 @@ func instructionInputs(in instruction) []int {
 	switch in.Code {
 	case scalarStructFrom:
 		return in.StructInputs
-	case scalarListGet, scalarCivilCompose, scalarBinary, scalarDecimalDivideRound, scalarDecimalDivide, scalarCompare, scalarStringMatch, codeAnd, codeOr:
+	case scalarListGet, scalarCalendarDays, scalarCivilCompose, scalarBinary, scalarDecimalDivideRound, scalarDecimalDivide, scalarCompare, scalarStringMatch, codeAnd, codeOr:
 		return []int{in.A, in.B}
 	case scalarStructGet, scalarCivilFormat, scalarDateAtMidnight, scalarCivilTimestamp, scalarDateInZone, scalarZonedExtract, scalarCast, scalarTryCast, scalarDecimalRound, scalarDecimalRescale, scalarUnary, scalarJSONDecode, codeNot:
 		return []int{in.A}

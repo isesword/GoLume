@@ -2,7 +2,8 @@
 
 TopK carries existing recursive Struct, flat14 StructList and two-level
 Int64/String List payloads under scalar keys. It does not add a container shape,
-nested key, Decimal ordering or selected-container expression mode.
+nested key or selected-container expression mode. N9 did not add Decimal
+ordering; N12 supplies that separate root-only extension (see DECIMAL_TOPK.md).
 
 When both payload and key sources promise stable replay, key selection can scan
 a narrow source and then read winning payload ordinals from the full source.
@@ -36,7 +37,8 @@ transport: generic IPC still rejects TypeArrow without an explicit adapter.
 Projecting native/Binary fields can use the existing exporter. StructList item
 dictionary storage remains unsupported; ordinary Struct runtime dictionaries
 retain their separate existing contract. Old temporal and top-level Decimal
-input capability does not imply new Parquet mappings or Decimal sorting.
+input capability does not imply new Parquet mappings. N12 separately adds root
+native Decimal keys/payloads; see [Decimal TopK](DECIMAL_TOPK.md).
 
 The candidate acceptance tests distinguish replay and one-pass routing using
 observed sources, unknown Stats, mismatched batch sizes, stable tie oracles,

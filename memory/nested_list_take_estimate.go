@@ -23,47 +23,11 @@ func EstimateNestedListTakeRangeBytes(ctx context.Context, src *ArrayNode, f Fie
 	return nestedListRangeOwnedBytes(ctx, src, f, d, offset, length)
 }
 func nestedListRangeOwnedBytes(ctx context.Context, src *ArrayNode, f Field, d NestedListParentDomain, offset, length int) (int64, error) {
-	ri, re, data := 0, 0, 0
-	for r := offset; r < offset+length; r++ {
-		if err := ctx.Err(); err != nil {
-			return 0, err
-		}
-		if !d.visible(r) || !src.IsValid(r) {
-			continue
-		}
-		var err error
-		ri, err = nestedListAddCount(ri, int(src.Offsets[r+1]-src.Offsets[r]))
-		if err != nil {
-			return 0, err
-		}
-		inner, leaf := src.Child, src.Child.Child
-		for i := int(src.Offsets[r]); i < int(src.Offsets[r+1]); i++ {
-			if err := ctx.Err(); err != nil {
-				return 0, err
-			}
-			if !inner.IsValid(i) {
-				continue
-			}
-			re, err = nestedListAddCount(re, int(inner.Offsets[i+1]-inner.Offsets[i]))
-			if err != nil {
-				return 0, err
-			}
-			if leaf.Kind == TypeString {
-				for e := int(inner.Offsets[i]); e < int(inner.Offsets[i+1]); e++ {
-					if err := ctx.Err(); err != nil {
-						return 0, err
-					}
-					if leaf.IsValid(e) {
-						data, err = nestedListAddBytes(data, int(leaf.Strings.Offsets[e+1]-leaf.Strings.Offsets[e]))
-						if err != nil {
-							return 0, err
-						}
-					}
-				}
-			}
-		}
+	c, err := measureRepeatedRows(ctx, src, f, d, length, func(i int) int { return offset + i })
+	if err != nil {
+		return 0, err
 	}
-	return nestedListOwnedCharge(f, length, ri, re, data)
+	return repeatedOwnedCharge(f, c)
 }
 
 // EstimateNestedListsStructTakeRangeBytes conservatively bounds the shared

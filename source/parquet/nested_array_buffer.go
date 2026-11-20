@@ -8,10 +8,12 @@ import (
 )
 
 type arrayBuffer struct {
-	node                 *memory.ArrayNode
-	slots, values, bytes int
-	lease                memory.Reservation
-	charge               int64
+	node   *memory.ArrayNode
+	caps   [memory.MaxRepeatedListDepth]int // inner list rows, then terminal rows
+	depth  int                              // number of inner lists plus the terminal node
+	bytes  int
+	lease  memory.Reservation
+	charge int64
 }
 
 func (b *arrayBuffer) close() {
@@ -20,94 +22,132 @@ func (b *arrayBuffer) close() {
 	}
 	*b = arrayBuffer{}
 }
+func (b *arrayBuffer) axisCounts() (counts [memory.MaxRepeatedListDepth]int, bytes int) {
+	v := b.node
+	for i := 0; i < b.depth && v != nil; i++ {
+		counts[i] = v.Len()
+		if v.Kind == memory.TypeString {
+			bytes = len(v.Strings.Data)
+		}
+		v = v.Child
+	}
+	return
+}
 func (b *arrayBuffer) counts() (int, int, int) {
-	if b.node == nil {
+	c, n := b.axisCounts()
+	if b.depth == 0 {
 		return 0, 0, 0
 	}
-	bytes := 0
-	if b.node.Child.Strings != nil {
-		bytes = len(b.node.Child.Strings.Data)
-	}
-	return b.node.Len(), b.node.Child.Len(), bytes
+	return c[0], c[b.depth-1], n
 }
-func arrayBufferBytes(kind memory.DataType, n, e, bytes int) (int64, error) {
-	for _, v := range []int{n, e, bytes} {
-		if v < 0 || v >= math.MaxInt-63 || uint64(v) >= math.MaxUint32 {
-			return 0, fmt.Errorf("array capacity overflow: %w", memory.ErrBudgetExceeded)
+func arrayBufferSize(kind memory.DataType, depth int, counts [memory.MaxRepeatedListDepth]int, bytes int) (int64, error) {
+	if depth < 2 || depth > memory.MaxRepeatedListDepth || bytes < 0 || uint64(bytes) >= math.MaxUint32 {
+		return 0, fmt.Errorf("array capacity overflow: %w", memory.ErrBudgetExceeded)
+	}
+	var charge int64
+	for i := 0; i < depth; i++ {
+		n := counts[i]
+		if n < 0 || n >= math.MaxInt-63 || uint64(n) >= math.MaxUint32 {
+			return 0, memory.ErrBudgetExceeded
+		}
+		charge += int64(memory.WordsFor(n)) * 8
+		if i < depth-1 || kind == memory.TypeString {
+			charge += (int64(n) + 1) * 4
+		} else {
+			charge += int64(n) * 8
 		}
 	}
-	charge := (int64(n)+1)*4 + int64(memory.WordsFor(n)+memory.WordsFor(e))*8
-	if kind == memory.TypeString {
-		charge += (int64(e)+1)*4 + int64(bytes)
-	} else {
-		charge += int64(e) * 8
-	}
-	return charge, nil
+	return charge + int64(bytes), nil
 }
-func newArrayBuffer(kind memory.DataType, n, e, bytes int) arrayBuffer {
-	leaf := &memory.ArrayNode{Kind: kind, Encoding: memory.EncodingView}
-	if kind == memory.TypeString {
-		leaf.Strings = &memory.StringViewVector{Offsets: make([]uint32, 1, e+1), Data: make([]byte, 0, bytes), Validity: make(memory.Bitmap, memory.WordsFor(e)), Encoding: memory.EncodingView}
-	} else {
-		leaf.Int64 = &memory.Int64Vector{Values: make([]int64, 0, e), Validity: make(memory.Bitmap, memory.WordsFor(e)), Encoding: memory.EncodingPlain}
+func newRepeatedArrayBuffer(kind memory.DataType, depth int, counts [memory.MaxRepeatedListDepth]int, bytes int) arrayBuffer {
+	b := arrayBuffer{depth: depth, caps: counts, bytes: bytes}
+	var prev *memory.ArrayNode
+	for i := 0; i < depth; i++ {
+		v := &memory.ArrayNode{Encoding: memory.EncodingView}
+		if i == 0 {
+			b.node = v
+		} else {
+			prev.Child = v
+		}
+		n := counts[i]
+		if i < depth-1 {
+			v.Kind = memory.TypeList
+			v.Offsets = make([]uint32, 1, n+1)
+			v.Validity = make(memory.Bitmap, memory.WordsFor(n))
+		} else {
+			v.Kind = kind
+			if kind == memory.TypeString {
+				v.Strings = &memory.StringViewVector{Offsets: make([]uint32, 1, n+1), Data: make([]byte, 0, bytes), Validity: make(memory.Bitmap, memory.WordsFor(n)), Encoding: memory.EncodingView}
+			} else {
+				v.Int64 = &memory.Int64Vector{Values: make([]int64, 0, n), Validity: make(memory.Bitmap, memory.WordsFor(n)), Encoding: memory.EncodingPlain}
+			}
+		}
+		prev = v
 	}
-	v := &memory.ArrayNode{Kind: memory.TypeList, Offsets: make([]uint32, 1, n+1), Validity: make(memory.Bitmap, memory.WordsFor(n)), Child: leaf, Encoding: memory.EncodingView}
-	charge, _ := arrayBufferBytes(kind, n, e, bytes)
-	return arrayBuffer{node: v, slots: n, values: e, bytes: bytes, charge: charge}
+	b.charge, _ = arrayBufferSize(kind, depth, counts, bytes)
+	return b
 }
 func copyArrayBuffer(ctx context.Context, c *nestedListCursor, dst, src *arrayBuffer) error {
 	if src.node == nil {
 		return nil
 	}
-	ni, ne, nb := dst.counts()
-	si, se, _ := src.counts()
+	dc, db := dst.axisCounts()
+	sc, _ := src.axisCounts()
 	d, s := dst.node, src.node
-	d.Offsets = d.Offsets[:ni+si+1]
-	for i := 0; i < si; i++ {
-		if i&1023 == 0 {
-			if err := c.check(ctx); err != nil {
+	for axis := 0; axis < src.depth; axis++ {
+		if err := c.check(ctx); err != nil {
+			return err
+		}
+		n, m := dc[axis], sc[axis]
+		if s.Kind == memory.TypeList {
+			d.Offsets = d.Offsets[:n+m+1]
+			for i := 0; i < m; i++ {
+				if i&1023 == 0 {
+					if err := c.check(ctx); err != nil {
+						return err
+					}
+				}
+				d.Offsets[n+i+1] = uint32(dc[axis+1]) + s.Offsets[i+1]
+				if s.IsValid(i) {
+					memory.Set(d.Validity, n+i)
+				}
+			}
+		} else if s.Kind == memory.TypeString {
+			a, b := d.Strings, s.Strings
+			a.Offsets = a.Offsets[:n+m+1]
+			a.Data = a.Data[:db+len(b.Data)]
+			if err := c.strings.copyBytes(ctx, a.Data[db:], b.Data); err != nil {
 				return err
 			}
-		}
-		d.Offsets[ni+i+1] = uint32(ne) + s.Offsets[i+1]
-		if s.IsValid(i) {
-			memory.Set(d.Validity, ni+i)
-		}
-	}
-	if c.kind == memory.TypeString {
-		a, b := d.Child.Strings, s.Child.Strings
-		a.Offsets = a.Offsets[:ne+se+1]
-		a.Data = a.Data[:nb+len(b.Data)]
-		if err := c.strings.copyBytes(ctx, a.Data[nb:], b.Data); err != nil {
-			return err
-		}
-		for i := 0; i < se; i++ {
-			if i&1023 == 0 {
-				if err := c.check(ctx); err != nil {
-					return err
+			for i := 0; i < m; i++ {
+				if i&1023 == 0 {
+					if err := c.check(ctx); err != nil {
+						return err
+					}
+				}
+				a.Offsets[n+i+1] = uint32(db) + b.Offsets[i+1]
+				if b.IsValid(i) {
+					memory.Set(a.Validity, n+i)
 				}
 			}
-			a.Offsets[ne+i+1] = uint32(nb) + b.Offsets[i+1]
-			if b.IsValid(i) {
-				memory.Set(a.Validity, ne+i)
+		} else {
+			a, b := d.Int64, s.Int64
+			a.Values = a.Values[:n+m]
+			if err := c.copyElements(ctx, a.Values[n:], b.Values); err != nil {
+				return err
 			}
-		}
-	} else {
-		a, b := d.Child.Int64, s.Child.Int64
-		a.Values = a.Values[:ne+se]
-		if err := c.copyElements(ctx, a.Values[ne:], b.Values); err != nil {
-			return err
-		}
-		for i := 0; i < se; i++ {
-			if i&1023 == 0 {
-				if err := c.check(ctx); err != nil {
-					return err
+			for i := 0; i < m; i++ {
+				if i&1023 == 0 {
+					if err := c.check(ctx); err != nil {
+						return err
+					}
+				}
+				if b.IsValid(i) {
+					memory.Set(a.Validity, n+i)
 				}
 			}
-			if b.IsValid(i) {
-				memory.Set(a.Validity, ne+i)
-			}
 		}
+		d, s = d.Child, s.Child
 	}
 	return c.check(ctx)
 }

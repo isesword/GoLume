@@ -47,11 +47,6 @@ func TestNativeDecimalExecutionBoundaries(t *testing.T) {
 		t.Fatal(err)
 	}
 	for name, build := range map[string]func() error{
-		"spill sort payload": func() error {
-			_, e := NewSortSourceWithOptions(base, []SortKey{{Column: "id"}}, nil, SortSourceOptions{Spillable: true})
-			return e
-		},
-		"top-k payload": func() error { _, e := NewTopKSourceWithManager(base, 1, []SortKey{{Column: "id"}}, nil); return e },
 		"join payload": func() error {
 			_, e := NewJoinSourceWithOptions(context.Background(), base, base, join.Inner, nil, "_right", nil, JoinSourceOptions{})
 			return e
@@ -68,6 +63,23 @@ func TestNativeDecimalExecutionBoundaries(t *testing.T) {
 			}
 		})
 	}
+	n13CheckSpillPayload(t, base, "id", []memory.Decimal128{decimal128.FromI64(123), {}, decimal128.FromI64(-123)}, []bool{true, false, true})
+	top, e := NewTopKSourceWithManager(base, 1, []SortKey{{Column: "id"}}, nil)
+	if e != nil {
+		t.Fatal(e)
+	}
+	ts, e := source.OpenBatchStream(context.Background(), top, testReadOptions())
+	if e != nil {
+		t.Fatal(e)
+	}
+	tb := memory.NewBatch()
+	if ok, e := ts.Next(context.Background(), tb); !ok || e != nil {
+		t.Fatal(ok, e)
+	}
+	if tb.Rows != 1 || tb.Decimals["amount"].Values[0] != decimal128.FromI64(123) {
+		t.Fatal("native Decimal TopK payload")
+	}
+	ts.Close()
 	// Explicit simple transport paths may not drop the decimal map.
 	dropped, err := NewDropColumnsSource(base, []string{"id"})
 	if err != nil {
