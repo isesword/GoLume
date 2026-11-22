@@ -53,6 +53,7 @@ const (
 	scalarListGet
 	scalarStructFrom
 	scalarCalendarDays
+	scalarLiteralInt128
 )
 
 // ProjectionOutput maps one compiled root register to a named output column.
@@ -315,6 +316,9 @@ func (c *scalarCompiler) compileBound(bound *BoundExpr) (int, TypeInfo, error) {
 		case Int64Literal:
 			in.Code = scalarLiteralI64
 			in.I64 = n.Value
+		case Int128Literal:
+			in.Code = scalarLiteralInt128
+			in.LiteralI64, in.LiteralU64 = n.Value.High, n.Value.Low
 		case Decimal128Literal:
 			in.Code = scalarLiteralDecimal
 			// Opcode-specific existing slots hold the full coefficient without
@@ -673,6 +677,17 @@ func evaluateInstructionsActive(instructions []instruction, batch *memory.Batch,
 		case codeConstTrue, codeCmpScalar, codeStringMatch, codeCmpExtract, codeIsNull, codeIsNotNull, codeAnd, codeOr, codeNot:
 			if err := evalSpecializedBoolean(r, in, batch, w, kernels); err != nil {
 				return err
+			}
+		case scalarLiteralInt128:
+			r.validity = nil
+			value := memory.Int128{High: in.LiteralI64, Low: in.LiteralU64}
+			for row := range r.i128 {
+				if row&4095 == 0 {
+					if err := w.checkContext(); err != nil {
+						return err
+					}
+				}
+				r.i128[row] = value
 			}
 		case scalarLiteralDecimal:
 			r.validity = nil

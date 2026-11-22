@@ -137,6 +137,8 @@ func (b *expressionBinder) bindNode(e Expr) (*BoundExpr, error) {
 		bound.Columns = []string{n.Name}
 	case Int64Literal:
 		bound.Field = computedField(memory.TypeInt64, false)
+	case Int128Literal:
+		bound.Field = computedField(memory.TypeInt128, false)
 	case Float64Literal:
 		bound.Field = computedField(memory.TypeFloat64, false)
 	case Decimal128Literal:
@@ -754,6 +756,12 @@ func bindTernary(bound *BoundExpr, n Ternary) error {
 // Native integer comparisons, including mixed signed/unsigned values, must not
 // round through float64. Floating comparisons use IEEE equality and ordering.
 func bindComparison(left, right *BoundExpr) error {
+	if left.Field.Type == memory.TypeInt128 || right.Field.Type == memory.TypeInt128 {
+		if left.Field.Type != memory.TypeInt128 || right.Field.Type != memory.TypeInt128 {
+			return fmt.Errorf("int128 comparison requires two int128 operands, got %s and %s", left.Field.Type, right.Field.Type)
+		}
+		return nil
+	}
 	if left.Field.Type == memory.TypeDecimal || right.Field.Type == memory.TypeDecimal {
 		if err := left.Field.ValidateDecimal128(); err != nil {
 			return fmt.Errorf("decimal comparison requires two native decimal128 operands: %w", err)

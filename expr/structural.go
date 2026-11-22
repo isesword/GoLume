@@ -79,6 +79,8 @@ func (s *structuralInterner) expression(bound *BoundExpr) int {
 		parts = []string{"column", n.Name}
 	case Int64Literal:
 		parts = []string{"int64", strconv.FormatInt(n.Value, 10)}
+	case Int128Literal:
+		parts = []string{"int128", strconv.FormatInt(n.Value.High, 10), strconv.FormatUint(n.Value.Low, 10)}
 	case Decimal128Literal:
 		parts = []string{"decimal128", strconv.FormatInt(n.Value.HighBits(), 10), strconv.FormatUint(n.Value.LowBits(), 10), strconv.Itoa(int(n.Precision)), strconv.Itoa(int(n.Scale))}
 	case Decimal128NullLiteral:

@@ -146,6 +146,9 @@ func evalBooleanInstruction(out *scalarRegister, in instruction, rows int, w *ev
 	// inputs, so the same value can be consumed by kernels and projected.
 	fillValidity(out.validity, a.validity, rows)
 	andValidity(out.validity, b.validity, rows)
+	if a.typ == memory.TypeInt128 || b.typ == memory.TypeInt128 {
+		return evalInt128Comparison(out, a, b, in.Op, rows)
+	}
 	if evalNumericRegisterComparison(out, a, b, in.Op, rows, kernels) {
 		return nil
 	}

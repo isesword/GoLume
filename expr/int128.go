@@ -30,6 +30,8 @@ func supportsInt128Child(e Expr) bool {
 	switch n := e.(type) {
 	case IfExpr, CaseExpr, CoalesceExpr:
 		return true
+	case Binary:
+		return int128ComparisonOp(n.Op)
 	case Unary:
 		return n.Op == OpIsNull || n.Op == OpIsNotNull || n.Op == OpInt128ToString
 	default:
@@ -41,7 +43,7 @@ func producesInt128(e Expr) bool {
 	switch n := e.(type) {
 	case Binary:
 		return isInt128Op(n.Op)
-	case NullLiteral, IfExpr, CaseExpr, CoalesceExpr:
+	case Int128Literal, NullLiteral, IfExpr, CaseExpr, CoalesceExpr:
 		return true
 	default:
 		return false

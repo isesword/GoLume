@@ -50,6 +50,27 @@ leading plus, decimal point or exponent. It preserves NULL and retains all
 not numerically; use this representation for display or textual export.
 This function does not enable the generic Cast or TryCast APIs for Int128.
 
+## Exact comparisons and range filters
+
+`EQ`, `LT`, `LE`, `GT` and `GE` compare two Int128 expressions exactly.
+Either operand can be a typed threshold from `expr.I128(high, low)`, where the
+signed high limb and unsigned low limb denote `high * 2^64 + low`. A
+comparison with a NULL operand returns NULL; `Filter` keeps only TRUE rows.
+No implicit conversion from Int64, Uint64, Float64 or String is added.
+
+For example, to keep only sums in the half-open interval [2^64, 2^64+2):
+
+```go
+sum := expr.AddInt128(expr.Col("i"), expr.Col("u"))
+inRange := expr.And(expr.GE(sum, expr.I128(1, 0)), expr.LT(sum, expr.I128(1, 2)))
+result := frame.Filter(inRange).SelectExprs(expr.Named(expr.Int128ToString(sum), "exact"))
+```
+
+Comparisons return ordinary Boolean values and do not require native Int128
+columns. The range example uses expression evaluation, not Parquet predicate
+pushdown. To compare numerically, use the Int128 expression rather than its
+String rendering.
+
 Logical and physical column projections still reject raw Int128. Sort and
 TopK do not accept raw Int128 keys.
 Aggregates, Join, Arrow/Parquet and spill formats gain no Int128 support.
