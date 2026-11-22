@@ -34,6 +34,8 @@ func fixedRegisterBytes(in instruction, rows int) (int64, error) {
 	switch typ {
 	case memory.TypeBool:
 		n *= 2
+	case memory.TypeInt128:
+		width = 16
 	case memory.TypeDecimal:
 		if in.Decimal != nil {
 			width = 16
@@ -250,7 +252,7 @@ func (w *evaluationState) MemoryBytes() int64 {
 		for _, region := range r.regions {
 			n += region.MemoryBytes()
 		}
-		n += int64(cap(r.decimal)) * 16
+		n += int64(cap(r.i128)+cap(r.decimal)) * 16
 		n += int64(cap(r.i16)+cap(r.u16)) * 2
 		n += int64(cap(r.i32)+cap(r.u32)+cap(r.f32)+cap(r.offsets)) * 4
 		n += int64(cap(r.i64)+cap(r.u64)+cap(r.f64)+cap(r.ownedValidity)+cap(r.Truth)+cap(r.active)+cap(r.listValidity)) * 8

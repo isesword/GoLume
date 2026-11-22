@@ -73,6 +73,9 @@ const (
 	OpISOWeekday
 	OpUTCOffset
 	OpTimeOfDay
+	OpAddInt128
+	OpSubInt128
+	OpMulInt128
 )
 
 // Expr is a logical scalar expression node.
@@ -404,6 +407,12 @@ func (o Op) String() string {
 		return "-"
 	case OpMul:
 		return "*"
+	case OpAddInt128:
+		return "+INT128"
+	case OpSubInt128:
+		return "-INT128"
+	case OpMulInt128:
+		return "*INT128"
 	case OpDiv:
 		return "/"
 	case OpConcat:

@@ -57,6 +57,9 @@ const (
 	TypeList
 	// TypeStruct identifies a nullable record with row-aligned child vectors.
 	TypeStruct
+	// TypeInt128 identifies a signed binary 128-bit expression result.
+	// It is not a Batch column, an Arrow type, or a Decimal coefficient.
+	TypeInt128
 )
 
 // String returns the stable textual name of the data type.
@@ -108,6 +111,8 @@ func (t DataType) String() string {
 		return "list"
 	case TypeStruct:
 		return "struct"
+	case TypeInt128:
+		return "int128"
 	default:
 		return "invalid"
 	}

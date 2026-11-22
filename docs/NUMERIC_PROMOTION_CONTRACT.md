@@ -1,7 +1,9 @@
 # Numeric promotion compatibility contract
 
-This records the existing expression contract on `ec773430`, not a new
-lossless-promotion policy. No runtime implementation changes are included.
+This records the default expression contract, first verified on `ec773430`.
+It does not silently convert existing queries to lossless arithmetic.
+For opt-in workspace arithmetic, see
+[Explicit exact mixed-integer expressions](EXACT_MIXED_INTEGER_EXPRESSIONS.md).
 See `FUNDAMENTALS_SEMANTICS.md` for the broader semantic contract and
 `NUMERIC_CASTS.md` for explicit strict and tolerant conversions.
 
@@ -68,12 +70,10 @@ value; selection does not waive the common output conversion.
 ## What this work does not decide
 
 This compatibility record must not be interpreted as endorsement of lossy
-mixed-integer arithmetic for every analytical use case. A future lossless mode
-requires an explicit design decision, including whether mixed Int64/Uint64
-should reject implicit arithmetic, require an explicit cast, or produce a wider
-exact representation. Such a change affects schema inference, overflow/error
-order, branch typing, downstream kernels, budgets, and stored-query behavior.
-It cannot silently replace the current default.
+mixed-integer arithmetic for every analytical use case. Opt-in exact expressions are deliberately limited to one mixed Int64/Uint64
+operation at a time. Broader automatic promotion and Int128 storage support
+are separate decisions, with impacts on type inference, downstream kernels,
+budgets, and stored-query behavior.
 
 Decimal, temporal types, arbitrary precision, rounding policies, and generic
 nested branches are outside this ten-type matrix. Existing explicit Decimal128

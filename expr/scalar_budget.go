@@ -155,10 +155,15 @@ func prepareScalarBuffers(r *scalarRegister, rows int) error {
 	if r.typ == memory.TypeBool {
 		return scalarResize(&r.Truth, memory.WordsFor(rows), &r.buffers[14], r.acquire)
 	}
+	// Decimal and Int128 use distinct typed storage. Both have dedicated
+	// fixed-width owners and are excluded from pooled guarded-arm scratch.
+	const wideBufferLease = 17
 	if r.decimalType != nil {
-		return scalarResize(&r.decimal, rows, &r.buffers[17], r.acquire)
+		return scalarResize(&r.decimal, rows, &r.buffers[wideBufferLease], r.acquire)
 	}
 	switch r.typ {
+	case memory.TypeInt128:
+		return scalarResize(&r.i128, rows, &r.buffers[wideBufferLease], r.acquire)
 	case memory.TypeInt8:
 		return scalarResize(&r.i8, rows, &r.buffers[1], r.acquire)
 	case memory.TypeInt16:

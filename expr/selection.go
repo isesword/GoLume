@@ -48,7 +48,7 @@ func (p *Program) planSelection() {
 			return false
 		}
 		if in.Column != "" {
-			if selectionWidth(in.Type) == 0 {
+			if in.Type == memory.TypeInt128 || selectionWidth(in.Type) == 0 {
 				return false
 			}
 			columns[in.Column] = selectedColumn{name: in.Column, typ: in.Type, decimal: in.Decimal}
@@ -71,7 +71,7 @@ func (p *Program) planSelection() {
 
 func selectionWidth(t memory.DataType) int64 {
 	switch t {
-	case memory.TypeDecimal:
+	case memory.TypeDecimal, memory.TypeInt128:
 		return 16
 	case memory.TypeInt8, memory.TypeUint8:
 		return 1

@@ -93,6 +93,7 @@ type scalarRegister struct {
 	u64         []uint64
 	f32         []float32
 	f64         []float64
+	i128        []memory.Int128
 	decimal     []memory.Decimal128
 	decimalType *memory.Field
 
@@ -474,6 +475,7 @@ type ScalarValue struct {
 	Float32          *memory.Float32Vector
 	Float64          *memory.Float64Vector
 	Decimal          *memory.Decimal128Vector
+	Int128           *memory.Int128Vector
 	String           *memory.StringViewVector
 	DictionaryString *memory.DictionaryStringVector
 	StringList       *memory.StringListVector
@@ -490,6 +492,14 @@ func scalarValue(r *scalarRegister, rows int) ScalarValue {
 		return v
 	}
 	switch r.typ {
+	case memory.TypeInt128:
+		var validity memory.Bitmap
+		if r.validity != nil {
+			words := memory.WordsFor(rows)
+			validity = r.validity[:words:words]
+		}
+		v.Int128 = &memory.Int128Vector{Values: r.i128[:rows:rows], Validity: validity}
+		return v
 	case memory.TypeInt8:
 		v.Int8 = &memory.Int8Vector{Values: r.i8[:rows], Validity: r.validity, Encoding: memory.EncodingPlain}
 		return v
@@ -677,6 +687,9 @@ func evaluateInstructionsActive(instructions []instruction, batch *memory.Batch,
 				fillAll(r.Truth, batch.Rows)
 			}
 		case scalarLiteralNull:
+			if r.typ == memory.TypeInt128 {
+				clear(r.i128)
+			}
 			if familyOf(r.typ) == familyString {
 				clear(r.offsets)
 				r.data = r.data[:0]
@@ -1161,6 +1174,9 @@ func evalBinary(out, a, b *scalarRegister, op Op, result memory.DataType, rows i
 		return evalMathBinary(out, a, b, physical, rows, kernels)
 	}
 	combineValidity(out, a, b, rows)
+	if result == memory.TypeInt128 {
+		return evalInt128Binary(out, a, b, op, rows)
+	}
 	if result == memory.TypeDecimal {
 		return evalDecimalBinary(out, a, b, op, rows)
 	}

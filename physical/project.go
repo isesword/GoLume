@@ -203,6 +203,9 @@ func NewProjectSource(input source.Source, named []expr.NamedExpr, includeInput 
 		if err != nil {
 			return nil, fmt.Errorf("projection %q: %w", name, err)
 		}
+		if bound.Field.Type == memory.TypeInt128 {
+			return nil, fmt.Errorf("projection %q: int128 is expression-only; evaluate it in an expression workspace", name)
+		}
 		field := bound.OutputField(name)
 		if pos, exists := positions[name]; exists {
 			fields[pos] = field
@@ -508,6 +511,8 @@ func (s *projectBatchStream) Close() error { return s.state.Close() }
 
 func bindScalarValue(dst *memory.Batch, name string, v expr.ScalarValue) error {
 	switch {
+	case v.Type == memory.TypeInt128:
+		return fmt.Errorf("projection %q: int128 is expression-only", name)
 	case v.Decimal != nil:
 		dst.Decimals[name] = v.Decimal
 	case v.Int8 != nil:

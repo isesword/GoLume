@@ -159,6 +159,9 @@ func (w *evaluationState) evaluateConditional(out *scalarRegister, in instructio
 	for row := range out.choices {
 		out.choices[row] = -1
 	}
+	if out.typ == memory.TypeInt128 {
+		clear(out.i128)
+	}
 	if stream {
 		out.validity = out.ownedValidity
 		clear(out.validity)
@@ -343,6 +346,13 @@ func (w *evaluationState) evaluateConditional(out *scalarRegister, in instructio
 }
 
 func copyConditionalRow(out, value *scalarRegister, row int) error {
+	if out.typ == memory.TypeInt128 {
+		if value.typ != memory.TypeInt128 {
+			return fmt.Errorf("int128 conditional branch type mismatch")
+		}
+		out.i128[row] = value.i128[row]
+		return nil
+	}
 	if out.decimalType != nil {
 		if value.decimalType == nil || out.decimalType.DecimalPrecision != value.decimalType.DecimalPrecision || out.decimalType.DecimalScale != value.decimalType.DecimalScale {
 			return fmt.Errorf("decimal conditional branch metadata mismatch")

@@ -195,8 +195,12 @@ func InferSchema(plan Plan) (memory.Schema, error) {
 			if err != nil {
 				return memory.Schema{}, fmt.Errorf("sort key %d: %w", i, err)
 			}
-			if _, err := expr.Bind(in, value); err != nil {
+			bound, err := expr.Bind(in, value)
+			if err != nil {
 				return memory.Schema{}, fmt.Errorf("sort key %d: %w", i, err)
+			}
+			if bound.Field.Type == memory.TypeInt128 {
+				return memory.Schema{}, fmt.Errorf("sort key %d: int128 is expression-only and not orderable", i)
 			}
 		}
 		return in, nil
@@ -214,8 +218,12 @@ func InferSchema(plan Plan) (memory.Schema, error) {
 			if err != nil {
 				return memory.Schema{}, fmt.Errorf("top-k key %d: %w", i, err)
 			}
-			if _, err := expr.Bind(in, value); err != nil {
+			bound, err := expr.Bind(in, value)
+			if err != nil {
 				return memory.Schema{}, fmt.Errorf("top-k key %d: %w", i, err)
+			}
+			if bound.Field.Type == memory.TypeInt128 {
+				return memory.Schema{}, fmt.Errorf("top-k key %d: int128 is expression-only and not orderable", i)
 			}
 		}
 		return in, nil
@@ -584,6 +592,9 @@ func boundOutputField(schema memory.Schema, e expr.Expr, name string) (memory.Fi
 	bound, err := expr.Bind(schema, e)
 	if err != nil {
 		return memory.Field{}, fmt.Errorf("projection %q: %w", name, err)
+	}
+	if bound.Field.Type == memory.TypeInt128 {
+		return memory.Field{}, fmt.Errorf("projection %q: int128 is expression-only; evaluate it in an expression workspace", name)
 	}
 	return bound.OutputField(name), nil
 }

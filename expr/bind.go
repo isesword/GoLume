@@ -99,6 +99,9 @@ func (b *expressionBinder) bindNode(e Expr) (*BoundExpr, error) {
 			if err := memory.ValidateRepeatedListDepth([]memory.Field{child.Field}, max); err != nil {
 				return err
 			}
+			if child.Field.Type == memory.TypeInt128 && !supportsInt128Child(e) {
+				return fmt.Errorf("%T does not support expression-only int128 operands", e)
+			}
 			bound.Children = append(bound.Children, child)
 		}
 		return nil
@@ -154,7 +157,7 @@ func (b *expressionBinder) bindNode(e Expr) (*BoundExpr, error) {
 	case BoolLiteral:
 		bound.Field = computedField(memory.TypeBool, false)
 	case NullLiteral:
-		if !conditionalScalarType(n.Type) {
+		if n.Type != memory.TypeInt128 && !conditionalScalarType(n.Type) {
 			return nil, fmt.Errorf("NULL requires a supported scalar type, got %s", n.Type)
 		}
 		bound.Field = computedField(n.Type, true)
@@ -549,6 +552,9 @@ func (b *expressionBinder) bindNode(e Expr) (*BoundExpr, error) {
 	default:
 		return nil, fmt.Errorf("unsupported expression node %T", e)
 	}
+	if bound.Field.Type == memory.TypeInt128 && !producesInt128(e) {
+		return nil, fmt.Errorf("%T does not support an int128 result; int128 is expression-only", e)
+	}
 	if len(bound.Children) != 0 {
 		dependencies := make(map[string]struct{})
 		for _, child := range bound.Children {
@@ -574,6 +580,13 @@ func bindBinary(bound *BoundExpr, n Binary) error {
 	}
 	left, right := bound.Children[0].Field, bound.Children[1].Field
 	nullable := left.Nullable || right.Nullable
+	if isInt128Op(n.Op) {
+		if !mixedInt64Uint64(left.Type, right.Type) {
+			return fmt.Errorf("operator %s requires one int64 and one uint64 operand, got %s and %s", n.Op, left.Type, right.Type)
+		}
+		bound.Field = computedField(memory.TypeInt128, nullable)
+		return nil
+	}
 	if (left.Type == memory.TypeDecimal || right.Type == memory.TypeDecimal) && (n.Op == OpAdd || n.Op == OpSub || n.Op == OpMul) {
 		return bindDecimalArithmetic(bound, n.Op)
 	}
@@ -793,6 +806,16 @@ func bindComparison(left, right *BoundExpr) error {
 }
 
 func branchField(values []*BoundExpr) (memory.Field, error) {
+	if values[0].Field.Type == memory.TypeInt128 {
+		field := computedField(memory.TypeInt128, values[0].Field.Nullable)
+		for _, value := range values[1:] {
+			if value.Field.Type != memory.TypeInt128 {
+				return memory.Field{}, fmt.Errorf("int128 conditional branches require int128 in every result arm")
+			}
+			field.Nullable = field.Nullable || value.Field.Nullable
+		}
+		return field, nil
+	}
 	if values[0].Field.Type == memory.TypeDecimal {
 		field := values[0].OutputField("")
 		if err := field.ValidateDecimal128(); err != nil {
