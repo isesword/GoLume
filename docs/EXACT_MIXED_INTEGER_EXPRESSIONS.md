@@ -18,7 +18,8 @@ operators do not convert either input through Float64 or Decimal128.
 
 ## Execution and scope
 
-This is a workspace expression API, not a new materialized column type.
+The raw Int128 result is a workspace expression value, not a materialized
+column type.
 Bind and compile against a schema with `expr.Compile` or
 `expr.CompileExpressions`, then evaluate with `expr.Workspace`. The returned
 `expr.ScalarValue` has `Type == memory.TypeInt128`. Read the borrowed
@@ -35,8 +36,22 @@ these three entry points, are rejected rather than coerced. This first version
 does not define widening chains, overflow semantics for Int128 operands,
 exact division, or any change to same-type integer arithmetic.
 
-Logical and physical column projections do not materialize Int128. Sort and
-TopK do not accept Int128 keys.
+To retrieve the exact value from an ordinary query, opt in to decimal text:
+
+```go
+product := expr.MulInt128(expr.Col("i"), expr.Col("u"))
+result := frame.SelectExprs(expr.Named(expr.Int128ToString(product), "exact"))
+```
+
+`Int128ToString` accepts only an Int128 expression. It returns an ordinary
+String column with the canonical signed base-10 representation: no padding,
+leading plus, decimal point or exponent. It preserves NULL and retains all
+39 digits of extreme values. A String column compares lexicographically,
+not numerically; use this representation for display or textual export.
+This function does not enable the generic Cast or TryCast APIs for Int128.
+
+Logical and physical column projections still reject raw Int128. Sort and
+TopK do not accept raw Int128 keys.
 Aggregates, Join, Arrow/Parquet and spill formats gain no Int128 support.
 The specialized expressions use scalar arithmetic in both build modes;
 a SIMD build/run is a compatibility check, not evidence of a native SIMD

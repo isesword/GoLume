@@ -668,6 +668,14 @@ func bindUnary(bound *BoundExpr, n Unary) error {
 		bound.Field = computedField(memory.TypeBool, input.Nullable)
 	case OpIsNull, OpIsNotNull:
 		bound.Field = computedField(memory.TypeBool, false)
+	case OpInt128ToString:
+		if input.Type != memory.TypeInt128 {
+			return fmt.Errorf("%s requires int128 input, got %s", n.Op, input.Type)
+		}
+		bound.Field = computedField(memory.TypeString, input.Nullable)
+		// A valid coefficient always formats, but a demanded result batch can
+		// exceed the String vector's uint32 byte-offset domain.
+		bound.MayError = true
 	case OpListLength:
 		if input.Type != memory.TypeList {
 			return fmt.Errorf("LIST_LENGTH requires native List")

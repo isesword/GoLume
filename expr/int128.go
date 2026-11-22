@@ -31,7 +31,7 @@ func supportsInt128Child(e Expr) bool {
 	case IfExpr, CaseExpr, CoalesceExpr:
 		return true
 	case Unary:
-		return n.Op == OpIsNull || n.Op == OpIsNotNull
+		return n.Op == OpIsNull || n.Op == OpIsNotNull || n.Op == OpInt128ToString
 	default:
 		return false
 	}

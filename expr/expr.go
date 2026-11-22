@@ -76,6 +76,7 @@ const (
 	OpAddInt128
 	OpSubInt128
 	OpMulInt128
+	OpInt128ToString
 )
 
 // Expr is a logical scalar expression node.
@@ -413,6 +414,8 @@ func (o Op) String() string {
 		return "-INT128"
 	case OpMulInt128:
 		return "*INT128"
+	case OpInt128ToString:
+		return "INT128_TO_STRING"
 	case OpDiv:
 		return "/"
 	case OpConcat:

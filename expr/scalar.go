@@ -831,6 +831,12 @@ func evaluateInstructionsActive(instructions []instruction, batch *memory.Batch,
 				return err
 			}
 		case scalarUnary:
+			if in.Op == OpInt128ToString {
+				if err := evalInt128ToString(r, w.regs[in.A], batch.Rows, w.activeRows); err != nil {
+					return err
+				}
+				break
+			}
 			if in.Op == OpListLength && in.ListGet != nil && memory.IsNestedList(*in.ListGet) {
 				if err := evalNestedListLength(r, w.regs[in.A], *in.ListGet, batch.Rows, w.activeRows); err != nil {
 					return err
